@@ -1,5 +1,6 @@
 import { BATTLE_CONSTANTS } from './constants.js';
 import { clampStat, clampCohesion, clampApproval } from './cohesion.js';
+import { getLogger } from '../modules/logger.js';
 
 export function calculateArmyPower(army) {
   return (
@@ -26,8 +27,16 @@ export function calculateInsurrectionPower(armies, rng = Math.random) {
 }
 
 export function resolveScourgeBattle(state, participatingArmies, rng = Math.random) {
+  const logger = getLogger();
   const coalitionPower = calculateCoalitionPower(participatingArmies);
   const scourgePower = calculateScourgePower(state.scourgeFervor, rng);
+  
+  logger.debug('Scourge battle calculation', {
+    coalitionPower: coalitionPower.toFixed(2),
+    scourgePower: scourgePower.toFixed(2),
+    scourgeFervor: state.scourgeFervor,
+    participatingArmies: participatingArmies.length
+  });
   
   const won = coalitionPower > scourgePower;
   const margin = Math.abs(coalitionPower - scourgePower);
@@ -67,8 +76,16 @@ export function resolveScourgeBattle(state, participatingArmies, rng = Math.rand
 }
 
 export function resolveInsurrectionBattle(state, insurrection, opposingArmies, rng = Math.random) {
+  const logger = getLogger();
   const insurrectionPower = calculateInsurrectionPower(insurrection.armies, rng);
   const coalitionPower = calculateCoalitionPower(opposingArmies);
+  
+  logger.debug('Insurrection battle calculation', {
+    insurrectionPower: insurrectionPower.toFixed(2),
+    coalitionPower: coalitionPower.toFixed(2),
+    rebelliousArmies: insurrection.armies.length,
+    opposingArmies: opposingArmies.length
+  });
   
   const won = coalitionPower > insurrectionPower;
   const log = [];

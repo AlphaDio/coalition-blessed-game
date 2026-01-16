@@ -1,4 +1,5 @@
 // Front Battles - MP-axis battles with morale badges
+import { getLogger } from '../modules/logger.js';
 
 /**
  * Calculate engagement width utilization based on organization
@@ -85,6 +86,7 @@ function clamp(value, min, max) {
  * @returns {Array} Log messages from this tick
  */
 export function simulateBattleTick(front, worldState) {
+  const logger = getLogger();
   if (front.state !== 'ACTIVE') {
     return [];
   }
@@ -94,6 +96,12 @@ export function simulateBattleTick(front, worldState) {
   const rightArmy = worldState.armies.find(a => a.id === front.rightArmyId);
   
   if (!leftArmy || !rightArmy) {
+    logger.warn(`Battle ${front.id}: Missing army, ending battle`, {
+      leftArmyId: front.leftArmyId,
+      rightArmyId: front.rightArmyId,
+      leftFound: !!leftArmy,
+      rightFound: !!rightArmy
+    });
     log.push(`Battle ${front.id}: Missing army, ending battle`);
     endBattle(front, worldState, null);
     return log;
@@ -126,14 +134,26 @@ export function simulateBattleTick(front, worldState) {
   let winner = null;
   if (leftArmy.mp.current <= 0) {
     winner = 'right';
+    logger.info(`Battle ${front.id} ended: ${leftArmy.name} shattered!`);
     log.push(`Battle ${front.id}: ${leftArmy.name} shattered!`);
   } else if (rightArmy.mp.current <= 0) {
     winner = 'left';
+    logger.info(`Battle ${front.id} ended: ${rightArmy.name} shattered!`);
     log.push(`Battle ${front.id}: ${rightArmy.name} shattered!`);
   }
   
   if (winner) {
     endBattle(front, worldState, winner);
+  } else {
+    // Log battle state for debugging
+    logger.debug(`Battle ${front.id} tick`, {
+      leftMP: leftArmy.mp.current.toFixed(1),
+      rightMP: rightArmy.mp.current.toFixed(1),
+      leftMO: leftArmy.mo.current.toFixed(1),
+      rightMO: rightArmy.mo.current.toFixed(1),
+      leftBroken: front.moraleBroken.left,
+      rightBroken: front.moraleBroken.right
+    });
   }
   
   return log;
@@ -188,6 +208,8 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   // Check if morale just broke
   if (previousMO > 0 && defendingArmy.mo.current <= 0 && !front.moraleBroken[defendingSide]) {
     front.moraleBroken[defendingSide] = true;
+    const logger = getLogger();
+    logger.warn(`Battle ${front.id}: ${defendingArmy.name} morale BROKEN!`);
     log.push(`Battle ${front.id}: ${defendingArmy.name} morale BROKEN!`);
     
     // Emit event
@@ -266,12 +288,20 @@ function endBattle(front, worldState, winnerSide) {
  * @returns {Object} Created battle front
  */
 export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize = 1000) {
+  const logger = getLogger();
   const leftArmy = worldState.armies.find(a => a.id === leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === rightArmyId);
   
   if (!leftArmy || !rightArmy) {
+    logger.error('Invalid army IDs for battle', { leftArmyId, rightArmyId });
     throw new Error('Invalid army IDs for battle');
   }
+  
+  logger.info(`Starting battle: ${leftArmy.name} vs ${rightArmy.name}`, {
+    battlefieldSize,
+    leftMP: leftArmy.mp.current,
+    rightMP: rightArmy.mp.current
+  });
   
   // Create battle front inline to avoid circular dependency with types.js
   // (types.js imports from other game modules which may import this module)

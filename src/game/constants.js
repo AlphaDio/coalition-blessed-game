@@ -59,7 +59,7 @@ export const EVENT_CONSTANTS = {
 };
 
 export const REALTIME_CONSTANTS = {
-  BASE_TICK_INTERVAL: 2000, // milliseconds per turn at normal speed
+  BASE_TICK_INTERVAL: 4000, // milliseconds per turn at normal speed
   MIN_SPEED: 0.5, // slowest speed multiplier
   MAX_SPEED: 3, // fastest speed multiplier
   SPEED_STEP: 0.5, // speed adjustment increment

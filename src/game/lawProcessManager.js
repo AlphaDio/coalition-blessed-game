@@ -12,6 +12,7 @@ import {
   checkPhaseAdvancement,
   checkBurialRule
 } from './lawEngine.js';
+import { getLogger } from '../modules/logger.js';
 
 /**
  * Constants for support bias calculations
@@ -31,8 +32,14 @@ const SUPPORT_BIAS_CONSTANTS = {
  * @returns {Object} Result with success/error and log
  */
 export function startLawProcess(state, lawId, influenceCost = 100) {
+  const logger = getLogger();
   // Check if player has enough influence
   if (state.playerInfluence < influenceCost) {
+    logger.warn(`Cannot start law process: insufficient influence`, {
+      needed: influenceCost,
+      have: state.playerInfluence,
+      lawId
+    });
     return { 
       error: `Not enough influence (need ${influenceCost}, have ${state.playerInfluence})`,
       log: []
@@ -42,11 +49,18 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
   // Find law definition
   const lawDef = state.lawDefinitions.find(l => l.id === lawId);
   if (!lawDef) {
+    logger.error(`Law definition not found: ${lawId}`);
     return { 
       error: `Law definition not found: ${lawId}`,
       log: []
     };
   }
+  
+  logger.info(`Starting law process: ${lawDef.name}`, {
+    lawId,
+    influenceCost,
+    remainingInfluence: state.playerInfluence - influenceCost
+  });
   
   // Deduct influence
   state.playerInfluence -= influenceCost;
@@ -207,6 +221,8 @@ export function resolveLawProcess(lawProcess, state, rng) {
         
         // Check burial
         if (checkBurialRule(lawProcess, state)) {
+          const logger = getLogger();
+          logger.warn(`Law BURIED: ${lawDef.name} (4 rejects)`);
           log.push(`\n*** LAW BURIED (4 rejects) ***`);
           return log;
         }
@@ -236,15 +252,24 @@ export function resolveLawProcess(lawProcess, state, rng) {
   
   // Check if VOTING completed
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
+    const logger = getLogger();
     log.push('\n>>> VOTING phase complete, tallying votes...');
     const tallyResult = tallyVotes(lawProcess, state);
     log.push(...tallyResult.log);
     
     if (tallyResult.passed) {
       lawProcess.phase = 'ENACTED';
+      logger.info(`Law ENACTED: ${lawDef.name}`, {
+        supportVotes: tallyResult.supportVotes,
+        opposeVotes: tallyResult.opposeVotes
+      });
       log.push('\n*** LAW ENACTED ***');
     } else {
       lawProcess.phase = 'BURIED';
+      logger.info(`Law FAILED: ${lawDef.name} (insufficient votes)`, {
+        supportVotes: tallyResult.supportVotes,
+        opposeVotes: tallyResult.opposeVotes
+      });
       log.push('\n*** LAW FAILED (insufficient votes) ***');
     }
   }

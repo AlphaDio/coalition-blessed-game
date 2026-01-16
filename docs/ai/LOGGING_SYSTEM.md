@@ -68,6 +68,21 @@ ENABLE_FILE_LOGGING=true node index.js
 
 Logs are automatically saved to `logs/game-{timestamp}.log`.
 
+### Debug Logging
+
+For more verbose debugging output, set the log level to DEBUG:
+```bash
+LOG_LEVEL=DEBUG node index.js
+```
+
+This will show detailed information about:
+- Turn progression and state changes
+- Battle calculations and power values
+- Event checks and selections
+- Supply consumption
+- Law process resolution
+- And more detailed game mechanics
+
 ### Creating Custom Logger Instances
 
 ```javascript

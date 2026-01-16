@@ -54,8 +54,10 @@ applyWarFundAllocation(state, initialAllocations);
 const ui = createUI();
 
 // Initialize logger with UI integration
+// Set LOG_LEVEL environment variable to 'DEBUG' for verbose logging
+const logLevel = process.env.LOG_LEVEL === 'DEBUG' ? LogLevel.DEBUG : LogLevel.INFO;
 const logger = initializeLogger({
-  level: LogLevel.INFO,
+  level: logLevel,
   enableConsole: true,
   enableFile: process.env.ENABLE_FILE_LOGGING === 'true',
   enableUI: true,

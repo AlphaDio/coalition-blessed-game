@@ -1,22 +1,31 @@
 import { EVENT_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
 import { clampApproval, clampCohesion, clampStat } from './cohesion.js';
+import { getLogger } from '../modules/logger.js';
 
 export function checkEvent(state, rng = Math.random) {
+  const logger = getLogger();
   if (state.activeEvent) {
     return null; // Event already active
   }
   
   const tier = getCohesionTier(state.coalitionCohesion);
-  if (!tier) return null;
+  if (!tier) {
+    logger.debug('No cohesion tier, skipping event check');
+    return null;
+  }
   
   let frequency = 0;
   if (tier.name === 'Stable') frequency = EVENT_CONSTANTS.TIER_1_FREQUENCY;
   else if (tier.name === 'Strained') frequency = EVENT_CONSTANTS.TIER_2_FREQUENCY;
   else if (tier.name === 'Desperate') frequency = EVENT_CONSTANTS.TIER_3_FREQUENCY;
   
-  if (rng() < frequency && state.events.length > 0) {
+  const roll = rng();
+  logger.debug(`Event check: tier=${tier.name}, frequency=${frequency}, roll=${roll.toFixed(3)}`);
+  
+  if (roll < frequency && state.events.length > 0) {
     const event = state.events[Math.floor(rng() * state.events.length)];
+    logger.debug(`Event selected: ${event.title} (${event.id})`);
     return event;
   }
   
