@@ -19,7 +19,7 @@ export function applyWarFundAllocation(state, allocations) {
       const orgGain = share * ECONOMY_CONSTANTS.ORG_PER_PERCENT_SHARE;
       army.organization = clampStat(army.organization + orgGain);
       
-      const aggravationReduction = share * ECONOMY_CONSTANTS.AGGRAVATION_REDUCTION_PERCENT;
+      const aggravationReduction = share * ECONOMY_CONSTANTS.AGGRAVATION_REDUCTION_PER_PERCENT;
       army.aggravation = clampStat(army.aggravation - aggravationReduction);
     } else {
       // Underfunded
