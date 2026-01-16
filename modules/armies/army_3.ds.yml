@@ -19,6 +19,6 @@ declares:
     id: "army_3"
     empireId: "empire_2"
     name: "Southern Guard"
-    organization: 50
-    fervor: 60
+    organization: 60
+    fervor: 50
     aggravation: 55

@@ -19,6 +19,6 @@ declares:
     id: "army_4"
     empireId: "empire_3"
     name: "Eastern Fleet Marines"
-    organization: 65
-    fervor: 75
+    organization: 75
+    fervor: 65
     aggravation: 45

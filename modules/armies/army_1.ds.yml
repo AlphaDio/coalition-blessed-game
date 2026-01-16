@@ -19,6 +19,6 @@ declares:
     id: "army_1"
     empireId: "empire_1"
     name: "1st Northern Division"
-    organization: 60
-    fervor: 70
+    organization: 70
+    fervor: 60
     aggravation: 60
