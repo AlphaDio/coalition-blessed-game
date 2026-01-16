@@ -27,3 +27,18 @@ declares:
         empire_3: -10
       armyOrgConversion:
         multiplier: 1.15
+    vector:
+      authoritarian_liberal: -0.7
+      pacifist_militaristic: 0.8
+      stoicist_hedonistic: -0.4
+    weights:
+      authoritarian_liberal: 1.0
+      pacifist_militaristic: 1.0
+      stoicist_hedonistic: 0.5
+    tag_effects:
+      - if_empire_has_tag: "Militaristic"
+        add_alignment: 0.10
+        multiply_intensity: 1.1
+      - if_empire_has_tag: "Republic"
+        add_alignment: -0.20
+        multiply_intensity: 1.2

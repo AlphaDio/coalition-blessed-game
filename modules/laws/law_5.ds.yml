@@ -26,3 +26,18 @@ declares:
         empire_2: 5
         empire_3: 5
       cohesionModifier: 0.9
+    vector:
+      authoritarian_liberal: 0.0
+      essentialist_constructivist: -0.3
+      stoicist_hedonistic: -0.2
+    weights:
+      authoritarian_liberal: 0.5
+      essentialist_constructivist: 0.8
+      stoicist_hedonistic: 0.6
+    tag_effects:
+      - if_empire_has_tag: "Alliance"
+        add_alignment: 0.15
+        multiply_intensity: 1.1
+      - if_empire_has_tag: "Federation"
+        add_alignment: 0.15
+        multiply_intensity: 1.1

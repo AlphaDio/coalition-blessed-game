@@ -22,3 +22,17 @@ declares:
     aggravation: 110
     traits:
       maritime: true
+    values:
+      authoritarian_liberal: 0.6
+      spiritual_materialistic: 0.2
+      natural_mechanical: 0.1
+      pacifist_militaristic: 0.5
+      stoicist_hedonistic: 0.4
+      essentialist_constructivist: 0.5
+    stats:
+      population: 800
+      influence: 70
+    tags: ["Maritime", "Republic", "Militaristic"]
+    modifiers:
+      intensity: 0.95
+      axis_gates: {}

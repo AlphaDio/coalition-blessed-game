@@ -22,3 +22,17 @@ declares:
     aggravation: 100
     traits:
       agricultural: true
+    values:
+      authoritarian_liberal: -0.1
+      spiritual_materialistic: -0.4
+      natural_mechanical: -0.7
+      pacifist_militaristic: -0.3
+      stoicist_hedonistic: 0.2
+      essentialist_constructivist: -0.5
+    stats:
+      population: 900
+      influence: 55
+    tags: ["Agricultural", "Alliance", "Biologic"]
+    modifiers:
+      intensity: 1.1
+      axis_gates: {}

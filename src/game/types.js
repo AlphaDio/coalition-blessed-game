@@ -1,12 +1,22 @@
 // Type definitions and initializers
 
-export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, traits = {}) {
+export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
   return {
     id,
     name,
     approval: initialApproval,
     aidCapacity,
-    traits
+    traits,
+    values: values || {},
+    stats: {
+      population: stats.population || 1000,
+      influence: stats.influence || 50
+    },
+    tags: tags || [],
+    modifiers: {
+      intensity: modifiers.intensity || 1.0,
+      axis_gates: modifiers.axis_gates || {}
+    }
   };
 }
 
@@ -23,14 +33,17 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
   };
 }
 
-export function createLaw(id, name, cost, cooldown = 0, effects = {}) {
+export function createLaw(id, name, cost, cooldown = 0, effects = {}, vector = {}, weights = {}, tag_effects = []) {
   return {
     id,
     name,
     cost,
     cooldown,
     currentCooldown: 0,
-    effects
+    effects,
+    vector: vector || {},
+    weights: weights || {},
+    tag_effects: tag_effects || []
   };
 }
 
