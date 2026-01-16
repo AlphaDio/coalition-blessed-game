@@ -42,13 +42,28 @@ export function createUI() {
   });
   
   // Center: Event box (row 0-4) and Log (row 5-11)
-  const eventBox = grid.set(0, 3, 5, 6, blessed.box, {
+  const eventBox = grid.set(0, 3, 3, 6, blessed.box, {
     label: ' Event ',
     content: '',
     scrollable: true,
     alwaysScroll: true,
     keys: true,
     vi: true,
+    tags: true,
+    style: {
+      border: { fg: 'white' }
+    },
+    border: {
+      type: 'line'
+    }
+  });
+  
+  // Active Fronts box (row 3-5, center)
+  const activeFrontsBox = grid.set(3, 3, 2, 6, blessed.box, {
+    label: ' Active Fronts ',
+    content: '',
+    scrollable: true,
+    alwaysScroll: true,
     tags: true,
     style: {
       border: { fg: 'white' }
@@ -103,6 +118,7 @@ export function createUI() {
     lawsBox,
     warFundsBox,
     eventBox,
+    activeFrontsBox,
     logBox,
     statsBox,
     tablesBox
@@ -263,6 +279,54 @@ export function renderTables(ui, state) {
   ui.tablesBox.style.border.fg = 'white';
 }
 
+export function renderActiveFronts(ui, state) {
+  const activeBattles = (state.battleFronts || []).filter(f => f.state === 'ACTIVE');
+  
+  if (activeBattles.length === 0) {
+    ui.activeFrontsBox.setContent('No active battles');
+    ui.activeFrontsBox.style.border.fg = 'white';
+    return;
+  }
+  
+  let content = '';
+  
+  activeBattles.forEach(front => {
+    const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
+    const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
+    
+    if (!leftArmy || !rightArmy) {
+      return;
+    }
+    
+    // Morale badges
+    const leftBadge = front.moraleBroken.left ? '{red-fg}B{/red-fg}' : '{green-fg}M{/green-fg}';
+    const rightBadge = front.moraleBroken.right ? '{red-fg}B{/red-fg}' : '{green-fg}M{/green-fg}';
+    
+    // MP values
+    const leftMP = `${Math.floor(leftArmy.mp.current)}/${leftArmy.mp.max}`;
+    const rightMP = `${Math.floor(rightArmy.mp.current)}/${rightArmy.mp.max}`;
+    
+    // Calculate bar representation
+    const totalMP = leftArmy.mp.current + rightArmy.mp.current;
+    const barWidth = 20;
+    const leftBarWidth = totalMP > 0 ? Math.floor((leftArmy.mp.current / totalMP) * barWidth) : barWidth / 2;
+    const rightBarWidth = barWidth - leftBarWidth;
+    
+    const leftBar = '█'.repeat(leftBarWidth);
+    const rightBar = '█'.repeat(rightBarWidth);
+    
+    // Build the line
+    content += `{bold}${front.id}{/bold}\n`;
+    content += `${leftArmy.name} [${leftBadge}] ${leftMP}  `;
+    content += `{cyan-fg}${leftBar}{/cyan-fg}{yellow-fg}${rightBar}{/yellow-fg}  `;
+    content += `${rightMP} [${rightBadge}] ${rightArmy.name}\n`;
+    content += `Field Size: ${front.battlefieldSize}, Turn: ${state.turn - front.startedAtTick}\n\n`;
+  });
+  
+  ui.activeFrontsBox.setContent(content);
+  ui.activeFrontsBox.style.border.fg = 'cyan';
+}
+
 export function renderLog(ui, state) {
   // Log is auto-updated via logBox.log()
   // Just ensure it's scrolled to bottom
@@ -274,6 +338,7 @@ export function renderAll(ui, state) {
   renderLaws(ui, state);
   renderWarFunds(ui, state);
   renderEvent(ui, state);
+  renderActiveFronts(ui, state);
   renderStats(ui, state);
   renderTables(ui, state);
   renderLog(ui, state);

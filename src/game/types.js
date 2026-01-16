@@ -29,7 +29,29 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     organization: initialOrg,
     supplyNeed,
     aggravation: 0,
-    warFundShare: 0
+    warFundShare: 0,
+    
+    // MP and MO pools for Front Battles
+    mp: {
+      current: 10000,
+      max: 10000
+    },
+    mo: {
+      current: 100,
+      max: 100
+    },
+    
+    // Combat stats
+    dmgPerUnitMP: 2.0,        // MP damage per engaged unit per tick
+    dmgPerTickMO: 5.0,        // Morale pressure per tick (NOT width-scaled)
+    protection: 0.2,          // MP damage resistance (0..1)
+    resolve: 0.3,             // MO damage resistance (0..1)
+    killRate: 0.1,            // Fraction of MP damage that becomes permanent (0..1)
+    
+    // Sustain stats
+    recoveryPool: 0,          // Temporary MP losses that can be recovered
+    recoveryRate: 500,        // Fast MP recovery per tick
+    reinforcementRate: 100    // Slower MP reinforcement per tick
   };
 }
 
@@ -171,6 +193,39 @@ export function createInsurrection(id, armies = [], strength = 0) {
   };
 }
 
+/**
+ * Create a battle front for MP-axis battles
+ * @param {string} id - Battle identifier
+ * @param {string} leftArmyId - Army on the left side
+ * @param {string} rightArmyId - Army on the right side
+ * @param {number} battlefieldSize - Width affecting MP throughput
+ * @param {number} startedAtTick - Game tick when battle started
+ * @returns {Object} BattleFront
+ */
+export function createBattleFront(id, leftArmyId, rightArmyId, battlefieldSize = 1000, startedAtTick = 0) {
+  return {
+    id,
+    state: 'ACTIVE', // ACTIVE | ENDED
+    battlefieldSize,
+    leftArmyId,
+    rightArmyId,
+    
+    // Per-side battle flags
+    moraleBroken: {
+      left: false,
+      right: false
+    },
+    
+    // Bookkeeping
+    permanentLosses: {
+      left: 0,
+      right: 0
+    },
+    startedAtTick,
+    endedAtTick: null
+  };
+}
+
 export function createGameState() {
   return {
     coalitionCohesion: 75,
@@ -186,6 +241,7 @@ export function createGameState() {
     laws: [],
     activeLaws: [],
     insurrections: [],
+    battleFronts: [],
     events: [],
     activeEvent: null,
     turn: 1,
