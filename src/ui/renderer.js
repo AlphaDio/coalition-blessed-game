@@ -423,9 +423,9 @@ export function renderActiveLaws(ui, state) {
     if (activeLaws.length <= 2) {
       content += '\n';
       
-      // Meter bars
-      const momentum = lp.meters.momentum || 0;
-      const rejectPressure = lp.meters.reject_pressure || 0;
+      // Meter bars (with null checks)
+      const momentum = (lp.meters && lp.meters.momentum) || 0;
+      const rejectPressure = (lp.meters && lp.meters.reject_pressure) || 0;
       
       // Momentum bar
       const momWidth = Math.floor(momentum * 20);
