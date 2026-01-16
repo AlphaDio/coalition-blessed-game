@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getLogger } from './logger.js';
 import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,7 +60,7 @@ export function loadModulesFromDirectory(dirPath) {
             compiled_at: new Date().toISOString()
           });
         } catch (error) {
-          console.warn(`Skipping module file ${fullPath}: ${error.message}`);
+          getLogger().warn(`Skipping module file ${fullPath}: ${error.message}`);
         }
       }
     }
@@ -81,7 +82,7 @@ export function createModuleRegistry(modulesDir = null) {
   const targetDir = modulesDir || defaultModulesDir;
 
   if (!fs.existsSync(targetDir)) {
-    console.warn(`Modules directory not found: ${targetDir}`);
+    getLogger().warn(`Modules directory not found: ${targetDir}`);
     return { modules: {}, index: [] };
   }
 

@@ -8,6 +8,7 @@ import { REALTIME_CONSTANTS } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
+import { initializeLogger, LogLevel } from './src/modules/logger.js';
 
 // Initialize game state
 const state = createGameState();
@@ -52,6 +53,15 @@ applyWarFundAllocation(state, initialAllocations);
 // Initialize UI
 const ui = createUI();
 
+// Initialize logger with UI integration
+const logger = initializeLogger({
+  level: LogLevel.INFO,
+  enableConsole: true,
+  enableFile: process.env.ENABLE_FILE_LOGGING === 'true',
+  enableUI: true,
+  uiLogBox: ui.logBox
+});
+
 // Real-time game loop
 let gameLoopInterval = null;
 
@@ -71,7 +81,7 @@ function startGameLoop() {
       !isFinite(state.gameSpeed) || 
       state.gameSpeed < REALTIME_CONSTANTS.MIN_SPEED ||
       state.gameSpeed > REALTIME_CONSTANTS.MAX_SPEED) {
-    console.error('Invalid game speed:', state.gameSpeed);
+    logger.error('Invalid game speed:', state.gameSpeed);
     state.gameSpeed = 1; // Reset to default
   }
   
@@ -106,16 +116,35 @@ setupInputHandlers(ui, state, { startGameLoop, updateGameSpeed });
 renderAll(ui, state);
 
 // Welcome message
-ui.logBox.log('Welcome to Coalition: The Blessed Game!');
-ui.logBox.log('REAL-TIME MODE: Game advances automatically');
-ui.logBox.log('Press SPACE to pause/unpause, Q to quit');
-ui.logBox.log('Press [ and ] to adjust game speed');
-ui.logBox.log('Use TAB to cycle focus, +/- to adjust war funds, C to confirm');
-ui.logBox.log('Press 1/2/3 to choose event options');
-ui.logBox.log('');
-ui.logBox.log('Game starting in real-time...');
+logger.info('Welcome to Coalition: The Blessed Game!');
+logger.info('REAL-TIME MODE: Game advances automatically');
+logger.info('Press SPACE to pause/unpause, Q to quit');
+logger.info('Press [ and ] to adjust game speed');
+logger.info('Use TAB to cycle focus, +/- to adjust war funds, C to confirm');
+logger.info('Press 1/2/3 to choose event options');
+logger.info('');
+logger.info('Game starting in real-time...');
 
 ui.screen.render();
 
 // Start the game loop
 startGameLoop();
+
+// Graceful shutdown handler
+process.on('SIGINT', () => {
+  logger.info('Shutting down gracefully...');
+  if (gameLoopInterval) {
+    clearInterval(gameLoopInterval);
+  }
+  logger.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logger.info('Shutting down gracefully...');
+  if (gameLoopInterval) {
+    clearInterval(gameLoopInterval);
+  }
+  logger.close();
+  process.exit(0);
+});
