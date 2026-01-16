@@ -47,7 +47,10 @@ function startGameLoop() {
   }
   
   // Validate gameSpeed is within expected bounds
-  if (state.gameSpeed <= 0 || !isFinite(state.gameSpeed)) {
+  if (state.gameSpeed <= 0 || 
+      !isFinite(state.gameSpeed) || 
+      state.gameSpeed < REALTIME_CONSTANTS.MIN_SPEED ||
+      state.gameSpeed > REALTIME_CONSTANTS.MAX_SPEED) {
     console.error('Invalid game speed:', state.gameSpeed);
     state.gameSpeed = 1; // Reset to default
   }
