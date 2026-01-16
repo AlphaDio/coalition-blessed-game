@@ -11,6 +11,12 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 
+/**
+ * Advances the game state by one turn, processing all game systems
+ * @param {Object} state - The game state to advance
+ * @param {Function} rng - Random number generator (default: Math.random)
+ * @returns {Object} Object containing log messages: { log: string[] }
+ */
 export function advanceTurn(state, rng = Math.random) {
   const logger = getLogger();
   const log = [`--- Turn ${state.turn} ---`];
@@ -94,17 +100,26 @@ export function advanceTurn(state, rng = Math.random) {
   }
   
   // Insurrection battle (old system)
-  state.insurrections.forEach(insurrection => {
-    if (insurrection.active) {
-      const rebelliousArmies = state.armies.filter(a => insurrection.armies.includes(a.id));
-      const opposingArmies = state.armies.filter(a => !insurrection.armies.includes(a.id) && a.organization > 30);
-      
-      if (opposingArmies.length > 0) {
-        const battleResult = resolveInsurrectionBattle(state, insurrection, opposingArmies, rng);
-        log.push(...battleResult.log);
+  if (state.insurrections && Array.isArray(state.insurrections)) {
+    state.insurrections.forEach(insurrection => {
+      if (insurrection && insurrection.active) {
+        const rebelliousArmies = state.armies.filter(army => 
+          insurrection.armies && insurrection.armies.includes(army.id)
+        );
+        const opposingArmies = state.armies.filter(army => 
+          (!insurrection.armies || !insurrection.armies.includes(army.id)) && 
+          army.organization > 30
+        );
+        
+        if (opposingArmies.length > 0) {
+          const battleResult = resolveInsurrectionBattle(state, insurrection, opposingArmies, rng);
+          if (battleResult && battleResult.log) {
+            log.push(...battleResult.log);
+          }
+        }
       }
-    }
-  });
+    });
+  }
   
   // 6. Update meters
   const prevFervor = state.scourgeFervor;
