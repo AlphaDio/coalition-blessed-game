@@ -6,20 +6,35 @@ import { updateLawCooldowns } from './laws.js';
 import { checkEvent } from './events.js';
 import { resolveScourgeBattle, resolveInsurrectionBattle } from './battles.js';
 import { getCohesionTier } from './cohesion.js';
+import { resolveAllLawProcesses } from './lawProcessManager.js';
+import { DeterministicRNG } from '../modules/rng.js';
 
 export function advanceTurn(state, rng = Math.random) {
   const log = [`--- Turn ${state.turn} ---`];
   
+  // Create deterministic RNG if using Math.random (for compatibility)
+  const deterministicRng = (rng === Math.random) 
+    ? new DeterministicRNG(state.turn * 12345) 
+    : rng;
+  
   // 1. Apply pending actions (war funds already applied, laws handled separately)
   
-  // 2. Consume supplies
+  // 2. Resolve law processes (if any)
+  if (state.lawProcesses && state.lawProcesses.length > 0) {
+    const lawLogs = resolveAllLawProcesses(state, deterministicRng);
+    if (lawLogs.length > 0) {
+      log.push(...lawLogs);
+    }
+  }
+  
+  // 3. Consume supplies
   const supplyLog = consumeSupplies(state);
   log.push(...supplyLog.log);
   
-  // 3. Update law cooldowns
+  // 4. Update law cooldowns
   updateLawCooldowns(state);
   
-  // 4. Check for events
+  // 5. Check for events
   const event = checkEvent(state, rng);
   if (event) {
     state.activeEvent = event;
