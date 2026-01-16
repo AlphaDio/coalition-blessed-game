@@ -80,17 +80,17 @@ function runMultipleTurns(state, turnCount, rng, verbose = false) {
     const battleLogs = result.log.filter(line => line.includes('Battle') || line.includes('battle'));
     summary.battlesOccurred += battleLogs.length;
 
-    // Count enacted/buried laws
-    if (state.lawProcesses) {
-      state.lawProcesses.forEach(lp => {
-        if (lp.phase === 'ENACTED') summary.lawsEnacted++;
-        if (lp.phase === 'BURIED') summary.lawsBuried++;
-      });
-    }
-
     if (verbose && i % 10 === 0) {
       console.log(`Turn ${state.turn}: Coalition=${state.coalitionCohesion.toFixed(1)}, Scourge=${state.scourgeCohesion.toFixed(1)}`);
     }
+  }
+  
+  // Count enacted/buried laws at the end (to avoid double counting)
+  if (state.lawProcesses) {
+    state.lawProcesses.forEach(lp => {
+      if (lp.phase === 'ENACTED') summary.lawsEnacted++;
+      if (lp.phase === 'BURIED') summary.lawsBuried++;
+    });
   }
 
   return summary;
@@ -477,7 +477,7 @@ function testMultipleSystemsConcurrent() {
   });
   
   const systemsWorking = summary.turnsExecuted > 0 && 
-                         (summary.eventsTriggered > 0 || summary.battlesOccurred > 0 || true);
+                         (summary.eventsTriggered > 0 || summary.battlesOccurred > 0);
   
   if (systemsWorking) {
     console.log('✓ Multiple game systems operated concurrently over extended period');
