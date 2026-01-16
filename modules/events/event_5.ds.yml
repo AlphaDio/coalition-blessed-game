@@ -1,0 +1,41 @@
+module:
+  id: "event_5"
+  name: "Resource Discovery"
+  description: "A new resource cache has been discovered"
+  version: "1.0.0"
+  type: "event"
+  category: "economy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["resources", "discovery", "economy"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_5"
+    name: "Resource Discovery"
+    description: "A new resource cache has been discovered."
+    choices:
+      - text: "Secure immediately (gain resources)"
+        effects:
+          stockpiles:
+            supplies: 200
+            alloys: 100
+            fuel: 75
+      - text: "Share with all empires (gain approval)"
+        effects:
+          stockpiles:
+            supplies: 100
+            alloys: 50
+            fuel: 35
+          empireApproval:
+            empire_1: 8
+            empire_2: 8
+            empire_3: 8
+      - text: "Leave for later (gain cohesion)"
+        effects:
+          coalitionCohesion: 3

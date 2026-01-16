@@ -1,0 +1,28 @@
+module:
+  id: "law_5"
+  name: "Coalition Unity Act"
+  description: "Strengthen unity across all Coalition members"
+  version: "1.0.0"
+  type: "law"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["unity", "cohesion", "coalition"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_data:
+    id: "law_5"
+    name: "Coalition Unity Act"
+    tier: 0
+    cost: 5
+    effects:
+      empireApproval:
+        empire_1: 5
+        empire_2: 5
+        empire_3: 5
+      cohesionModifier: 0.9

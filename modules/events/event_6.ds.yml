@@ -1,0 +1,44 @@
+module:
+  id: "event_6"
+  name: "Desertion Crisis"
+  description: "Reports of desertions are increasing due to low morale"
+  version: "1.0.0"
+  type: "event"
+  category: "crisis"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["morale", "desertion", "crisis"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_6"
+    name: "Desertion Crisis"
+    description: "Reports of desertions are increasing due to low morale."
+    choices:
+      - text: "Increase war funds (lose resources, gain organization)"
+        effects:
+          stockpiles:
+            supplies: -100
+            alloys: -50
+      - text: "Propaganda campaign (gain fervor, lose approval)"
+        effects:
+          armyFervor:
+            army_1: 8
+            army_2: 8
+            army_3: 8
+            army_4: 8
+          empireApproval:
+            empire_1: -5
+            empire_2: -5
+            empire_3: -5
+      - text: "Crack down (reduce aggravation, lose approval)"
+        effects:
+          empireApproval:
+            empire_1: -8
+            empire_2: -8
+            empire_3: -8

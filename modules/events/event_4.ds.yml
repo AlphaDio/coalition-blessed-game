@@ -1,0 +1,36 @@
+module:
+  id: "event_4"
+  name: "Scourge Advance"
+  description: "Scourge forces are advancing on a key position"
+  version: "1.0.0"
+  type: "event"
+  category: "military"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["scourge", "combat", "strategic"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_4"
+    name: "Scourge Advance"
+    description: "Scourge forces are advancing on a key position."
+    choices:
+      - text: "Stand and fight (battle risk, potential victory)"
+        effects:
+          coalitionCohesion: -3
+          scourgeCohesion: -5
+      - text: "Tactical retreat (lose cohesion, save forces)"
+        effects:
+          coalitionCohesion: -5
+          scourgeCohesion: 2
+      - text: "Scorched earth (lose supplies, damage Scourge)"
+        effects:
+          stockpiles:
+            supplies: -150
+            fuel: -50
+          scourgeCohesion: -8

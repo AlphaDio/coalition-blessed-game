@@ -1,0 +1,24 @@
+module:
+  id: "empire_3"
+  name: "The Eastern Republic"
+  description: "Maritime power of the Coalition"
+  version: "1.0.0"
+  type: "empire"
+  category: "faction"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["maritime", "east", "republic"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  empire_data:
+    id: "empire_3"
+    name: "The Eastern Republic"
+    approval: 55
+    aggravation: 110
+    traits:
+      maritime: true

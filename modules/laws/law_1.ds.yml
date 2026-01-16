@@ -1,0 +1,29 @@
+module:
+  id: "law_1"
+  name: "War Tax"
+  description: "Impose additional taxation to fund the war effort"
+  version: "1.0.0"
+  type: "law"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["economy", "tax", "war"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_data:
+    id: "law_1"
+    name: "War Tax"
+    tier: 0
+    cost: 0
+    effects:
+      empireApproval:
+        empire_1: -5
+        empire_2: -5
+        empire_3: -5
+      armyOrgConversion:
+        multiplier: 1.1
