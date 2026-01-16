@@ -5,7 +5,14 @@ import { advanceTurn } from '../game/turn.js';
 import { renderAll, renderLaws, renderWarFunds } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 
-export function setupInputHandlers(ui, state, { startGameLoop = () => {}, updateGameSpeed = () => {} } = {}) {
+export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
+  // Validate required callbacks
+  if (typeof startGameLoop !== 'function') {
+    console.warn('startGameLoop callback not provided to setupInputHandlers');
+  }
+  if (typeof updateGameSpeed !== 'function') {
+    console.warn('updateGameSpeed callback not provided to setupInputHandlers');
+  }
   
   // Global keybinds
   ui.screen.key(['q', 'C-c'], () => {
@@ -50,7 +57,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = () => {}, update
     if (newSpeed !== state.gameSpeed) {
       state.gameSpeed = newSpeed;
       ui.logBox.log(`Game speed: ${state.gameSpeed}x`);
-      if (updateGameSpeed) updateGameSpeed();
+      if (typeof updateGameSpeed === 'function') updateGameSpeed();
       renderAll(ui, state);
     }
   });
@@ -65,7 +72,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = () => {}, update
     if (newSpeed !== state.gameSpeed) {
       state.gameSpeed = newSpeed;
       ui.logBox.log(`Game speed: ${state.gameSpeed}x`);
-      if (updateGameSpeed) updateGameSpeed();
+      if (typeof updateGameSpeed === 'function') updateGameSpeed();
       renderAll(ui, state);
     }
   });

@@ -43,6 +43,13 @@ function shouldAdvanceTurn(state) {
 function startGameLoop() {
   if (gameLoopInterval) {
     clearInterval(gameLoopInterval);
+    gameLoopInterval = null;
+  }
+  
+  // Validate gameSpeed is within expected bounds
+  if (state.gameSpeed <= 0 || !isFinite(state.gameSpeed)) {
+    console.error('Invalid game speed:', state.gameSpeed);
+    state.gameSpeed = 1; // Reset to default
   }
   
   // Calculate tick interval with minimum threshold to prevent performance issues
