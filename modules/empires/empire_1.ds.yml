@@ -1,0 +1,24 @@
+module:
+  id: "empire_1"
+  name: "The Northern Federation"
+  description: "Industrial powerhouse of the Coalition"
+  version: "1.0.0"
+  type: "empire"
+  category: "faction"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["industrial", "north", "federation"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  empire_data:
+    id: "empire_1"
+    name: "The Northern Federation"
+    approval: 60
+    aggravation: 120
+    traits:
+      industrial: true

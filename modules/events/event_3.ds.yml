@@ -1,0 +1,41 @@
+module:
+  id: "event_3"
+  name: "Diplomatic Crisis"
+  description: "Tensions rise between empires over resource allocation"
+  version: "1.0.0"
+  type: "event"
+  category: "diplomatic"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["diplomatic", "crisis", "resources"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_3"
+    name: "Diplomatic Crisis"
+    description: "Tensions rise between empires over resource allocation."
+    choices:
+      - text: "Favor Northern Federation"
+        effects:
+          empireApproval:
+            empire_1: 15
+            empire_2: -10
+            empire_3: -10
+      - text: "Favor Southern Alliance"
+        effects:
+          empireApproval:
+            empire_1: -10
+            empire_2: 15
+            empire_3: -10
+      - text: "Mediate (small approval gains)"
+        effects:
+          empireApproval:
+            empire_1: 3
+            empire_2: 3
+            empire_3: 3
+          coalitionCohesion: -2
