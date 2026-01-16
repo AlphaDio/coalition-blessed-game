@@ -103,12 +103,13 @@ export function advanceTurn(state, rng = Math.random) {
   if (state.insurrections && Array.isArray(state.insurrections)) {
     state.insurrections.forEach(insurrection => {
       if (insurrection && insurrection.active) {
+        // Use Set for O(1) lookup instead of O(n) includes() calls
+        const rebelliousArmyIds = new Set(insurrection.armies || []);
         const rebelliousArmies = state.armies.filter(army => 
-          insurrection.armies && insurrection.armies.includes(army.id)
+          rebelliousArmyIds.has(army.id)
         );
         const opposingArmies = state.armies.filter(army => 
-          (!insurrection.armies || !insurrection.armies.includes(army.id)) && 
-          army.organization > 30
+          !rebelliousArmyIds.has(army.id) && army.organization > 30
         );
         
         if (opposingArmies.length > 0) {
