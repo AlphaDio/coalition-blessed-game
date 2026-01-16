@@ -1,4 +1,6 @@
 // Core state management and utilities
+import { getCohesionTier } from './game/cohesion.js';
+import { clamp, randomInt, randomFloat } from './utils/math.js';
 
 export function initialState() {
   return {
@@ -32,20 +34,5 @@ export function deepCopy(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
-export function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-export function getCohesionTier(cohesion) {
-  if (cohesion >= 67) return 1; // Stable
-  if (cohesion >= 34) return 2; // Strained
-  return 3; // Desperate
-}
-
-export function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-export function randomFloat(min, max) {
-  return Math.random() * (max - min) + min;
-}
+// Re-export commonly used utilities
+export { clamp, randomInt, randomFloat, getCohesionTier };

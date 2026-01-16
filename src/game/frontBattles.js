@@ -1,5 +1,6 @@
 // Front Battles - MP-axis battles with morale badges
 import { getLogger } from '../modules/logger.js';
+import { clamp } from '../utils/math.js';
 
 /**
  * Calculate engagement width utilization based on organization
@@ -62,21 +63,21 @@ function calculateMoraleRegen(army) {
  * @param {number} baseDamage - Base damage value
  * @param {Object} army - Attacking army
  * @returns {number} Modified damage
+ * 
+ * Modifier ranges:
+ * - Fervor: 0.8x to 1.2x (±20% at extremes, representing morale and fighting spirit)
+ * - Organization: 0.9x to 1.1x (±10% at extremes, representing coordination and tactics)
+ * These ranges are balanced to make fervor more impactful than organization
+ * 
+ * Note: Expects army.fervor and army.organization to be in 0-100 range
  */
 function applyModifiers(baseDamage, army) {
-  // Fervor: ±20% at extremes
+  // Fervor: 0.8x to 1.2x (0 fervor = 0.8x, 100 fervor = 1.2x)
   const fervorMod = 0.8 + (army.fervor / 100) * 0.4;
-  // Organization: ±10% at extremes
+  // Organization: 0.9x to 1.1x (0 org = 0.9x, 100 org = 1.1x)
   const orgMod = 0.9 + (army.organization / 100) * 0.2;
   
   return baseDamage * fervorMod * orgMod;
-}
-
-/**
- * Clamp value between min and max
- */
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 /**

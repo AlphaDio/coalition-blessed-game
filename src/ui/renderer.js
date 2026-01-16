@@ -1,6 +1,7 @@
 import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 import { getCohesionTier } from '../game/cohesion.js';
+import { formatNumber, formatCohesion, formatResource } from './formatters.js';
 
 export function createUI() {
   const screen = blessed.screen({
@@ -272,16 +273,15 @@ export function renderEvent(ui, state) {
 
 export function renderStats(ui, state) {
   const tier = getCohesionTier(state.coalitionCohesion);
-  const tierName = tier ? tier.name : 'COLLAPSED';
   
-  let content = `{bold}Coalition Cohesion:{/bold} ${state.coalitionCohesion.toFixed(1)} (${tierName})\n`;
+  let content = `{bold}Coalition Cohesion:{/bold} ${formatCohesion(state.coalitionCohesion, tier)}\n`;
   const scourgeCohesion = state.scourgeCohesion ?? 80; // Safety check
-  content += `{bold}Scourge Cohesion:{/bold} ${scourgeCohesion.toFixed(1)}\n`;
-  content += `{bold}Scourge Fervor:{/bold} ${state.scourgeFervor.toFixed(1)}\n\n`;
+  content += `{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}\n`;
+  content += `{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}\n\n`;
   content += `{bold}Stockpiles:{/bold}\n`;
-  content += `  Supplies: ${state.stockpiles.supplies}\n`;
-  content += `  Alloys: ${state.stockpiles.alloys}\n`;
-  content += `  Fuel: ${state.stockpiles.fuel}\n\n`;
+  content += `  ${formatResource('Supplies', state.stockpiles.supplies)}\n`;
+  content += `  ${formatResource('Alloys', state.stockpiles.alloys)}\n`;
+  content += `  ${formatResource('Fuel', state.stockpiles.fuel)}\n\n`;
   
   // Player Influence
   if (state.playerInfluence !== undefined) {
@@ -291,7 +291,9 @@ export function renderStats(ui, state) {
   
   // Active Law Processes
   if (state.lawProcesses && state.lawProcesses.length > 0) {
-    const activeLaws = state.lawProcesses.filter(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED');
+    const activeLaws = state.lawProcesses.filter(lawProcess => 
+      lawProcess.phase !== 'ENACTED' && lawProcess.phase !== 'BURIED'
+    );
     if (activeLaws.length > 0) {
       content += `{bold}Active Laws:{/bold} ${activeLaws.length}\n`;
     }
@@ -335,12 +337,14 @@ export function renderTables(ui, state) {
   });
   
   content += `\n{bold}Armies:{/bold}\n`;
+  // Build empire lookup map for O(1) access instead of O(n) per army
+  const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
   state.armies.forEach(army => {
-    const empire = state.empires.find(e => e.id === army.empireId);
+    const empire = empireMap.get(army.empireId);
     const empireName = empire ? empire.name : 'Unknown';
     content += `  ${army.name} (${empireName}):\n`;
-    content += `    Fervor: ${army.fervor.toFixed(0)}, Org: ${army.organization.toFixed(0)}\n`;
-    content += `    Supply Need: ${army.supplyNeed}, Aggravation: ${army.aggravation.toFixed(0)}\n`;
+    content += `    Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}\n`;
+    content += `    Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}\n`;
   });
   
   if (state.insurrections.length > 0) {

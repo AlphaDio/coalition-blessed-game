@@ -1,17 +1,26 @@
 /**
  * Law Enactment Engine - Core event-driven law process resolution
  * Implements deterministic 3-phase law process using the existing event system
+ * 
+ * The law process goes through three phases:
+ * 1. DEBATE - Initial discussion and stance formation
+ * 2. FALLOUT - Consequences and reactions emerge
+ * 3. VOTING - Final decision phase
+ * 
+ * Each phase has a progress threshold of 1.0, and events drive progress forward.
+ * MAX_PHASE_PROGRESS is set to 2.0 to allow for flexibility in event weighting.
  */
 
 import { clamp } from './cohesion.js';
 
 /**
  * Phase progression thresholds
+ * Each phase must accumulate 1.0 progress to advance to the next phase
  */
 export const PHASE_THRESHOLDS = {
-  DEBATE: 1.0,
-  FALLOUT: 1.0,
-  VOTING: 1.0
+  DEBATE: 1.0,    // Progress needed to move from DEBATE to FALLOUT
+  FALLOUT: 1.0,   // Progress needed to move from FALLOUT to VOTING
+  VOTING: 1.0     // Progress needed to complete VOTING phase
 };
 
 /**
@@ -21,14 +30,17 @@ export const PHASE_ORDER = ['DEBATE', 'FALLOUT', 'VOTING'];
 
 /**
  * Event budget per resolution cycle
+ * Controls how many events can occur during law resolution
  */
 export const EVENT_BUDGET = {
-  MAJOR_EVENTS: 1,
-  MINOR_EVENTS_MAX: 3
+  MAJOR_EVENTS: 1,        // Maximum number of major events per cycle
+  MINOR_EVENTS_MAX: 3     // Maximum number of minor events per cycle
 };
 
 /**
  * Maximum phase progress value
+ * Set to 2.0 to allow events to provide varying amounts of progress (0.2-0.5 typically)
+ * This prevents any single event from completing an entire phase
  */
 export const MAX_PHASE_PROGRESS = 2.0;
 

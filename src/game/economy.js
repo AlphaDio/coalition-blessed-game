@@ -2,6 +2,12 @@ import { ECONOMY_CONSTANTS } from './constants.js';
 import { clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
+/**
+ * Applies war fund allocations to armies, affecting organization and aggravation
+ * @param {Object} state - The game state
+ * @param {Object} allocations - Map of army IDs to percentage allocations (0-100)
+ * @returns {Object} { success: boolean } or { error: string }
+ */
 export function applyWarFundAllocation(state, allocations) {
   // allocations: { armyId: percentage }
   const total = Object.values(allocations).reduce((sum, p) => sum + p, 0);
@@ -19,7 +25,7 @@ export function applyWarFundAllocation(state, allocations) {
       const orgGain = share * ECONOMY_CONSTANTS.ORG_PER_PERCENT_SHARE;
       army.organization = clampStat(army.organization + orgGain);
       
-      const aggravationReduction = share * ECONOMY_CONSTANTS.AGGRAVATION_REDUCTION_PERCENT;
+      const aggravationReduction = share * ECONOMY_CONSTANTS.AGGRAVATION_REDUCTION_PER_PERCENT;
       army.aggravation = clampStat(army.aggravation - aggravationReduction);
     } else {
       // Underfunded
@@ -31,6 +37,12 @@ export function applyWarFundAllocation(state, allocations) {
   return { success: true };
 }
 
+/**
+ * Consumes supplies based on army needs and war fund allocations
+ * Applies penalties if supplies are insufficient
+ * @param {Object} state - The game state
+ * @returns {Object} { log: string[] } - Log messages
+ */
 export function consumeSupplies(state) {
   const logger = getLogger();
   const log = [];

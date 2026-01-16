@@ -11,6 +11,12 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 
+/**
+ * Advances the game state by one turn, processing all game systems
+ * @param {Object} state - The game state to advance
+ * @param {Function} rng - Random number generator (default: Math.random)
+ * @returns {Object} Object containing log messages: { log: string[] }
+ */
 export function advanceTurn(state, rng = Math.random) {
   const logger = getLogger();
   const log = [`--- Turn ${state.turn} ---`];
@@ -55,10 +61,18 @@ export function advanceTurn(state, rng = Math.random) {
   // 5. Check for events
   const event = checkEvent(state, rng);
   if (event) {
-    state.activeEvent = event;
-    const eventTitle = event.title || event.name || event.id || 'Unknown Event';
-    logger.info(`Event triggered: ${eventTitle}`);
-    log.push(`Event: ${eventTitle}`);
+    // Only set as activeEvent if it has choices that require player input
+    if (event.choices && Array.isArray(event.choices) && event.choices.length > 0) {
+      state.activeEvent = event;
+      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+      logger.info(`Event triggered: ${eventTitle}`);
+      log.push(`Event: ${eventTitle}`);
+    } else {
+      // Event was auto-resolved in checkEvent, just log it
+      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+      logger.info(`Event auto-resolved: ${eventTitle} (no choices)`);
+      log.push(`Event: ${eventTitle} (auto-resolved)`);
+    }
   }
   
   // 5. Check for battles
@@ -94,17 +108,27 @@ export function advanceTurn(state, rng = Math.random) {
   }
   
   // Insurrection battle (old system)
-  state.insurrections.forEach(insurrection => {
-    if (insurrection.active) {
-      const rebelliousArmies = state.armies.filter(a => insurrection.armies.includes(a.id));
-      const opposingArmies = state.armies.filter(a => !insurrection.armies.includes(a.id) && a.organization > 30);
-      
-      if (opposingArmies.length > 0) {
-        const battleResult = resolveInsurrectionBattle(state, insurrection, opposingArmies, rng);
-        log.push(...battleResult.log);
+  if (state.insurrections && Array.isArray(state.insurrections)) {
+    state.insurrections.forEach(insurrection => {
+      if (insurrection && insurrection.active) {
+        // Use Set for O(1) lookup instead of O(n) includes() calls
+        const rebelliousArmyIds = new Set(insurrection.armies || []);
+        const rebelliousArmies = state.armies.filter(army => 
+          rebelliousArmyIds.has(army.id)
+        );
+        const opposingArmies = state.armies.filter(army => 
+          !rebelliousArmyIds.has(army.id) && army.organization > 30
+        );
+        
+        if (opposingArmies.length > 0) {
+          const battleResult = resolveInsurrectionBattle(state, insurrection, opposingArmies, rng);
+          if (battleResult && battleResult.log) {
+            log.push(...battleResult.log);
+          }
+        }
       }
-    }
-  });
+    });
+  }
   
   // 6. Update meters
   const prevFervor = state.scourgeFervor;
