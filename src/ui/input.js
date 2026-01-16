@@ -5,8 +5,7 @@ import { advanceTurn } from '../game/turn.js';
 import { renderAll, renderLaws, renderWarFunds } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 
-export function setupInputHandlers(ui, state, gameLoopControls = {}) {
-  const { startGameLoop, updateGameSpeed } = gameLoopControls;
+export function setupInputHandlers(ui, state, { startGameLoop = () => {}, updateGameSpeed = () => {} } = {}) {
   
   // Global keybinds
   ui.screen.key(['q', 'C-c'], () => {
@@ -78,45 +77,24 @@ export function setupInputHandlers(ui, state, gameLoopControls = {}) {
     renderAll(ui, state);
   });
   
+  // Helper function to handle event choice and resume game
+  function handleEventChoiceAndResume(choiceIndex) {
+    if (state.activeEvent) {
+      const result = handleEventChoice(state, state.activeEvent.id, choiceIndex);
+      if (result.success) {
+        result.log.forEach(line => ui.logBox.log(line));
+        // Unpause after event choice
+        state.paused = false;
+        ui.logBox.log('Game RESUMED');
+        renderAll(ui, state);
+      }
+    }
+  }
+  
   // Event choice keys
-  ui.screen.key(['1'], () => {
-    if (state.activeEvent) {
-      const result = handleEventChoice(state, state.activeEvent.id, 0);
-      if (result.success) {
-        result.log.forEach(line => ui.logBox.log(line));
-        // Unpause after event choice
-        state.paused = false;
-        ui.logBox.log('Game RESUMED');
-        renderAll(ui, state);
-      }
-    }
-  });
-  
-  ui.screen.key(['2'], () => {
-    if (state.activeEvent) {
-      const result = handleEventChoice(state, state.activeEvent.id, 1);
-      if (result.success) {
-        result.log.forEach(line => ui.logBox.log(line));
-        // Unpause after event choice
-        state.paused = false;
-        ui.logBox.log('Game RESUMED');
-        renderAll(ui, state);
-      }
-    }
-  });
-  
-  ui.screen.key(['3'], () => {
-    if (state.activeEvent) {
-      const result = handleEventChoice(state, state.activeEvent.id, 2);
-      if (result.success) {
-        result.log.forEach(line => ui.logBox.log(line));
-        // Unpause after event choice
-        state.paused = false;
-        ui.logBox.log('Game RESUMED');
-        renderAll(ui, state);
-      }
-    }
-  });
+  ui.screen.key(['1'], () => handleEventChoiceAndResume(0));
+  ui.screen.key(['2'], () => handleEventChoiceAndResume(1));
+  ui.screen.key(['3'], () => handleEventChoiceAndResume(2));
   
   // Laws box
   ui.lawsBox.key(['up'], () => {

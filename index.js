@@ -35,15 +35,22 @@ const ui = createUI();
 // Real-time game loop
 let gameLoopInterval = null;
 
+// Helper function to check if turn should advance
+function shouldAdvanceTurn(state) {
+  return !state.paused && !state.gameOver && !state.activeEvent;
+}
+
 function startGameLoop() {
   if (gameLoopInterval) {
     clearInterval(gameLoopInterval);
   }
   
-  const tickInterval = REALTIME_CONSTANTS.BASE_TICK_INTERVAL / state.gameSpeed;
+  // Calculate tick interval with minimum threshold to prevent performance issues
+  const calculatedInterval = REALTIME_CONSTANTS.BASE_TICK_INTERVAL / state.gameSpeed;
+  const tickInterval = Math.max(calculatedInterval, REALTIME_CONSTANTS.MIN_TICK_INTERVAL);
   
   gameLoopInterval = setInterval(() => {
-    if (!state.paused && !state.gameOver && !state.activeEvent) {
+    if (shouldAdvanceTurn(state)) {
       const result = advanceTurn(state);
       result.log.forEach(line => ui.logBox.log(line));
       renderAll(ui, state);
