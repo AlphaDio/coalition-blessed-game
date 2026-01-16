@@ -74,6 +74,8 @@ export function createGameState() {
     pendingWarFundAllocation: null,
     selectedLawIndex: 0,
     selectedArmyIndex: 0,
-    focus: 'main' // 'main', 'laws', 'warfunds', 'event'
+    focus: 'main', // 'main', 'laws', 'warfunds', 'event'
+    paused: false, // Real-time game pause state
+    gameSpeed: 1 // Game speed multiplier (0.5 = slow, 1 = normal, 2 = fast)
   };
 }

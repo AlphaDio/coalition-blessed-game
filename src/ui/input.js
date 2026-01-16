@@ -3,23 +3,72 @@ import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
 import { advanceTurn } from '../game/turn.js';
 import { renderAll, renderLaws, renderWarFunds } from './renderer.js';
+import { REALTIME_CONSTANTS } from '../game/constants.js';
 
-export function setupInputHandlers(ui, state) {
+export function setupInputHandlers(ui, state, gameLoopControls = {}) {
+  const { startGameLoop, updateGameSpeed } = gameLoopControls;
+  
   // Global keybinds
   ui.screen.key(['q', 'C-c'], () => {
     return process.exit(0);
   });
   
+  // SPACE: Toggle pause/unpause (real-time mode)
   ui.screen.key(['space'], () => {
     if (state.gameOver) return;
-    if (state.activeEvent) {
-      // Can't advance turn with active event
-      return;
+    
+    // Toggle pause
+    state.paused = !state.paused;
+    
+    if (state.paused) {
+      ui.logBox.log('Game PAUSED');
+    } else {
+      ui.logBox.log('Game RESUMED');
     }
+    
+    renderAll(ui, state);
+  });
+  
+  // Manual turn advance when paused (for debugging/testing)
+  ui.screen.key(['n'], () => {
+    if (state.gameOver) return;
+    if (!state.paused) return; // Only allow when paused
+    if (state.activeEvent) return; // Can't advance with active event
     
     const result = advanceTurn(state);
     result.log.forEach(line => ui.logBox.log(line));
     renderAll(ui, state);
+  });
+  
+  // Speed controls
+  ui.screen.key(['['], () => {
+    // Decrease speed
+    const newSpeed = Math.max(
+      REALTIME_CONSTANTS.MIN_SPEED,
+      state.gameSpeed - REALTIME_CONSTANTS.SPEED_STEP
+    );
+    
+    if (newSpeed !== state.gameSpeed) {
+      state.gameSpeed = newSpeed;
+      ui.logBox.log(`Game speed: ${state.gameSpeed}x`);
+      if (updateGameSpeed) updateGameSpeed();
+      renderAll(ui, state);
+    }
+  });
+  
+  ui.screen.key([']'], () => {
+    // Increase speed
+    const newSpeed = Math.min(
+      REALTIME_CONSTANTS.MAX_SPEED,
+      state.gameSpeed + REALTIME_CONSTANTS.SPEED_STEP
+    );
+    
+    if (newSpeed !== state.gameSpeed) {
+      state.gameSpeed = newSpeed;
+      ui.logBox.log(`Game speed: ${state.gameSpeed}x`);
+      if (updateGameSpeed) updateGameSpeed();
+      renderAll(ui, state);
+    }
   });
   
   ui.screen.key(['tab'], () => {
@@ -35,6 +84,9 @@ export function setupInputHandlers(ui, state) {
       const result = handleEventChoice(state, state.activeEvent.id, 0);
       if (result.success) {
         result.log.forEach(line => ui.logBox.log(line));
+        // Unpause after event choice
+        state.paused = false;
+        ui.logBox.log('Game RESUMED');
         renderAll(ui, state);
       }
     }
@@ -45,6 +97,9 @@ export function setupInputHandlers(ui, state) {
       const result = handleEventChoice(state, state.activeEvent.id, 1);
       if (result.success) {
         result.log.forEach(line => ui.logBox.log(line));
+        // Unpause after event choice
+        state.paused = false;
+        ui.logBox.log('Game RESUMED');
         renderAll(ui, state);
       }
     }
@@ -55,6 +110,9 @@ export function setupInputHandlers(ui, state) {
       const result = handleEventChoice(state, state.activeEvent.id, 2);
       if (result.success) {
         result.log.forEach(line => ui.logBox.log(line));
+        // Unpause after event choice
+        state.paused = false;
+        ui.logBox.log('Game RESUMED');
         renderAll(ui, state);
       }
     }
