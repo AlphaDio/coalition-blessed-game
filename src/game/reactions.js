@@ -1,4 +1,5 @@
 import { REACTION_CONSTANTS } from './constants.js';
+import { clamp } from '../utils/math.js';
 
 /**
  * Calculate alignment score between empire values and law vector
@@ -66,7 +67,7 @@ export function calculateReaction(empire, law) {
   }
 
   // Clamp alignment to [-1..+1]
-  alignment = Math.max(-1, Math.min(1, alignment));
+  alignment = clamp(alignment, -1, 1);
 
   // 3. Calculate final score with intensity
   const score = alignment * intensity;
@@ -125,7 +126,7 @@ export function getApprovalChange(reaction, pressure = 1) {
   // Pressure can be large, so we use a logarithmic scale
   // Using PRESSURE_LOG_DIVISOR to normalize log10(pressure) to ~0.2-1.5 range
   const pressureScale = Math.log10(pressure + 1) / REACTION_CONSTANTS.POWER_SCALING.PRESSURE_LOG_DIVISOR;
-  const scaledChange = baseChange * Math.max(0.5, Math.min(2.0, pressureScale));
+  const scaledChange = baseChange * clamp(pressureScale, 0.5, 2.0);
   
   return Math.round(scaledChange);
 }

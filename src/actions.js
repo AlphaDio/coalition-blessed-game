@@ -1,10 +1,11 @@
 // Action creators and validation
+import { clamp } from './utils/math.js';
 
 export function allocateWarFunds(armyId, percentage) {
   return {
     type: 'ALLOCATE_WAR_FUNDS',
     armyId,
-    percentage: Math.max(0, Math.min(100, percentage))
+    percentage: clamp(percentage, 0, 100)
   };
 }
 

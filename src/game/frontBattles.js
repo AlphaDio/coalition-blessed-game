@@ -1,5 +1,6 @@
 // Front Battles - MP-axis battles with morale badges
 import { getLogger } from '../modules/logger.js';
+import { clamp } from '../utils/math.js';
 
 /**
  * Calculate engagement width utilization based on organization
@@ -70,13 +71,6 @@ function applyModifiers(baseDamage, army) {
   const orgMod = 0.9 + (army.organization / 100) * 0.2;
   
   return baseDamage * fervorMod * orgMod;
-}
-
-/**
- * Clamp value between min and max
- */
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
 }
 
 /**
