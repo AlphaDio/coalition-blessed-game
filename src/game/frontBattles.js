@@ -100,8 +100,8 @@ export function simulateBattleTick(front, worldState) {
   }
   
   // Process both sides attacking each other
-  processSideAttack(front, leftArmy, rightArmy, 'left', 'right', log);
-  processSideAttack(front, rightArmy, leftArmy, 'right', 'left', log);
+  processSideAttack(front, leftArmy, rightArmy, 'left', 'right', worldState, log);
+  processSideAttack(front, rightArmy, leftArmy, 'right', 'left', worldState, log);
   
   // Apply morale regen (only if not broken)
   if (!front.moraleBroken.left) {
@@ -142,7 +142,7 @@ export function simulateBattleTick(front, worldState) {
 /**
  * Process one side attacking the other
  */
-function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, defendingSide, log) {
+function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, defendingSide, worldState, log) {
   // 1. Calculate engaged units
   const isBroken = front.moraleBroken[attackingSide];
   const engagedUnits = calculateEngagedUnits(attackingArmy, front.battlefieldSize, isBroken);
@@ -191,7 +191,7 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
     log.push(`Battle ${front.id}: ${defendingArmy.name} morale BROKEN!`);
     
     // Emit event
-    emitEvent('morale_broken', {
+    emitEvent(worldState, 'morale_broken', {
       frontId: front.id,
       side: defendingSide,
       armyId: defendingArmy.id,
@@ -248,7 +248,7 @@ function endBattle(front, worldState, winnerSide) {
   front.moraleBroken.right = false;
   
   // Emit battle_ended event
-  emitEvent('battle_ended', {
+  emitEvent(worldState, 'battle_ended', {
     frontId: front.id,
     winnerSide: winnerSide,
     leftArmyId: front.leftArmyId,
@@ -273,7 +273,8 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
     throw new Error('Invalid army IDs for battle');
   }
   
-  // Use a simple inline factory to avoid circular dependency
+  // Create battle front inline to avoid circular dependency with types.js
+  // (types.js imports from other game modules which may import this module)
   const battleId = `battle_${worldState.turn}_${leftArmyId}_${rightArmyId}`;
   const front = {
     id: battleId,
@@ -297,7 +298,7 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
   worldState.battleFronts.push(front);
   
   // Emit battle_started event
-  emitEvent('battle_started', {
+  emitEvent(worldState, 'battle_started', {
     frontId: front.id,
     leftArmyId,
     rightArmyId,
@@ -311,17 +312,15 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
 /**
  * Simple event emission (stores in worldState.battleEvents for now)
  */
-function emitEvent(eventType, data) {
+function emitEvent(worldState, eventType, data) {
   // This is a simple implementation - can be enhanced to integrate with existing event system
-  // For now, we'll just store events that can be consumed by other systems
-  if (typeof global !== 'undefined' && global.gameState) {
-    global.gameState.battleEvents = global.gameState.battleEvents || [];
-    global.gameState.battleEvents.push({
-      type: eventType,
-      data,
-      tick: global.gameState.turn
-    });
-  }
+  // Store events in worldState so other systems can consume them
+  worldState.battleEvents = worldState.battleEvents || [];
+  worldState.battleEvents.push({
+    type: eventType,
+    data,
+    tick: worldState.turn
+  });
 }
 
 /**

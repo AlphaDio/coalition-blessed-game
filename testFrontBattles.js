@@ -256,7 +256,7 @@ function testRecoveryPool() {
   const mpAfterRecovery = army2.mp.current;
   const poolAfterRecovery = army2.recoveryPool;
   
-  console.log('\\nRecovery tick (no new damage):');
+  console.log('\nRecovery tick (no new damage):');
   console.log('MP before recovery:', mpBeforeRecovery);
   console.log('MP after recovery:', mpAfterRecovery);
   console.log('Pool before recovery:', poolBeforeRecovery);
