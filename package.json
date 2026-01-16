@@ -1,0 +1,20 @@
+{
+    "name": "coalition-blessed-game",
+    "version": "0.0.1",
+    "description": "Victoria-like grand-strategy CLI game",
+    "type": "module",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js"
+    },
+    "author": "diop.alpha@tribalcreative.xyz",
+    "license": "ISC",
+    "dependencies": {
+        "blessed": "^0.1.81",
+        "blessed-contrib": "^4.11.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    }
+}

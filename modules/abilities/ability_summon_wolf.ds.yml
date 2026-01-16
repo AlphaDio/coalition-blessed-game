@@ -1,0 +1,76 @@
+module:
+  id: "ability_summon_wolf"
+  name: "Summon Wolf"
+  description: "Summons a loyal wolf to fight alongside you"
+  version: "1.0.0"
+  type: "ability"
+  category: "summon"
+  dependencies: ["creature_wolf"]
+
+metadata:
+  author: "Sacrifice Team"
+  tags: ["summon", "wolf", "minion"]
+  created_at: "2025-12-30T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  summon_config:
+    mana_cost: 30
+    cooldown: 10
+    max_summons: 3
+
+components:
+  ability:
+    type: "ability"
+    properties:
+      mana_cost: 30
+      cooldown: 10
+      icon: "summon_wolf"
+
+hooks:
+  on_cast:
+    description: "Summon a wolf at caster's position"
+    inputs:
+      config:
+        type: "object"
+        description: "Summon configuration"
+    logic:
+      - let:
+          name: "current_summons"
+          value: "len(query_entities(scope.self.id, 'summon', 'wolf'))"
+      - if:
+          condition: "vars.current_summons < 3"
+          then:
+            - if:
+                condition: "scope.self.stats.mana >= 30"
+                then:
+                  # Spend mana
+                  - game_action:
+                      action: "damage"
+                      args:
+                        target: "scope.self.id"
+                        amount: -30
+                        type: "mana"
+
+                  # Spawn wolf
+                  - game_action:
+                      action: "spawn"
+                      args:
+                        template: "creature_wolf"
+                        position: "scope.self.position"
+                        faction: "scope.self.faction"
+                        summoner: "scope.self.id"
+
+                  # Set cooldown
+                  - emit_event:
+                      name: "ability_used"
+                      payload:
+                        ability: "summon_wolf"
+                        cooldown: 10
+                else:
+                  - emit_event:
+                      name: "ability_failed"
+                      payload:
+                        ability: "summon_wolf"
+                        reason: "insufficient_mana"

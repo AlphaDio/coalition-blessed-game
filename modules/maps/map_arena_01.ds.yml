@@ -1,0 +1,119 @@
+module:
+  id: "map_arena_01"
+  name: "Basic Arena"
+  description: "A simple arena with control nodes and spawn points"
+  version: "1.0.0"
+  type: "map"
+  category: "arena"
+  dependencies: []
+
+metadata:
+  author: "Sacrifice Team"
+  tags: ["arena", "basic", "control_points"]
+  created_at: "2025-12-30T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  map_config:
+    size: 100
+    nodes:
+      - id: "node_center"
+        position: { x: 0, y: 0, z: 0 }
+        radius: 8
+      - id: "node_north"
+        position: { x: 0, y: 0, z: -30 }
+        radius: 6
+      - id: "node_south"
+        position: { x: 0, y: 0, z: 30 }
+        radius: 6
+    spawn_points:
+      player: { x: 0, y: 0, z: -40 }
+      enemy: { x: 0, y: 0, z: 40 }
+
+hooks:
+  on_map_load:
+    description: "Initialize the arena"
+    logic:
+      - for_each:
+          collection: "declares.map_config.nodes"
+          as: "node"
+          do:
+            - game_action:
+                action: "create_node"
+                args:
+                  id: "vars.node.id"
+                  position: "vars.node.position"
+                  radius: "vars.node.radius"
+                  owner: "null"
+                  progress: 0
+
+  on_node_captured:
+    description: "Handle node capture events"
+    logic:
+      - emit_event:
+          name: "node_captured"
+          payload:
+            node_id: "scope.event.node_id"
+            new_owner: "scope.event.new_owner"
+            previous_owner: "scope.event.previous_owner"
+
+      # Grant favor to node owner
+      - game_action:
+          action: "grant_favor"
+          args:
+            faction: "scope.event.new_owner"
+            amount: 5
+
+  on_game_start:
+    description: "Spawn initial entities"
+    logic:
+      # Spawn player hero
+      - game_action:
+          action: "spawn"
+          args:
+            type: "hero"
+            position: "declares.map_config.spawn_points.player"
+            faction: "player"
+
+      # Spawn some enemy creatures
+      - for_each:
+          collection: "[1, 2, 3]"
+          as: "i"
+          do:
+            - set_variable:
+                varName: "offset"
+                value: "{ x: (vars.i - 2) * 10, y: 0, z: 0 }"
+            - game_action:
+                action: "spawn"
+                args:
+                  template: "creature_wolf"
+                  position: "{ x: declares.map_config.spawn_points.enemy.x + vars.offset.x, y: 0, z: declares.map_config.spawn_points.enemy.z + vars.offset.z }"
+                  faction: "enemy"
+
+functions:
+  get_spawn_position:
+    description: "Get a random spawn position for a faction"
+    parameters:
+      faction:
+        type: "string"
+    return_type: "vector3"
+    logic:
+      - if:
+          condition: "params.faction == 'player'"
+          then:
+            - return: "declares.map_config.spawn_points.player"
+          else:
+            - return: "declares.map_config.spawn_points.enemy"
+
+  is_position_valid:
+    description: "Check if a position is valid for spawning"
+    parameters:
+      position:
+        type: "vector3"
+    return_type: "boolean"
+    logic:
+      - set_variable:
+          varName: "distance_from_center"
+          value: "sqrt(params.position.x * params.position.x + params.position.z * params.position.z)"
+      - return: "vars.distance_from_center < declares.map_config.size / 2"

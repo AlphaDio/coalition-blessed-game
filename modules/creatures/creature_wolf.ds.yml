@@ -1,0 +1,95 @@
+module:
+  id: "creature_wolf"
+  name: "Wolf"
+  description: "A fierce wolf creature that hunts in packs"
+  version: "1.0.0"
+  type: "creature"
+  category: "beast"
+  dependencies: []
+
+metadata:
+  author: "Sacrifice Team"
+  tags: ["beast", "melee", "pack_hunter"]
+  created_at: "2025-12-30T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  wolf_stats:
+    hp: 80
+    speed: 8
+    attack: 15
+    tags: ["beast", "melee"]
+
+components:
+  stats:
+    type: "stats"
+    properties:
+      hp: 80
+      maxHp: 80
+      mana: 0
+      maxMana: 0
+      speed: 8
+      attack: 15
+      defense: 5
+
+  render:
+    type: "render"
+    properties:
+      type: "billboard"
+      asset: "wolf"
+      color: 0x8B4513
+
+  ai:
+    type: "ai"
+    properties:
+      behavior: "ai_basic_hunter"
+
+hooks:
+  on_tick:
+    description: "Main AI behavior - chase nearest enemy"
+    logic:
+      - set_variable:
+          varName: "nearest_enemy"
+          value: "find_nearest(scope.self, 'enemy')"
+      - if:
+          condition: "has_field(vars.nearest_enemy, 'id')"
+          then:
+            - set_variable:
+                varName: "distance"
+                value: "distance(scope.self.position, vars.nearest_enemy.position)"
+            - if:
+                condition: "vars.distance < 2"
+                then:
+                  # Attack if close enough
+                  - game_action:
+                      action: "damage"
+                      args:
+                        target: "vars.nearest_enemy.id"
+                        amount: "scope.self.stats.attack"
+                        source: "scope.self.id"
+                else:
+                  # Move towards enemy
+                  - game_action:
+                      action: "move_to"
+                      args:
+                        entity: "scope.self.id"
+                        target: "vars.nearest_enemy.position"
+                        speed: "scope.self.stats.speed"
+
+  on_damage:
+    description: "React to taking damage"
+    logic:
+      - emit_event:
+          name: "wolf_damaged"
+          payload:
+            wolf_id: "scope.self.id"
+            damage: "scope.event.amount"
+
+  on_death:
+    description: "Handle wolf death"
+    logic:
+      - emit_event:
+          name: "wolf_died"
+          payload:
+            wolf_id: "scope.self.id"

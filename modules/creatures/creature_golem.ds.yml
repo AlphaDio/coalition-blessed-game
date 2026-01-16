@@ -1,0 +1,109 @@
+module:
+  id: "creature_golem"
+  name: "Stone Golem"
+  description: "A sturdy stone construct that absorbs projectile damage"
+  version: "1.0.0"
+  type: "creature"
+  category: "construct"
+  dependencies: []
+
+metadata:
+  author: "Sacrifice Team"
+  tags: ["construct", "tank", "melee", "stone"]
+  created_at: "2025-12-30T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  golem_stats:
+    hp: 200
+    speed: 3
+    attack: 25
+    tags: ["construct", "tank"]
+
+components:
+  stats:
+    type: "stats"
+    properties:
+      hp: 200
+      maxHp: 200
+      mana: 0
+      maxMana: 0
+      speed: 3
+      attack: 25
+      defense: 15
+
+  render:
+    type: "render"
+    properties:
+      type: "mesh"
+      asset: "golem"
+      color: 0x696969
+
+  ai:
+    type: "ai"
+    properties:
+      behavior: "ai_basic_guard"
+
+hooks:
+  on_tick:
+    description: "Slow but steady guard behavior"
+    logic:
+      - set_variable:
+          varName: "nearest_enemy"
+          value: "find_nearest(scope.self, 'enemy')"
+      - if:
+          condition: "has_field(vars.nearest_enemy, 'id')"
+          then:
+            - set_variable:
+                varName: "distance"
+                value: "distance(scope.self.position, vars.nearest_enemy.position)"
+            - if:
+                condition: "vars.distance < 3"
+                then:
+                  # Attack if close enough
+                  - game_action:
+                      action: "damage"
+                      args:
+                        target: "vars.nearest_enemy.id"
+                        amount: "scope.self.stats.attack"
+                        source: "scope.self.id"
+                else:
+                  # Move towards enemy slowly
+                  - game_action:
+                      action: "move_to"
+                      args:
+                        entity: "scope.self.id"
+                        target: "vars.nearest_enemy.position"
+                        speed: "scope.self.stats.speed"
+
+  on_damage:
+    description: "Reduce projectile damage and react"
+    logic:
+      - if:
+          condition: "scope.event.type == 'projectile'"
+          then:
+            - set_variable:
+                varName: "reduced_damage"
+                value: "scope.event.amount * 0.3"
+            - game_action:
+                action: "damage"
+                args:
+                  target: "scope.self.id"
+                  amount: "vars.reduced_damage"
+                  source: "scope.event.source"
+          else:
+            - game_action:
+                action: "damage"
+                args:
+                  target: "scope.self.id"
+                  amount: "scope.event.amount"
+                  source: "scope.event.source"
+
+  on_death:
+    description: "Golem destruction"
+    logic:
+      - emit_event:
+          name: "golem_destroyed"
+          payload:
+            golem_id: "scope.self.id"

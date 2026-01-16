@@ -1,0 +1,103 @@
+module:
+  id: "ability_firebolt"
+  name: "Firebolt"
+  description: "Launches a bolt of fire that damages enemies"
+  version: "1.0.0"
+  type: "ability"
+  category: "spell"
+  dependencies: []
+
+metadata:
+  author: "Sacrifice Team"
+  tags: ["spell", "fire", "projectile", "ranged"]
+  created_at: "2025-12-30T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  firebolt_config:
+    mana_cost: 15
+    damage: 25
+    speed: 20
+    range: 30
+
+components:
+  ability:
+    type: "ability"
+    properties:
+      mana_cost: 15
+      cooldown: 2
+      icon: "firebolt"
+
+hooks:
+  on_cast:
+    description: "Launch firebolt towards mouse position"
+    logic:
+      - if:
+          condition: "scope.self.stats.mana >= 15"
+          then:
+            # Spend mana
+            - game_action:
+                action: "damage"
+                args:
+                  target: "scope.self.id"
+                  amount: -15
+                  type: "mana"
+
+            # Calculate direction to mouse
+            - set_variable:
+                varName: "direction"
+                value: "{ x: scope.game.mouse_world_x - scope.self.position.x, y: 0, z: scope.game.mouse_world_z - scope.self.position.z }"
+
+            # Normalize direction
+            - set_variable:
+                varName: "length"
+                value: "sqrt(vars.direction.x * vars.direction.x + vars.direction.z * vars.direction.z)"
+            - if:
+                condition: "vars.length > 0"
+                then:
+                  - set_variable:
+                      varName: "direction"
+                      value: "{ x: vars.direction.x / vars.length, y: 0, z: vars.direction.z / vars.length }"
+
+            # Spawn projectile
+            - game_action:
+                action: "spawn"
+                args:
+                  type: "projectile"
+                  template: "projectile_firebolt"
+                  position: "scope.self.position"
+                  direction: "vars.direction"
+                  speed: 20
+                  damage: 25
+                  source: "scope.self.id"
+                  faction: "scope.self.faction"
+
+            # Set cooldown
+            - emit_event:
+                name: "ability_used"
+                payload:
+                  ability: "firebolt"
+                  cooldown: 2
+          else:
+            - emit_event:
+                name: "ability_failed"
+                payload:
+                  ability: "firebolt"
+                  reason: "insufficient_mana"
+
+functions:
+  calculate_trajectory:
+    description: "Calculate projectile trajectory"
+    parameters:
+      start:
+        type: "vector3"
+      direction:
+        type: "vector3"
+      speed:
+        type: "number"
+      time:
+        type: "number"
+    return_type: "vector3"
+    logic:
+      - return: "{ x: params.start.x + params.direction.x * params.speed * params.time, y: params.start.y, z: params.start.z + params.direction.z * params.speed * params.time }"
