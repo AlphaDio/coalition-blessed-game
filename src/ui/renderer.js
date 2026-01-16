@@ -147,7 +147,8 @@ export function renderWarFunds(ui, state) {
 
 export function renderEvent(ui, state) {
   if (!state.activeEvent) {
-    ui.eventBox.setContent('No active event.\n\nPress SPACE to advance turn.');
+    const pauseHint = state.paused ? 'Press SPACE to resume.' : 'Game running in real-time.';
+    ui.eventBox.setContent(`No active event.\n\n${pauseHint}\nPress [ or ] to adjust speed.`);
     ui.eventBox.style.border.fg = 'white';
     return;
   }
@@ -159,9 +160,10 @@ export function renderEvent(ui, state) {
     content += `  ${idx + 1}. ${choice.text}\n`;
   });
   content += `\nPress 1/2/3 to choose.`;
+  content += `\n{yellow-fg}Game auto-paused{/yellow-fg}`;
   
   ui.eventBox.setContent(content);
-  ui.eventBox.style.border.fg = 'white';
+  ui.eventBox.style.border.fg = 'yellow';
 }
 
 export function renderStats(ui, state) {
@@ -175,7 +177,12 @@ export function renderStats(ui, state) {
   content += `  Supplies: ${state.stockpiles.supplies}\n`;
   content += `  Alloys: ${state.stockpiles.alloys}\n`;
   content += `  Fuel: ${state.stockpiles.fuel}\n\n`;
-  content += `{bold}Turn:{/bold} ${state.turn}`;
+  content += `{bold}Turn:{/bold} ${state.turn}\n`;
+  
+  // Real-time status
+  const pauseStatus = state.paused ? '{red-fg}PAUSED{/red-fg}' : '{green-fg}RUNNING{/green-fg}';
+  content += `{bold}Status:{/bold} ${pauseStatus}\n`;
+  content += `{bold}Speed:{/bold} ${state.gameSpeed}x`;
   
   ui.statsBox.setContent(content);
   ui.statsBox.style.border.fg = 'white';

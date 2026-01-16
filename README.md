@@ -16,7 +16,9 @@ yarn start
 
 ## Controls
 
-- **SPACE** - Advance turn
+- **SPACE** - Pause/Unpause game (real-time mode)
+- **N** - Advance single turn (when paused, for testing)
+- **[ / ]** - Decrease/Increase game speed
 - **TAB** - Cycle focus between panels
 - **Q** - Quit game
 - **Enter** - Enact selected law / Open context action
@@ -26,7 +28,15 @@ yarn start
 
 ## Game Overview
 
-You manage a coalition of empires fighting against the Scourge. Balance war fund allocation, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
+You manage a coalition of empires fighting against the Scourge in **real-time**. The game advances automatically, but you can pause at any time to make decisions. Balance war fund allocation, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
+
+### Real-Time Gameplay
+
+- The game runs in **real-time mode** - turns advance automatically every 2 seconds (at normal speed)
+- Press **SPACE** to pause/unpause the game at any time
+- Use **[ ]** to slow down or speed up the game (0.5x to 3x speed)
+- Events automatically pause the game, allowing you to make choices without time pressure
+- Game status (PAUSED/RUNNING) and speed are shown in the Stats panel
 
 ### Core Mechanics
 

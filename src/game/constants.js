@@ -57,3 +57,11 @@ export const EVENT_CONSTANTS = {
   TIER_2_FREQUENCY: 0.2,
   TIER_3_FREQUENCY: 0.3
 };
+
+export const REALTIME_CONSTANTS = {
+  BASE_TICK_INTERVAL: 2000, // milliseconds per turn at normal speed
+  MIN_SPEED: 0.5, // slowest speed multiplier
+  MAX_SPEED: 3, // fastest speed multiplier
+  SPEED_STEP: 0.5, // speed adjustment increment
+  MIN_TICK_INTERVAL: 500 // minimum interval to prevent performance issues
+};
