@@ -1,0 +1,39 @@
+module:
+  id: "empire_clockwork"
+  name: "The Brass Continuum"
+  description: "Mechanical civilization of precision and logic"
+  version: "1.0.0"
+  type: "empire"
+  category: "faction"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["mechanical", "warped", "synthetic"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  empire_data:
+    id: "empire_clockwork"
+    name: "The Brass Continuum"
+    approval: 60
+    aggravation: 90
+    traits:
+      mechanical: true
+      synthetic: true
+    values:
+      authoritarian_liberal: 0.1
+      spiritual_materialistic: 0.9
+      natural_mechanical: 0.95
+      pacifist_militaristic: 0.2
+      stoicist_hedonistic: -0.2
+      essentialist_constructivist: 0.7
+    stats:
+      population: 300
+      influence: 80
+    tags: ["Mechanical", "Warped"]
+    modifiers:
+      intensity: 1.0
+      axis_gates: {}

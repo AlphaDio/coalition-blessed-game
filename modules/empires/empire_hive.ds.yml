@@ -1,0 +1,40 @@
+module:
+  id: "empire_hive"
+  name: "Chorus Synapse"
+  description: "Hive-mind collective with biologic foundation"
+  version: "1.0.0"
+  type: "empire"
+  category: "faction"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hive", "biologic", "collective"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  empire_data:
+    id: "empire_hive"
+    name: "Chorus Synapse"
+    approval: 55
+    aggravation: 100
+    traits:
+      hive_mind: true
+      biologic: true
+    values:
+      authoritarian_liberal: -0.9
+      spiritual_materialistic: 0.2
+      natural_mechanical: -0.6
+      pacifist_militaristic: 0.4
+      stoicist_hedonistic: -0.7
+      essentialist_constructivist: -0.8
+    stats:
+      population: 900
+      influence: 55
+    tags: ["Hive-Mind", "Biologic"]
+    modifiers:
+      intensity: 1.15
+      axis_gates:
+        authoritarian_liberal: 0.6
