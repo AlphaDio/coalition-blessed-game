@@ -30,7 +30,7 @@ export function formatPercent(value, decimals = 0) {
  * @returns {string} Formatted cohesion with tier
  */
 export function formatCohesion(cohesion, tier) {
-  const tierName = tier ? tier.name : 'Unknown';
+  const tierName = tier ? tier.name : 'COLLAPSED';
   return `${formatNumber(cohesion, 1)} (${tierName})`;
 }
 
