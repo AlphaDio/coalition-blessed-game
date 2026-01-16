@@ -8,6 +8,7 @@ import { resolveScourgeBattle, resolveInsurrectionBattle } from './battles.js';
 import { getCohesionTier } from './cohesion.js';
 import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManager.js';
 import { DeterministicRNG } from '../modules/rng.js';
+import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 
 export function advanceTurn(state, rng = Math.random) {
   const log = [`--- Turn ${state.turn} ---`];
@@ -50,7 +51,14 @@ export function advanceTurn(state, rng = Math.random) {
   if (tier?.name === 'Strained') battleChance = 0.2;
   if (tier?.name === 'Desperate') battleChance = 0.3;
   
-  // Scourge battle
+  // Simulate active front battles
+  const activeBattles = getActiveBattles(state);
+  activeBattles.forEach(front => {
+    const battleLog = simulateBattleTick(front, state);
+    log.push(...battleLog);
+  });
+  
+  // Scourge battle (old system)
   if (rng() < battleChance && state.armies.length > 0) {
     const participatingArmies = state.armies.filter(a => a.organization > 30);
     if (participatingArmies.length > 0) {
@@ -59,7 +67,7 @@ export function advanceTurn(state, rng = Math.random) {
     }
   }
   
-  // Insurrection battle
+  // Insurrection battle (old system)
   state.insurrections.forEach(insurrection => {
     if (insurrection.active) {
       const rebelliousArmies = state.armies.filter(a => insurrection.armies.includes(a.id));
