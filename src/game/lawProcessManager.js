@@ -1,0 +1,380 @@
+/**
+ * Law Process Manager - Manages multiple concurrent law processes
+ */
+
+import { createLawProcess, createEmpireStance } from './types.js';
+import { calculateReaction, getReactionTier } from './reactions.js';
+import { 
+  buildLawContext, 
+  filterEligibleEvents, 
+  pickEvents, 
+  applyEventEffects,
+  checkPhaseAdvancement,
+  checkBurialRule
+} from './lawEngine.js';
+
+/**
+ * Start a new law process
+ * @param {Object} state - Game state
+ * @param {string} lawId - Law definition ID to start
+ * @param {number} influenceCost - Influence cost (default 100)
+ * @returns {Object} Result with success/error and log
+ */
+export function startLawProcess(state, lawId, influenceCost = 100) {
+  // Check if player has enough influence
+  if (state.playerInfluence < influenceCost) {
+    return { 
+      error: `Not enough influence (need ${influenceCost}, have ${state.playerInfluence})`,
+      log: []
+    };
+  }
+  
+  // Find law definition
+  const lawDef = state.lawDefinitions.find(l => l.id === lawId);
+  if (!lawDef) {
+    return { 
+      error: `Law definition not found: ${lawId}`,
+      log: []
+    };
+  }
+  
+  // Deduct influence
+  state.playerInfluence -= influenceCost;
+  
+  // Create new law process
+  const lawProcess = createLawProcess(lawId, state.turn);
+  
+  // Calculate initial empire stances
+  calculateEmpireStances(lawProcess, lawDef, state);
+  
+  // Add to active processes
+  state.lawProcesses.push(lawProcess);
+  
+  const log = [
+    `Law process started: ${lawDef.name}`,
+    `Influence spent: ${influenceCost} (remaining: ${state.playerInfluence})`,
+    `Phase: ${lawProcess.phase}`
+  ];
+  
+  return { success: true, log };
+}
+
+/**
+ * Calculate empire stances for a law
+ * @param {Object} lawProcess - Law process
+ * @param {Object} lawDef - Law definition
+ * @param {Object} state - Game state
+ */
+export function calculateEmpireStances(lawProcess, lawDef, state) {
+  state.empires.forEach(empire => {
+    // Convert law definition to format expected by calculateReaction
+    const lawForReaction = {
+      vector: lawDef.axis_vector,
+      weights: {}, // Could derive from axis_vector
+      tag_effects: []
+    };
+    
+    // Fill weights from axis_vector
+    Object.keys(lawDef.axis_vector).forEach(axis => {
+      lawForReaction.weights[axis] = 1.0;
+    });
+    
+    // Calculate base reaction
+    const reaction = calculateReaction(empire, lawForReaction);
+    
+    // Apply support weight biases
+    const biasedScore = applyLawSupportBias(
+      reaction.score,
+      empire,
+      lawDef,
+      state
+    );
+    
+    // Determine stance tier from biased score
+    const stanceTier = getReactionTier(biasedScore);
+    
+    // Determine initial vote intent
+    let voteIntent = 'abstain';
+    if (stanceTier === 'laud' || stanceTier === 'approve') {
+      voteIntent = 'support';
+    } else if (stanceTier === 'denounce' || stanceTier === 'disapprove') {
+      voteIntent = 'oppose';
+    }
+    
+    const stance = createEmpireStance(empire.id, biasedScore, stanceTier.toUpperCase(), voteIntent);
+    lawProcess.empireStances[empire.id] = stance;
+  });
+}
+
+/**
+ * Apply law support biases (population, security, economy incentives)
+ * @param {number} baseScore - Base alignment score
+ * @param {Object} empire - Empire
+ * @param {Object} lawDef - Law definition
+ * @param {Object} state - Game state
+ * @returns {number} Biased score
+ */
+export function applyLawSupportBias(baseScore, empire, lawDef, state) {
+  let bias = 0;
+  
+  // Population incentive - large empires support laws benefiting populace
+  if (lawDef.support_weights.population_incentive) {
+    const popFactor = Math.log10(empire.stats.population || 1000) / 4; // Normalize to ~0.75-1.0
+    bias += lawDef.support_weights.population_incentive * popFactor * 0.2;
+  }
+  
+  // Security incentive - empires support security laws when under threat
+  if (lawDef.support_weights.security_incentive) {
+    // Could check for active wars, scourge threat, etc.
+    const threatLevel = state.scourgeCohesion / 100; // Higher scourge = higher threat
+    bias += lawDef.support_weights.security_incentive * threatLevel * 0.15;
+  }
+  
+  // Economy incentive - empires support stabilization laws during recession
+  if (lawDef.support_weights.economy_incentive) {
+    // Could check stockpile levels, cohesion for economic stress
+    const economicStress = (100 - state.coalitionCohesion) / 100;
+    bias += lawDef.support_weights.economy_incentive * economicStress * 0.15;
+  }
+  
+  return baseScore + bias;
+}
+
+/**
+ * Resolve one tick for a single law process
+ * @param {Object} lawProcess - Law process to resolve
+ * @param {Object} state - Game state
+ * @param {Object} rng - Seeded RNG
+ * @returns {Object} Resolution log
+ */
+export function resolveLawProcess(lawProcess, state, rng) {
+  const log = [];
+  
+  // Skip if law is already finished
+  if (lawProcess.phase === 'ENACTED' || lawProcess.phase === 'BURIED') {
+    return log;
+  }
+  
+  // Get law definition
+  const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
+  if (!lawDef) {
+    log.push(`ERROR: Law definition not found for ${lawProcess.lawId}`);
+    return log;
+  }
+  
+  log.push(`\n=== Resolving Law: ${lawDef.name} (Phase: ${lawProcess.phase}) ===`);
+  
+  // Build context
+  const context = buildLawContext(lawProcess, lawDef, state);
+  
+  // Get all law events (would normally come from state.events or a separate collection)
+  const allLawEvents = getLawEvents(state, lawDef);
+  
+  // Filter eligible events
+  const eligible = filterEligibleEvents(allLawEvents, context);
+  log.push(`Eligible events: ${eligible.length}`);
+  
+  if (eligible.length === 0) {
+    log.push('No eligible events, advancing phase progress by default');
+    lawProcess.phaseProgress += 0.1;
+  } else {
+    // Pick events
+    const selected = pickEvents(eligible, context, rng);
+    
+    if (selected.major) {
+      log.push(`\nMajor Event: ${selected.major.name}`);
+      log.push(`  Nature: ${selected.major.nature || 'NEUTRAL'}`);
+      
+      // Apply effects
+      const effectLog = applyEventEffects(selected.major, lawProcess, state);
+      log.push(...effectLog);
+      
+      // Track reject
+      if (selected.major.nature === 'REJECT') {
+        lawProcess.rejects++;
+        log.push(`  REJECT count: ${lawProcess.rejects}/4`);
+        
+        // Check burial
+        if (checkBurialRule(lawProcess, state)) {
+          log.push(`\n*** LAW BURIED (4 rejects) ***`);
+          return log;
+        }
+      }
+      
+      // Record event in log
+      lawProcess.eventLog.push({
+        tick: state.turn,
+        phase: lawProcess.phase,
+        eventId: selected.major.id,
+        nature: selected.major.nature
+      });
+    }
+    
+    // Apply minor events
+    selected.minors.forEach(minor => {
+      log.push(`\nMinor Event: ${minor.name}`);
+      const effectLog = applyEventEffects(minor, lawProcess, state);
+      log.push(...effectLog);
+    });
+  }
+  
+  // Check phase advancement
+  if (checkPhaseAdvancement(lawProcess)) {
+    log.push(`\n>>> Phase advanced to: ${lawProcess.phase}`);
+  }
+  
+  // Check if VOTING completed
+  if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
+    log.push('\n>>> VOTING phase complete, tallying votes...');
+    const tallyResult = tallyVotes(lawProcess, state);
+    log.push(...tallyResult.log);
+    
+    if (tallyResult.passed) {
+      lawProcess.phase = 'ENACTED';
+      log.push('\n*** LAW ENACTED ***');
+    } else {
+      lawProcess.phase = 'BURIED';
+      log.push('\n*** LAW FAILED (insufficient votes) ***');
+    }
+  }
+  
+  return log;
+}
+
+/**
+ * Get law events (stub - would load from content)
+ * @param {Object} state - Game state
+ * @param {Object} lawDef - Law definition
+ * @returns {Array} Law events
+ */
+function getLawEvents(state, lawDef) {
+  // This would normally load from state.events filtered for scope: LAW
+  // For now, return empty array - events will be loaded from modules
+  return state.events.filter(e => e.scope === 'LAW') || [];
+}
+
+/**
+ * Tally votes for a law
+ * @param {Object} lawProcess - Law process
+ * @param {Object} state - Game state
+ * @returns {Object} Tally result with passed flag and log
+ */
+export function tallyVotes(lawProcess, state) {
+  const log = [];
+  const policy = state.powerSystemPolicy;
+  
+  if (!policy) {
+    log.push('ERROR: No power system policy defined');
+    return { passed: false, log };
+  }
+  
+  let totalVotes = 0;
+  let supportVotes = 0;
+  let opposeVotes = 0;
+  let abstainVotes = 0;
+  
+  state.empires.forEach(empire => {
+    const stance = lawProcess.empireStances[empire.id];
+    if (!stance) return;
+    
+    // Calculate votes for this empire
+    const votes = calculateEmpireVotes(empire, policy, state);
+    totalVotes += votes;
+    
+    // Apply vote intent
+    if (stance.vote_intent === 'support') {
+      supportVotes += votes;
+    } else if (stance.vote_intent === 'oppose') {
+      opposeVotes += votes;
+    } else {
+      abstainVotes += votes;
+    }
+    
+    log.push(`  ${empire.name}: ${stance.vote_intent} (${votes} votes)`);
+  });
+  
+  const quorumNeeded = totalVotes * policy.config.quorum_threshold;
+  const votesNeeded = totalVotes * policy.config.pass_threshold;
+  const totalCast = supportVotes + opposeVotes;
+  
+  log.push(`\nVote Tally:`);
+  log.push(`  Support: ${supportVotes}`);
+  log.push(`  Oppose: ${opposeVotes}`);
+  log.push(`  Abstain: ${abstainVotes}`);
+  log.push(`  Quorum: ${totalCast}/${quorumNeeded.toFixed(1)} ${totalCast >= quorumNeeded ? '✓' : '✗'}`);
+  log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
+  
+  const passed = totalCast >= quorumNeeded && supportVotes >= votesNeeded;
+  
+  return { passed, log, supportVotes, opposeVotes, abstainVotes };
+}
+
+/**
+ * Calculate votes for an empire based on power system
+ * @param {Object} empire - Empire
+ * @param {Object} policy - Power system policy
+ * @param {Object} state - Game state
+ * @returns {number} Number of votes
+ */
+export function calculateEmpireVotes(empire, policy, state) {
+  let votes = policy.config.base_votes_per_empire || 1;
+  
+  if (policy.type === 'pressure_weighted') {
+    // Votes increase with influence/pressure
+    const pressure = empire.stats.influence || 50;
+    votes += Math.floor(pressure * policy.config.pressure_multiplier);
+  } else if (policy.type === 'hegemonic') {
+    // Top empire gets bonus
+    const maxInfluence = Math.max(...state.empires.map(e => e.stats.influence || 50));
+    if (empire.stats.influence === maxInfluence) {
+      votes += policy.config.hegemonic_bonus || 0;
+    }
+  }
+  
+  return votes;
+}
+
+/**
+ * Update player influence (call each tick)
+ * @param {Object} state - Game state
+ */
+export function updatePlayerInfluence(state) {
+  state.influenceProgress++;
+  
+  if (state.influenceProgress >= 100) {
+    state.playerInfluence++;
+    state.influenceProgress = 0;
+  }
+}
+
+/**
+ * Resolve all active law processes
+ * @param {Object} state - Game state
+ * @param {Object} rng - Seeded RNG
+ * @returns {Array} Combined logs from all resolutions
+ */
+export function resolveAllLawProcesses(state, rng) {
+  const logs = [];
+  
+  // Update player influence
+  updatePlayerInfluence(state);
+  
+  // Resolve each active law process
+  state.lawProcesses.forEach((lawProcess, index) => {
+    // Skip already finished laws
+    if (lawProcess.phase === 'ENACTED' || lawProcess.phase === 'BURIED') {
+      return;
+    }
+    
+    // Resolve this law (round-robin, one per tick to avoid spam)
+    // Could implement more sophisticated scheduling
+    const shouldResolve = (state.turn % state.lawProcesses.length) === index;
+    
+    if (shouldResolve) {
+      const log = resolveLawProcess(lawProcess, state, rng);
+      logs.push(...log);
+    }
+  });
+  
+  return logs;
+}
