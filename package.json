@@ -6,7 +6,11 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
-        "dev": "nodemon index.js"
+        "dev": "nodemon index.js",
+        "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js",
+        "test:determinism": "node testDeterminism.js",
+        "test:battles": "node testFrontBattles.js",
+        "test:gameplay": "node testExtendedGameplay.js"
     },
     "author": "diop.alpha@tribalcreative.xyz",
     "license": "ISC",

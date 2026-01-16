@@ -76,3 +76,31 @@ src/
 ## Development
 
 The codebase follows a clean separation between simulation (pure functions in `src/game/`) and UI (blessed components in `src/ui/`). All game logic is deterministic and testable.
+
+## Testing
+
+The project includes several test suites to ensure gameplay mechanics work correctly:
+
+```bash
+# Run all tests
+npm test
+
+# Run individual test suites
+npm run test:determinism    # Test law enactment determinism
+npm run test:battles        # Test front battle mechanics
+npm run test:gameplay       # Test extended gameplay scenarios
+```
+
+### Test Suites
+
+1. **testDeterminism.js** - Verifies that the law enactment system produces identical results with the same seed
+2. **testFrontBattles.js** - Tests the MP-axis battle system including morale, recovery pools, and battlefield mechanics
+3. **testExtendedGameplay.js** - Integration tests for extended gameplay periods, including:
+   - Victory and defeat scenarios
+   - Law enactment over multiple turns
+   - Battle outcomes over time
+   - Resource management and economy stability
+   - Rapid turn advancement (skip testing)
+   - Multiple concurrent game systems
+
+The extended gameplay tests use modified turn intervals and turn skips to efficiently simulate long-running game sessions while maintaining deterministic behavior through seeded RNG.
