@@ -430,7 +430,7 @@ function testRapidTurnAdvancement() {
   console.log('  Average time per turn:', (duration / summary.turnsExecuted).toFixed(2), 'ms');
   console.log('  Events triggered:', summary.eventsTriggered);
   console.log('  Battles occurred:', summary.battlesOccurred);
-  console.log('  Game state stable:', !state.gameOver || state.gameOver);
+  console.log('  Game over:', state.gameOver ? 'Yes' : 'No');
   
   if (summary.turnsExecuted === 100) {
     console.log('✓ Rapid turn advancement completed successfully');
