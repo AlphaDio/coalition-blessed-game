@@ -34,6 +34,8 @@ class Logger {
     this.uiLogBox = config.uiLogBox ?? null;
     this.filePath = config.filePath ?? null;
     this.fileStream = null;
+    this.logHistory = []; // Store log entries for UI display
+    this.maxHistorySize = 1000; // Maximum number of log entries to keep in memory
     
     // Create logs directory if file logging is enabled
     if (this.enableFile && !this.filePath) {
@@ -49,6 +51,10 @@ class Logger {
     if (this.enableFile && this.filePath) {
       this.fileStream = fs.createWriteStream(this.filePath, { flags: 'a' });
       this.fileStream.write(`\n=== Log session started at ${new Date().toISOString()} ===\n`);
+      // Only log to console if console logging is enabled
+      if (this.enableConsole) {
+        console.log(`[Logger] File logging enabled: ${this.filePath}`);
+      }
     }
   }
 
@@ -108,6 +114,7 @@ class Logger {
     let uiMessage = message;
     
     // Add color tags based on level
+    // Note: blessed tags use {color-fg} format, but we need to ensure they're properly parsed
     switch (level) {
       case LogLevel.DEBUG:
         uiMessage = `{gray-fg}[DEBUG]{/gray-fg} ${message}`;
@@ -123,7 +130,12 @@ class Logger {
         break;
     }
     
-    this.uiLogBox.log(uiMessage);
+    // Use add() method which properly handles tags, or log() if add() doesn't exist
+    if (typeof this.uiLogBox.add === 'function') {
+      this.uiLogBox.add(uiMessage);
+    } else {
+      this.uiLogBox.log(uiMessage);
+    }
   }
 
   /**
@@ -136,11 +148,42 @@ class Logger {
     
     const formattedMessage = this.formatMessage(level, message, data);
     
+    // Store in history for logs window
+    this.logHistory.push({
+      level,
+      message,
+      formattedMessage,
+      timestamp: new Date().toISOString(),
+      data
+    });
+    
+    // Keep history size manageable
+    if (this.logHistory.length > this.maxHistorySize) {
+      this.logHistory = this.logHistory.slice(-this.maxHistorySize);
+    }
+    
     this.writeToConsole(level, formattedMessage);
     this.writeToFile(formattedMessage);
     
     // UI gets simpler message without timestamp
     this.writeToUI(message, level);
+  }
+  
+  /**
+   * Get log history for display
+   */
+  getHistory(limit = null) {
+    if (limit) {
+      return this.logHistory.slice(-limit);
+    }
+    return this.logHistory;
+  }
+  
+  /**
+   * Clear log history
+   */
+  clearHistory() {
+    this.logHistory = [];
   }
 
   /**

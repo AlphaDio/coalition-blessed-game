@@ -33,7 +33,7 @@ state.powerSystemPolicy = createPowerSystemPolicy(
     pass_threshold: 0.5
   }
 );
-state.playerInfluence = 0; // Start with 0, will accumulate over time
+state.playerInfluence = 100; // Start with 100 influence to allow immediate law enactment
 state.influenceProgress = 0;
 state.lawProcesses = [];
 
@@ -55,11 +55,15 @@ const ui = createUI();
 
 // Initialize logger with UI integration
 // Set LOG_LEVEL environment variable to 'DEBUG' for verbose logging
+// Set DISABLE_FILE_LOGGING='true' to disable file logging
+// Set ENABLE_CONSOLE_LOGGING='true' to enable console output
+// Note: In dev mode, console is disabled by default. UI and files always show INFO+ logs.
 const logLevel = process.env.LOG_LEVEL === 'DEBUG' ? LogLevel.DEBUG : LogLevel.INFO;
+
 const logger = initializeLogger({
   level: logLevel,
-  enableConsole: true,
-  enableFile: process.env.ENABLE_FILE_LOGGING === 'true',
+  enableConsole: process.env.ENABLE_CONSOLE_LOGGING === 'true', // Disabled by default to avoid terminal pollution
+  enableFile: process.env.DISABLE_FILE_LOGGING !== 'true', // Enabled by default
   enableUI: true,
   uiLogBox: ui.logBox
 });
@@ -92,15 +96,36 @@ function startGameLoop() {
   const tickInterval = Math.max(calculatedInterval, REALTIME_CONSTANTS.MIN_TICK_INTERVAL);
   
   gameLoopInterval = setInterval(() => {
+    // Stop game loop if game is over
+    if (state.gameOver) {
+      clearInterval(gameLoopInterval);
+      gameLoopInterval = null;
+      logger.info(`Game ended: ${state.gameOverReason || 'Unknown reason'}`);
+      ui.logBox.log(`{bold}GAME OVER: ${state.gameOverReason || 'Unknown reason'}{/bold}`);
+      renderAll(ui, state);
+      return;
+    }
+    
     if (shouldAdvanceTurn(state)) {
       const result = advanceTurn(state);
       result.log.forEach(line => ui.logBox.log(line));
       renderAll(ui, state);
       
+      // Stop game loop if game ended this turn
+      if (state.gameOver) {
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = null;
+        logger.info(`Game ended: ${state.gameOverReason || 'Unknown reason'}`);
+        ui.logBox.log(`{bold}GAME OVER: ${state.gameOverReason || 'Unknown reason'}{/bold}`);
+        renderAll(ui, state);
+        return;
+      }
+      
       // Auto-pause on events
       if (state.activeEvent) {
         state.paused = true;
         ui.logBox.log('Game paused: Event requires decision');
+        // Event choice keys are bound to screen level, so they'll work regardless of focus
         renderAll(ui, state);
       }
     }
@@ -124,6 +149,7 @@ logger.info('Press SPACE to pause/unpause, Q to quit');
 logger.info('Press [ and ] to adjust game speed');
 logger.info('Use TAB to cycle focus, +/- to adjust war funds, C to confirm');
 logger.info('Press 1/2/3 to choose event options');
+logger.info('Press L to view detailed logs window');
 logger.info('');
 logger.info('Game starting in real-time...');
 

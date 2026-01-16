@@ -56,8 +56,9 @@ export function advanceTurn(state, rng = Math.random) {
   const event = checkEvent(state, rng);
   if (event) {
     state.activeEvent = event;
-    logger.info(`Event triggered: ${event.title}`);
-    log.push(`Event: ${event.title}`);
+    const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+    logger.info(`Event triggered: ${eventTitle}`);
+    log.push(`Event: ${eventTitle}`);
   }
   
   // 5. Check for battles

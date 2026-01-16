@@ -5,7 +5,8 @@ import { getCohesionTier } from '../game/cohesion.js';
 export function createUI() {
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'Coalition: The Blessed Game'
+    title: 'Coalition: The Blessed Game',
+    fullUnicode: true
   });
   
   const grid = new contrib.grid({
@@ -80,7 +81,8 @@ export function createUI() {
     scrollable: true,
     alwaysScroll: true,
     keys: true,
-    vi: true,
+    vi: false, // Disable vi mode to prevent key conflicts
+    input: false, // Disable text input to prevent keys being treated as text
     tags: true,
     style: {
       border: { fg: 'white' }
@@ -90,10 +92,15 @@ export function createUI() {
     }
   });
   
-  const logBox = grid.set(5, 3, 7, 6, blessed.log, {
+  // Use blessed.box instead of blessed.log for better tag support
+  const logBox = grid.set(5, 3, 7, 6, blessed.box, {
     label: ' Log ',
     scrollable: true,
     alwaysScroll: true,
+    keys: true, // Enable keys so we can bind event choice keys to prevent input capture
+    input: false, // Don't accept text input
+    vi: false, // Disable vi mode
+    mouse: false, // Disable mouse
     tags: true,
     style: {
       border: { fg: 'white' }
@@ -102,6 +109,21 @@ export function createUI() {
       type: 'line'
     }
   });
+  
+  // Store log lines for the logBox
+  logBox.logLines = [];
+  logBox.maxLines = 100;
+  
+  // Override log method to properly handle tags
+  logBox.log = function(message) {
+    this.logLines.push(message);
+    if (this.logLines.length > this.maxLines) {
+      this.logLines.shift(); // Remove oldest line
+    }
+    // Join all lines and set content (tags will be properly parsed)
+    this.setContent(this.logLines.join('\n'));
+    this.setScrollPerc(100); // Auto-scroll to bottom
+  };
   
   // Right: Stats (row 3-6) and Tables (row 6-12)
   const statsBox = grid.set(3, 9, 3, 3, blessed.box, {
@@ -130,6 +152,36 @@ export function createUI() {
     }
   });
   
+  // Logs window (full-screen overlay, hidden by default, shown when toggled with L)
+  const logsWindow = blessed.box({
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    content: '',
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    vi: true,
+    tags: true,
+    label: ' 📋 LOGS (Q/Esc: close, R: refresh, ↑↓: scroll) ',
+    hidden: true,
+    style: {
+      border: { fg: 'cyan' },
+      bg: 'black',
+      focus: {
+        border: { fg: 'yellow' }
+      }
+    },
+    border: {
+      type: 'line'
+    }
+  });
+  
+  // Make logs window appear on top of everything
+  screen.append(logsWindow);
+  logsWindow.hide(); // Explicitly hide it
+  
   return {
     screen,
     lawsBox,
@@ -139,7 +191,8 @@ export function createUI() {
     activeLawsBox,
     logBox,
     statsBox,
-    tablesBox
+    tablesBox,
+    logsWindow
   };
 }
 
@@ -200,7 +253,8 @@ export function renderEvent(ui, state) {
   }
   
   const event = state.activeEvent;
-  let content = `{bold}${event.title}{/bold}\n\n${event.text}\n\n`;
+  const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+  let content = `{bold}${eventTitle}{/bold}\n\n${event.text || event.description || ''}\n\n`;
   
   if (event.choices && event.choices.length > 0) {
     content += `{bold}Choices:{/bold}\n`;
@@ -221,7 +275,8 @@ export function renderStats(ui, state) {
   const tierName = tier ? tier.name : 'COLLAPSED';
   
   let content = `{bold}Coalition Cohesion:{/bold} ${state.coalitionCohesion.toFixed(1)} (${tierName})\n`;
-  content += `{bold}Scourge Cohesion:{/bold} ${state.scourgeCohesion.toFixed(1)}\n`;
+  const scourgeCohesion = state.scourgeCohesion ?? 80; // Safety check
+  content += `{bold}Scourge Cohesion:{/bold} ${scourgeCohesion.toFixed(1)}\n`;
   content += `{bold}Scourge Fervor:{/bold} ${state.scourgeFervor.toFixed(1)}\n\n`;
   content += `{bold}Stockpiles:{/bold}\n`;
   content += `  Supplies: ${state.stockpiles.supplies}\n`;
@@ -447,6 +502,43 @@ export function renderLog(ui, state) {
   // Log is auto-updated via logBox.log()
   // Just ensure it's scrolled to bottom
   ui.logBox.setScrollPerc(100);
+}
+
+export function renderLogsWindow(ui, logger) {
+  if (!logger || !ui.logsWindow) return;
+  
+  const history = logger.getHistory(500); // Show last 500 entries
+  let content = '';
+  
+  if (history.length === 0) {
+    content = '{center}{yellow-fg}No log entries yet{/yellow-fg}{/center}';
+  } else {
+    history.forEach(entry => {
+      const levelName = entry.level === 0 ? 'DEBUG' : 
+                       entry.level === 1 ? 'INFO' :
+                       entry.level === 2 ? 'WARN' : 'ERROR';
+      
+      let levelColor = 'white';
+      if (entry.level === 0) levelColor = 'gray';
+      else if (entry.level === 2) levelColor = 'yellow';
+      else if (entry.level === 3) levelColor = 'red';
+      
+      // Format: [LEVEL] message (data if present)
+      let line = `[{${levelColor}-fg}${levelName}{/${levelColor}-fg}] ${entry.message}`;
+      
+      if (entry.data !== null && entry.data !== undefined) {
+        const dataStr = typeof entry.data === 'object' 
+          ? JSON.stringify(entry.data, null, 2).split('\n').join('\n  ')
+          : String(entry.data);
+        line += `\n  {gray-fg}${dataStr}{/gray-fg}`;
+      }
+      
+      content += line + '\n';
+    });
+  }
+  
+  ui.logsWindow.setContent(content);
+  ui.logsWindow.setScrollPerc(100); // Auto-scroll to bottom
 }
 
 

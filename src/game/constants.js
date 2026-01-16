@@ -21,7 +21,7 @@ export const INITIAL_STATE = {
 export const BATTLE_CONSTANTS = {
   ARMY_POWER_ORG_WEIGHT: 0.6,
   ARMY_POWER_FERVOR_WEIGHT: 0.4,
-  SCOURGE_BASE_POWER: 50,
+  SCOURGE_BASE_POWER: 80, // Increased from 50 to make battles more challenging
   SCOURGE_FERVOR_MULTIPLIER: 2.0,
   SCOURGE_RNG_RANGE: 20,
   INSURRECTION_RNG_RANGE: 15,
@@ -59,7 +59,7 @@ export const EVENT_CONSTANTS = {
 };
 
 export const REALTIME_CONSTANTS = {
-  BASE_TICK_INTERVAL: 4000, // milliseconds per turn at normal speed
+  BASE_TICK_INTERVAL: 5000, // milliseconds per turn at normal speed (5 seconds)
   MIN_SPEED: 0.5, // slowest speed multiplier
   MAX_SPEED: 3, // fastest speed multiplier
   SPEED_STEP: 0.5, // speed adjustment increment

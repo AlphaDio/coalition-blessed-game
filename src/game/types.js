@@ -41,9 +41,9 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
       max: 100
     },
     
-    // Combat stats
-    dmgPerUnitMP: 2.0,        // MP damage per engaged unit per tick
-    dmgPerTickMO: 5.0,        // Morale pressure per tick (NOT width-scaled)
+    // Combat stats (halved to make battles last twice as long)
+    dmgPerUnitMP: 1.0,        // MP damage per engaged unit per tick (was 2.0)
+    dmgPerTickMO: 2.5,        // Morale pressure per tick (was 5.0, NOT width-scaled)
     protection: 0.2,          // MP damage resistance (0..1)
     resolve: 0.3,             // MO damage resistance (0..1)
     killRate: 0.1,            // Fraction of MP damage that becomes permanent (0..1)

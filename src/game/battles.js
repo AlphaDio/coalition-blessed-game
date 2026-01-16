@@ -10,7 +10,23 @@ export function calculateArmyPower(army) {
 }
 
 export function calculateCoalitionPower(armies) {
-  return armies.reduce((sum, army) => sum + calculateArmyPower(army), 0);
+  // Sum all army power, but apply diminishing returns for large numbers of armies
+  // This prevents 4 armies from being 4x as powerful
+  const totalPower = armies.reduce((sum, army) => sum + calculateArmyPower(army), 0);
+  
+  // Apply scaling: 1 army = 100%, 2 armies = 180%, 3 armies = 250%, 4+ armies = 300% of single army average
+  // This makes battles more balanced
+  if (armies.length === 1) {
+    return totalPower;
+  } else if (armies.length === 2) {
+    return totalPower * 0.9; // 2 armies = 90% of sum (180% of single)
+  } else if (armies.length === 3) {
+    return totalPower * 0.83; // 3 armies = 83% of sum (250% of single)
+  } else {
+    // 4+ armies: cap at 3x the average single army power
+    const avgArmyPower = totalPower / armies.length;
+    return Math.min(totalPower * 0.75, avgArmyPower * 3);
+  }
 }
 
 export function calculateScourgePower(scourgeFervor, rng = Math.random) {
@@ -35,7 +51,14 @@ export function resolveScourgeBattle(state, participatingArmies, rng = Math.rand
     coalitionPower: coalitionPower.toFixed(2),
     scourgePower: scourgePower.toFixed(2),
     scourgeFervor: state.scourgeFervor,
-    participatingArmies: participatingArmies.length
+    scourgeCohesion: state.scourgeCohesion,
+    participatingArmies: participatingArmies.length,
+    armyPowers: participatingArmies.map(a => ({
+      name: a.name,
+      power: calculateArmyPower(a).toFixed(2),
+      org: a.organization,
+      fervor: a.fervor
+    }))
   });
   
   const won = coalitionPower > scourgePower;
