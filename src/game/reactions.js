@@ -42,7 +42,6 @@ export function calculateReaction(empire, law) {
 
   // 2. Apply tag effects
   let intensity = empire.modifiers?.intensity || 1.0;
-  const tagAxisGates = {}; // Track axis gates from tags
   
   if (law.tag_effects && Array.isArray(law.tag_effects)) {
     law.tag_effects.forEach(tagEffect => {
@@ -59,13 +58,9 @@ export function calculateReaction(empire, law) {
           intensity *= tagEffect.multiply_intensity;
         }
         
-        // Track gate_axis for potential future use
-        // Note: Proper implementation would require recalculating alignment with the gate
-        // For now, we only support empire.modifiers.axis_gates which apply during initial calculation
-        if (tagEffect.gate_axis) {
-          tagAxisGates[tagEffect.gate_axis.axis] = tagEffect.gate_axis.factor;
-          // Could recalculate alignment here if needed in future
-        }
+        // Note: gate_axis feature is defined in the schema but not yet implemented
+        // To implement it properly would require recalculating alignment with the gate applied
+        // For now, use empire.modifiers.axis_gates which applies during initial calculation
       }
     });
   }

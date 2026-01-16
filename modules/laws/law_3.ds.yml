@@ -21,10 +21,6 @@ declares:
     tier: 0
     cost: 2
     effects:
-      empireApproval:
-        empire_1: -5
-        empire_2: 10
-        empire_3: -5
       stockpiles:
         supplies: 200
     vector:

@@ -7,12 +7,12 @@ export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, 
     approval: initialApproval,
     aidCapacity,
     traits,
-    values: values || {},
+    values: values,
     stats: {
       population: stats.population || 1000,
       influence: stats.influence || 50
     },
-    tags: tags || [],
+    tags: tags,
     modifiers: {
       intensity: modifiers.intensity || 1.0,
       axis_gates: modifiers.axis_gates || {}
@@ -41,9 +41,9 @@ export function createLaw(id, name, cost, cooldown = 0, effects = {}, vector = {
     cooldown,
     currentCooldown: 0,
     effects,
-    vector: vector || {},
-    weights: weights || {},
-    tag_effects: tag_effects || []
+    vector: vector,
+    weights: weights,
+    tag_effects: tag_effects
   };
 }
 

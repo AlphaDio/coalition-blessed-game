@@ -21,10 +21,6 @@ declares:
     tier: 0
     cost: 3
     effects:
-      empireApproval:
-        empire_1: -3
-        empire_2: -3
-        empire_3: 15
       stockpiles:
         alloys: 100
         fuel: 50
