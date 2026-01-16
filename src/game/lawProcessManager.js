@@ -14,6 +14,16 @@ import {
 } from './lawEngine.js';
 
 /**
+ * Constants for support bias calculations
+ */
+const SUPPORT_BIAS_CONSTANTS = {
+  // Normalization for population factor: log10(1000) ≈ 3, log10(10000) ≈ 4
+  // Dividing by 4 gives us a 0.75-1.0 range for typical populations
+  POPULATION_LOG_DIVISOR: 4,
+  DEFAULT_POPULATION: 1000
+};
+
+/**
  * Start a new law process
  * @param {Object} state - Game state
  * @param {string} lawId - Law definition ID to start
@@ -119,7 +129,8 @@ export function applyLawSupportBias(baseScore, empire, lawDef, state) {
   
   // Population incentive - large empires support laws benefiting populace
   if (lawDef.support_weights.population_incentive) {
-    const popFactor = Math.log10(empire.stats.population || 1000) / 4; // Normalize to ~0.75-1.0
+    const popFactor = Math.log10(empire.stats.population || SUPPORT_BIAS_CONSTANTS.DEFAULT_POPULATION) 
+                      / SUPPORT_BIAS_CONSTANTS.POPULATION_LOG_DIVISOR;
     bias += lawDef.support_weights.population_incentive * popFactor * 0.2;
   }
   
@@ -358,6 +369,11 @@ export function resolveAllLawProcesses(state, rng) {
   
   // Update player influence
   updatePlayerInfluence(state);
+  
+  // Early return if no law processes
+  if (!state.lawProcesses || state.lawProcesses.length === 0) {
+    return logs;
+  }
   
   // Resolve each active law process
   state.lawProcesses.forEach((lawProcess, index) => {

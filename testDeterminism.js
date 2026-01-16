@@ -35,7 +35,19 @@ function runSimulation(seed) {
   
   // Start law process
   const lawToStart = state.lawDefinitions[0];
-  startLawProcess(state, lawToStart.id, 100);
+  const startResult = startLawProcess(state, lawToStart.id, 100);
+  
+  if (!startResult.success || !state.lawProcesses || state.lawProcesses.length === 0) {
+    console.error('Failed to start law process:', startResult.error);
+    return {
+      finalPhase: 'ERROR',
+      totalTicks: 0,
+      rejects: 0,
+      eventCount: 0,
+      eventLog: []
+    };
+  }
+  
   const lawProcess = state.lawProcesses[0];
   
   // Simulate

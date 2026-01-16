@@ -28,6 +28,11 @@ export const EVENT_BUDGET = {
 };
 
 /**
+ * Maximum phase progress value
+ */
+export const MAX_PHASE_PROGRESS = 2.0;
+
+/**
  * Clamp meter values to 0..1 range
  */
 export function clampMeter(value) {
@@ -260,7 +265,7 @@ export function applyEventEffects(event, lawProcess, state) {
   // Apply progress delta
   if (event.effects.progress !== undefined) {
     const oldProgress = lawProcess.phaseProgress;
-    const newProgress = clamp(oldProgress + event.effects.progress, 0, 2.0);
+    const newProgress = clamp(oldProgress + event.effects.progress, 0, MAX_PHASE_PROGRESS);
     lawProcess.phaseProgress = newProgress;
     log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)}`);
   }

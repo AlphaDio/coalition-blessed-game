@@ -105,20 +105,20 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   
   // Laws box
   ui.lawsBox.key(['up'], () => {
-    const maxIndex = state.lawDefinitions?.length > 0 
-      ? state.lawDefinitions.length - 1 
-      : state.laws.length - 1;
-    if (state.selectedLawIndex > 0) {
+    const maxIndex = (state.lawDefinitions?.length > 0 
+      ? state.lawDefinitions.length 
+      : state.laws?.length || 0) - 1;
+    if (maxIndex >= 0 && state.selectedLawIndex > 0) {
       state.selectedLawIndex--;
       renderLaws(ui, state);
     }
   });
   
   ui.lawsBox.key(['down'], () => {
-    const maxIndex = state.lawDefinitions?.length > 0 
-      ? state.lawDefinitions.length - 1 
-      : state.laws.length - 1;
-    if (state.selectedLawIndex < maxIndex) {
+    const maxIndex = (state.lawDefinitions?.length > 0 
+      ? state.lawDefinitions.length 
+      : state.laws?.length || 0) - 1;
+    if (maxIndex >= 0 && state.selectedLawIndex < maxIndex) {
       state.selectedLawIndex++;
       renderLaws(ui, state);
     }

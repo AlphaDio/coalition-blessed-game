@@ -6,7 +6,7 @@ import { updateLawCooldowns } from './laws.js';
 import { checkEvent } from './events.js';
 import { resolveScourgeBattle, resolveInsurrectionBattle } from './battles.js';
 import { getCohesionTier } from './cohesion.js';
-import { resolveAllLawProcesses } from './lawProcessManager.js';
+import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManager.js';
 import { DeterministicRNG } from '../modules/rng.js';
 
 export function advanceTurn(state, rng = Math.random) {
@@ -25,6 +25,9 @@ export function advanceTurn(state, rng = Math.random) {
     if (lawLogs.length > 0) {
       log.push(...lawLogs);
     }
+  } else if (state.playerInfluence !== undefined) {
+    // Update player influence even if no law processes are active
+    updatePlayerInfluence(state);
   }
   
   // 3. Consume supplies

@@ -1,0 +1,43 @@
+module:
+  id: "lawdef_ai_citizenship"
+  name: "AI Citizenship Rights (Law Definition)"
+  description: "Law definition for AI Citizenship Rights in the law enactment system"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["mechanical", "rights", "ai"]
+  created_at: "2026-01-16T18:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_ai_citizenship"
+    name: "AI Citizenship Rights"
+    axis_vector:
+      natural_mechanical: 0.9
+      essentialist_constructivist: 0.6
+      authoritarian_liberal: 0.3
+    law_tags:
+      - "mechanical"
+      - "rights"
+    support_weights:
+      population_incentive: 0.3
+      security_incentive: -0.2
+      economy_incentive: 0.1
+    phase_tags:
+      DEBATE:
+        - "rights"
+        - "mechanical"
+        - "philosophical"
+      FALLOUT:
+        - "social"
+        - "economic"
+        - "unrest"
+      VOTING:
+        - "procedural"
+        - "compromise"
