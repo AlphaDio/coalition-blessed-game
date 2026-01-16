@@ -21,9 +21,17 @@ declares:
     tier: 0
     cost: 0
     effects:
-      empireApproval:
-        empire_1: -5
-        empire_2: -5
-        empire_3: -5
       armyOrgConversion:
         multiplier: 1.1
+    vector:
+      pacifist_militaristic: 0.6
+      stoicist_hedonistic: -0.4
+      authoritarian_liberal: -0.2
+    weights:
+      pacifist_militaristic: 1.0
+      stoicist_hedonistic: 0.7
+      authoritarian_liberal: 0.5
+    tag_effects:
+      - if_empire_has_tag: "Militaristic"
+        add_alignment: 0.15
+        multiply_intensity: 1.1

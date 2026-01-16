@@ -15,7 +15,11 @@ export function createSampleContent() {
       data.name,
       data.approval,
       data.aggravation,
-      data.traits || {}
+      data.traits || {},
+      data.values || {},
+      data.stats || {},
+      data.tags || [],
+      data.modifiers || {}
     );
   });
   
@@ -44,7 +48,10 @@ export function createSampleContent() {
       data.name,
       data.cost,
       data.tier,
-      data.effects || {}
+      data.effects || {},
+      data.vector || {},
+      data.weights || {},
+      data.tag_effects || []
     );
   });
   

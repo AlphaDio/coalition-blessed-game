@@ -65,3 +65,35 @@ export const REALTIME_CONSTANTS = {
   SPEED_STEP: 0.5, // speed adjustment increment
   MIN_TICK_INTERVAL: 500 // minimum interval to prevent performance issues
 };
+
+export const VALUE_AXES = {
+  AUTHORITARIAN_LIBERAL: 'authoritarian_liberal',
+  SPIRITUAL_MATERIALISTIC: 'spiritual_materialistic',
+  NATURAL_MECHANICAL: 'natural_mechanical',
+  PACIFIST_MILITARISTIC: 'pacifist_militaristic',
+  STOICIST_HEDONISTIC: 'stoicist_hedonistic',
+  ESSENTIALIST_CONSTRUCTIVIST: 'essentialist_constructivist'
+};
+
+export const AXES_CONFIG = {
+  authoritarian_liberal: { min: -1, max: 1 },
+  spiritual_materialistic: { min: -1, max: 1 },
+  natural_mechanical: { min: -1, max: 1 },
+  pacifist_militaristic: { min: -1, max: 1 },
+  stoicist_hedonistic: { min: -1, max: 1 },
+  essentialist_constructivist: { min: -1, max: 1 }
+};
+
+export const REACTION_CONSTANTS = {
+  THRESHOLDS: {
+    LAUD: 0.60,
+    APPROVE: 0.20,
+    NEUTRAL_BAND: 0.20, // Width of neutral band: reactions in [-0.20..+0.20] are neutral
+    DISAPPROVE: -0.20,
+    DENOUNCE: -0.60
+  },
+  POWER_SCALING: {
+    POP_EXPONENT: 0.5,
+    PRESSURE_LOG_DIVISOR: 5 // Normalizes log10(pressure) to ~0.2-1.5 range for scaling
+  }
+};

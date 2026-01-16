@@ -1,4 +1,5 @@
 import { clampApproval, clampStat } from './cohesion.js';
+import { calculateLawReactions } from './reactions.js';
 
 export function enactLaw(state, lawId) {
   const law = state.laws.find(l => l.id === lawId);
@@ -13,14 +14,31 @@ export function enactLaw(state, lawId) {
   // Apply law effects
   const log = [`Law enacted: ${law.name}`];
   
-  if (law.effects.empireApproval) {
-    Object.entries(law.effects.empireApproval).forEach(([empireId, change]) => {
+  // Calculate value-based reactions if law has vector data
+  if (law.vector && Object.keys(law.vector).length > 0) {
+    const reactions = calculateLawReactions(state.empires, law);
+    
+    Object.entries(reactions).forEach(([empireId, reactionData]) => {
       const empire = state.empires.find(e => e.id === empireId);
       if (empire) {
-        empire.approval = clampApproval(empire.approval + change);
-        log.push(`${empire.name} approval ${change >= 0 ? '+' : ''}${change}`);
+        empire.approval = clampApproval(empire.approval + reactionData.approvalChange);
+        
+        const reactionLabel = reactionData.reaction.charAt(0).toUpperCase() + reactionData.reaction.slice(1);
+        const changeSign = reactionData.approvalChange >= 0 ? '+' : '';
+        log.push(`${empire.name}: ${reactionLabel} (${changeSign}${reactionData.approvalChange})`);
       }
     });
+  } else {
+    // Fallback to legacy empireApproval effects if no vector
+    if (law.effects.empireApproval) {
+      Object.entries(law.effects.empireApproval).forEach(([empireId, change]) => {
+        const empire = state.empires.find(e => e.id === empireId);
+        if (empire) {
+          empire.approval = clampApproval(empire.approval + change);
+          log.push(`${empire.name} approval ${change >= 0 ? '+' : ''}${change}`);
+        }
+      });
+    }
   }
   
   if (law.effects.armyOrgConversion) {

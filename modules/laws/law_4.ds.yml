@@ -21,10 +21,21 @@ declares:
     tier: 0
     cost: 3
     effects:
-      empireApproval:
-        empire_1: -3
-        empire_2: -3
-        empire_3: 15
       stockpiles:
         alloys: 100
         fuel: 50
+    vector:
+      authoritarian_liberal: 0.5
+      spiritual_materialistic: 0.4
+      essentialist_constructivist: 0.3
+    weights:
+      authoritarian_liberal: 1.0
+      spiritual_materialistic: 0.6
+      essentialist_constructivist: 0.5
+    tag_effects:
+      - if_empire_has_tag: "Maritime"
+        add_alignment: 0.20
+        multiply_intensity: 1.2
+      - if_empire_has_tag: "Republic"
+        add_alignment: 0.10
+        multiply_intensity: 1.05

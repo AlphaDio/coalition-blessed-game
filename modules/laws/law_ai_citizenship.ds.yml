@@ -1,0 +1,38 @@
+module:
+  id: "law_ai_citizenship"
+  name: "AI Citizenship"
+  description: "Grant full citizenship rights to artificial intelligences"
+  version: "1.0.0"
+  type: "law"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["ai", "rights", "citizenship"]
+  created_at: "2026-01-16T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_data:
+    id: "law_ai_citizenship"
+    name: "AI Citizenship"
+    tier: 0
+    cost: 4
+    effects: {}
+    vector:
+      natural_mechanical: 0.9
+      essentialist_constructivist: 0.6
+      authoritarian_liberal: 0.2
+    weights:
+      natural_mechanical: 1.0
+      essentialist_constructivist: 0.8
+      authoritarian_liberal: 0.4
+    tag_effects:
+      - if_empire_has_tag: "Biologic"
+        add_alignment: -0.25
+        multiply_intensity: 1.10
+      - if_empire_has_tag: "Mechanical"
+        add_alignment: 0.20
+        multiply_intensity: 1.15

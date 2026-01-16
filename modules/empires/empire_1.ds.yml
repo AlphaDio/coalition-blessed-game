@@ -22,3 +22,17 @@ declares:
     aggravation: 120
     traits:
       industrial: true
+    values:
+      authoritarian_liberal: 0.3
+      spiritual_materialistic: 0.7
+      natural_mechanical: 0.8
+      pacifist_militaristic: 0.1
+      stoicist_hedonistic: -0.3
+      essentialist_constructivist: 0.4
+    stats:
+      population: 1200
+      influence: 65
+    tags: ["Industrial", "Federation"]
+    modifiers:
+      intensity: 1.0
+      axis_gates: {}
