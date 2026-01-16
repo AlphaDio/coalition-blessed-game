@@ -42,6 +42,7 @@ export function calculateReaction(empire, law) {
 
   // 2. Apply tag effects
   let intensity = empire.modifiers?.intensity || 1.0;
+  const tagAxisGates = {}; // Track axis gates from tags
   
   if (law.tag_effects && Array.isArray(law.tag_effects)) {
     law.tag_effects.forEach(tagEffect => {
@@ -58,13 +59,12 @@ export function calculateReaction(empire, law) {
           intensity *= tagEffect.multiply_intensity;
         }
         
-        // Apply gate_axis (modifies specific axis weight retroactively)
-        // Note: This is simplified - proper implementation would recalculate
+        // Track gate_axis for potential future use
+        // Note: Proper implementation would require recalculating alignment with the gate
+        // For now, we only support empire.modifiers.axis_gates which apply during initial calculation
         if (tagEffect.gate_axis) {
-          // For simplicity, we'll apply this as a small alignment shift
-          // A full implementation would require recalculating the alignment
-          const gateAdjustment = (1 - tagEffect.gate_axis.factor) * 0.1;
-          alignment *= (1 - gateAdjustment);
+          tagAxisGates[tagEffect.gate_axis.axis] = tagEffect.gate_axis.factor;
+          // Could recalculate alignment here if needed in future
         }
       }
     });
@@ -128,7 +128,8 @@ export function getApprovalChange(reaction, pressure = 1) {
   
   // Scale by pressure (normalized to reasonable range)
   // Pressure can be large, so we use a logarithmic scale
-  const pressureScale = Math.log10(pressure + 1) / 5; // Normalize to ~0.2-1.5 range
+  // Using PRESSURE_LOG_DIVISOR to normalize log10(pressure) to ~0.2-1.5 range
+  const pressureScale = Math.log10(pressure + 1) / REACTION_CONSTANTS.POWER_SCALING.PRESSURE_LOG_DIVISOR;
   const scaledChange = baseChange * Math.max(0.5, Math.min(2.0, pressureScale));
   
   return Math.round(scaledChange);

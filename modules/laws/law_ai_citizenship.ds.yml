@@ -20,11 +20,7 @@ declares:
     name: "AI Citizenship"
     tier: 0
     cost: 4
-    effects:
-      empireApproval:
-        empire_clockwork: 20
-        empire_hive: -15
-        empire_1: 5
+    effects: {}
     vector:
       natural_mechanical: 0.9
       essentialist_constructivist: 0.6

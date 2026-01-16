@@ -21,10 +21,6 @@ declares:
     tier: 0
     cost: 3
     effects:
-      empireApproval:
-        empire_1: -8
-        empire_2: -10
-        empire_3: 5
       armyOrgConversion:
         multiplier: 1.2
     vector:

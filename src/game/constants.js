@@ -88,11 +88,12 @@ export const REACTION_CONSTANTS = {
   THRESHOLDS: {
     LAUD: 0.60,
     APPROVE: 0.20,
-    NEUTRAL: 0.20, // symmetric band [-0.20..+0.20]
+    NEUTRAL_BAND: 0.20, // Width of neutral band: reactions in [-0.20..+0.20] are neutral
     DISAPPROVE: -0.20,
     DENOUNCE: -0.60
   },
   POWER_SCALING: {
-    POP_EXPONENT: 0.5
+    POP_EXPONENT: 0.5,
+    PRESSURE_LOG_DIVISOR: 5 // Normalizes log10(pressure) to ~0.2-1.5 range for scaling
   }
 };
