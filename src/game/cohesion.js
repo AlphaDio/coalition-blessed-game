@@ -24,3 +24,7 @@ export function clampApproval(approval) {
 export function clampStat(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
+
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}

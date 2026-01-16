@@ -110,11 +110,23 @@ export function createUI() {
 }
 
 export function renderLaws(ui, state) {
-  const items = state.laws.map((law, idx) => {
-    const cooldown = law.currentCooldown > 0 ? ` [CD: ${law.currentCooldown}]` : '';
-    const marker = idx === state.selectedLawIndex ? '> ' : '  ';
-    return `${marker}${law.name}${cooldown}`;
-  });
+  let items = [];
+  
+  // Show law definitions if available (new system)
+  if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+    items = state.lawDefinitions.map((lawDef, idx) => {
+      const marker = idx === state.selectedLawIndex ? '> ' : '  ';
+      const cost = state.playerInfluence >= 100 ? '' : ' {red-fg}(need 100 influence){/red-fg}';
+      return `${marker}${lawDef.name}${cost}`;
+    });
+  } else {
+    // Fallback to old law system
+    items = state.laws.map((law, idx) => {
+      const cooldown = law.currentCooldown > 0 ? ` [CD: ${law.currentCooldown}]` : '';
+      const marker = idx === state.selectedLawIndex ? '> ' : '  ';
+      return `${marker}${law.name}${cooldown}`;
+    });
+  }
   
   ui.lawsBox.setItems(items);
   
@@ -177,6 +189,21 @@ export function renderStats(ui, state) {
   content += `  Supplies: ${state.stockpiles.supplies}\n`;
   content += `  Alloys: ${state.stockpiles.alloys}\n`;
   content += `  Fuel: ${state.stockpiles.fuel}\n\n`;
+  
+  // Player Influence
+  if (state.playerInfluence !== undefined) {
+    content += `{bold}Player Influence:{/bold} ${state.playerInfluence}\n`;
+    content += `  (${state.influenceProgress || 0}/100 ticks)\n\n`;
+  }
+  
+  // Active Law Processes
+  if (state.lawProcesses && state.lawProcesses.length > 0) {
+    const activeLaws = state.lawProcesses.filter(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED');
+    if (activeLaws.length > 0) {
+      content += `{bold}Active Laws:{/bold} ${activeLaws.length}\n`;
+    }
+  }
+  
   content += `{bold}Turn:{/bold} ${state.turn}\n`;
   
   // Real-time status
@@ -189,7 +216,27 @@ export function renderStats(ui, state) {
 }
 
 export function renderTables(ui, state) {
-  let content = `{bold}Empires:{/bold}\n`;
+  let content = '';
+  
+  // Show law processes if any are active
+  if (state.lawProcesses && state.lawProcesses.length > 0) {
+    const activeLaws = state.lawProcesses.filter(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED');
+    if (activeLaws.length > 0) {
+      content += `{bold}Law Processes:{/bold}\n`;
+      activeLaws.forEach(lp => {
+        const lawDef = state.lawDefinitions?.find(ld => ld.id === lp.lawId);
+        const lawName = lawDef ? lawDef.name : lp.lawId;
+        content += `  {cyan-fg}${lawName}{/cyan-fg}\n`;
+        content += `    Phase: {yellow-fg}${lp.phase}{/yellow-fg} (${(lp.phaseProgress * 100).toFixed(0)}%)\n`;
+        content += `    Rejects: ${lp.rejects}/4\n`;
+        content += `    Momentum: ${(lp.meters.momentum * 100).toFixed(0)}%\n`;
+        content += `    Reject Pressure: ${(lp.meters.reject_pressure * 100).toFixed(0)}%\n`;
+      });
+      content += '\n';
+    }
+  }
+  
+  content += `{bold}Empires:{/bold}\n`;
   state.empires.forEach(empire => {
     content += `  ${empire.name}: Approval ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}, Aid ${empire.aidCapacity}\n`;
   });

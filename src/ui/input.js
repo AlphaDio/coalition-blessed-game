@@ -4,6 +4,7 @@ import { handleEventChoice } from '../game/events.js';
 import { advanceTurn } from '../game/turn.js';
 import { renderAll, renderLaws, renderWarFunds } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
+import { startLawProcess } from '../game/lawProcessManager.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
   // Helper to safely call optional callbacks
@@ -104,29 +105,51 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   
   // Laws box
   ui.lawsBox.key(['up'], () => {
-    if (state.selectedLawIndex > 0) {
+    const maxIndex = (state.lawDefinitions?.length > 0 
+      ? state.lawDefinitions.length 
+      : state.laws?.length || 0) - 1;
+    if (maxIndex >= 0 && state.selectedLawIndex > 0) {
       state.selectedLawIndex--;
       renderLaws(ui, state);
     }
   });
   
   ui.lawsBox.key(['down'], () => {
-    if (state.selectedLawIndex < state.laws.length - 1) {
+    const maxIndex = (state.lawDefinitions?.length > 0 
+      ? state.lawDefinitions.length 
+      : state.laws?.length || 0) - 1;
+    if (maxIndex >= 0 && state.selectedLawIndex < maxIndex) {
       state.selectedLawIndex++;
       renderLaws(ui, state);
     }
   });
   
   ui.lawsBox.key(['enter'], () => {
-    const law = state.laws[state.selectedLawIndex];
-    if (law) {
-      const result = enactLaw(state, law.id);
-      if (result.success) {
-        result.log.forEach(line => ui.logBox.log(line));
-        renderAll(ui, state);
-      } else if (result.error) {
-        ui.logBox.log(`Error: ${result.error}`);
-        renderAll(ui, state);
+    // Try new law system first
+    if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+      const lawDef = state.lawDefinitions[state.selectedLawIndex];
+      if (lawDef) {
+        const result = startLawProcess(state, lawDef.id, 100);
+        if (result.success) {
+          result.log.forEach(line => ui.logBox.log(line));
+          renderAll(ui, state);
+        } else if (result.error) {
+          ui.logBox.log(`Error: ${result.error}`);
+          renderAll(ui, state);
+        }
+      }
+    } else {
+      // Fallback to old law system
+      const law = state.laws[state.selectedLawIndex];
+      if (law) {
+        const result = enactLaw(state, law.id);
+        if (result.success) {
+          result.log.forEach(line => ui.logBox.log(line));
+          renderAll(ui, state);
+        } else if (result.error) {
+          ui.logBox.log(`Error: ${result.error}`);
+          renderAll(ui, state);
+        }
       }
     }
   });

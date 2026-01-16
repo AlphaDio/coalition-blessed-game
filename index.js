@@ -5,6 +5,9 @@ import { setupInputHandlers } from './src/ui/input.js';
 import { applyWarFundAllocation } from './src/game/economy.js';
 import { advanceTurn } from './src/game/turn.js';
 import { REALTIME_CONSTANTS } from './src/game/constants.js';
+import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
+import { getAllLawEvents } from './src/game/lawEventTemplates.js';
+import { createPowerSystemPolicy } from './src/game/types.js';
 
 // Initialize game state
 const state = createGameState();
@@ -15,6 +18,23 @@ state.empires = content.empires;
 state.armies = content.armies;
 state.laws = content.laws;
 state.events = content.events;
+
+// Initialize law enactment system
+state.lawDefinitions = getSampleLawDefinitions();
+state.events = [...state.events, ...getAllLawEvents()]; // Add law events
+state.powerSystemPolicy = createPowerSystemPolicy(
+  'equal_council',
+  'Equal Council Votes',
+  'equal_council',
+  {
+    base_votes_per_empire: 1,
+    quorum_threshold: 0.5,
+    pass_threshold: 0.5
+  }
+);
+state.playerInfluence = 0; // Start with 0, will accumulate over time
+state.influenceProgress = 0;
+state.lawProcesses = [];
 
 // Initialize war fund allocation (equal shares)
 const equalShare = 100 / state.armies.length;
