@@ -24,7 +24,14 @@ export function checkEvent(state, rng = Math.random) {
   logger.debug(`Event check: tier=${tier.name}, frequency=${frequency}, roll=${roll.toFixed(3)}`);
   
   if (roll < frequency && state.events.length > 0) {
-    const event = state.events[Math.floor(rng() * state.events.length)];
+    // Filter out LAW scope events (they're handled by law system)
+    const regularEvents = state.events.filter(e => e.scope !== 'LAW');
+    if (regularEvents.length === 0) {
+      logger.debug('No regular events available (only LAW scope events)');
+      return null;
+    }
+    
+    const event = regularEvents[Math.floor(rng() * regularEvents.length)];
     
     // Validate event has required properties
     if (!event) {
@@ -42,12 +49,37 @@ export function checkEvent(state, rng = Math.random) {
       return null;
     }
     
+    // Check if event has valid choices - if not, auto-resolve it
+    if (!event.choices || !Array.isArray(event.choices) || event.choices.length === 0) {
+      const eventTitle = event.title || event.name || event.id;
+      logger.warn(`Event "${eventTitle}" (${event.id}) has no choices array, auto-resolving`);
+      // Auto-resolve by calling handleEventChoice with a default choice
+      const autoResolveResult = autoResolveEvent(state, event);
+      if (autoResolveResult.success) {
+        logger.info(`Event "${eventTitle}" (${event.id}) auto-resolved (no choices)`);
+        return null; // Don't set as activeEvent since it's already resolved
+      } else {
+        logger.error(`Failed to auto-resolve event "${eventTitle}" (${event.id}): ${autoResolveResult.error}`);
+        return null; // Skip invalid events
+      }
+    }
+    
     const eventTitle = event.title || event.name || event.id;
     logger.debug(`Event selected: ${eventTitle} (${event.id})`);
     return event;
   }
   
   return null;
+}
+
+/**
+ * Auto-resolve an event that has no choices
+ */
+function autoResolveEvent(state, event) {
+  // For events without choices, just clear the active event
+  // This allows the game to continue without player input
+  state.activeEvent = null;
+  return { success: true, log: [`Event ${event.title || event.name || event.id} occurred (no action required)`] };
 }
 
 export function handleEventChoice(state, eventId, choiceIndex) {
@@ -58,9 +90,18 @@ export function handleEventChoice(state, eventId, choiceIndex) {
     return { error: 'Event not found' };
   }
   
-  if (!event.choices || !Array.isArray(event.choices)) {
-    logger.error(`Event ${eventId} has no choices array`, { event });
-    return { error: 'Event has no choices' };
+  // If event has no choices, auto-resolve it
+  if (!event.choices || !Array.isArray(event.choices) || event.choices.length === 0) {
+    const eventTitle = event.title || event.name || event.id;
+    logger.warn(`Event "${eventTitle}" (${eventId}) has no choices array, auto-resolving`);
+    const autoResolveResult = autoResolveEvent(state, event);
+    if (autoResolveResult.success) {
+      logger.info(`Event "${eventTitle}" (${eventId}) auto-resolved (no choices)`);
+      return { success: true, log: autoResolveResult.log };
+    } else {
+      logger.error(`Failed to auto-resolve event "${eventTitle}" (${eventId}): ${autoResolveResult.error}`);
+      return { error: 'Event has no choices and auto-resolution failed' };
+    }
   }
   
   if (choiceIndex < 0 || choiceIndex >= event.choices.length) {

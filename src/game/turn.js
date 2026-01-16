@@ -61,10 +61,18 @@ export function advanceTurn(state, rng = Math.random) {
   // 5. Check for events
   const event = checkEvent(state, rng);
   if (event) {
-    state.activeEvent = event;
-    const eventTitle = event.title || event.name || event.id || 'Unknown Event';
-    logger.info(`Event triggered: ${eventTitle}`);
-    log.push(`Event: ${eventTitle}`);
+    // Only set as activeEvent if it has choices that require player input
+    if (event.choices && Array.isArray(event.choices) && event.choices.length > 0) {
+      state.activeEvent = event;
+      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+      logger.info(`Event triggered: ${eventTitle}`);
+      log.push(`Event: ${eventTitle}`);
+    } else {
+      // Event was auto-resolved in checkEvent, just log it
+      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+      logger.info(`Event auto-resolved: ${eventTitle} (no choices)`);
+      log.push(`Event: ${eventTitle} (auto-resolved)`);
+    }
   }
   
   // 5. Check for battles
