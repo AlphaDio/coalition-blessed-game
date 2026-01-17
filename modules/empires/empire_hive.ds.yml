@@ -33,6 +33,18 @@ declares:
     stats:
       population: 900
       influence: 55
+      production:
+        outputs_per_tick:
+          genomes: 20
+          ancient_relics: 2
+      needs:
+        per_pop:
+          biomass: 0.15
+          ice: 0.06
+      wants:
+        per_pop:
+          psycho_implants: 0.001
+          nano_machines: 0.0005
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15
