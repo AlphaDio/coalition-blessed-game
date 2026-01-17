@@ -14,9 +14,7 @@ export function createUI() {
   const screen = blessed.screen({
     smartCSR: true,
     title: 'Coalition: The Blessed Game',
-    fullUnicode: true,
-    input: false, // Disable screen-level text input
-    output: true
+    fullUnicode: true
   });
   
   const grid = new contrib.grid({
