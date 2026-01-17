@@ -38,7 +38,11 @@ export function parseCommand(commandText, state, ui, gameLoopCallbacks) {
       
     case 'quit':
     case 'exit':
-      process.exit(0);
+      return {
+        success: true,
+        action: 'QUIT_GAME',
+        message: 'Quitting game...'
+      };
       
     case 'next':
     case 'advance':

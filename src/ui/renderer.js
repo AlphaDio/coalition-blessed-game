@@ -190,11 +190,16 @@ export function createUI() {
     }
   });
   
-  // Input box at the bottom (rows 10-11, cols 0-9)
+  // Input box at the bottom (rows 10-11 out of 12 total rows)
+  // Position: 10/12 = 83.33% from top
+  const INPUT_BOX_TOP_PERCENT = '83.33%';
+  const INPUT_BOX_WIDTH_PERCENT = '75%';
+  const COMMAND_HISTORY_WIDTH_PERCENT = '25%';
+  
   const inputBox = blessed.textbox({
-    top: '83.33%', // Row 10 of 12
+    top: INPUT_BOX_TOP_PERCENT,
     left: 0,
-    width: '75%',
+    width: INPUT_BOX_WIDTH_PERCENT,
     height: 3,
     label: ' Command Input (Type "help" for commands, ESC to cancel) ',
     border: {
@@ -214,9 +219,9 @@ export function createUI() {
   
   // Command history display (rows 10-11, cols 9-12)
   const commandHistoryBox = blessed.box({
-    top: '83.33%',
-    left: '75%',
-    width: '25%',
+    top: INPUT_BOX_TOP_PERCENT,
+    left: INPUT_BOX_WIDTH_PERCENT,
+    width: COMMAND_HISTORY_WIDTH_PERCENT,
     height: 3,
     label: ' Status ',
     content: 'Ready',

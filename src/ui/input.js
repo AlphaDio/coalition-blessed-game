@@ -419,6 +419,9 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
             ui.logsWindow.show();
             ui.logsWindow.focus();
           }
+        } else if (result.action === 'QUIT_GAME') {
+          // Graceful shutdown
+          process.exit(0);
         }
         
         ui.commandHistoryBox.setContent(`{green-fg}✓{/green-fg} Last: ${command.substring(0, 20)}${command.length > 20 ? '...' : ''}`);
