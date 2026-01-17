@@ -102,6 +102,9 @@ export function processEconomyTick(state) {
     if (!empire.needs || !empire.needs.per_pop) return;
     const population = empire.stats?.population || 0;
     
+    // Ensure stockpiles is initialized
+    if (!empire.stockpiles) empire.stockpiles = {};
+    
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
       const totalNeeded = qtyPerPop * population;
       if (totalNeeded > 0) {

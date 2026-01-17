@@ -132,14 +132,13 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
 
 /**
  * Initialize market for all commodities
- * Prices start at floor_price with variance between -100% (0x) and +200% (3x) of floor
+ * Prices start at floor_price with variance between 50% and 150% of floor
  */
 export function initializeMarket(commodities) {
   const market = {};
   commodities.forEach(commodity => {
     const floorPrice = commodity.floor_price || 1.0;
-    // Random initial price between 0% and 200% of floor (i.e., 0x to 3x floor)
-    // We use 50% to 150% for a more reasonable starting range
+    // Random initial price between 50% and 150% of floor for reasonable starting range
     const varianceFactor = 0.5 + Math.random() * 1.0; // 0.5 to 1.5
     const initialPrice = floorPrice * varianceFactor;
     market[commodity.key] = createMarketState(commodity.key, initialPrice, floorPrice);
@@ -175,10 +174,11 @@ export function smoothPrice(marketState, targetPrice, config) {
   const { smoothing_k } = config.pricing.params;
   const smoothed = marketState.last_price * (1 - smoothing_k) + targetPrice * smoothing_k;
   
-  // Enforce floor price bounds: -100% to +200% (0x to 3x floor price)
+  // Enforce floor price bounds: 0% to 300% of floor price (0x to 3x)
+  // This allows prices to drop to zero (free) or rise up to 3x the floor
   const floorPrice = marketState.floor_price || 1.0;
-  const minPrice = floorPrice * 0.0; // 0% of floor (completely free)
-  const maxPrice = floorPrice * 3.0; // 300% of floor (3x)
+  const minPrice = 0; // Allow prices to drop to zero
+  const maxPrice = floorPrice * 3.0; // Cap at 3x floor
   
   const boundedPrice = Math.max(minPrice, Math.min(maxPrice, smoothed));
   
