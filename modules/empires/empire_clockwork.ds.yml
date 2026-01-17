@@ -33,6 +33,18 @@ declares:
     stats:
       population: 300
       influence: 80
+      production:
+        outputs_per_tick:
+          quantum_circuits: 5
+          nano_machines: 3
+      needs:
+        per_pop:
+          rare_gases: 0.15
+          super_alloys: 0.08
+      wants:
+        per_pop:
+          sentient_cores: 0.002
+          wormhole_reactors: 0.0001
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0

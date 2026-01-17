@@ -85,11 +85,12 @@ function getDefaultEconomyConfig() {
 /**
  * Create market state for a commodity
  */
-export function createMarketState(commodityKey, initialPrice = 1.0) {
+export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice = null) {
   return {
     commodity: commodityKey,
     price: initialPrice,
     last_price: initialPrice,
+    floor_price: floorPrice || initialPrice,
     demand_qty: 0,
     supply_qty: 0,
     traded_qty: 0,
@@ -131,11 +132,16 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
 
 /**
  * Initialize market for all commodities
+ * Prices start at floor_price with variance between 50% and 150% of floor
  */
 export function initializeMarket(commodities) {
   const market = {};
   commodities.forEach(commodity => {
-    market[commodity.key] = createMarketState(commodity.key, 1.0);
+    const floorPrice = commodity.floor_price || 1.0;
+    // Random initial price between 50% and 150% of floor for reasonable starting range
+    const varianceFactor = 0.5 + Math.random() * 1.0; // 0.5 to 1.5
+    const initialPrice = floorPrice * varianceFactor;
+    market[commodity.key] = createMarketState(commodity.key, initialPrice, floorPrice);
   });
   return market;
 }
@@ -162,14 +168,23 @@ export function computeTargetPrice(marketState, config) {
 }
 
 /**
- * Apply price smoothing
+ * Apply price smoothing and enforce floor price bounds
  */
 export function smoothPrice(marketState, targetPrice, config) {
   const { smoothing_k } = config.pricing.params;
   const smoothed = marketState.last_price * (1 - smoothing_k) + targetPrice * smoothing_k;
-  marketState.price = smoothed;
-  marketState.last_price = smoothed;
-  return smoothed;
+  
+  // Enforce floor price bounds: 0% to 300% of floor price (0x to 3x)
+  // This allows prices to drop to zero (free) or rise up to 3x the floor
+  const floorPrice = marketState.floor_price || 1.0;
+  const minPrice = 0; // Allow prices to drop to zero
+  const maxPrice = floorPrice * 3.0; // Cap at 3x floor
+  
+  const boundedPrice = Math.max(minPrice, Math.min(maxPrice, smoothed));
+  
+  marketState.price = boundedPrice;
+  marketState.last_price = boundedPrice;
+  return boundedPrice;
 }
 
 /**

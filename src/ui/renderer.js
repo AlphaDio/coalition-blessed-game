@@ -370,9 +370,7 @@ export function renderStats(ui, state) {
   content += `{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}\n`;
   content += `{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}\n\n`;
   content += `{bold}Stockpiles:{/bold}\n`;
-  content += `  ${formatResource('Supplies', state.stockpiles.supplies)}\n`;
-  content += `  ${formatResource('Alloys', state.stockpiles.alloys)}\n`;
-  content += `  ${formatResource('Fuel', state.stockpiles.fuel)}\n\n`;
+  content += `  ${formatResource('Supplies', state.stockpiles.supplies)}\n\n`;
   
   // Player Influence
   if (state.playerInfluence !== undefined) {

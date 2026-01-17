@@ -11,9 +11,7 @@ export const INITIAL_STATE = {
   scourgeCohesion: 80,
   scourgeFervor: 10,
   stockpiles: {
-    supplies: 1000,
-    alloys: 500,
-    fuel: 300
+    supplies: 1000
   },
   turn: 1
 };
