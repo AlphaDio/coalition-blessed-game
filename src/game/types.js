@@ -25,6 +25,9 @@ export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, 
     needs: {
       per_pop: stats.needs?.per_pop || {}
     },
+    wants: {
+      per_pop: stats.wants?.per_pop || {}
+    },
     allocation: {
       surplus_to_armies_ratio: stats.allocation?.surplus_to_armies_ratio || 0.35,
       military_procurement_bias: stats.allocation?.military_procurement_bias || 0.15
@@ -262,9 +265,7 @@ export function createGameState() {
     scourgeCohesion: 80,
     scourgeFervor: 10,
     stockpiles: {
-      supplies: 1000,
-      alloys: 500,
-      fuel: 300
+      supplies: 1000
     },
     empires: [],
     armies: [],

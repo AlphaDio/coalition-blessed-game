@@ -134,6 +134,31 @@ export function processEconomyTick(state) {
     });
   });
   
+  // Step 2b: Emit buy orders for empire wants
+  state.empires.forEach(empire => {
+    if (!empire.wants || !empire.wants.per_pop) return;
+    const population = empire.stats?.population || 0;
+    
+    Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
+      const totalWanted = qtyPerPop * population;
+      if (totalWanted > 0) {
+        const marketPrice = state.market[commodity]?.price || 1.0;
+        const maxPrice = marketPrice * 1.05; // Willing to pay 5% above market for wants
+        
+        const buyOrder = createBuyOrder(
+          `buy_empire_want_${orderIdCounter++}`,
+          'empire',
+          empire.id,
+          commodity,
+          totalWanted,
+          maxPrice,
+          0 // Normal priority for wants (lower than needs)
+        );
+        buyOrders.push(buyOrder);
+      }
+    });
+  });
+  
   // Step 3: Emit buy orders for army needs/wants
   state.armies.forEach(army => {
     if (!army.demands) return;

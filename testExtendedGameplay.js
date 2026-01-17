@@ -355,35 +355,25 @@ function testEconomyStability() {
   const rng = new DeterministicRNG(55555);
   
   const initialSupplies = state.stockpiles.supplies;
-  const initialAlloys = state.stockpiles.alloys;
-  const initialFuel = state.stockpiles.fuel;
   
   console.log('Initial stockpiles:', {
-    supplies: initialSupplies,
-    alloys: initialAlloys,
-    fuel: initialFuel
+    supplies: initialSupplies
   });
   
   // Run 75 turns
   const summary = runMultipleTurns(state, 75, rng, false);
   
   console.log('\nFinal stockpiles:', {
-    supplies: state.stockpiles.supplies,
-    alloys: state.stockpiles.alloys,
-    fuel: state.stockpiles.fuel
+    supplies: state.stockpiles.supplies
   });
   
   console.log('\nEconomy Statistics:');
   console.log('  Turns executed:', summary.turnsExecuted);
   console.log('  Supply change:', state.stockpiles.supplies - initialSupplies);
-  console.log('  Alloy change:', state.stockpiles.alloys - initialAlloys);
-  console.log('  Fuel change:', state.stockpiles.fuel - initialFuel);
   console.log('  Army aggravation levels:', state.armies.map(a => a.aggravation.toFixed(1)));
   
   // Check that resources haven't completely depleted
-  const hasResources = state.stockpiles.supplies >= 0 && 
-                       state.stockpiles.alloys >= 0 && 
-                       state.stockpiles.fuel >= 0;
+  const hasResources = state.stockpiles.supplies >= 0;
   
   if (hasResources) {
     console.log('✓ Economy remained operational over extended period');
