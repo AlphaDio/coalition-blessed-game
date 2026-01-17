@@ -59,8 +59,8 @@ export function createUI() {
   });
   
   // SECONDARY PANELS (rows 3-7)
-  // Left column: Available Laws (row 3-11)
-  const lawsBox = grid.set(3, 0, 8, 3, blessed.list, {
+  // Left column: Available Laws (row 3-10)
+  const lawsBox = grid.set(3, 0, 7, 3, blessed.list, {
     label: ' Laws (Enter to enact) ',
     keys: true,
     vi: true,
@@ -111,7 +111,7 @@ export function createUI() {
   });
   
   // Use blessed.box instead of blessed.log for better tag support
-  const logBox = grid.set(5, 3, 7, 6, blessed.box, {
+  const logBox = grid.set(5, 3, 5, 6, blessed.box, {
     label: ' Log ',
     scrollable: true,
     alwaysScroll: true,
@@ -174,7 +174,7 @@ export function createUI() {
     }
   });
   
-  const tablesBox = grid.set(8, 9, 4, 3, blessed.box, {
+  const tablesBox = grid.set(8, 9, 2, 3, blessed.box, {
     label: ' Tables ',
     content: '',
     scrollable: true,
@@ -189,6 +189,52 @@ export function createUI() {
       type: 'line'
     }
   });
+  
+  // Input box at the bottom (rows 10-11, cols 0-9)
+  const inputBox = blessed.textbox({
+    top: '83.33%', // Row 10 of 12
+    left: 0,
+    width: '75%',
+    height: 3,
+    label: ' Command Input (Type "help" for commands, ESC to cancel) ',
+    border: {
+      type: 'line'
+    },
+    style: {
+      border: { fg: 'green' },
+      focus: {
+        border: { fg: 'yellow' }
+      }
+    },
+    keys: true,
+    mouse: true,
+    inputOnFocus: true,
+    tags: true
+  });
+  
+  // Command history display (rows 10-11, cols 9-12)
+  const commandHistoryBox = blessed.box({
+    top: '83.33%',
+    left: '75%',
+    width: '25%',
+    height: 3,
+    label: ' Status ',
+    content: 'Ready',
+    tags: true,
+    border: {
+      type: 'line'
+    },
+    style: {
+      border: { fg: 'white' }
+    }
+  });
+  
+  screen.append(inputBox);
+  screen.append(commandHistoryBox);
+  
+  // Store command history
+  inputBox.commandHistory = [];
+  inputBox.historyIndex = -1;
   
   // Logs window (full-screen overlay, hidden by default, shown when toggled with L)
   const logsWindow = blessed.box({
@@ -223,7 +269,7 @@ export function createUI() {
   // Ensure screen never enters input mode
   screen.input = false;
   
-  // Prevent any widget from enabling input mode when focused
+  // Prevent any widget from enabling input mode when focused (except inputBox)
   const widgets = [lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, economyBox, tablesBox];
   widgets.forEach(widget => {
     if (widget) {
@@ -249,7 +295,9 @@ export function createUI() {
     statsBox,
     economyBox,
     tablesBox,
-    logsWindow
+    logsWindow,
+    inputBox,
+    commandHistoryBox
   };
 }
 
