@@ -34,7 +34,7 @@ export function parseCommand(commandText, state, ui, gameLoopCallbacks) {
       return handleResumeCommand(state);
       
     case 'speed':
-      return handleSpeedCommand(args, state, gameLoopCallbacks);
+      return handleSpeedCommand(args, state);
       
     case 'quit':
     case 'exit':
@@ -211,7 +211,7 @@ function handleResumeCommand(state) {
   };
 }
 
-function handleSpeedCommand(args, state, gameLoopCallbacks) {
+function handleSpeedCommand(args, state) {
   if (args.length === 0) {
     return {
       success: true,

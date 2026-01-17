@@ -334,7 +334,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     });
     
     // Also allow TAB to focus input box
-    ui.screen.key(['tab'], (ch, key) => {
+    ui.screen.key(['tab'], () => {
       // If input box is already focused, cycle to laws
       if (ui.screen.focused === ui.inputBox) {
         const currentIdx = FOCUS_CYCLE.indexOf(state.focus);
