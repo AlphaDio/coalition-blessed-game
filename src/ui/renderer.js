@@ -483,8 +483,14 @@ export function renderActiveFronts(ui, state) {
     const leftPct = ((leftMP / leftMaxMP) * 100).toFixed(0);
     const rightPct = ((rightMP / rightMaxMP) * 100).toFixed(0);
     
-    // Title line
-    content += `{bold}{cyan-fg}${front.id}{/cyan-fg}{/bold}\n`;
+    // Title line - add battle type indicator
+    let battleType = '';
+    if (front.isScourgeBattle) {
+      battleType = '{red-fg}[SCOURGE BATTLE]{/red-fg} ';
+    } else if (front.isInsurrectionBattle) {
+      battleType = '{yellow-fg}[INSURRECTION]{/yellow-fg} ';
+    }
+    content += `${battleType}{bold}{cyan-fg}${front.id}{/cyan-fg}{/bold}\n`;
     
     // Army names and morale status
     content += `{bold}${leftArmy.name}{/bold} [${leftBadge}]  vs  {bold}${rightArmy.name}{/bold} [${rightBadge}]\n`;
