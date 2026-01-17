@@ -14,7 +14,9 @@ export function createUI() {
   const screen = blessed.screen({
     smartCSR: true,
     title: 'Coalition: The Blessed Game',
-    fullUnicode: true
+    fullUnicode: true,
+    input: false, // Disable screen-level text input
+    output: true
   });
   
   const grid = new contrib.grid({
@@ -31,6 +33,8 @@ export function createUI() {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+    input: false, // Disable text input
+    keys: false, // Don't capture keys
     style: {
       border: { fg: 'cyan' }
     },
@@ -46,6 +50,8 @@ export function createUI() {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+    input: false, // Disable text input
+    keys: false, // Don't capture keys
     style: {
       border: { fg: 'magenta' }
     },
@@ -60,6 +66,8 @@ export function createUI() {
     label: ' Laws (Enter to enact) ',
     keys: true,
     vi: true,
+    input: false, // Disable text input - list navigation only
+    search: false, // Disable search mode
     style: {
       selected: { bg: 'blue', fg: 'white' },
       border: { fg: 'white' }
@@ -68,6 +76,23 @@ export function createUI() {
       type: 'line'
     }
   });
+  
+  // Ensure lawsBox never enters input or search mode
+  if (lawsBox) {
+    lawsBox.input = false;
+    lawsBox.search = false;
+    // Override any methods that might enable input/search
+    const originalOnKeyPress = lawsBox._onKeyPress;
+    if (originalOnKeyPress) {
+      lawsBox._onKeyPress = function(ch, key) {
+        // Prevent '/' from entering search mode
+        if (ch === '/' || key.name === 'slash') {
+          return;
+        }
+        return originalOnKeyPress.call(this, ch, key);
+      };
+    }
+  }
   
   // Center: Event box (row 3-5) and Log (row 5-12)
   const eventBox = grid.set(3, 3, 2, 6, blessed.box, {
@@ -125,6 +150,8 @@ export function createUI() {
     label: ' Stats ',
     content: '',
     tags: true,
+    input: false, // Disable text input
+    keys: false, // Don't capture keys
     style: {
       border: { fg: 'white' }
     },
@@ -139,6 +166,8 @@ export function createUI() {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+    input: false, // Disable text input
+    keys: false, // Don't capture keys
     style: {
       border: { fg: 'green' }
     },
@@ -153,6 +182,8 @@ export function createUI() {
     scrollable: true,
     alwaysScroll: true,
     tags: true,
+    input: false, // Disable text input
+    keys: false, // Don't capture keys
     style: {
       border: { fg: 'white' }
     },
@@ -190,6 +221,25 @@ export function createUI() {
   // Make logs window appear on top of everything
   screen.append(logsWindow);
   logsWindow.hide(); // Explicitly hide it
+  
+  // Ensure screen never enters input mode
+  screen.input = false;
+  
+  // Prevent any widget from enabling input mode when focused
+  const widgets = [lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, economyBox, tablesBox];
+  widgets.forEach(widget => {
+    if (widget) {
+      widget.input = false;
+      // Override focus to ensure input stays disabled
+      const originalFocus = widget.focus;
+      if (originalFocus) {
+        widget.focus = function() {
+          this.input = false;
+          return originalFocus.call(this);
+        };
+      }
+    }
+  });
   
   return {
     screen,

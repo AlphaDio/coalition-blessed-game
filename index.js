@@ -8,6 +8,14 @@ import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { initializeMarket, loadEconomyConfig } from './src/game/marketEconomy.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize game state
 const state = createGameState();
@@ -18,6 +26,31 @@ state.empires = content.empires;
 state.armies = content.armies;
 state.laws = content.laws;
 state.events = content.events;
+
+// Initialize economy system EARLY (before UI)
+try {
+  const config = loadEconomyConfig();
+  // Load resources
+  const resourcesPath = path.join(__dirname, 'docs', 'input', 'resources.yaml');
+  const resourcesContent = fs.readFileSync(resourcesPath, 'utf8');
+  const resourcesDoc = yaml.load(resourcesContent);
+  const commodities = resourcesDoc.resources?.commodities || [];
+  
+  // Initialize market
+  state.market = initializeMarket(commodities);
+  
+  // Initialize coalition economy
+  state.coalitionEconomy = {
+    budget_credits: config.coalition.procurement.budget_credits_per_tick * 10, // Start with 10 ticks worth
+    stockpiles: {},
+    per_commodity_priority: {}
+  };
+  
+  console.log(`Economy initialized: ${commodities.length} commodities, market ready`);
+} catch (error) {
+  console.warn(`Economy initialization failed: ${error.message}`);
+  // Continue without economy - will fall back to old supply system
+}
 
 // Initialize law enactment system
 state.lawDefinitions = getSampleLawDefinitions();

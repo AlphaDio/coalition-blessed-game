@@ -14,6 +14,34 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     }
   };
   
+  // Ensure screen doesn't accept text input (redundant but safe)
+  ui.screen.input = false;
+  
+  // Set up a periodic check to ensure input stays disabled
+  // This prevents any widget from accidentally enabling input mode
+  const ensureNoInputMode = () => {
+    ui.screen.input = false;
+    const widgets = [
+      ui.lawsBox, ui.eventBox, ui.logBox, ui.activeFrontsBox,
+      ui.activeLawsBox, ui.statsBox, ui.economyBox, ui.tablesBox
+    ];
+    widgets.forEach(widget => {
+      if (widget && widget.input !== false) {
+        widget.input = false;
+      }
+    });
+  };
+  
+  // Check periodically (every 100ms) to ensure input stays disabled
+  setInterval(ensureNoInputMode, 100);
+  
+  // Also check whenever screen renders
+  const originalRender = ui.screen.render;
+  ui.screen.render = function() {
+    ensureNoInputMode();
+    return originalRender.call(this);
+  };
+  
   // Global keybinds
   ui.screen.key(['q', 'C-c'], () => {
     return process.exit(0);
@@ -87,7 +115,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   // Helper function to handle event choice and resume game
   function handleEventChoiceAndResume(choiceIndex) {
     if (!state.activeEvent) {
-      return;
+      return false;
     }
     
     const result = handleEventChoice(state, state.activeEvent.id, choiceIndex);
@@ -97,81 +125,57 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       state.paused = false;
       ui.logBox.log('Game RESUMED');
       renderAll(ui, state);
+      return true; // Indicate we handled the key
     } else if (result.error) {
       ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
       renderAll(ui, state);
-    }
-  }
-  
-  // Event choice keys - bind to screen and eventBox to ensure they work
-  const handleEventKey = (choiceIndex) => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(choiceIndex);
-      return true; // Prevent default behavior
+      return true; // Still handled, even if error
     }
     return false;
-  };
+  }
   
   // Bind to screen (global) - highest priority
-  ui.screen.key(['1'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(0);
-      return; // Prevent event propagation
+  // Screen-level handlers should work regardless of widget focus
+  ui.screen.key(['1'], (ch, key) => {
+    if (state.activeEvent && handleEventChoiceAndResume(0)) {
+      // Key was handled, prevent further processing
+      return;
     }
   });
-  ui.screen.key(['2'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(1);
-      return; // Prevent event propagation
+  ui.screen.key(['2'], (ch, key) => {
+    if (state.activeEvent && handleEventChoiceAndResume(1)) {
+      return;
     }
   });
-  ui.screen.key(['3'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(2);
-      return; // Prevent event propagation
-    }
-  });
-  
-  // Also bind to eventBox to ensure keys work when it has focus
-  ui.eventBox.key(['1'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(0);
-    }
-  });
-  ui.eventBox.key(['2'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(1);
-    }
-  });
-  ui.eventBox.key(['3'], () => {
-    if (state.activeEvent) {
-      handleEventChoiceAndResume(2);
+  ui.screen.key(['3'], (ch, key) => {
+    if (state.activeEvent && handleEventChoiceAndResume(2)) {
+      return;
     }
   });
   
   // Bind to all widgets that might capture keys to prevent input capture
   // This ensures event choice keys work regardless of which widget has focus
   const bindEventKeysToWidget = (widget) => {
-    if (widget) {
-      widget.key(['1'], () => {
-        if (state.activeEvent) {
-          handleEventChoiceAndResume(0);
-          return; // Prevent default widget behavior
-        }
-      });
-      widget.key(['2'], () => {
-        if (state.activeEvent) {
-          handleEventChoiceAndResume(1);
-          return; // Prevent default widget behavior
-        }
-      });
-      widget.key(['3'], () => {
-        if (state.activeEvent) {
-          handleEventChoiceAndResume(2);
-          return; // Prevent default widget behavior
-        }
-      });
-    }
+    if (!widget) return;
+    
+    // Override widget's key handling to check for active events first
+    widget.key(['1'], (ch, key) => {
+      if (state.activeEvent && handleEventChoiceAndResume(0)) {
+        // Event was handled, prevent widget from processing the key
+        return;
+      }
+      // Otherwise allow widget to process normally
+    });
+    widget.key(['2'], (ch, key) => {
+      if (state.activeEvent && handleEventChoiceAndResume(1)) {
+        return;
+      }
+    });
+    widget.key(['3'], (ch, key) => {
+      if (state.activeEvent && handleEventChoiceAndResume(2)) {
+        return;
+      }
+    });
   };
   
   // Bind to all widgets that might have focus
@@ -181,13 +185,23 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   bindEventKeysToWidget(ui.activeFrontsBox);
   bindEventKeysToWidget(ui.activeLawsBox);
   bindEventKeysToWidget(ui.statsBox);
+  bindEventKeysToWidget(ui.economyBox);
   bindEventKeysToWidget(ui.tablesBox);
   
   // Laws box - disable number keys when event is active
+  // Note: This is handled by bindEventKeysToWidget above, but we keep this
+  // as an extra safeguard to prevent list navigation during events
   ui.lawsBox.key(['1', '2', '3'], (ch, key) => {
     if (state.activeEvent) {
       // Event choice keys are handled above, prevent list from processing them
-      return;
+      // Try to handle the event choice
+      const keyNum = parseInt(ch);
+      if (keyNum >= 1 && keyNum <= 3) {
+        if (handleEventChoiceAndResume(keyNum - 1)) {
+          return; // Event handled, don't process as list navigation
+        }
+      }
+      return; // Event active, don't allow list navigation
     }
     // Allow normal list behavior when no event is active
   });
