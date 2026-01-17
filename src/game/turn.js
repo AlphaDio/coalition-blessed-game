@@ -140,11 +140,22 @@ export function advanceTurn(state, rng = Math.random) {
   if (activeScourgeBattles.length === 0) {
     const battleRoll = rng();
     if (battleRoll < battleChance && state.armies.length > 0) {
-      // Filter out temporary armies (Scourge and combined coalition armies)
+      // Get all rebellious army IDs from active insurrections
+      const rebelliousArmyIds = new Set();
+      if (state.insurrections && Array.isArray(state.insurrections)) {
+        state.insurrections.forEach(insurrection => {
+          if (insurrection && insurrection.active && insurrection.armies) {
+            insurrection.armies.forEach(armyId => rebelliousArmyIds.add(armyId));
+          }
+        });
+      }
+      
+      // Filter out temporary armies and rebellious armies
       const participatingArmies = state.armies.filter(a => 
         a.organization > 30 && 
         !a.id.startsWith('_scourge') && 
-        !a.id.startsWith('_coalition_combined')
+        !a.id.startsWith('_coalition_combined') &&
+        !rebelliousArmyIds.has(a.id) // Exclude armies in insurrection
       );
       logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
       logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);

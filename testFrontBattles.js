@@ -80,9 +80,9 @@ function testMoraleRefillsAfterBattle() {
   army2.mp.max = 500;
   army2.mo.current = 50; // Partially damaged morale
   
-  // Disable reinforcement to ensure battle actually ends
+  // Disable reinforcement and recovery to ensure battle actually ends
   army2.reinforcementRate = 0;
-  army2.recoveryRate = 0;
+  army2.recovery = 0;
   
   // Make army1 strong enough to win
   army1.dmgPerUnitMP = 50;
@@ -173,7 +173,7 @@ function testKillRatePermanentLosses() {
   army2.dmgPerUnitMP = 0;
   
   // Disable recovery and reinforcement to get clean measurements
-  army2.recoveryRate = 0;
+  army2.recovery = 0;
   army2.reinforcementRate = 0;
   
   const front = startBattle(state, 'army1', 'army2', 1000);
@@ -213,8 +213,8 @@ function testRecoveryPool() {
   const army1 = state.armies[0];
   const army2 = state.armies[1];
   
-  // Set army2's recovery rate LOW so pool accumulates
-  army2.recoveryRate = 100; // Only recover 100 per tick
+  // Set army2's recovery stat LOW so pool accumulates
+  army2.recovery = 10; // Low recovery - only recover ~100 per tick with org modifier
   army2.reinforcementRate = 0; // Disable reinforcement for this test
   
   // Disable army2's attack
