@@ -1,0 +1,173 @@
+economy_system:
+  version: "0.1"
+  includes:
+    resources_file: "resources.yaml" # your starting list (tiers + commodities)
+
+  time:
+    tick_unit: "day"
+    ticks_per_turn: 1
+
+  entities:
+    empire:
+      fields:
+        - id
+        - name
+        - budget_credits
+        - production: { outputs_per_tick: {} } # commodity_key -> qty
+        - needs: { per_pop: {} }              # commodity_key -> qty per population per tick
+        - allocation:
+            # how much of NON-need purchases get routed to armies (0..1), can be derived from politics/laws
+            surplus_to_armies_ratio: 0.35
+            # optional: direct army-focused purchasing bias (0..1)
+            military_procurement_bias: 0.15
+        - stockpiles: {}                       # commodity_key -> qty
+        - population: 0
+        - tags: []                             # e.g. hive_mind, warped, biologic
+    army:
+      fields:
+        - id
+        - name
+        - manpower: 0
+        - owner_empire_id
+        - performance:
+            base: 1.0
+            current: 1.0
+        - supply_state:
+            # computed each tick from fills
+            needs_fulfillment: {}              # commodity_key -> 0..1
+            wants_fulfillment: {}              # commodity_key -> 0..1
+            shortages: {}                      # commodity_key -> unmet qty
+        - demands:
+            needs: {}                          # commodity_key -> qty_per_manpower_per_tick
+            wants: {}                          # commodity_key -> qty_per_manpower_per_tick
+
+  market:
+    goods:
+      # market state is per commodity
+      state_fields:
+        - price
+        - last_price
+        - demand_qty
+        - supply_qty
+        - traded_qty
+        - volatility_index
+
+    order_book:
+      buy_order:
+        fields: [id, owner_type, owner_id, commodity, qty, max_price, priority]
+      sell_offer:
+        fields: [id, owner_type, owner_id, commodity, qty, ask_price, priority]
+
+    clearing:
+      cadence: "every_tick"
+      trade_pricing: "single_clearing_price"   # simpler macro model
+      matching:
+        # when supply < demand, allocate fills to buyers pro-rata by qty unless priority overrides exist
+        shortage_allocation: "pro_rata"
+        surplus_allocation: "fill_all_buys_then_remainder_to_seller_stockpile"
+      priorities:
+        # optional, keep default neutral unless you want policies later
+        buyer_priority_order: [coalition, empire, army]
+        seller_priority_order: [empire]
+
+  pricing:
+    model: "supply_demand_pressure"
+    params:
+      # price reacts to demand/supply ratio, then is smoothed over time
+      # (implementation detail left to code; these are tuning knobs)
+      min_price: 0.01
+      max_price: 1000000
+      smoothing_k: 0.25           # lerp(last_price, target_price, k)
+      shortage_panic_cap: 4.0     # clamps extreme ratios per tick
+    tier_elasticity:
+      # higher elasticity => price moves more for the same imbalance
+      t1: 0.6
+      t2: 1.0
+      t3: 1.6
+      t4: 2.4
+
+  coalition:
+    procurement:
+      enabled: true
+      budget_credits_per_tick: 5000
+      stockpiles: {} # commodity_key -> qty
+
+      # Player-set priority per good chooses the threshold factor (theta).
+      # Coalition buys sell offers if ask_price <= market_price * theta.
+      stockpile_priority_levels:
+        "-90%": { theta: 0.10 }
+        "-50%": { theta: 0.50 }
+        "-10%": { theta: 0.90 }
+        "10%":  { theta: 1.10 }
+        "50%":  { theta: 1.50 }
+        "90%":  { theta: 1.90 }
+
+      # default per tier (can be overridden per commodity)
+      default_priority_by_tier:
+        t1: "-10%"
+        t2: "10%"
+        t3: "50%"
+        t4: "90%"
+
+      per_commodity_priority: {} # commodity_key -> one of the keys above
+
+  stockpiles:
+    rules:
+      # Empires:
+      empire_leftovers_to_stockpile: true
+      # Optional controls to prevent hoarding meta:
+      storage_cost_enabled: false
+      decay_enabled: false
+    decay:
+      # commodity_key -> pct lost per tick (only used if decay_enabled)
+      rates: {}
+
+  demand_generation:
+    empire_buys:
+      # Empire emits buy orders for its own needs first; then optional surplus buys to feed armies.
+      needs_first: true
+      allow_surplus_buys_for_armies: true
+
+    army_buys:
+      # Army total demand = manpower * (needs + wants)
+      use_empire_distribution_first: true # empires may satisfy armies from their stockpile before market buys
+
+  fulfillment_and_performance:
+    # Convert fulfillment to performance impact (bounded, diminishing returns recommended)
+    needs:
+      threshold: 0.80           # below this, penalties kick in
+      penalty_curve: "step_then_scale" # implement: harsh below threshold, mild above
+      max_penalty: 0.35         # e.g. -35% performance
+    wants:
+      bonus_curve: "diminishing_returns"
+      max_bonus: 0.20           # e.g. +20% performance
+
+  tick_pipeline:
+    steps:
+      - id: compute_empire_production
+        description: "Empires add production outputs to sell offers (or stockpile, depending on policy)."
+      - id: emit_buy_orders_empire_needs
+        description: "Empires create buy orders for their own needs."
+      - id: emit_buy_orders_army_needs_wants
+        description: "Armies create buy orders from manpower-scaled needs+wants (unless fulfilled by empire distribution)."
+      - id: compute_market_target_price
+        description: "Aggregate demand/supply per good, compute target price, apply smoothing and clamps."
+      - id: coalition_procurement_pass
+        description: "Coalition buys qualifying sell offers under threshold factor, constrained by budget."
+      - id: market_clear
+        description: "Clear remaining buys vs sells at single clearing price; allocate fills pro-rata on shortages."
+      - id: apply_leftovers_to_stockpiles
+        description: "Unfilled sell quantities go to seller stockpiles; optional decay/storage costs."
+      - id: distribute_empire_surplus_to_armies
+        description: "Empires route a share of surplus goods to armies based on surplus_to_armies_ratio."
+      - id: compute_army_fulfillment_and_performance
+        description: "Compute fulfillment ratios, shortages, and update army performance multipliers."
+
+  serialization:
+    # what you need to persist
+    persist:
+      market_state: true
+      coalition_stockpiles: true
+      empire_stockpiles: true
+      orders: false # usually ephemeral per tick unless debugging
+      army_supply_state: true

@@ -1,14 +1,6 @@
 // Action creators and validation
 import { clamp } from './utils/math.js';
 
-export function allocateWarFunds(armyId, percentage) {
-  return {
-    type: 'ALLOCATE_WAR_FUNDS',
-    armyId,
-    percentage: clamp(percentage, 0, 100)
-  };
-}
-
 export function enactLaw(lawId) {
   return {
     type: 'ENACT_LAW',
@@ -27,11 +19,6 @@ export function advanceTurn() {
   return {
     type: 'ADVANCE_TURN'
   };
-}
-
-export function validateWarFundsAllocation(state, allocations) {
-  const total = Object.values(allocations).reduce((sum, pct) => sum + pct, 0);
-  return Math.abs(total - 100) < 0.01; // Allow small floating point errors
 }
 
 export function getAvailableLaws(state) {

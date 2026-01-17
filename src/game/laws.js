@@ -45,8 +45,7 @@ export function enactLaw(state, lawId) {
     state.armies.forEach(army => {
       if (law.effects.armyOrgConversion.empireIds?.includes(army.empireId) || !law.effects.armyOrgConversion.empireIds) {
         const multiplier = law.effects.armyOrgConversion.multiplier || 1.0;
-        // This affects how war funds convert to org (handled in economy)
-        // For now, just apply a direct org boost if specified
+        // Apply a direct org boost if specified
         if (law.effects.armyOrgConversion.directBoost) {
           army.organization = clampStat(army.organization + law.effects.armyOrgConversion.directBoost);
         }

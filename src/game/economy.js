@@ -3,42 +3,7 @@ import { clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
 /**
- * Applies war fund allocations to armies, affecting organization and aggravation
- * @param {Object} state - The game state
- * @param {Object} allocations - Map of army IDs to percentage allocations (0-100)
- * @returns {Object} { success: boolean } or { error: string }
- */
-export function applyWarFundAllocation(state, allocations) {
-  // allocations: { armyId: percentage }
-  const total = Object.values(allocations).reduce((sum, p) => sum + p, 0);
-  if (Math.abs(total - 100) > 0.1) {
-    return { error: 'Allocations must sum to 100%' };
-  }
-  
-  // Update army shares
-  state.armies.forEach(army => {
-    const share = allocations[army.id] || 0;
-    army.warFundShare = share;
-    
-    // Apply share effects
-    if (share > 0) {
-      const orgGain = share * ECONOMY_CONSTANTS.ORG_PER_PERCENT_SHARE;
-      army.organization = clampStat(army.organization + orgGain);
-      
-      const aggravationReduction = share * ECONOMY_CONSTANTS.AGGRAVATION_REDUCTION_PER_PERCENT;
-      army.aggravation = clampStat(army.aggravation - aggravationReduction);
-    } else {
-      // Underfunded
-      army.organization = clampStat(army.organization - ECONOMY_CONSTANTS.UNDERFUNDED_ORG_DECAY);
-      army.aggravation = clampStat(army.aggravation + ECONOMY_CONSTANTS.UNDERFUNDED_AGGRAVATION_INCREASE);
-    }
-  });
-  
-  return { success: true };
-}
-
-/**
- * Consumes supplies based on army needs and war fund allocations
+ * Consumes supplies based on army needs
  * Applies penalties if supplies are insufficient
  * @param {Object} state - The game state
  * @returns {Object} { log: string[] } - Log messages
@@ -49,8 +14,7 @@ export function consumeSupplies(state) {
   let totalNeeded = 0;
   
   state.armies.forEach(army => {
-    const needed = army.supplyNeed * (army.warFundShare / 100);
-    totalNeeded += needed;
+    totalNeeded += army.supplyNeed;
   });
   
   logger.debug(`Supply consumption: needed=${totalNeeded.toFixed(1)}, available=${state.stockpiles.supplies}`);
@@ -65,8 +29,7 @@ export function consumeSupplies(state) {
     state.stockpiles.supplies = 0;
     
     state.armies.forEach(army => {
-      const needed = army.supplyNeed * (army.warFundShare / 100);
-      if (needed > 0) {
+      if (army.supplyNeed > 0) {
         const shortageRatio = shortage / totalNeeded;
         army.organization = clampStat(army.organization - ECONOMY_CONSTANTS.SUPPLY_SHORTAGE_ORG_PENALTY * shortageRatio);
         army.aggravation = clampStat(army.aggravation + ECONOMY_CONSTANTS.SUPPLY_SHORTAGE_AGGRAVATION_INCREASE * shortageRatio);

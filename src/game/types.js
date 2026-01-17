@@ -16,7 +16,20 @@ export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, 
     modifiers: {
       intensity: modifiers.intensity || 1.0,
       axis_gates: modifiers.axis_gates || {}
-    }
+    },
+    // Economy fields
+    budget_credits: stats.budget_credits || 10000,
+    production: {
+      outputs_per_tick: stats.production?.outputs_per_tick || {}
+    },
+    needs: {
+      per_pop: stats.needs?.per_pop || {}
+    },
+    allocation: {
+      surplus_to_armies_ratio: stats.allocation?.surplus_to_armies_ratio || 0.35,
+      military_procurement_bias: stats.allocation?.military_procurement_bias || 0.15
+    },
+    stockpiles: stats.stockpiles || {}
   };
 }
 
@@ -29,7 +42,24 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     organization: initialOrg,
     supplyNeed,
     aggravation: 0,
-    warFundShare: 0,
+    
+    // Economy fields
+    manpower: supplyNeed * 100, // Convert supplyNeed to approximate manpower
+    owner_empire_id: empireId,
+    performance: {
+      base: 1.0,
+      current: 1.0
+    },
+    supply_state: {
+      needs_fulfillment: {},
+      wants_fulfillment: {},
+      shortages: {},
+      received: {} // Track received commodities this tick
+    },
+    demands: {
+      needs: {}, // commodity_key -> qty_per_manpower_per_tick
+      wants: {} // commodity_key -> qty_per_manpower_per_tick
+    },
     
     // MP and MO pools for Front Battles
     mp: {
@@ -246,10 +276,9 @@ export function createGameState() {
     activeEvent: null,
     turn: 1,
     log: [],
-    pendingWarFundAllocation: null,
     selectedLawIndex: 0,
     selectedArmyIndex: 0,
-    focus: 'main', // 'main', 'laws', 'warfunds', 'event'
+    focus: 'main', // 'main', 'laws', 'event'
     paused: false, // Real-time game pause state
     gameSpeed: 1, // Game speed multiplier (0.5 = slow, 1 = normal, 2 = fast)
     
@@ -258,6 +287,10 @@ export function createGameState() {
     influenceProgress: 0, // Progress toward next influence point (0..100 ticks)
     lawDefinitions: [], // Available law definitions
     lawProcesses: [], // In-flight law processes
-    powerSystemPolicy: null // Current voting power system
+    powerSystemPolicy: null, // Current voting power system
+    
+    // Market economy system
+    market: null, // Market state per commodity (initialized on first economy tick)
+    coalitionEconomy: null // Coalition procurement and stockpiles (initialized on first economy tick)
   };
 }

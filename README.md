@@ -23,12 +23,10 @@ yarn start
 - **Q** - Quit game
 - **Enter** - Enact selected law / Open context action
 - **1/2/3** - Choose event option (when event is active)
-- **+/-** - Adjust war fund allocation (when war funds panel is focused)
-- **C** - Confirm war fund allocation
 
 ## Game Overview
 
-You manage a coalition of empires fighting against the Scourge in **real-time**. The game advances automatically, but you can pause at any time to make decisions. Balance war fund allocation, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
+You manage a coalition of empires fighting against the Scourge in **real-time**. The game advances automatically, but you can pause at any time to make decisions. Manage supplies, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
 
 ### Real-Time Gameplay
 
@@ -43,7 +41,7 @@ You manage a coalition of empires fighting against the Scourge in **real-time**.
 - **Coalition Cohesion** (0-100): Game over if it reaches 0. Three tiers: Stable (67-100), Strained (34-66), Desperate (1-33)
 - **Scourge Cohesion** (0-100): Victory condition - reduce to 0
 - **Scourge Fervor**: Increases each turn, making Scourge battles harder
-- **War Funds**: Allocate percentages across armies to boost Organization and reduce Aggravation
+- **Supplies**: Manage supply stockpiles to keep armies operational. Shortages reduce Organization and increase Aggravation
 - **Laws**: Enact policies to modify empire approval, army effectiveness, and resource generation
 - **Events**: Random events with choices that affect various game metrics
 - **Battles**: External (vs Scourge) and internal (vs Insurrections)
@@ -62,7 +60,7 @@ src/
     types.js     # Game state types and initializers
     cohesion.js  # Cohesion tier calculations
     battles.js   # Battle resolution
-    economy.js   # War funds and supply management
+    economy.js   # Supply management
     insurrection.js # Insurrection spawning
     laws.js      # Law enactment
     events.js    # Event handling

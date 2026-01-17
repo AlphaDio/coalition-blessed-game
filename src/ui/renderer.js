@@ -2,6 +2,13 @@ import blessed from 'blessed';
 import contrib from 'blessed-contrib';
 import { getCohesionTier } from '../game/cohesion.js';
 import { formatNumber, formatCohesion, formatResource } from './formatters.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function createUI() {
   const screen = blessed.screen({
@@ -48,26 +55,13 @@ export function createUI() {
   });
   
   // SECONDARY PANELS (rows 3-7)
-  // Left column: Available Laws (row 3-7) and War Funds (row 7-11)
-  const lawsBox = grid.set(3, 0, 4, 3, blessed.list, {
+  // Left column: Available Laws (row 3-11)
+  const lawsBox = grid.set(3, 0, 8, 3, blessed.list, {
     label: ' Laws (Enter to enact) ',
     keys: true,
     vi: true,
     style: {
       selected: { bg: 'blue', fg: 'white' },
-      border: { fg: 'white' }
-    },
-    border: {
-      type: 'line'
-    }
-  });
-  
-  const warFundsBox = grid.set(7, 0, 5, 3, blessed.list, {
-    label: ' War Funds Allocation ',
-    keys: true,
-    vi: true,
-    style: {
-      selected: { bg: 'green', fg: 'white' },
       border: { fg: 'white' }
     },
     border: {
@@ -126,8 +120,8 @@ export function createUI() {
     this.setScrollPerc(100); // Auto-scroll to bottom
   };
   
-  // Right: Stats (row 3-6) and Tables (row 6-12)
-  const statsBox = grid.set(3, 9, 3, 3, blessed.box, {
+  // Right: Stats (row 3-5), Economy (row 5-8), and Tables (row 8-12)
+  const statsBox = grid.set(3, 9, 2, 3, blessed.box, {
     label: ' Stats ',
     content: '',
     tags: true,
@@ -139,7 +133,21 @@ export function createUI() {
     }
   });
   
-  const tablesBox = grid.set(6, 9, 6, 3, blessed.box, {
+  const economyBox = grid.set(5, 9, 3, 3, blessed.box, {
+    label: ' 💰 Market Economy ',
+    content: '',
+    scrollable: true,
+    alwaysScroll: true,
+    tags: true,
+    style: {
+      border: { fg: 'green' }
+    },
+    border: {
+      type: 'line'
+    }
+  });
+  
+  const tablesBox = grid.set(8, 9, 4, 3, blessed.box, {
     label: ' Tables ',
     content: '',
     scrollable: true,
@@ -186,12 +194,12 @@ export function createUI() {
   return {
     screen,
     lawsBox,
-    warFundsBox,
     eventBox,
     activeFrontsBox,
     activeLawsBox,
     logBox,
     statsBox,
+    economyBox,
     tablesBox,
     logsWindow
   };
@@ -224,24 +232,6 @@ export function renderLaws(ui, state) {
     ui.lawsBox.focus();
   } else {
     ui.lawsBox.style.border.fg = 'white';
-  }
-}
-
-export function renderWarFunds(ui, state) {
-  const items = state.armies.map((army, idx) => {
-    const marker = idx === state.selectedArmyIndex ? '> ' : '  ';
-    const share = army.warFundShare.toFixed(1);
-    return `${marker}${army.name}: ${share}%`;
-  });
-  
-  ui.warFundsBox.setItems(items);
-  
-  // Update border color based on focus
-  if (state.focus === 'warfunds') {
-    ui.warFundsBox.style.border.fg = 'yellow';
-    ui.warFundsBox.focus();
-  } else {
-    ui.warFundsBox.style.border.fg = 'white';
   }
 }
 
@@ -546,13 +536,124 @@ export function renderLogsWindow(ui, logger) {
 }
 
 
+export function renderEconomy(ui, state) {
+  if (!state.market || Object.keys(state.market).length === 0) {
+    ui.economyBox.setContent('{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}');
+    ui.economyBox.style.border.fg = 'green';
+    return;
+  }
+  
+  // Load resources to get commodity names
+  let commodities = [];
+  try {
+    const resourcesPath = path.join(__dirname, '..', '..', 'docs', 'input', 'resources.yaml');
+    const content = fs.readFileSync(resourcesPath, 'utf8');
+    const doc = yaml.load(content);
+    commodities = doc.resources?.commodities || [];
+  } catch (error) {
+    // Fallback: use market keys
+    commodities = Object.keys(state.market).map(key => ({ key, name: key }));
+  }
+  
+  // Create a map for quick lookup
+  const commodityMap = new Map(commodities.map(c => [c.key, c]));
+  
+  let content = '';
+  
+  // Sort commodities by tier (t1, t2, t3, t4) then by name
+  const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
+  const sortedCommodities = Object.entries(state.market)
+    .map(([key, marketState]) => {
+      const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
+      return { key, commodity, marketState };
+    })
+    .sort((a, b) => {
+      const tierDiff = (tierOrder[a.commodity.tier] || 5) - (tierOrder[b.commodity.tier] || 5);
+      if (tierDiff !== 0) return tierDiff;
+      return a.commodity.name.localeCompare(b.commodity.name);
+    });
+  
+  // Header
+  content += '{bold}{green-fg}Commodity{/green-fg}  {cyan-fg}Price{/cyan-fg}  {yellow-fg}Buy{/yellow-fg}  {red-fg}Sell{/red-fg}  {magenta-fg}Vol{/magenta-fg}{/bold}\n';
+  content += '─'.repeat(45) + '\n';
+  
+  // Display each commodity
+  sortedCommodities.forEach(({ key, commodity, marketState }) => {
+    const name = commodity.name || key;
+    const price = marketState.price || 0;
+    const demand = marketState.demand_qty || 0;
+    const supply = marketState.supply_qty || 0;
+    const traded = marketState.traded_qty || 0;
+    
+    // Truncate name if too long
+    const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
+    const namePad = ' '.repeat(Math.max(0, 12 - displayName.length));
+    
+    // Format numbers
+    const priceStr = price.toFixed(2).padStart(6);
+    const demandStr = formatVolume(demand).padStart(6);
+    const supplyStr = formatVolume(supply).padStart(6);
+    const tradedStr = formatVolume(traded).padStart(6);
+    
+    // Color coding for price changes
+    let priceColor = 'cyan';
+    if (marketState.last_price) {
+      const change = price - marketState.last_price;
+      const changePct = marketState.last_price > 0 ? (change / marketState.last_price) * 100 : 0;
+      if (changePct > 5) priceColor = 'red'; // Significant increase
+      else if (changePct < -5) priceColor = 'green'; // Significant decrease
+    }
+    
+    // Color coding for supply/demand imbalance
+    let demandColor = 'yellow';
+    let supplyColor = 'red';
+    if (supply > 0 && demand > 0) {
+      const ratio = demand / supply;
+      if (ratio > 1.5) {
+        demandColor = 'red'; // High demand
+        supplyColor = 'yellow';
+      } else if (ratio < 0.67) {
+        demandColor = 'yellow';
+        supplyColor = 'green'; // High supply
+      }
+    }
+    
+    content += `${displayName}${namePad} {${priceColor}-fg}${priceStr}{/${priceColor}-fg}  `;
+    content += `{${demandColor}-fg}${demandStr}{/${demandColor}-fg}  `;
+    content += `{${supplyColor}-fg}${supplyStr}{/${supplyColor}-fg}  `;
+    content += `{magenta-fg}${tradedStr}{/magenta-fg}\n`;
+  });
+  
+  // Show coalition economy info if available
+  if (state.coalitionEconomy) {
+    content += '\n{bold}Coalition:{/bold}\n';
+    content += `Budget: {green-fg}${formatNumber(state.coalitionEconomy.budget_credits || 0, 0)}{/green-fg} credits\n`;
+    
+    const stockpileCount = Object.keys(state.coalitionEconomy.stockpiles || {}).length;
+    if (stockpileCount > 0) {
+      content += `Stockpiles: {cyan-fg}${stockpileCount}{/cyan-fg} commodities\n`;
+    }
+  }
+  
+  ui.economyBox.setContent(content);
+  ui.economyBox.style.border.fg = 'green';
+}
+
+function formatVolume(volume) {
+  if (volume === 0) return '0';
+  if (volume < 1) return volume.toFixed(2);
+  if (volume < 1000) return volume.toFixed(0);
+  if (volume < 1000000) return (volume / 1000).toFixed(1) + 'K';
+  return (volume / 1000000).toFixed(1) + 'M';
+}
+
 export function renderAll(ui, state) {
   renderActiveFronts(ui, state);
   renderActiveLaws(ui, state);
   renderLaws(ui, state);
-  renderWarFunds(ui, state);
   renderEvent(ui, state);
   renderStats(ui, state);
+  renderEconomy(ui, state);
   renderTables(ui, state);
   renderLog(ui, state);
   ui.screen.render();

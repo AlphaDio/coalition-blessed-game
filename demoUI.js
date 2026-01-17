@@ -4,7 +4,6 @@ import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { setupInputHandlers } from './src/ui/input.js';
-import { applyWarFundAllocation } from './src/game/economy.js';
 import { advanceTurn } from './src/game/turn.js';
 import { REALTIME_CONSTANTS } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
@@ -39,19 +38,6 @@ state.powerSystemPolicy = createPowerSystemPolicy(
 state.playerInfluence = 300; // Give player enough influence
 state.influenceProgress = 0;
 state.lawProcesses = [];
-
-// Initialize war fund allocation (equal shares)
-const equalShare = 100 / state.armies.length;
-state.armies.forEach(army => {
-  army.warFundShare = equalShare;
-});
-
-// Apply initial allocation
-const initialAllocations = {};
-state.armies.forEach(army => {
-  initialAllocations[army.id] = army.warFundShare;
-});
-applyWarFundAllocation(state, initialAllocations);
 
 // Initialize UI
 const ui = createUI();

@@ -1,8 +1,7 @@
-import { applyWarFundAllocation } from '../game/economy.js';
 import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
 import { advanceTurn } from '../game/turn.js';
-import { renderAll, renderLaws, renderWarFunds, renderLogsWindow } from './renderer.js';
+import { renderAll, renderLaws, renderLogsWindow } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
@@ -79,7 +78,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   });
   
   ui.screen.key(['tab'], () => {
-    const focuses = ['main', 'laws', 'warfunds'];
+    const focuses = ['main', 'laws'];
     const currentIdx = focuses.indexOf(state.focus);
     state.focus = focuses[(currentIdx + 1) % focuses.length];
     renderAll(ui, state);
@@ -178,7 +177,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   // Bind to all widgets that might have focus
   bindEventKeysToWidget(ui.logBox);
   bindEventKeysToWidget(ui.lawsBox);
-  bindEventKeysToWidget(ui.warFundsBox);
   bindEventKeysToWidget(ui.eventBox);
   bindEventKeysToWidget(ui.activeFrontsBox);
   bindEventKeysToWidget(ui.activeLawsBox);
@@ -240,75 +238,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
           ui.logBox.log(`Error: ${result.error}`);
           renderAll(ui, state);
         }
-      }
-    }
-  });
-  
-  // War Funds box - disable number keys when event is active
-  ui.warFundsBox.key(['1', '2', '3'], (ch, key) => {
-    if (state.activeEvent) {
-      // Event choice keys are handled above, prevent list from processing them
-      return;
-    }
-    // Allow normal list behavior when no event is active
-  });
-  
-  ui.warFundsBox.key(['up'], () => {
-    if (state.selectedArmyIndex > 0) {
-      state.selectedArmyIndex--;
-      renderWarFunds(ui, state);
-    }
-  });
-  
-  ui.warFundsBox.key(['down'], () => {
-    if (state.selectedArmyIndex < state.armies.length - 1) {
-      state.selectedArmyIndex++;
-      renderWarFunds(ui, state);
-    }
-  });
-  
-  ui.warFundsBox.key(['enter'], () => {
-    // Toggle war fund allocation mode
-    // For simplicity, we'll use +/- keys to adjust
-    ui.logBox.log('Use +/- to adjust allocation, Enter to confirm');
-    renderAll(ui, state);
-  });
-  
-  ui.warFundsBox.key(['+', '='], () => {
-    if (state.armies[state.selectedArmyIndex]) {
-      const army = state.armies[state.selectedArmyIndex];
-      const currentTotal = state.armies.reduce((sum, a) => sum + a.warFundShare, 0);
-      const available = 100 - (currentTotal - army.warFundShare);
-      if (available > 0) {
-        army.warFundShare = Math.min(100, army.warFundShare + 5);
-        renderWarFunds(ui, state);
-      }
-    }
-  });
-  
-  ui.warFundsBox.key(['-', '_'], () => {
-    if (state.armies[state.selectedArmyIndex]) {
-      const army = state.armies[state.selectedArmyIndex];
-      army.warFundShare = Math.max(0, army.warFundShare - 5);
-      renderWarFunds(ui, state);
-    }
-  });
-  
-  // Confirm war fund allocation
-  ui.screen.key(['c'], () => {
-    if (state.focus === 'warfunds') {
-      const allocations = {};
-      state.armies.forEach(army => {
-        allocations[army.id] = army.warFundShare;
-      });
-      
-      const result = applyWarFundAllocation(state, allocations);
-      if (result.success) {
-        ui.logBox.log('War funds allocated!');
-        renderAll(ui, state);
-      } else if (result.error) {
-        ui.logBox.log(`Error: ${result.error}`);
-        renderAll(ui, state);
       }
     }
   });

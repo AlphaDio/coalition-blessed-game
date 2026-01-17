@@ -14,7 +14,6 @@ import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 import { startLawProcess } from './src/game/lawProcessManager.js';
-import { applyWarFundAllocation } from './src/game/economy.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 
 // Initialize logger to suppress console output during tests
@@ -124,18 +123,6 @@ function createTestState(seed = 12345) {
   state.playerInfluence = 200;
   state.influenceProgress = 0;
   state.lawProcesses = [];
-  
-  // Set up war fund allocation
-  const equalShare = 100 / state.armies.length;
-  state.armies.forEach(army => {
-    army.warFundShare = equalShare;
-  });
-  
-  const initialAllocations = {};
-  state.armies.forEach(army => {
-    initialAllocations[army.id] = army.warFundShare;
-  });
-  applyWarFundAllocation(state, initialAllocations);
   
   return state;
 }

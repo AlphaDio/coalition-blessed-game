@@ -2,7 +2,6 @@ import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { setupInputHandlers } from './src/ui/input.js';
-import { applyWarFundAllocation } from './src/game/economy.js';
 import { advanceTurn } from './src/game/turn.js';
 import { REALTIME_CONSTANTS } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
@@ -36,19 +35,6 @@ state.powerSystemPolicy = createPowerSystemPolicy(
 state.playerInfluence = 100; // Start with 100 influence to allow immediate law enactment
 state.influenceProgress = 0;
 state.lawProcesses = [];
-
-// Initialize war fund allocation (equal shares)
-const equalShare = 100 / state.armies.length;
-state.armies.forEach(army => {
-  army.warFundShare = equalShare;
-});
-
-// Apply initial allocation
-const initialAllocations = {};
-state.armies.forEach(army => {
-  initialAllocations[army.id] = army.warFundShare;
-});
-applyWarFundAllocation(state, initialAllocations);
 
 // Initialize UI
 const ui = createUI();
@@ -147,7 +133,7 @@ logger.info('Welcome to Coalition: The Blessed Game!');
 logger.info('REAL-TIME MODE: Game advances automatically');
 logger.info('Press SPACE to pause/unpause, Q to quit');
 logger.info('Press [ and ] to adjust game speed');
-logger.info('Use TAB to cycle focus, +/- to adjust war funds, C to confirm');
+logger.info('Use TAB to cycle focus between panels');
 logger.info('Press 1/2/3 to choose event options');
 logger.info('Press L to view detailed logs window');
 logger.info('');

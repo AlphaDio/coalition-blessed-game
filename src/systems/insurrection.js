@@ -7,18 +7,8 @@ export const AGGRAVATION_DECAY = 2; // Per turn if well-funded
 export const AGGRAVATION_INCREASE_UNDERFUNDED = 3; // Per turn if underfunded
 
 export function updateAggravation(state) {
-  state.armies.forEach(army => {
-    const allocation = state.warFunds.allocations[army.id] || 0;
-    const expectedShare = 100 / state.armies.length; // Fair share
-    const isUnderfunded = allocation < expectedShare * 0.7; // 30% below fair share
-
-    if (isUnderfunded) {
-      army.aggravation = clamp(army.aggravation + AGGRAVATION_INCREASE_UNDERFUNDED, 0, 100);
-    } else if (allocation > expectedShare * 1.2) {
-      // Well-funded armies reduce aggravation
-      army.aggravation = clamp(army.aggravation - AGGRAVATION_DECAY, 0, 100);
-    }
-  });
+  // Aggravation now only increases from supply shortages (handled in economy.js)
+  // No war funds allocation to manage
 }
 
 export function checkInsurrectionSpawning(state) {

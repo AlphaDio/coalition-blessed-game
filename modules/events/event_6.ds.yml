@@ -20,7 +20,7 @@ declares:
     name: "Desertion Crisis"
     description: "Reports of desertions are increasing due to low morale."
     choices:
-      - text: "Increase war funds (lose resources, gain organization)"
+      - text: "Boost supplies and equipment (lose resources)"
         effects:
           stockpiles:
             supplies: -100

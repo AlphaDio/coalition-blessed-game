@@ -13,10 +13,6 @@ export function initialState() {
       alloys: 500,
       fuel: 300
     },
-    warFunds: {
-      total: 100,
-      allocations: {} // armyId -> percentage (0-100)
-    },
     empires: [],
     armies: [],
     insurrections: [],

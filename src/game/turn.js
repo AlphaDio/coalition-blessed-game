@@ -1,6 +1,7 @@
 import { ECONOMY_CONSTANTS } from './constants.js';
 import { clampCohesion, clampStat } from './cohesion.js';
 import { consumeSupplies } from './economy.js';
+import { processEconomyTick } from './economyTick.js';
 import { checkInsurrections } from './insurrection.js';
 import { updateLawCooldowns } from './laws.js';
 import { checkEvent } from './events.js';
@@ -33,9 +34,7 @@ export function advanceTurn(state, rng = Math.random) {
     ? new DeterministicRNG(state.turn * 12345) 
     : rng;
   
-  // 1. Apply pending actions (war funds already applied, laws handled separately)
-  
-  // 2. Resolve law processes (if any)
+  // 1. Resolve law processes (if any)
   if (state.lawProcesses && state.lawProcesses.length > 0) {
     logger.debug(`Resolving ${state.lawProcesses.length} law process(es)`);
     const lawLogs = resolveAllLawProcesses(state, deterministicRng);
@@ -51,9 +50,19 @@ export function advanceTurn(state, rng = Math.random) {
     }
   }
   
-  // 3. Consume supplies
-  const supplyLog = consumeSupplies(state);
-  log.push(...supplyLog.log);
+  // 2. Process economy tick (market economy system)
+  try {
+    const economyResult = processEconomyTick(state);
+    if (economyResult.log && economyResult.log.length > 0) {
+      log.push(...economyResult.log);
+    }
+    logger.debug(`Economy tick: ${economyResult.trades} trades executed`);
+  } catch (error) {
+    logger.error(`Economy tick failed: ${error.message}`, { error });
+    // Fallback to old supply system if economy system fails
+    const supplyLog = consumeSupplies(state);
+    log.push(...supplyLog.log);
+  }
   
   // 4. Update law cooldowns
   updateLawCooldowns(state);
