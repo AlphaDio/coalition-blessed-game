@@ -5,12 +5,29 @@ import { renderAll, renderLaws, renderLogsWindow } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
+import { parseCommand } from './commandParser.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
+  // Constants for focus modes
+  const FOCUS_MODES = {
+    MAIN: 'main',
+    LAWS: 'laws'
+  };
+  const FOCUS_CYCLE = [FOCUS_MODES.MAIN, FOCUS_MODES.LAWS];
+  
   // Helper to safely call optional callbacks
   const safeCall = (fn, ...args) => {
     if (typeof fn === 'function') {
       fn(...args);
+    }
+  };
+  
+  // Helper to execute law enactment and log results
+  const executeLawEnactment = (lawResult) => {
+    if (lawResult.success) {
+      lawResult.log.forEach(line => ui.logBox.log(line));
+    } else if (lawResult.error) {
+      ui.logBox.log(`{red-fg}Error: ${lawResult.error}{/red-fg}`);
     }
   };
   
@@ -105,12 +122,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     }
   });
   
-  ui.screen.key(['tab'], () => {
-    const focuses = ['main', 'laws'];
-    const currentIdx = focuses.indexOf(state.focus);
-    state.focus = focuses[(currentIdx + 1) % focuses.length];
-    renderAll(ui, state);
-  });
   
   // Helper function to handle event choice and resume game
   function handleEventChoiceAndResume(choiceIndex) {
@@ -231,27 +242,15 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     if (state.lawDefinitions && state.lawDefinitions.length > 0) {
       const lawDef = state.lawDefinitions[state.selectedLawIndex];
       if (lawDef) {
-        const result = startLawProcess(state, lawDef.id, 100);
-        if (result.success) {
-          result.log.forEach(line => ui.logBox.log(line));
-          renderAll(ui, state);
-        } else if (result.error) {
-          ui.logBox.log(`Error: ${result.error}`);
-          renderAll(ui, state);
-        }
+        executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+        renderAll(ui, state);
       }
     } else {
       // Fallback to old law system
       const law = state.laws[state.selectedLawIndex];
       if (law) {
-        const result = enactLaw(state, law.id);
-        if (result.success) {
-          result.log.forEach(line => ui.logBox.log(line));
-          renderAll(ui, state);
-        } else if (result.error) {
-          ui.logBox.log(`Error: ${result.error}`);
-          renderAll(ui, state);
-        }
+        executeLawEnactment(enactLaw(state, law.id));
+        renderAll(ui, state);
       }
     }
   });
@@ -321,6 +320,147 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     
     ui.logsWindow.key(['end'], () => {
       ui.logsWindow.setScrollPerc(100);
+      ui.screen.render();
+    });
+  }
+  
+  // Input box handlers
+  if (ui.inputBox) {
+    // Focus input box when user presses '/' or ':'
+    ui.screen.key(['/', ':'], () => {
+      ui.inputBox.focus();
+      ui.inputBox.setValue('');
+      ui.screen.render();
+    });
+    
+    // Also allow TAB to focus input box
+    ui.screen.key(['tab'], () => {
+      // If input box is already focused, cycle to laws
+      if (ui.screen.focused === ui.inputBox) {
+        const currentIdx = FOCUS_CYCLE.indexOf(state.focus);
+        state.focus = FOCUS_CYCLE[(currentIdx + 1) % FOCUS_CYCLE.length];
+        renderAll(ui, state);
+      } else {
+        // Otherwise focus input box
+        ui.inputBox.focus();
+        ui.screen.render();
+      }
+    });
+    
+    // Handle command submission
+    ui.inputBox.on('submit', (value) => {
+      const command = value.trim();
+      
+      if (!command) {
+        ui.inputBox.clearValue();
+        ui.inputBox.focus();
+        ui.screen.render();
+        return;
+      }
+      
+      // Add to command history
+      ui.inputBox.commandHistory.push(command);
+      if (ui.inputBox.commandHistory.length > 50) {
+        ui.inputBox.commandHistory.shift(); // Keep only last 50 commands
+      }
+      ui.inputBox.historyIndex = -1;
+      
+      // Parse and execute command
+      const result = parseCommand(command, state, ui, { startGameLoop, updateGameSpeed });
+      
+      // Handle the result
+      if (result.success) {
+        if (result.message) {
+          ui.logBox.log(result.message);
+        }
+        
+        // Execute specific actions
+        if (result.action === 'ENACT_LAW') {
+          // Trigger law enactment
+          if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+            const lawDef = state.lawDefinitions[result.lawIndex];
+            if (lawDef) {
+              executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+            }
+          } else {
+            const law = state.laws[result.lawIndex];
+            if (law) {
+              executeLawEnactment(enactLaw(state, law.id));
+            }
+          }
+        } else if (result.action === 'CHOOSE_EVENT') {
+          const eventResult = handleEventChoice(state, state.activeEvent.id, result.choiceIndex);
+          if (eventResult.success) {
+            eventResult.log.forEach(line => ui.logBox.log(line));
+            state.paused = false;
+            ui.logBox.log('Game RESUMED');
+          } else if (eventResult.error) {
+            ui.logBox.log(`{red-fg}Error: ${eventResult.error}{/red-fg}`);
+          }
+        } else if (result.action === 'UPDATE_SPEED') {
+          safeCall(updateGameSpeed);
+        } else if (result.action === 'ADVANCE_TURN') {
+          const turnResult = advanceTurn(state);
+          turnResult.log.forEach(line => ui.logBox.log(line));
+        } else if (result.action === 'TOGGLE_LOGS') {
+          const isCurrentlyVisible = !ui.logsWindow.hidden;
+          if (isCurrentlyVisible) {
+            ui.logsWindow.hide();
+          } else {
+            const logger = getLogger();
+            renderLogsWindow(ui, logger);
+            ui.logsWindow.show();
+            ui.logsWindow.focus();
+          }
+        } else if (result.action === 'QUIT_GAME') {
+          // Graceful shutdown
+          process.exit(0);
+        }
+        
+        ui.commandHistoryBox.setContent(`{green-fg}✓{/green-fg} Last: ${command.substring(0, 20)}${command.length > 20 ? '...' : ''}`);
+      } else {
+        ui.logBox.log(`{red-fg}${result.message}{/red-fg}`);
+        ui.commandHistoryBox.setContent(`{red-fg}✗{/red-fg} Error`);
+      }
+      
+      // Clear input and refocus
+      ui.inputBox.clearValue();
+      ui.inputBox.focus();
+      renderAll(ui, state);
+    });
+    
+    // Handle ESC to unfocus input box
+    ui.inputBox.key(['escape'], () => {
+      ui.inputBox.clearValue();
+      ui.inputBox.cancel();
+      ui.screen.render();
+    });
+    
+    // Command history navigation
+    ui.inputBox.key(['up'], () => {
+      if (ui.inputBox.commandHistory.length === 0) return;
+      
+      if (ui.inputBox.historyIndex === -1) {
+        ui.inputBox.historyIndex = ui.inputBox.commandHistory.length - 1;
+      } else if (ui.inputBox.historyIndex > 0) {
+        ui.inputBox.historyIndex--;
+      }
+      
+      ui.inputBox.setValue(ui.inputBox.commandHistory[ui.inputBox.historyIndex]);
+      ui.screen.render();
+    });
+    
+    ui.inputBox.key(['down'], () => {
+      if (ui.inputBox.historyIndex === -1) return;
+      
+      if (ui.inputBox.historyIndex < ui.inputBox.commandHistory.length - 1) {
+        ui.inputBox.historyIndex++;
+        ui.inputBox.setValue(ui.inputBox.commandHistory[ui.inputBox.historyIndex]);
+      } else {
+        ui.inputBox.historyIndex = -1;
+        ui.inputBox.setValue('');
+      }
+      
       ui.screen.render();
     });
   }

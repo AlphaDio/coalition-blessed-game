@@ -16,13 +16,38 @@ yarn start
 
 ## Controls
 
+### Command Input Box (New!)
+
+The game now features a command input box at the bottom of the screen for text-based commands:
+
+- **/ or :** - Focus the command input box
+- **TAB** - Switch between input box and keyboard mode
+- **ESC** - Unfocus/cancel input
+- **↑/↓** - Navigate command history
+
+**Available Commands:**
+- `help` - Show all available commands
+- `law <number>` or `enact <number>` - Enact a law (e.g., `law 1`)
+- `event <number>` or `choice <number>` - Choose event option (e.g., `event 1`)
+- `pause` - Pause the game
+- `resume` or `unpause` - Resume the game
+- `speed <value>` - Set game speed (0.5-3.0, e.g., `speed 2`)
+- `next` or `advance` - Advance one turn (when paused)
+- `logs` or `log` - Toggle full logs window
+- `quit` or `exit` - Exit the game
+
+### Keyboard Shortcuts (Still Available!)
+
+All traditional keyboard shortcuts continue to work alongside the command input:
+
 - **SPACE** - Pause/Unpause game (real-time mode)
 - **N** - Advance single turn (when paused, for testing)
 - **[ / ]** - Decrease/Increase game speed
-- **TAB** - Cycle focus between panels
+- **TAB** - Switch to input box or cycle focus
 - **Q** - Quit game
 - **Enter** - Enact selected law / Open context action
 - **1/2/3** - Choose event option (when event is active)
+- **L** - Toggle full logs window
 
 ## Game Overview
 
