@@ -101,7 +101,7 @@ function handleLawCommand(args, state) {
     };
   }
   
-  const lawIndex = parseInt(args[0]) - 1; // Convert to 0-based index
+  const lawIndex = parseInt(args[0], 10) - 1; // Convert to 0-based index
   
   if (isNaN(lawIndex)) {
     return {
@@ -144,7 +144,7 @@ function handleEventCommand(args, state) {
     };
   }
   
-  const choiceIndex = parseInt(args[0]) - 1; // Convert to 0-based index
+  const choiceIndex = parseInt(args[0], 10) - 1; // Convert to 0-based index
   
   if (isNaN(choiceIndex)) {
     return {

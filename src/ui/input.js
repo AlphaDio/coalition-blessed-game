@@ -8,10 +8,26 @@ import { getLogger } from '../modules/logger.js';
 import { parseCommand } from './commandParser.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
+  // Constants for focus modes
+  const FOCUS_MODES = {
+    MAIN: 'main',
+    LAWS: 'laws'
+  };
+  const FOCUS_CYCLE = [FOCUS_MODES.MAIN, FOCUS_MODES.LAWS];
+  
   // Helper to safely call optional callbacks
   const safeCall = (fn, ...args) => {
     if (typeof fn === 'function') {
       fn(...args);
+    }
+  };
+  
+  // Helper to execute law enactment and log results
+  const executeLawEnactment = (lawResult) => {
+    if (lawResult.success) {
+      lawResult.log.forEach(line => ui.logBox.log(line));
+    } else if (lawResult.error) {
+      ui.logBox.log(`{red-fg}Error: ${lawResult.error}{/red-fg}`);
     }
   };
   
@@ -226,27 +242,15 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     if (state.lawDefinitions && state.lawDefinitions.length > 0) {
       const lawDef = state.lawDefinitions[state.selectedLawIndex];
       if (lawDef) {
-        const result = startLawProcess(state, lawDef.id, 100);
-        if (result.success) {
-          result.log.forEach(line => ui.logBox.log(line));
-          renderAll(ui, state);
-        } else if (result.error) {
-          ui.logBox.log(`Error: ${result.error}`);
-          renderAll(ui, state);
-        }
+        executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+        renderAll(ui, state);
       }
     } else {
       // Fallback to old law system
       const law = state.laws[state.selectedLawIndex];
       if (law) {
-        const result = enactLaw(state, law.id);
-        if (result.success) {
-          result.log.forEach(line => ui.logBox.log(line));
-          renderAll(ui, state);
-        } else if (result.error) {
-          ui.logBox.log(`Error: ${result.error}`);
-          renderAll(ui, state);
-        }
+        executeLawEnactment(enactLaw(state, law.id));
+        renderAll(ui, state);
       }
     }
   });
@@ -333,9 +337,8 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     ui.screen.key(['tab'], (ch, key) => {
       // If input box is already focused, cycle to laws
       if (ui.screen.focused === ui.inputBox) {
-        const focuses = ['main', 'laws'];
-        const currentIdx = focuses.indexOf(state.focus);
-        state.focus = focuses[(currentIdx + 1) % focuses.length];
+        const currentIdx = FOCUS_CYCLE.indexOf(state.focus);
+        state.focus = FOCUS_CYCLE[(currentIdx + 1) % FOCUS_CYCLE.length];
         renderAll(ui, state);
       } else {
         // Otherwise focus input box
@@ -377,22 +380,12 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
           if (state.lawDefinitions && state.lawDefinitions.length > 0) {
             const lawDef = state.lawDefinitions[result.lawIndex];
             if (lawDef) {
-              const lawResult = startLawProcess(state, lawDef.id, 100);
-              if (lawResult.success) {
-                lawResult.log.forEach(line => ui.logBox.log(line));
-              } else if (lawResult.error) {
-                ui.logBox.log(`{red-fg}Error: ${lawResult.error}{/red-fg}`);
-              }
+              executeLawEnactment(startLawProcess(state, lawDef.id, 100));
             }
           } else {
             const law = state.laws[result.lawIndex];
             if (law) {
-              const lawResult = enactLaw(state, law.id);
-              if (lawResult.success) {
-                lawResult.log.forEach(line => ui.logBox.log(line));
-              } else if (lawResult.error) {
-                ui.logBox.log(`{red-fg}Error: ${lawResult.error}{/red-fg}`);
-              }
+              executeLawEnactment(enactLaw(state, law.id));
             }
           }
         } else if (result.action === 'CHOOSE_EVENT') {
