@@ -219,8 +219,9 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
     fervor: a.fervor
   }));
   
-  logger.info(`Scourge battle starting: ${participatingArmies.length} armies participating`);
-  logger.info(`Participating armies: ${participatingArmies.map(a => `${a.name} (Power: ${calculateArmyPower(a).toFixed(2)}, Org: ${a.organization.toFixed(1)}, Fervor: ${a.fervor.toFixed(1)})`).join(', ')}`);
+  logger.info(`Scourge battle: ${participatingArmies.length} armies vs Scourge`);
+  logger.debug(`Scourge battle starting: ${participatingArmies.length} armies participating`);
+  logger.debug(`Participating armies: ${participatingArmies.map(a => `${a.name} (Power: ${calculateArmyPower(a).toFixed(2)}, Org: ${a.organization.toFixed(1)}, Fervor: ${a.fervor.toFixed(1)})`).join(', ')}`);
   
   // Create/get Scourge army
   const scourgeArmy = getOrCreateScourgeArmy(state);
@@ -239,8 +240,14 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
   front.isScourgeBattle = true;
   front.participatingArmyIds = participatingArmies.map(a => a.id);
   
-  logger.info(`Scourge battle front created: ${front.id} (Field: ${battlefieldSize})`);
-  logger.info(`Coalition Forces: ${coalitionArmy.mp.current.toFixed(0)} MP vs Scourge: ${scourgeArmy.mp.current.toFixed(0)} MP`);
+  const coalitionMP = Math.floor(coalitionArmy.mp.current);
+  const scourgeMP = Math.floor(scourgeArmy.mp.current);
+  logger.info(`Scourge battle: Coalition ${coalitionMP} MP vs Scourge ${scourgeMP} MP (Field: ${battlefieldSize})`);
+  logger.debug(`Scourge battle front created: ${front.id}`, {
+    battlefieldSize,
+    coalitionMP: coalitionArmy.mp.current,
+    scourgeMP: scourgeArmy.mp.current
+  });
   
   return { front, log: [`Scourge battle engaged! ${participatingArmies.length} armies vs The Scourge`] };
 }
@@ -353,9 +360,10 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
     return { front: null, log: [] };
   }
   
-  logger.info(`Insurrection battle starting: ${rebelliousArmies.length} rebellious armies vs ${opposingArmies.length} loyal armies`);
-  logger.info(`Rebellious armies: ${rebelliousArmies.map(a => `${a.name} (Aggravation: ${a.aggravation.toFixed(1)})`).join(', ')}`);
-  logger.info(`Loyal armies: ${opposingArmies.map(a => `${a.name} (Org: ${a.organization.toFixed(1)})`).join(', ')}`);
+  logger.info(`Insurrection battle: ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies`);
+  logger.debug(`Insurrection battle starting: ${rebelliousArmies.length} rebellious armies vs ${opposingArmies.length} loyal armies`);
+  logger.debug(`Rebellious armies: ${rebelliousArmies.map(a => `${a.name} (Aggravation: ${a.aggravation.toFixed(1)})`).join(', ')}`);
+  logger.debug(`Loyal armies: ${opposingArmies.map(a => `${a.name} (Org: ${a.organization.toFixed(1)})`).join(', ')}`);
   
   // Create combined rebellious army
   const rebelliousArmy = createCombinedCoalitionArmy(state, rebelliousArmies);
@@ -380,8 +388,14 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   front.rebelliousArmyIds = rebelliousArmies.map(a => a.id);
   front.loyalArmyIds = opposingArmies.map(a => a.id);
   
-  logger.info(`Insurrection battle front created: ${front.id} (Field: ${battlefieldSize})`);
-  logger.info(`Loyal Forces: ${loyalArmy.mp.current.toFixed(0)} MP vs Rebellious: ${rebelliousArmy.mp.current.toFixed(0)} MP`);
+  const loyalMP = Math.floor(loyalArmy.mp.current);
+  const rebelliousMP = Math.floor(rebelliousArmy.mp.current);
+  logger.info(`Insurrection battle: Loyal ${loyalMP} MP vs Rebellious ${rebelliousMP} MP (Field: ${battlefieldSize})`);
+  logger.debug(`Insurrection battle front created: ${front.id}`, {
+    battlefieldSize,
+    loyalMP: loyalArmy.mp.current,
+    rebelliousMP: rebelliousArmy.mp.current
+  });
   
   return { front, log: [`Insurrection battle engaged! ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies`] };
 }

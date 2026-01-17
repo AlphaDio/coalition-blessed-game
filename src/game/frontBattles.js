@@ -146,14 +146,33 @@ export function simulateBattleTick(front, worldState) {
   if (winner) {
     endBattle(front, worldState, winner);
   } else {
-    // Log battle state for debugging
-    logger.debug(`Battle ${front.id} tick`, {
-      leftMP: leftArmy.mp.current.toFixed(1),
-      rightMP: rightArmy.mp.current.toFixed(1),
-      leftMO: leftArmy.mo.current.toFixed(1),
-      rightMO: rightArmy.mo.current.toFixed(1),
+    // Compact INFO-level logging for battle rounds
+    const leftMPPct = Math.floor((leftArmy.mp.current / leftArmy.mp.max) * 100);
+    const rightMPPct = Math.floor((rightArmy.mp.current / rightArmy.mp.max) * 100);
+    const leftMOPct = Math.floor((leftArmy.mo.current / leftArmy.mo.max) * 100);
+    const rightMOPct = Math.floor((rightArmy.mo.current / rightArmy.mo.max) * 100);
+    
+    // Only log at INFO if there's a significant change or morale breaks
+    const leftBroken = front.moraleBroken.left;
+    const rightBroken = front.moraleBroken.right;
+    
+    if (leftBroken || rightBroken) {
+      const brokenSide = leftBroken ? leftArmy.name : rightArmy.name;
+      logger.info(`Battle ${front.id}: ${brokenSide} morale broken`);
+    }
+    
+    // Detailed DEBUG logging
+    const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
+    const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
+    logger.debug(`Battle ${front.id} round`, {
+      leftMP: `${Math.floor(leftArmy.mp.current)}/${Math.floor(leftArmy.mp.max)} (${leftMPPct}%)`,
+      rightMP: `${Math.floor(rightArmy.mp.current)}/${Math.floor(rightArmy.mp.max)} (${rightMPPct}%)`,
+      leftMO: `${Math.floor(leftArmy.mo.current)}/${Math.floor(leftArmy.mo.max)} (${leftMOPct}%)`,
+      rightMO: `${Math.floor(rightArmy.mo.current)}/${Math.floor(rightArmy.mo.max)} (${rightMOPct}%)`,
       leftBroken: front.moraleBroken.left,
-      rightBroken: front.moraleBroken.right
+      rightBroken: front.moraleBroken.right,
+      leftEngaged: leftEngaged.toFixed(0),
+      rightEngaged: rightEngaged.toFixed(0)
     });
   }
   
@@ -298,7 +317,9 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
     throw new Error('Invalid army IDs for battle');
   }
   
-  logger.info(`Starting battle: ${leftArmy.name} vs ${rightArmy.name}`, {
+  const leftMP = Math.floor(leftArmy.mp.current);
+  const rightMP = Math.floor(rightArmy.mp.current);
+  logger.debug(`Starting battle: ${leftArmy.name} vs ${rightArmy.name}`, {
     battlefieldSize,
     leftMP: leftArmy.mp.current,
     rightMP: rightArmy.mp.current

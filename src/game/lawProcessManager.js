@@ -56,7 +56,8 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
   
-  logger.info(`Starting law process: ${lawDef.name}`, {
+  logger.info(`Law started: ${lawDef.name} (Cost: ${influenceCost}, Remaining: ${state.playerInfluence - influenceCost})`);
+  logger.debug(`Starting law process: ${lawDef.name}`, {
     lawId,
     influenceCost,
     remainingInfluence: state.playerInfluence - influenceCost
@@ -247,6 +248,9 @@ export function resolveLawProcess(lawProcess, state, rng) {
   
   // Check phase advancement
   if (checkPhaseAdvancement(lawProcess)) {
+    const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
+    const lawName = lawDef ? lawDef.name : lawProcess.lawId;
+    logger.info(`Law phase: ${lawName} → ${lawProcess.phase}`);
     log.push(`\n>>> Phase advanced to: ${lawProcess.phase}`);
   }
   
@@ -259,14 +263,16 @@ export function resolveLawProcess(lawProcess, state, rng) {
     
     if (tallyResult.passed) {
       lawProcess.phase = 'ENACTED';
-      logger.info(`Law ENACTED: ${lawDef.name}`, {
+      logger.info(`Law ENACTED: ${lawDef.name} (${tallyResult.supportVotes} for, ${tallyResult.opposeVotes} against)`);
+      logger.debug(`Law ENACTED: ${lawDef.name}`, {
         supportVotes: tallyResult.supportVotes,
         opposeVotes: tallyResult.opposeVotes
       });
       log.push('\n*** LAW ENACTED ***');
     } else {
       lawProcess.phase = 'BURIED';
-      logger.info(`Law FAILED: ${lawDef.name} (insufficient votes)`, {
+      logger.info(`Law FAILED: ${lawDef.name} (${tallyResult.supportVotes} for, ${tallyResult.opposeVotes} against - insufficient votes)`);
+      logger.debug(`Law FAILED: ${lawDef.name} (insufficient votes)`, {
         supportVotes: tallyResult.supportVotes,
         opposeVotes: tallyResult.opposeVotes
       });
