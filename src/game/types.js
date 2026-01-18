@@ -301,6 +301,10 @@ export function createGameState() {
     
     // Market economy system
     market: null, // Market state per commodity (initialized on first economy tick)
-    coalitionEconomy: null // Coalition procurement and stockpiles (initialized on first economy tick)
+    coalitionEconomy: null, // Coalition procurement and stockpiles (initialized on first economy tick)
+    marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
+    
+    // Improvements system
+    improvements: null // Improvements queue and requests (initialized in index.js)
   };
 }

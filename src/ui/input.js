@@ -7,6 +7,7 @@ import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
 import { parseCommand } from './commandParser.js';
+import { acceptImprovementRequest, cancelImprovement } from '../game/improvements.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
   // Constants for focus modes
@@ -244,10 +245,26 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       renderAll(ui, state);
     });
     
+    // r: Switch to Requests view
+    ui.screen.key(['r'], () => {
+      if (shouldIgnoreKey()) return;
+      ui.combinedInfoBox.currentView = 'requests';
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
+    // i: Switch to Improvements view
+    ui.screen.key(['i'], () => {
+      if (shouldIgnoreKey()) return;
+      ui.combinedInfoBox.currentView = 'improvements';
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
     // ]: Cycle to next view (only if not in input box)
     ui.screen.key([']'], () => {
       if (shouldIgnoreKey()) return;
-      const views = ['market', 'armies', 'empires'];
+      const views = ['market', 'armies', 'empires', 'requests', 'improvements'];
       const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
       const nextIndex = (currentIndex + 1) % views.length;
       ui.combinedInfoBox.currentView = views[nextIndex];
@@ -261,7 +278,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       if (shouldIgnoreKey()) return;
       // Only handle for combined info box if input box doesn't have focus
       if (ui.screen.focused !== ui.inputBox) {
-        const views = ['market', 'armies', 'empires'];
+        const views = ['market', 'armies', 'empires', 'requests', 'improvements'];
         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
         const prevIndex = (currentIndex - 1 + views.length) % views.length;
         ui.combinedInfoBox.currentView = views[prevIndex];
@@ -311,6 +328,102 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     ui.combinedInfoBox.key(['down'], () => {
       ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + 1;
       renderAll(ui, state);
+    });
+    
+    // Improvements: Up/Down to navigate requests/improvements list
+    ui.screen.key(['up'], () => {
+      if (shouldIgnoreKey()) return;
+      if (!state._ui) state._ui = {};
+      
+      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
+        const maxIndex = (state.improvements.requests?.length || 1) - 1;
+        if (maxIndex >= 0) {
+          state._ui.selectedRequestIndex = Math.max(0, 
+            (state._ui.selectedRequestIndex || 0) - 1);
+          renderAll(ui, state);
+        }
+      } else if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
+        const maxIndex = (state.improvements.queue?.length || 1) - 1;
+        if (maxIndex >= 0) {
+          state._ui.selectedImprovementIndex = Math.max(0, 
+            (state._ui.selectedImprovementIndex || 0) - 1);
+          renderAll(ui, state);
+        }
+      }
+    });
+    
+    ui.screen.key(['down'], () => {
+      if (shouldIgnoreKey()) return;
+      if (!state._ui) state._ui = {};
+      
+      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
+        const maxIndex = (state.improvements.requests?.length || 1) - 1;
+        if (maxIndex >= 0) {
+          state._ui.selectedRequestIndex = Math.min(maxIndex, 
+            (state._ui.selectedRequestIndex || 0) + 1);
+          renderAll(ui, state);
+        }
+      } else if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
+        const maxIndex = (state.improvements.queue?.length || 1) - 1;
+        if (maxIndex >= 0) {
+          state._ui.selectedImprovementIndex = Math.min(maxIndex, 
+            (state._ui.selectedImprovementIndex || 0) + 1);
+          renderAll(ui, state);
+        }
+      }
+    });
+    
+    // Enter key: Accept selected request (when in Requests view)
+    ui.screen.key(['enter'], () => {
+      if (shouldIgnoreKey()) return;
+      if (state.activeEvent) return; // Don't interfere with event choices
+      
+      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
+        if (!state._ui) state._ui = {};
+        const selectedIndex = state._ui.selectedRequestIndex || 0;
+        const request = state.improvements.requests[selectedIndex];
+        
+        if (request) {
+          // Use first empire as default (or could add empire selection UI)
+          const empireId = state.empires[0]?.id || 'empire1';
+          const result = acceptImprovementRequest(state, request.id, empireId);
+          
+          if (result.success) {
+            result.log.forEach(line => ui.logBox.log(line));
+          } else {
+            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+          }
+          
+          renderAll(ui, state);
+        }
+      }
+    });
+    
+    // X key: Cancel selected improvement (when in Improvements view)
+    ui.screen.key(['x', 'X'], () => {
+      if (shouldIgnoreKey()) return;
+      
+      if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
+        if (!state._ui) state._ui = {};
+        const selectedIndex = state._ui.selectedImprovementIndex || 0;
+        const improvement = state.improvements.queue[selectedIndex];
+        
+        if (improvement) {
+          const result = cancelImprovement(state, improvement.id);
+          
+          if (result.success) {
+            result.log.forEach(line => ui.logBox.log(line));
+            // Reset selection if needed
+            if (selectedIndex >= state.improvements.queue.length) {
+              state._ui.selectedImprovementIndex = Math.max(0, state.improvements.queue.length - 1);
+            }
+          } else {
+            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+          }
+          
+          renderAll(ui, state);
+        }
+      }
     });
   }
   
