@@ -92,7 +92,7 @@ function getOrCreateScourgeArmy(state) {
       
       // Sustain stats
       recoveryPool: 0,
-      recoveryRate: 400,        // Slower recovery
+      recovery: 40,             // Lower recovery stat than coalition armies
       reinforcementRate: 80     // Slower reinforcement
     };
     
@@ -134,7 +134,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
   let totalProtection = 0;
   let totalResolve = 0;
   let totalKillRate = 0;
-  let totalRecoveryRate = 0;
+  let totalRecovery = 0;
   let totalReinforcementRate = 0;
   
   participatingArmies.forEach(army => {
@@ -148,7 +148,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     totalProtection += army.protection * power;
     totalResolve += army.resolve * power;
     totalKillRate += army.killRate * power;
-    totalRecoveryRate += army.recoveryRate * power;
+    totalRecovery += army.recovery * power;
     totalReinforcementRate += army.reinforcementRate * power;
   });
   
@@ -187,7 +187,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     
     // Sustain stats
     recoveryPool: 0,
-    recoveryRate: totalRecoveryRate / totalPower,
+    recovery: totalRecovery / totalPower,
     reinforcementRate: totalReinforcementRate / totalPower,
     
     // Store reference to original armies for result distribution

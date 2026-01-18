@@ -36,7 +36,7 @@ export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, 
   };
 }
 
-export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, supplyNeed = 50) {
+export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, supplyNeed = 50, initialRecovery = 50) {
   return {
     id,
     empireId,
@@ -83,7 +83,7 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     
     // Sustain stats
     recoveryPool: 0,          // Temporary MP losses that can be recovered
-    recoveryRate: 500,        // Fast MP recovery per tick
+    recovery: initialRecovery, // Recovery stat (0-100) - determines MP recovery speed
     reinforcementRate: 100    // Slower MP reinforcement per tick
   };
 }
