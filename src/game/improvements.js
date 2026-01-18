@@ -103,10 +103,11 @@ export function initializeImprovementsState() {
 
 /**
  * Get available improvement requests (sample content)
+ * Themed as epic mega-structures and galactic-scale events
  */
 export function getSampleImprovementRequests() {
   return [
-    createImprovementRequest('factory_basic', 'Basic Factory', 'Produces Super Alloys from raw materials', {
+    createImprovementRequest('titan_forge', 'Titan Forge Network', 'Galaxy-spanning industrial mega-structure harvesting stellar matter to forge alloys of unparalleled strength', {
       suppliesCost: 200,
       buildDuration: 10,
       capacity: 2,
@@ -121,10 +122,10 @@ export function getSampleImprovementRequests() {
       modifiers: {
         industrial_output: 0.05
       },
-      tags: ['industrial', 'production']
+      tags: ['mega_structure', 'industrial', 'production']
     }),
     
-    createImprovementRequest('research_lab', 'Research Laboratory', 'Generates research points and rare gases', {
+    createImprovementRequest('ascension_spire', 'Ascension Spire', 'Colossal monument to knowledge where the greatest minds pursue transcendent breakthroughs', {
       suppliesCost: 300,
       buildDuration: 15,
       capacity: 3,
@@ -141,10 +142,10 @@ export function getSampleImprovementRequests() {
         research_speed: 0.10,
         tech_level: 1
       },
-      tags: ['science', 'research']
+      tags: ['mega_structure', 'science', 'transcendence']
     }),
     
-    createImprovementRequest('military_depot', 'Military Depot', 'Supplies armies and improves organization', {
+    createImprovementRequest('war_symposium', 'Grand War Symposium', 'Galactic convocation of military leaders coordinating fleets across a thousand battlefronts', {
       suppliesCost: 150,
       buildDuration: 8,
       capacity: 2,
@@ -154,16 +155,16 @@ export function getSampleImprovementRequests() {
         biomass: 6
       },
       productionOutputs: {
-        // Injects into coalition stockpile
+        // Coordination enhances existing forces
       },
       modifiers: {
         army_organization: 5,
         supply_efficiency: 0.08
       },
-      tags: ['military', 'logistics']
+      tags: ['grand_event', 'military', 'coordination']
     }),
     
-    createImprovementRequest('medical_center', 'Medical Center', 'Improves population health and morale', {
+    createImprovementRequest('festival_of_worlds', 'Festival of Worlds', 'Massive celebration spanning entire star systems, uniting billions in shared culture and purpose', {
       suppliesCost: 250,
       buildDuration: 12,
       capacity: 3,
@@ -180,10 +181,10 @@ export function getSampleImprovementRequests() {
         population_growth: 0.03,
         empire_approval: 2
       },
-      tags: ['medical', 'civilian']
+      tags: ['grand_event', 'cultural', 'unity']
     }),
     
-    createImprovementRequest('trade_hub', 'Trade Hub', 'Generates credits and facilitates market activity', {
+    createImprovementRequest('convergence_nexus', 'Convergence Nexus', 'Hyperspatial marketplace where civilizations across the void exchange wealth and wonders', {
       suppliesCost: 180,
       buildDuration: 10,
       capacity: 2,
@@ -193,13 +194,13 @@ export function getSampleImprovementRequests() {
         rare_gases: 2
       },
       productionOutputs: {
-        // Generates credits instead of commodities
+        // Economic synergy generates wealth
       },
       modifiers: {
         trade_income: 500, // Credits per tick
         market_efficiency: 0.05
       },
-      tags: ['economic', 'trade']
+      tags: ['mega_structure', 'economic', 'convergence']
     })
   ];
 }

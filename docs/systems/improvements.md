@@ -115,43 +115,50 @@ Navigate to Improvements view with `I` key:
 
 ## Sample Improvements
 
-### Basic Factory
+These epic mega-structures and grand events represent the peak of civilization's achievement:
+
+### Titan Forge Network
 - Cost: 200 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
 - Sustains: biomass:5, ice:3
 - Produces: super_alloys:15
 - Modifier: industrial_output +5%
+- Description: Galaxy-spanning industrial mega-structure harvesting stellar matter
 
-### Research Laboratory
+### Ascension Spire
 - Cost: 300 Supplies
 - Build: 15 turns
 - Capacity: 3, Potency: 5
 - Sustains: super_alloys:3, rare_gases:2
 - Produces: rare_gases:8, quantum_circuits:2
 - Modifiers: research_speed +10%, tech_level +1
+- Description: Colossal monument to knowledge pursuing transcendent breakthroughs
 
-### Military Depot
+### Grand War Symposium
 - Cost: 150 Supplies
 - Build: 8 turns
 - Capacity: 2, Potency: 2
 - Sustains: super_alloys:4, biomass:6
 - Modifiers: army_organization +5, supply_efficiency +8%
+- Description: Galactic convocation coordinating fleets across a thousand battlefronts
 
-### Medical Center
+### Festival of Worlds
 - Cost: 250 Supplies
 - Build: 12 turns
 - Capacity: 3, Potency: 4
 - Sustains: biomass:5, genomes:3, psycho_implants:1
 - Produces: genomes:4
 - Modifiers: population_growth +3%, empire_approval +2
+- Description: Massive celebration spanning star systems, uniting billions
 
-### Trade Hub
+### Convergence Nexus
 - Cost: 180 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
 - Sustains: ice:4, rare_gases:2
 - Modifiers: trade_income +500 credits/tick, market_efficiency +5%
+- Description: Hyperspatial marketplace where civilizations exchange wealth and wonders
 
 ## Stat Modifiers
 

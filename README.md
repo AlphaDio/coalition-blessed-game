@@ -96,12 +96,12 @@ The Improvements system lets you build infrastructure that provides ongoing bene
   - Max total Capacity: 10
   - Max total Potency: 20
 
-- **Sample Improvements**:
-  - Basic Factory: Produces Super Alloys
-  - Research Lab: Produces Rare Gases & Quantum Circuits, boosts research
-  - Military Depot: Improves army organization
-  - Medical Center: Boosts population growth and approval
-  - Trade Hub: Generates credits per tick
+- **Epic Mega-Structures & Grand Events**:
+  - **Titan Forge Network**: Galaxy-spanning forges producing Super Alloys
+  - **Ascension Spire**: Monument to knowledge producing Rare Gases & Quantum Circuits, boosting research
+  - **Grand War Symposium**: Galactic military coordination improving army organization
+  - **Festival of Worlds**: Star-system-wide celebration boosting population growth and approval
+  - **Convergence Nexus**: Hyperspatial marketplace generating credits per tick
 
 See `docs/systems/improvements.md` for detailed mechanics.
 

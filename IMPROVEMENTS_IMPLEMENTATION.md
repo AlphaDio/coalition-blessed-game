@@ -21,12 +21,12 @@ A complete, deterministic Improvements system has been added to the Coalition ga
 - **Visual States**: BUILDING (with %), ACTIVE, DEGRADED clearly shown
 - **Real-time Updates**: All panels update each tick
 
-### Sample Improvements
-1. **Basic Factory**: Produces Super Alloys, +5% industrial output
-2. **Research Lab**: Produces Rare Gases & Quantum Circuits, +10% research speed, +1 tech level
-3. **Military Depot**: +5 army organization, +8% supply efficiency
-4. **Medical Center**: Produces Genomes, +3% population growth, +2 empire approval
-5. **Trade Hub**: +500 credits/tick, +5% market efficiency
+### Epic Mega-Structures & Grand Events
+1. **Titan Forge Network**: Galaxy-spanning forges producing Super Alloys, +5% industrial output
+2. **Ascension Spire**: Monument to knowledge producing Rare Gases & Quantum Circuits, +10% research speed, +1 tech level
+3. **Grand War Symposium**: Galactic coordination +5 army organization, +8% supply efficiency
+4. **Festival of Worlds**: Star-system-wide celebration, +3% population growth, +2 empire approval
+5. **Convergence Nexus**: Hyperspatial marketplace, +500 credits/tick, +5% market efficiency
 
 ## Technical Implementation
 
