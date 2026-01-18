@@ -42,16 +42,19 @@ All traditional keyboard shortcuts continue to work alongside the command input:
 
 - **SPACE** - Pause/Unpause game (real-time mode)
 - **N** - Advance single turn (when paused, for testing)
-- **[ / ]** - Decrease/Increase game speed
+- **[ / ]** - Decrease/Increase game speed or cycle info panel views
 - **TAB** - Switch to input box or cycle focus
 - **Q** - Quit game
-- **Enter** - Enact selected law / Open context action
+- **Enter** - Enact selected law / Accept selected request
 - **1/2/3** - Choose event option (when event is active)
 - **L** - Toggle full logs window
+- **M/A/E/R/I** - Switch info panel views (Market/Armies/Empires/Requests/Improvements)
+- **Up/Down** - Navigate lists (laws, requests, improvements)
+- **X** - Cancel selected improvement (no refund)
 
 ## Game Overview
 
-You manage a coalition of empires fighting against the Scourge in **real-time**. The game advances automatically, but you can pause at any time to make decisions. Manage supplies, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
+You manage a coalition of empires fighting against the Scourge in **real-time**. The game advances automatically, but you can pause at any time to make decisions. Manage supplies, build improvements, enact laws, handle events, and win battles to maintain Coalition Cohesion while reducing Scourge Cohesion to zero.
 
 ### Real-Time Gameplay
 
@@ -67,9 +70,40 @@ You manage a coalition of empires fighting against the Scourge in **real-time**.
 - **Scourge Cohesion** (0-100): Victory condition - reduce to 0
 - **Scourge Fervor**: Increases each turn, making Scourge battles harder
 - **Supplies**: Manage supply stockpiles to keep armies operational. Shortages reduce Organization and increase Aggravation
+- **Improvements**: Build and maintain infrastructure that produces resources and provides stat bonuses
 - **Laws**: Enact policies to modify empire approval, army effectiveness, and resource generation
 - **Events**: Random events with choices that affect various game metrics
 - **Battles**: External (vs Scourge) and internal (vs Insurrections)
+
+### Improvements System (NEW!)
+
+The Improvements system lets you build infrastructure that provides ongoing benefits:
+
+- **Requests Panel (R key)**: Browse available improvements to build
+  - Each improvement costs Supplies (paid upfront, no refunds)
+  - Has a build duration (turns to complete)
+  - Requires ongoing sustainment (resources per tick)
+  - Produces outputs (resources or credits)
+  - Provides stat modifiers (bonuses to empires/armies)
+
+- **Improvements Panel (I key)**: Monitor your active improvements
+  - **BUILDING**: Under construction (shows progress %)
+  - **ACTIVE**: Operating normally, producing outputs
+  - **DEGRADED**: Sustainment failed, no production until restored
+
+- **Concurrency Limits**:
+  - Max 3 improvements building at once
+  - Max total Capacity: 10
+  - Max total Potency: 20
+
+- **Sample Improvements**:
+  - Basic Factory: Produces Super Alloys
+  - Research Lab: Produces Rare Gases & Quantum Circuits, boosts research
+  - Military Depot: Improves army organization
+  - Medical Center: Boosts population growth and approval
+  - Trade Hub: Generates credits per tick
+
+See `docs/systems/improvements.md` for detailed mechanics.
 
 ### Win/Lose Conditions
 
@@ -91,16 +125,24 @@ src/
     events.js    # Event handling
     turn.js      # Turn advancement
     content.js   # Sample game content
+    improvements.js # Improvements system (NEW!)
+    marketEconomy.js # Market-based economy
   ui/            # Terminal UI (blessed)
     renderer.js  # UI rendering functions
     input.js     # Input handling
+  docs/systems/  # System documentation
+    economy.md   # Economy system
+    events.md    # Event system
+    battles.md   # Battle system
+    laws.md      # Law system
+    improvements.md # Improvements system (NEW!)
 ```
 
 ## Development
 
 The codebase follows a clean separation between simulation (pure functions in `src/game/`) and UI (blessed components in `src/ui/`). All game logic is deterministic and testable.
 
-System documentation lives in `docs/systems` for Economy, Events, Battles, and Laws. Update those docs whenever the corresponding implementation changes so they stay aligned with the game behavior.
+System documentation lives in `docs/systems` for Economy, Events, Battles, Laws, and Improvements. Update those docs whenever the corresponding implementation changes so they stay aligned with the game behavior.
 
 
 ## Testing
