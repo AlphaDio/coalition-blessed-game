@@ -7,6 +7,7 @@ import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
 import { parseCommand } from './commandParser.js';
+import { acceptImprovementRequest, cancelImprovement } from '../game/improvements.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
   // Constants for focus modes
@@ -378,7 +379,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       if (state.activeEvent) return; // Don't interfere with event choices
       
       if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
-        const { acceptImprovementRequest } = require('../game/improvements.js');
         if (!state._ui) state._ui = {};
         const selectedIndex = state._ui.selectedRequestIndex || 0;
         const request = state.improvements.requests[selectedIndex];
@@ -404,7 +404,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       if (shouldIgnoreKey()) return;
       
       if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
-        const { cancelImprovement } = require('../game/improvements.js');
         if (!state._ui) state._ui = {};
         const selectedIndex = state._ui.selectedImprovementIndex || 0;
         const improvement = state.improvements.queue[selectedIndex];

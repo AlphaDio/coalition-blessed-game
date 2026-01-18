@@ -215,7 +215,8 @@ function createStatsBox(grid) {
 }
 
 function createCombinedInfoBox(grid) {
-  // Combined panel for Market Economy, Armies, Empires, Requests, and Improvements (rows 3-12, cols 8-12) - now 1/3 of width (4 cols), moved up
+  // Combined info panel showing Market, Armies, Empires, Requests, and Improvements
+  // Located at rows 3-11, cols 8-11 (right side of screen)
   const combinedInfoBox = grid.set(3, 8, 9, 4, blessed.box, {
     label: ' Market Economy ',
     content: '',

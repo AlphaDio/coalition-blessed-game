@@ -13,6 +13,11 @@
 
 import { getLogger } from '../modules/logger.js';
 
+// Constants for sustainment and modifier scaling
+const SUSTAINMENT_MAX_PRICE_MULTIPLIER = 2.0; // Willing to pay up to 2x market price
+const MODIFIER_ARMY_ORG_SCALE = 10; // Divide by 10 for gradual application
+const MODIFIER_EMPIRE_APPROVAL_SCALE = 100; // Divide by 100 for gradual application
+
 /**
  * Create an improvement request (available to accept)
  */
@@ -381,7 +386,7 @@ export function processImprovementSustainment(state, improvement) {
       // Create market buy order if market exists
       if (state.market && state.market[commodity]) {
         const marketState = state.market[commodity];
-        const maxPrice = marketState.price * 2.0; // Willing to pay up to 2x current price
+        const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
         
         // Create buy order with proper tagging
         const buyOrder = {
@@ -456,36 +461,11 @@ export function processImprovementProduction(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
     if (qty <= 0) continue;
     
-    // Option 1: Inject into empire stockpile
+    // Inject into empire stockpile
     if (!empire.stockpiles[commodity]) {
       empire.stockpiles[commodity] = 0;
     }
     empire.stockpiles[commodity] += qty;
-    
-    // Option 2: Create sell offer to market (disabled for now, using stockpile injection)
-    // if (state.market && state.market[commodity]) {
-    //   const sellOffer = {
-    //     id: `improvement_produce_${improvement.id}_${commodity}_${state.turn}`,
-    //     owner_type: 'empire',
-    //     owner_id: empire.id,
-    //     commodity: commodity,
-    //     qty: qty,
-    //     ask_price: state.market[commodity].price * 0.95, // Slightly below market
-    //     priority: 500,
-    //     filled_qty: 0,
-    //     tags: {
-    //       originator: improvement.id,
-    //       payer: null,
-    //       beneficiary: empire.id,
-    //       purpose: 'production'
-    //     }
-    //   };
-    //   
-    //   if (!state.marketOrders) {
-    //     state.marketOrders = { buyOrders: [], sellOffers: [] };
-    //   }
-    //   state.marketOrders.sellOffers.push(sellOffer);
-    // }
   }
   
   return { log };
@@ -508,14 +488,15 @@ export function applyImprovementModifiers(state) {
     // Apply stat modifiers
     for (const [stat, value] of Object.entries(improvement.modifiers)) {
       if (stat === 'army_organization') {
-        // Apply to all armies of this empire
+        // Apply to all armies of this empire (small boost per tick)
         state.armies
           .filter(a => a.empireId === improvement.empireId)
           .forEach(army => {
-            army.organization = Math.min(100, army.organization + value / 10); // Small boost per tick
+            army.organization = Math.min(100, army.organization + value / MODIFIER_ARMY_ORG_SCALE);
           });
       } else if (stat === 'empire_approval') {
-        empire.approval = Math.min(100, Math.max(0, empire.approval + value / 100)); // Very small boost per tick
+        // Very small boost per tick
+        empire.approval = Math.min(100, Math.max(0, empire.approval + value / MODIFIER_EMPIRE_APPROVAL_SCALE));
       } else if (stat === 'trade_income') {
         // Generate credits
         empire.budget_credits = (empire.budget_credits || 0) + value;
