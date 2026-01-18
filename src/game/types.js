@@ -111,9 +111,10 @@ export function createLaw(id, name, cost, cooldown = 0, effects = {}, vector = {
  * @param {Array} law_tags - Tags like "biologic", "mechanical", "hive", "warped"
  * @param {Object} support_weights - Biases like population_incentive, security_incentive, economy_incentive
  * @param {Object} phase_tags - Event tags eligible in each phase (DEBATE, FALLOUT, VOTING)
+ * @param {Object} modifiers - Law-specific modifiers (tick_delay_multiplier, enactment_chance_bonus, etc.)
  * @returns {Object} Law definition
  */
-export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], support_weights = {}, phase_tags = {}) {
+export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], support_weights = {}, phase_tags = {}, modifiers = {}) {
   return {
     id,
     name,
@@ -128,6 +129,11 @@ export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], s
       DEBATE: phase_tags.DEBATE || [],
       FALLOUT: phase_tags.FALLOUT || [],
       VOTING: phase_tags.VOTING || []
+    },
+    modifiers: {
+      tick_delay_multiplier: modifiers.tick_delay_multiplier || 1.0, // Multiplier for tick scheduling (< 1.0 = faster, > 1.0 = slower)
+      enactment_chance_bonus: modifiers.enactment_chance_bonus || 0, // Bonus to enactment success (0.1 = +10%)
+      progress_per_event: modifiers.progress_per_event || 1.0 // Multiplier for event progress
     }
   };
 }
@@ -145,6 +151,8 @@ export function createLawProcess(lawId, startTick = 0) {
     phaseProgress: 0, // 0..1, advances to next phase at 1.0
     rejects: 0, // 0..4, burial at 4
     startTick,
+    pendingEvent: null, // ID of event waiting for player choice
+    ticksSinceLastResolve: 0, // Counter for tick delay multiplier
     
     // Meters that bias event likelihood
     meters: {

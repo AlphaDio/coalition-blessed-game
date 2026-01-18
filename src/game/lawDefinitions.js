@@ -110,6 +110,58 @@ export const SAMPLE_LAW_DEFINITIONS = [
       FALLOUT: ['social', 'ethical', 'cultural'],
       VOTING: ['procedural', 'compromise']
     }
+  ),
+  
+  createLawDefinition(
+    'law_streamlined_governance',
+    'Streamlined Digital Governance Act',
+    {
+      natural_mechanical: 0.8,
+      spiritual_materialistic: 0.7,
+      authoritarian_liberal: 0.2
+    },
+    ['mechanical', 'ai', 'efficiency', 'materialistic'],
+    {
+      population_incentive: 0.2,
+      security_incentive: 0.1,
+      economy_incentive: 0.5
+    },
+    {
+      DEBATE: ['efficiency', 'mechanical', 'ai'],
+      FALLOUT: ['economic', 'technological'],
+      VOTING: ['procedural', 'efficiency']
+    },
+    {
+      tick_delay_multiplier: 0.5, // 50% faster resolution (reduces delay between ticks)
+      enactment_chance_bonus: 0,
+      progress_per_event: 1.0
+    }
+  ),
+  
+  createLawDefinition(
+    'law_organic_deliberation',
+    'Organic Deliberation and Consensus Act',
+    {
+      natural_mechanical: -0.7,
+      spiritual_materialistic: -0.5,
+      authoritarian_liberal: 0.4
+    },
+    ['biologic', 'natural', 'consensus', 'deliberation'],
+    {
+      population_incentive: 0.5,
+      security_incentive: -0.1,
+      economy_incentive: 0.2
+    },
+    {
+      DEBATE: ['consensus', 'biologic', 'philosophical'],
+      FALLOUT: ['social', 'cultural', 'deliberation'],
+      VOTING: ['consensus', 'compromise']
+    },
+    {
+      tick_delay_multiplier: 2.0, // 100% slower resolution (doubles delay between ticks)
+      enactment_chance_bonus: 0.1, // +10% chance of enactment
+      progress_per_event: 1.0
+    }
   )
 ];
 

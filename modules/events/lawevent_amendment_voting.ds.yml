@@ -1,0 +1,46 @@
+module:
+  id: "lawevent_amendment_voting"
+  name: "Last-Minute Amendment"
+  description: "A coalition proposes a last-minute amendment during voting"
+  version: "1.0.0"
+  type: "law_event"
+  category: "event"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["voting", "amendment", "neutral"]
+  created_at: "2026-01-18T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_event:
+    id: "voting_choice_last_minute_amendment"
+    name: "Last-Minute Amendment Proposed"
+    description: "A coalition proposes a last-minute amendment. Do you accept it?"
+    scope: "LAW"
+    phase_tags:
+      - "VOTING"
+    nature: "NEUTRAL"
+    tier: "MAJOR"
+    triggers: []
+    base_weight: 1.0
+    choices:
+      - text: "Accept amendment (high chance of passing, changes law intent)"
+        effects:
+          progress: 0.4
+          meters:
+            momentum: 0.2
+            legitimacy: 0.05
+            reject_pressure: -0.2
+            polarization: -0.1
+      - text: "Reject amendment (maintain original vision, risk failure)"
+        effects:
+          progress: 0.1
+          meters:
+            momentum: -0.1
+            legitimacy: 0.1
+            reject_pressure: 0.15
+            polarization: 0.15
+    weight_modifiers: []

@@ -1,5 +1,6 @@
 import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
+import { handleLawEventChoice } from '../game/lawProcessManager.js';
 import { advanceTurn } from '../game/turn.js';
 import { renderAll, renderLaws, renderLogsWindow } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
@@ -129,7 +130,20 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       return false;
     }
     
-    const result = handleEventChoice(state, state.activeEvent.id, choiceIndex);
+    let result;
+    
+    // Check if this is a law event
+    if (state.activeEvent.isLawEvent) {
+      result = handleLawEventChoice(
+        state, 
+        state.activeEvent.lawProcessId, 
+        state.activeEvent.id, 
+        choiceIndex
+      );
+    } else {
+      result = handleEventChoice(state, state.activeEvent.id, choiceIndex);
+    }
+    
     if (result.success) {
       result.log.forEach(line => ui.logBox.log(line));
       // Unpause after event choice
@@ -490,7 +504,20 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
             }
           }
         } else if (result.action === 'CHOOSE_EVENT') {
-          const eventResult = handleEventChoice(state, state.activeEvent.id, result.choiceIndex);
+          let eventResult;
+          
+          // Check if this is a law event
+          if (state.activeEvent.isLawEvent) {
+            eventResult = handleLawEventChoice(
+              state, 
+              state.activeEvent.lawProcessId, 
+              state.activeEvent.id, 
+              result.choiceIndex
+            );
+          } else {
+            eventResult = handleEventChoice(state, state.activeEvent.id, result.choiceIndex);
+          }
+          
           if (eventResult.success) {
             eventResult.log.forEach(line => ui.logBox.log(line));
             state.paused = false;
