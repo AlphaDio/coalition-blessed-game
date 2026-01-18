@@ -84,7 +84,7 @@ function showHelp() {
     '  help, h, ?           - Show this help',
     '',
     '{yellow-fg}Keyboard shortcuts still work!{/yellow-fg}',
-    'Press TAB to switch to keyboard mode, ESC to return to input.'
+    'Press / to focus command input, TAB to cycle actions.'
   ].join('\n');
   
   return {

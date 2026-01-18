@@ -94,7 +94,7 @@ function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
   // Left column: Action Panel (row 3-10) - formerly Laws box
   const actionPanel = grid.set(3, 0, 7, 3, blessed.box, {
-    label: ' Actions (TAB: cycle, ENTER: select) ',
+    label: ' Actions (TAB: cycle panels, ENTER: select) ', 
     scrollable: true,
     alwaysScroll: true,
     keys: true,
@@ -239,8 +239,8 @@ function createCombinedInfoBox(grid) {
     }
   });
 
-  // Track current view state (market, armies, empires, requests, improvements)
-  combinedInfoBox.currentView = 'market'; // 'market' | 'armies' | 'empires' | 'requests' | 'improvements'
+  // Track current view state (market, armies, empires, queue)
+  combinedInfoBox.currentView = 'empires'; // 'market' | 'armies' | 'empires' | 'queue'
   combinedInfoBox.scrollOffset = 0;
   combinedInfoBox.selectedRequestIndex = 0; // For request selection
   combinedInfoBox.selectedImprovementIndex = 0; // For improvement selection
@@ -259,7 +259,7 @@ function createCommandInputs(screen) {
     left: 0,
     width: INPUT_BOX_WIDTH_PERCENT,
     height: 3,
-    label: ' Command Input (Type "help" for commands, ESC to cancel) ',
+    label: ' Command Input (/help, ESC to cancel, TAB: cycle actions) ',   
     border: {
       type: 'line'
     },
@@ -375,8 +375,16 @@ export function renderActionPanel(ui, state) {
       items = buildMainMenuItems(state);
       break;
     case 'laws':
-      label = ' Propose Law (ESC: back) ';
+      label = ' Propose Law (TAB: cycle, ESC: back) ';
       items = buildLawMenuItems(state);
+      break;
+    case 'requests':
+      label = ' Improvement Requests (TAB: cycle, ESC: back) ';
+      items = buildRequestMenuItems(state);
+      break;
+    case 'improvements':
+      label = ' Improvements Queue (TAB: cycle, ESC: back) ';
+      items = buildImprovementMenuItems(state);
       break;
     case 'info_select':
       label = ' Select Info Panel (ESC: back) ';
@@ -394,7 +402,7 @@ export function renderActionPanel(ui, state) {
   panel.setContent(content);
 
   // Update border color based on focus
-  if (state.focus === 'laws' || state.focus === 'actions') {
+  if (state.focus === 'actions') {
     panel.style.border.fg = 'yellow';
   } else {
     panel.style.border.fg = 'white';
@@ -406,12 +414,15 @@ export function renderActionPanel(ui, state) {
  */
 function buildMainMenuItems(state) {
   const items = [
-    { id: 'propose_law', label: 'Propose Law', hint: 'Start a new law process', action: 'SWITCH_MODE', mode: 'laws' },
+    { id: 'propose_law', label: 'Propose Law', hint: 'TAB: laws', action: 'SWITCH_MODE', mode: 'laws' },
+    { id: 'view_requests', label: 'Improvement Requests', hint: 'TAB: requests', action: 'SWITCH_MODE', mode: 'requests' },
+    { id: 'view_improvements', label: 'Improvements Queue', hint: 'TAB: improvements', action: 'SWITCH_MODE', mode: 'improvements' },
     { id: 'info_panel', label: 'Info Panel', hint: 'Switch right panel view', action: 'SWITCH_MODE', mode: 'info_select' },
     { id: 'divider1', label: '─────────────────', divider: true },
     { id: 'view_market', label: 'View Market', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'view_armies', label: 'View Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
     { id: 'view_empires', label: 'View Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
+    { id: 'view_queue', label: 'View Queue', hint: '[/]', action: 'SET_VIEW', view: 'queue' },
     { id: 'divider2', label: '─────────────────', divider: true },
     { id: 'toggle_pause', label: state.paused ? 'Resume Game' : 'Pause Game', hint: '[SPACE]', action: 'TOGGLE_PAUSE' },
     { id: 'view_logs', label: 'View Logs', hint: '[L]', action: 'TOGGLE_LOGS' }
@@ -473,6 +484,55 @@ function buildLawMenuItems(state) {
   return items;
 }
 
+function buildRequestMenuItems(state) {
+  const items = [
+    { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' },
+    { id: 'divider', label: '─────────────────', divider: true }
+  ];
+
+  if (!state.improvements || !state.improvements.requests || state.improvements.requests.length === 0) {
+    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+    return items;
+  }
+
+  state.improvements.requests.forEach((request, idx) => {
+    items.push({
+      id: `request_${request.id}`,
+      label: request.name,
+      hint: `${request.suppliesCost} supplies`,
+      action: 'ACCEPT_REQUEST',
+      requestIndex: idx
+    });
+  });
+
+  return items;
+}
+
+function buildImprovementMenuItems(state) {
+  const items = [
+    { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' },
+    { id: 'divider', label: '─────────────────', divider: true }
+  ];
+
+  if (!state.improvements || !state.improvements.queue || state.improvements.queue.length === 0) {
+    items.push({ id: 'no_queue', label: 'No improvements in queue', info: true });
+    return items;
+  }
+
+  state.improvements.queue.forEach((improvement, idx) => {
+    const stateLabel = improvement.state || 'BUILDING';
+    items.push({
+      id: `improvement_${improvement.id}`,
+      label: `${improvement.name} [${stateLabel}]`,
+      hint: 'cancel',
+      action: 'CANCEL_IMPROVEMENT',
+      improvementIndex: idx
+    });
+  });
+
+  return items;
+}
+
 /**
  * Build info panel selection items
  */
@@ -482,9 +542,11 @@ function buildInfoSelectItems() {
     { id: 'divider', label: '─────────────────', divider: true },
     { id: 'market', label: 'Market Economy', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'armies', label: 'Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
-    { id: 'empires', label: 'Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' }
+    { id: 'empires', label: 'Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
+    { id: 'queue', label: 'Improvements Queue', hint: '[/]', action: 'SET_VIEW', view: 'queue' }
   ];
 }
+
 
 /**
  * Format menu items for display
@@ -901,31 +963,28 @@ export function renderCombinedInfo(ui, state) {
 
 const COMBINED_INFO_VIEWS = {
   market: {
-    label: ' Market Economy (m/a/e/r/i: switch, [/]: cycle) ',
+    label: ' Market Economy (m/a/e/q: switch, [/]: cycle) ',
     borderColor: 'green',
     render: renderMarketView
   },
   armies: {
-    label: ' Armies (m/a/e/r/i: switch, [/]: cycle) ',
+    label: ' Armies (m/a/e/q: switch, [/]: cycle) ',
     borderColor: 'cyan',
     render: renderArmiesView
   },
   empires: {
-    label: ' Empires (m/a/e/r/i: switch, [/]: cycle) ',
+    label: ' Empires (m/a/e/q: switch, [/]: cycle) ',
     borderColor: 'yellow',
     render: renderEmpiresView
   },
-  requests: {
-    label: ' Requests (m/a/e/r/i: switch, Enter: accept) ',
-    borderColor: 'magenta',
-    render: renderRequestsView
-  },
-  improvements: {
-    label: ' Improvements (m/a/e/r/i: switch, x: cancel) ',
+  queue: {
+    label: ' Improvements Queue (m/a/e/q: switch, [/]: cycle) ',
     borderColor: 'blue',
-    render: renderImprovementsView
+    render: renderImprovementsQueueView
   }
 };
+
+// Legacy: renderRequestsView remains for future reuse.
 
 function formatStats(state) {
   const tier = getCohesionTier(state.coalitionCohesion);
@@ -1146,82 +1205,115 @@ function formatVolume(volume) {
  */
 function renderRequestsView(state) {
   const lines = [];
-  
+
   if (!state.improvements || !state.improvements.requests) {
     lines.push('{yellow-fg}No improvements system initialized{/yellow-fg}');
     return lines.join('\n');
   }
-  
+
   const improvements = state.improvements;
   const requests = improvements.requests;
-  
-  // Show stats
+
   lines.push('{bold}Improvement Limits:{/bold}');
   lines.push(`  Concurrent Builds: ${improvements.currentBuilds || 0}/${improvements.maxConcurrentBuilds}`);
   lines.push(`  Total Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
   lines.push(`  Total Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
   lines.push(`  Supplies: {green-fg}${state.stockpiles.supplies || 0}{/green-fg}`);
   lines.push('');
-  
+
   if (requests.length === 0) {
     lines.push('{yellow-fg}No improvement requests available{/yellow-fg}');
     return lines.join('\n');
   }
-  
+
   lines.push('{bold}Available Requests:{/bold}');
   lines.push('');
-  
-  // Store selected index in state for persistence
-  if (state._ui === undefined) state._ui = {};
-  if (state._ui.selectedRequestIndex === undefined) state._ui.selectedRequestIndex = 0;
-  
-  requests.forEach((request, idx) => {
-    const isSelected = idx === state._ui.selectedRequestIndex;
-    const marker = isSelected ? '{cyan-fg}>{/cyan-fg}' : ' ';
-    
-    lines.push(`${marker} {bold}${request.name}{/bold}`);
+
+  requests.forEach((request) => {
+    lines.push(`{bold}${request.name}{/bold}`);
     lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.buildDuration}{/yellow-fg} turns`);
     lines.push(`  Cap: ${request.capacity} | Pot: ${request.potency}`);
-    
-    // Show sustainment costs
+
     const sustainKeys = Object.keys(request.sustainmentCost);
     if (sustainKeys.length > 0) {
       const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
       lines.push(`  Sustain: {yellow-fg}${sustainStr}{/yellow-fg}`);
     }
-    
-    // Show production outputs
+
     const outputKeys = Object.keys(request.productionOutputs);
     if (outputKeys.length > 0) {
       const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
       lines.push(`  Produces: {green-fg}${outputStr}{/green-fg}`);
     }
-    
-    // Show modifiers
+
     const modKeys = Object.keys(request.modifiers);
     if (modKeys.length > 0) {
       const modStr = modKeys.map(k => `${k}:${request.modifiers[k]}`).join(', ');
       lines.push(`  Bonus: {cyan-fg}${modStr}{/cyan-fg}`);
     }
-    
+
     lines.push('');
   });
-  
-  lines.push('{gray-fg}Press Enter to accept selected request{/gray-fg}');
-  
+
   return lines.join('\n');
 }
 
 /**
  * Render Improvements view (active and building improvements)
  */
-function renderImprovementsView(state) {
+function renderImprovementsQueueView(state) {
   const lines = [];
-  
+
   if (!state.improvements || !state.improvements.queue) {
     lines.push('{yellow-fg}No improvements system initialized{/yellow-fg}');
     return lines.join('\n');
   }
+
+  const improvements = state.improvements;
+  const queue = improvements.queue;
+
+  lines.push('{bold}Improvement Stats:{/bold}');
+  lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}/${improvements.maxConcurrentBuilds}`);
+  lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
+  lines.push(`  Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
+  lines.push('');
+
+  if (queue.length === 0) {
+    lines.push('{yellow-fg}No improvements in queue{/yellow-fg}');
+    return lines.join('\n');
+  }
+
+  lines.push('{bold}Improvements Queue:{/bold}');
+  lines.push('');
+
+  queue.forEach((improvement) => {
+    lines.push(`{bold}${improvement.name}{/bold} [${improvement.state}]`);
+    lines.push(`  Turns left: ${improvement.turnsRemaining}`);
+    lines.push(`  Capacity: ${improvement.capacity} | Potency: ${improvement.potency}`);
+
+    const sustainKeys = Object.keys(improvement.sustainmentCost);
+    if (sustainKeys.length > 0) {
+      const sustainStr = sustainKeys.map(k => `${k}:${improvement.sustainmentCost[k]}`).join(', ');
+      lines.push(`  Sustain: {yellow-fg}${sustainStr}{/yellow-fg}`);
+    }
+
+    const outputKeys = Object.keys(improvement.productionOutputs);
+    if (outputKeys.length > 0) {
+      const outputStr = outputKeys.map(k => `${k}:+${improvement.productionOutputs[k]}`).join(', ');
+      lines.push(`  Produces: {green-fg}${outputStr}{/green-fg}`);
+    }
+
+    const modKeys = Object.keys(improvement.modifiers);
+    if (modKeys.length > 0) {
+      const modStr = modKeys.map(k => `${k}:${improvement.modifiers[k]}`).join(', ');
+      lines.push(`  Bonus: {cyan-fg}${modStr}{/cyan-fg}`);
+    }
+
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
   
   const improvements = state.improvements;
   const queue = improvements.queue;

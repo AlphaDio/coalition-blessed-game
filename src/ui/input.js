@@ -13,9 +13,8 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   // Constants for focus modes
   const FOCUS_MODES = {
     MAIN: 'main',
-    LAWS: 'laws'
+    ACTIONS: 'actions'
   };
-  const FOCUS_CYCLE = [FOCUS_MODES.MAIN, FOCUS_MODES.LAWS];
   
   // Helper to safely call optional callbacks
   const safeCall = (fn, ...args) => {
@@ -62,7 +61,18 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   };
   
   // Global keybinds
-  ui.screen.key(['q', 'C-c'], () => {
+  ui.screen.key(['C-c'], () => {
+    return process.exit(0);
+  });
+
+  ui.screen.key(['Q'], () => {
+    if (ui.screen.focused === ui.inputBox) return;
+    if (state.focus === FOCUS_MODES.ACTIONS) return;
+    if (ui.logsWindow && !ui.logsWindow.hidden) {
+      ui.logsWindow.hide();
+      ui.screen.render();
+      return;
+    }
     return process.exit(0);
   });
   
@@ -245,40 +255,35 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       renderAll(ui, state);
     });
     
-    // r: Switch to Requests view
-    ui.screen.key(['r'], () => {
+    // q: Switch to Queue view
+    ui.screen.key(['q'], () => {
       if (shouldIgnoreKey()) return;
-      ui.combinedInfoBox.currentView = 'requests';
+      if (state.focus === FOCUS_MODES.ACTIONS) return;
+      ui.combinedInfoBox.currentView = 'queue';
       ui.combinedInfoBox.scrollOffset = 0;
       renderAll(ui, state);
     });
-    
-    // i: Switch to Improvements view
-    ui.screen.key(['i'], () => {
-      if (shouldIgnoreKey()) return;
-      ui.combinedInfoBox.currentView = 'improvements';
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
-    
+
     // ]: Cycle to next view (only if not in input box)
     ui.screen.key([']'], () => {
       if (shouldIgnoreKey()) return;
-      const views = ['market', 'armies', 'empires', 'requests', 'improvements'];
+      if (state.focus === FOCUS_MODES.ACTIONS) return;
+      const views = ['market', 'armies', 'empires', 'queue'];
       const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
       const nextIndex = (currentIndex + 1) % views.length;
       ui.combinedInfoBox.currentView = views[nextIndex];
       ui.combinedInfoBox.scrollOffset = 0;
       renderAll(ui, state);
     });
-    
+
     // [: Cycle to previous view (only if not in input box)
     // Note: [ is already used for speed decrease, so we need to check focus
     ui.screen.key(['['], (ch, key) => {
       if (shouldIgnoreKey()) return;
+      if (state.focus === FOCUS_MODES.ACTIONS) return;
       // Only handle for combined info box if input box doesn't have focus
       if (ui.screen.focused !== ui.inputBox) {
-        const views = ['market', 'armies', 'empires', 'requests', 'improvements'];
+        const views = ['market', 'armies', 'empires', 'queue'];
         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
         const prevIndex = (currentIndex - 1 + views.length) % views.length;
         ui.combinedInfoBox.currentView = views[prevIndex];
@@ -330,100 +335,19 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       renderAll(ui, state);
     });
     
-    // Improvements: Up/Down to navigate requests/improvements list
+    // Combined info box scrolling (when not in action focus)
     ui.screen.key(['up'], () => {
       if (shouldIgnoreKey()) return;
-      if (!state._ui) state._ui = {};
-      
-      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
-        const maxIndex = (state.improvements.requests?.length || 1) - 1;
-        if (maxIndex >= 0) {
-          state._ui.selectedRequestIndex = Math.max(0, 
-            (state._ui.selectedRequestIndex || 0) - 1);
-          renderAll(ui, state);
-        }
-      } else if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
-        const maxIndex = (state.improvements.queue?.length || 1) - 1;
-        if (maxIndex >= 0) {
-          state._ui.selectedImprovementIndex = Math.max(0, 
-            (state._ui.selectedImprovementIndex || 0) - 1);
-          renderAll(ui, state);
-        }
-      }
+      if (state.focus === FOCUS_MODES.ACTIONS) return;
+      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - 1);
+      renderAll(ui, state);
     });
-    
+
     ui.screen.key(['down'], () => {
       if (shouldIgnoreKey()) return;
-      if (!state._ui) state._ui = {};
-      
-      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
-        const maxIndex = (state.improvements.requests?.length || 1) - 1;
-        if (maxIndex >= 0) {
-          state._ui.selectedRequestIndex = Math.min(maxIndex, 
-            (state._ui.selectedRequestIndex || 0) + 1);
-          renderAll(ui, state);
-        }
-      } else if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
-        const maxIndex = (state.improvements.queue?.length || 1) - 1;
-        if (maxIndex >= 0) {
-          state._ui.selectedImprovementIndex = Math.min(maxIndex, 
-            (state._ui.selectedImprovementIndex || 0) + 1);
-          renderAll(ui, state);
-        }
-      }
-    });
-    
-    // Enter key: Accept selected request (when in Requests view)
-    ui.screen.key(['enter'], () => {
-      if (shouldIgnoreKey()) return;
-      if (state.activeEvent) return; // Don't interfere with event choices
-      
-      if (ui.combinedInfoBox.currentView === 'requests' && state.improvements) {
-        if (!state._ui) state._ui = {};
-        const selectedIndex = state._ui.selectedRequestIndex || 0;
-        const request = state.improvements.requests[selectedIndex];
-        
-        if (request) {
-          // Use first empire as default (or could add empire selection UI)
-          const empireId = state.empires[0]?.id || 'empire1';
-          const result = acceptImprovementRequest(state, request.id, empireId);
-          
-          if (result.success) {
-            result.log.forEach(line => ui.logBox.log(line));
-          } else {
-            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
-          }
-          
-          renderAll(ui, state);
-        }
-      }
-    });
-    
-    // X key: Cancel selected improvement (when in Improvements view)
-    ui.screen.key(['x', 'X'], () => {
-      if (shouldIgnoreKey()) return;
-      
-      if (ui.combinedInfoBox.currentView === 'improvements' && state.improvements) {
-        if (!state._ui) state._ui = {};
-        const selectedIndex = state._ui.selectedImprovementIndex || 0;
-        const improvement = state.improvements.queue[selectedIndex];
-        
-        if (improvement) {
-          const result = cancelImprovement(state, improvement.id);
-          
-          if (result.success) {
-            result.log.forEach(line => ui.logBox.log(line));
-            // Reset selection if needed
-            if (selectedIndex >= state.improvements.queue.length) {
-              state._ui.selectedImprovementIndex = Math.max(0, state.improvements.queue.length - 1);
-            }
-          } else {
-            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
-          }
-          
-          renderAll(ui, state);
-        }
-      }
+      if (state.focus === FOCUS_MODES.ACTIONS) return;
+      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + 1;
+      renderAll(ui, state);
     });
   }
   
@@ -448,16 +372,16 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   // Action panel navigation helpers
   const getSelectableItems = () => {
     const items = ui.lawsBox.menuItems || [];
-    return items.filter(item => !item.divider && !item.info);
+    return items.filter(item => !item.divider && !item.info && !item.disabled);
   };
   
   const findNextSelectableIndex = (currentIdx, direction) => {
     const items = ui.lawsBox.menuItems || [];
     let newIdx = currentIdx + direction;
-    
+
     while (newIdx >= 0 && newIdx < items.length) {
       const item = items[newIdx];
-      if (!item.divider && !item.info) {
+      if (!item.divider && !item.info && !item.disabled) {
         return newIdx;
       }
       newIdx += direction;
@@ -466,37 +390,40 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   };
   
   ui.lawsBox.key(['up'], () => {
+    if (state.focus !== FOCUS_MODES.ACTIONS) return;
     const panel = ui.lawsBox;
     const currentIdx = panel.selectedIndex || 0;
     const newIdx = findNextSelectableIndex(currentIdx, -1);
-    
+
     if (newIdx !== currentIdx) {
       panel.selectedIndex = newIdx;
       renderAll(ui, state);
     }
   });
-  
+
   ui.lawsBox.key(['down'], () => {
+    if (state.focus !== FOCUS_MODES.ACTIONS) return;
     const panel = ui.lawsBox;
     const items = panel.menuItems || [];
     const currentIdx = panel.selectedIndex || 0;
     const newIdx = findNextSelectableIndex(currentIdx, 1);
-    
+
     if (newIdx !== currentIdx && newIdx < items.length) {
       panel.selectedIndex = newIdx;
       renderAll(ui, state);
     }
   });
-  
+
   ui.lawsBox.key(['enter'], () => {
+    if (state.focus !== FOCUS_MODES.ACTIONS) return;
     const panel = ui.lawsBox;
     const items = panel.menuItems || [];
     const selectedItem = items[panel.selectedIndex || 0];
-    
+
     if (!selectedItem || selectedItem.divider || selectedItem.info || selectedItem.disabled) {
       return;
     }
-    
+
     // Handle action
     switch (selectedItem.action) {
       case 'SWITCH_MODE':
@@ -512,7 +439,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
         }
         renderAll(ui, state);
         break;
-        
+
       case 'SET_VIEW':
         if (ui.combinedInfoBox) {
           ui.combinedInfoBox.currentView = selectedItem.view;
@@ -520,7 +447,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
         }
         renderAll(ui, state);
         break;
-        
+
       case 'ENACT_LAW':
         if (state.lawDefinitions && state.lawDefinitions.length > 0) {
           const lawDef = state.lawDefinitions[selectedItem.lawIndex];
@@ -538,13 +465,42 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
         panel.selectedIndex = 0;
         renderAll(ui, state);
         break;
-        
+
+      case 'ACCEPT_REQUEST': {
+        const request = state.improvements?.requests?.[selectedItem.requestIndex];
+        if (request) {
+          const empireId = state.empires[0]?.id || 'empire1';
+          const result = acceptImprovementRequest(state, request.id, empireId);
+          if (result.success) {
+            result.log.forEach(line => ui.logBox.log(line));
+          } else {
+            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+          }
+        }
+        renderAll(ui, state);
+        break;
+      }
+
+      case 'CANCEL_IMPROVEMENT': {
+        const improvement = state.improvements?.queue?.[selectedItem.improvementIndex];
+        if (improvement) {
+          const result = cancelImprovement(state, improvement.id);
+          if (result.success) {
+            result.log.forEach(line => ui.logBox.log(line));
+          } else {
+            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+          }
+        }
+        renderAll(ui, state);
+        break;
+      }
+
       case 'TOGGLE_PAUSE':
         state.paused = !state.paused;
         ui.logBox.log(state.paused ? 'Game PAUSED' : 'Game RESUMED');
         renderAll(ui, state);
         break;
-        
+
       case 'TOGGLE_LOGS':
         if (ui.logsWindow) {
           const isCurrentlyVisible = !ui.logsWindow.hidden;
@@ -568,6 +524,12 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     if (panel.currentMode !== 'main') {
       panel.currentMode = 'main';
       panel.selectedIndex = 0;
+      renderAll(ui, state);
+      return;
+    }
+
+    if (state.focus === FOCUS_MODES.ACTIONS) {
+      state.focus = FOCUS_MODES.MAIN;
       renderAll(ui, state);
     }
   });
@@ -643,30 +605,43 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   
   // Input box handlers
   if (ui.inputBox) {
-    // Focus input box when user presses '/' or ':'
-    ui.screen.key(['/', ':'], () => {
+    // Focus input box when user presses '/'
+    ui.screen.key(['/'], () => {
+      state.focus = FOCUS_MODES.MAIN;
       ui.inputBox.focus();
-      ui.inputBox.setValue('');
+      ui.inputBox.setValue('/');
       ui.screen.render();
     });
-    
-    // Also allow TAB to focus input box
+
+    // TAB: focus/cycle action panel modes
     ui.screen.key(['tab'], () => {
-      // If input box is already focused, cycle to laws
-      if (ui.screen.focused === ui.inputBox) {
-        const currentIdx = FOCUS_CYCLE.indexOf(state.focus);
-        state.focus = FOCUS_CYCLE[(currentIdx + 1) % FOCUS_CYCLE.length];
-        renderAll(ui, state);
-      } else {
-        // Otherwise focus input box
-        ui.inputBox.focus();
-        ui.screen.render();
+      if (!ui.lawsBox) return;
+
+      state.focus = FOCUS_MODES.ACTIONS;
+      ui.lawsBox.focus();
+
+      const cycleModes = ['laws', 'requests', 'improvements'];
+      const currentMode = ui.lawsBox.currentMode || 'main';
+      const currentIndex = cycleModes.indexOf(currentMode);
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % cycleModes.length;
+      ui.lawsBox.currentMode = cycleModes[nextIndex];
+      ui.lawsBox.selectedIndex = 0;
+
+      const items = ui.lawsBox.menuItems || [];
+      for (let i = 0; i < items.length; i++) {
+        if (!items[i].divider && !items[i].info && !items[i].disabled) {
+          ui.lawsBox.selectedIndex = i;
+          break;
+        }
       }
+
+      renderAll(ui, state);
     });
     
     // Handle command submission
     ui.inputBox.on('submit', (value) => {
-      const command = value.trim();
+      const raw = value.trim();
+      const command = raw.startsWith('/') ? raw.slice(1).trim() : raw;
       
       if (!command) {
         ui.inputBox.clearValue();
@@ -763,6 +738,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     ui.inputBox.key(['escape'], () => {
       ui.inputBox.clearValue();
       ui.inputBox.cancel();
+      state.focus = FOCUS_MODES.MAIN;
       ui.screen.render();
     });
     
