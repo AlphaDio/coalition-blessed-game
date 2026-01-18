@@ -10,8 +10,8 @@ import { createSampleContent } from './src/game/content.js';
 import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
 
 // Initialize game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(12345);
+const content = createSampleContent(12345);
 
 state.empires = content.empires;
 state.armies = content.armies;

@@ -84,7 +84,7 @@ function showHelp() {
     '  help, h, ?           - Show this help',
     '',
     '{yellow-fg}Keyboard shortcuts still work!{/yellow-fg}',
-    'Press / to focus command input, TAB to cycle actions.'
+    'Press / to focus command input, TAB to cycle actions, +/- to change speed.'
   ].join('\n');
   
   return {

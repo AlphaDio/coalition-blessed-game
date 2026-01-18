@@ -1,11 +1,12 @@
 // Type definitions and initializers
 
-export function createEmpire(id, name, initialApproval = 50, aidCapacity = 100, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
+export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
   return {
     id,
     name,
     approval: initialApproval,
-    aidCapacity,
+    stability: stats.stability ?? 60,
+    color: stats.color,
     traits,
     values: values,
     stats: {
@@ -308,6 +309,7 @@ export function createGameState(seed = 0) {
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
     
     // Improvements system
+    coalitionPotencyValue: 3, // Potency added per improvement
     improvements: null // Improvements queue and requests (initialized in index.js)
   };
 }

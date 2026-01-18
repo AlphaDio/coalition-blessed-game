@@ -55,9 +55,12 @@ function getOrCreateScourgeArmy(state) {
   if (!scourgeArmy) {
     // Create Scourge army based on current fervor
     // Higher fervor = stronger Scourge
-    const baseMP = 12000;
+    const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
+    const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
+    const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
     const fervorMPBonus = state.scourgeFervor * 50; // +50 MP per fervor point
     const totalMP = baseMP + fervorMPBonus;
+
     
     scourgeArmy = {
       id: scourgeId,
@@ -84,11 +87,11 @@ function getOrCreateScourgeArmy(state) {
       },
       
       // Combat stats - Scourge is aggressive but less protected
-      dmgPerUnitMP: 1.2,        // Higher damage output
-      dmgPerTickMO: 3.0,        // Higher morale pressure
+      dmgPerUnitMP: 1.2 * powerScale,        // Higher damage output
+      dmgPerTickMO: 3.0 * powerScale,        // Higher morale pressure
       protection: 0.15,         // Less protection
       resolve: 0.25,            // Less resolve
-      killRate: 0.15,          // Higher kill rate
+      killRate: 0.15 * powerScale,          // Higher kill rate
       
       // Sustain stats
       recoveryPool: 0,
@@ -96,13 +99,17 @@ function getOrCreateScourgeArmy(state) {
       recovery: 40,             // Lower Recovery stat than coalition armies
       reinforcementRate: 80     // Slower reinforcement
     };
+
     
     state.armies.push(scourgeArmy);
   } else {
     // Update Scourge army stats based on current fervor
-    const baseMP = 12000;
+    const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
+    const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
+    const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
     const fervorMPBonus = state.scourgeFervor * 50;
     const totalMP = baseMP + fervorMPBonus;
+
     
     // Scale MP proportionally
     const mpRatio = scourgeArmy.mp.current / scourgeArmy.mp.max;
@@ -111,6 +118,10 @@ function getOrCreateScourgeArmy(state) {
     
     scourgeArmy.fervor = state.scourgeFervor;
     scourgeArmy.organization = Math.min(100, 50 + state.scourgeFervor * 0.5);
+    scourgeArmy.dmgPerUnitMP = 1.2 * powerScale;
+    scourgeArmy.dmgPerTickMO = 3.0 * powerScale;
+    scourgeArmy.killRate = 0.15 * powerScale;
+
   }
   
   return scourgeArmy;

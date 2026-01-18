@@ -1,23 +1,27 @@
 import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
+import { DeterministicRNG } from '../modules/rng.js';
 
-export function createSampleContent() {
+export function createSampleContent(seed = 0) {
   // Load all modules from the modules directory
   const registry = createModuleRegistry();
+  const rng = new DeterministicRNG(seed || 0);
   
   // Extract empires from modules
   const empireModules = getModulesByType(registry, 'empire');
   const empires = empireModules.map(entry => {
     const moduleDoc = registry.modules[entry.id];
     const data = moduleDoc.declares.empire_data;
+    const stabilityRoll = (rng.random() * 30) - 10; // 50..80 centered around 60
+    const stability = Math.max(-100, Math.min(100, 60 + stabilityRoll));
+    const stats = { ...data.stats, stability, color: data.color };
     return createEmpire(
       data.id,
       data.name,
       data.approval,
-      data.aggravation,
       data.traits || {},
       data.values || {},
-      data.stats || {},
+      stats,
       data.tags || [],
       data.modifiers || {}
     );

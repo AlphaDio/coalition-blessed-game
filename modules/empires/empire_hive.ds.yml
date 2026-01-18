@@ -18,6 +18,7 @@ declares:
   empire_data:
     id: "empire_hive"
     name: "Synaptic Swarm"
+    color: "red"
     approval: 55
     aggravation: 100
     traits:

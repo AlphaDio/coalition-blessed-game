@@ -18,6 +18,7 @@ declares:
   empire_data:
     id: "empire_1"
     name: "Stellar Federation"
+    color: "cyan"
     approval: 60
     aggravation: 120
     traits:

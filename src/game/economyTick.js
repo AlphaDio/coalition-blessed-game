@@ -177,7 +177,10 @@ export function processEconomyTick(state) {
     const empire = state.empires.find(e => e.id === army.owner_empire_id);
     if (empire && empire.stockpiles) {
       // Distribute empire surplus to armies
-      const surplusRatio = empire.allocation?.surplus_to_armies_ratio || 0.35;
+      const baseSurplusRatio = empire.allocation?.surplus_to_armies_ratio || 0.35;
+      const stability = Number.isFinite(empire.stability) ? empire.stability : 60;
+      const stabilityFactor = Math.max(0.5, Math.min(1.2, 0.7 + (stability / 100) * 0.5));
+      const surplusRatio = baseSurplusRatio * stabilityFactor;
       
       Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
         const totalNeeded = qtyPerManpower * manpower;

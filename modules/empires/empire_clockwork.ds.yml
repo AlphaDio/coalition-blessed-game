@@ -18,6 +18,7 @@ declares:
   empire_data:
     id: "empire_clockwork"
     name: "Quantum Collective"
+    color: "magenta"
     approval: 60
     aggravation: 90
     traits:

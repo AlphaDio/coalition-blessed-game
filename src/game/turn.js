@@ -137,6 +137,16 @@ function handleEconomyTick(state, log, logger) {
     const supplyLog = consumeSupplies(state);
     log.push(...supplyLog.log);
   }
+
+  // Stability impact from negative budgets
+  if (state.empires && state.empires.length > 0) {
+    state.empires.forEach(empire => {
+      const budget = empire.budget_credits ?? 0;
+      if (budget < 0) {
+        empire.stability = Math.max(-100, Math.min(100, (empire.stability ?? 60) - 1));
+      }
+    });
+  }
 }
 
 function handleBattlePhase(state, rng, log, logger) {

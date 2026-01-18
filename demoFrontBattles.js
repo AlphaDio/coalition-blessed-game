@@ -11,8 +11,8 @@ import { createUI, renderAll } from './src/ui/renderer.js';
 import { startBattle } from './src/game/frontBattles.js';
 
 // Initialize game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(12345);
+const content = createSampleContent(12345);
 
 // Populate state with content
 state.empires = content.empires;

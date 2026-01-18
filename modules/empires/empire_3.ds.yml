@@ -18,6 +18,7 @@ declares:
   empire_data:
     id: "empire_3"
     name: "Nexus Dominion"
+    color: "yellow"
     approval: 55
     aggravation: 110
     traits:

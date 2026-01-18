@@ -16,7 +16,7 @@ import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js
 function runSimulation(seed) {
   const rng = new DeterministicRNG(seed);
   const state = createGameState();
-  const content = createSampleContent();
+  const content = createSampleContent(seed);
   
   state.empires = content.empires;
   state.armies = content.armies;

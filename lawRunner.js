@@ -25,8 +25,8 @@ console.log(`Seed: ${seed}\n`);
 const rng = new DeterministicRNG(seed);
 
 // Initialize game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(seed);
+const content = createSampleContent(seed);
 
 // Populate state
 state.empires = content.empires;

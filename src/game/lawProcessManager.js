@@ -461,12 +461,8 @@ export function calculateEmpireVotes(empire, policy, state) {
  * @param {Object} state - Game state
  */
 export function updatePlayerInfluence(state) {
-  state.influenceProgress++;
-  
-  if (state.influenceProgress >= 100) {
-    state.playerInfluence++;
-    state.influenceProgress = 0;
-  }
+  state.playerInfluence = (state.playerInfluence || 0) + 1;
+  state.influenceProgress = 0;
 }
 
 /**

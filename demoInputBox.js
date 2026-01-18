@@ -13,8 +13,8 @@ import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 
 // Initialize game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(12345);
+const content = createSampleContent(12345);
 
 // Populate state with content
 state.empires = content.empires;

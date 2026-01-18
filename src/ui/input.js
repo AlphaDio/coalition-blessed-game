@@ -65,7 +65,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     return process.exit(0);
   });
 
-  ui.screen.key(['Q'], () => {
+  ui.screen.key(['q', 'Q'], () => {
     if (ui.screen.focused === ui.inputBox) return;
     if (state.focus === FOCUS_MODES.ACTIONS) return;
     if (ui.logsWindow && !ui.logsWindow.hidden) {
@@ -104,7 +104,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   });
   
   // Speed controls
-  ui.screen.key(['['], () => {
+  ui.screen.key(['-'], () => {
     // Decrease speed
     const newSpeed = Math.max(
       REALTIME_CONSTANTS.MIN_SPEED,
@@ -119,7 +119,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     }
   });
   
-  ui.screen.key([']'], () => {
+  ui.screen.key(['+'], () => {
     // Increase speed
     const newSpeed = Math.min(
       REALTIME_CONSTANTS.MAX_SPEED,
@@ -255,8 +255,8 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       renderAll(ui, state);
     });
     
-    // q: Switch to Queue view
-    ui.screen.key(['q'], () => {
+    // w: Switch to Works view
+    ui.screen.key(['w'], () => {
       if (shouldIgnoreKey()) return;
       if (state.focus === FOCUS_MODES.ACTIONS) return;
       ui.combinedInfoBox.currentView = 'queue';
@@ -277,7 +277,6 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     });
 
     // [: Cycle to previous view (only if not in input box)
-    // Note: [ is already used for speed decrease, so we need to check focus
     ui.screen.key(['['], (ch, key) => {
       if (shouldIgnoreKey()) return;
       if (state.focus === FOCUS_MODES.ACTIONS) return;
@@ -722,10 +721,14 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
           process.exit(0);
         }
         
-        ui.commandHistoryBox.setContent(`{green-fg}✓{/green-fg} Last: ${command.substring(0, 20)}${command.length > 20 ? '...' : ''}`);
+        if (ui.commandHistoryBox) {
+          ui.commandHistoryBox.setContent(`{green-fg}✓{/green-fg} Last: ${command.substring(0, 20)}${command.length > 20 ? '...' : ''}`);
+        }
       } else {
         ui.logBox.log(`{red-fg}${result.message}{/red-fg}`);
-        ui.commandHistoryBox.setContent(`{red-fg}✗{/red-fg} Error`);
+        if (ui.commandHistoryBox) {
+          ui.commandHistoryBox.setContent(`{red-fg}✗{/red-fg} Error`);
+        }
       }
       
       // Clear input and refocus

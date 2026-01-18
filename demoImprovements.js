@@ -22,8 +22,8 @@ console.log('║         IMPROVEMENTS SYSTEM DEMONSTRATION                  ║'
 console.log('╚════════════════════════════════════════════════════════════╝\n');
 
 // Create game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(12345);
+const content = createSampleContent(12345);
 state.empires = content.empires;
 state.armies = content.armies;
 state.stockpiles.supplies = 2000;

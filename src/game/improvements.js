@@ -25,11 +25,11 @@ export function createImprovementRequest(id, name, description, {
   suppliesCost = 0,
   buildDuration = 0,
   capacity = 1,
-  potency = 1,
   sustainmentCost = {}, // { commodity_key: qty_per_tick }
   productionOutputs = {}, // { commodity_key: qty_per_tick }
   modifiers = {}, // { stat_key: value }
-  tags = []
+  tags = [],
+  suggestedBy = 'coalition'
 } = {}) {
   return {
     id,
@@ -38,24 +38,25 @@ export function createImprovementRequest(id, name, description, {
     suppliesCost,
     buildDuration,
     capacity,
-    potency,
     sustainmentCost,
     productionOutputs,
     modifiers,
-    tags
+    tags,
+    suggestedBy
   };
 }
 
 /**
  * Create an improvement instance (in queue or completed)
  */
-export function createImprovement(requestId, empireId, startedAtTick, request) {
+export function createImprovement(requestId, empireId, startedAtTick, request, potencyValue) {
   return {
     id: `${requestId}_${empireId}_${startedAtTick}`,
     requestId,
     empireId,
     name: request.name,
     description: request.description,
+    suggestedBy: request.suggestedBy || empireId || 'coalition',
     
     // Build phase
     buildProgress: 0,
@@ -65,7 +66,7 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     // Runtime state
     state: 'BUILDING', // BUILDING | ACTIVE | DEGRADED
     capacity: request.capacity,
-    potency: request.potency,
+    potency: potencyValue,
     
     // Costs and outputs
     sustainmentCost: { ...request.sustainmentCost },
@@ -110,8 +111,7 @@ export function getSampleImprovementRequests() {
     createImprovementRequest('titan_forge', 'Titan Forge Network', 'Galaxy-spanning industrial mega-structure harvesting stellar matter to forge alloys of unparalleled strength', {
       suppliesCost: 200,
       buildDuration: 10,
-      capacity: 2,
-      potency: 3,
+      capacity: 3,
       sustainmentCost: {
         biomass: 5,
         ice: 3
@@ -122,14 +122,14 @@ export function getSampleImprovementRequests() {
       modifiers: {
         industrial_output: 0.05
       },
-      tags: ['mega_structure', 'industrial', 'production']
+      tags: ['mega_structure', 'industrial', 'production'],
+      suggestedBy: 'coalition'
     }),
     
     createImprovementRequest('ascension_spire', 'Ascension Spire', 'Colossal monument to knowledge where the greatest minds pursue transcendent breakthroughs', {
       suppliesCost: 300,
       buildDuration: 15,
-      capacity: 3,
-      potency: 5,
+      capacity: 4,
       sustainmentCost: {
         super_alloys: 3,
         rare_gases: 2
@@ -142,14 +142,14 @@ export function getSampleImprovementRequests() {
         research_speed: 0.10,
         tech_level: 1
       },
-      tags: ['mega_structure', 'science', 'transcendence']
+      tags: ['mega_structure', 'science', 'transcendence'],
+      suggestedBy: 'empire_1'
     }),
     
     createImprovementRequest('war_symposium', 'Grand War Symposium', 'Galactic convocation of military leaders coordinating fleets across a thousand battlefronts', {
       suppliesCost: 150,
       buildDuration: 8,
-      capacity: 2,
-      potency: 2,
+      capacity: 3,
       sustainmentCost: {
         super_alloys: 4,
         biomass: 6
@@ -161,14 +161,14 @@ export function getSampleImprovementRequests() {
         army_organization: 5,
         supply_efficiency: 0.08
       },
-      tags: ['grand_event', 'military', 'coordination']
+      tags: ['grand_event', 'military', 'coordination'],
+      suggestedBy: 'empire_2'
     }),
     
     createImprovementRequest('festival_of_worlds', 'Festival of Worlds', 'Massive celebration spanning entire star systems, uniting billions in shared culture and purpose', {
       suppliesCost: 250,
       buildDuration: 12,
-      capacity: 3,
-      potency: 4,
+      capacity: 4,
       sustainmentCost: {
         biomass: 5,
         genomes: 3,
@@ -181,14 +181,14 @@ export function getSampleImprovementRequests() {
         population_growth: 0.03,
         empire_approval: 2
       },
-      tags: ['grand_event', 'cultural', 'unity']
+      tags: ['grand_event', 'cultural', 'unity'],
+      suggestedBy: 'empire_3'
     }),
     
     createImprovementRequest('convergence_nexus', 'Convergence Nexus', 'Hyperspatial marketplace where civilizations across the void exchange wealth and wonders', {
       suppliesCost: 180,
       buildDuration: 10,
-      capacity: 2,
-      potency: 3,
+      capacity: 3,
       sustainmentCost: {
         ice: 4,
         rare_gases: 2
@@ -200,7 +200,8 @@ export function getSampleImprovementRequests() {
         trade_income: 500, // Credits per tick
         market_efficiency: 0.05
       },
-      tags: ['mega_structure', 'economic', 'convergence']
+      tags: ['mega_structure', 'economic', 'trade'],
+      suggestedBy: 'coalition'
     })
   ];
 }
@@ -241,6 +242,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   const active = improvements.queue.filter(i => i.state === 'ACTIVE' || i.state === 'DEGRADED');
   const totalCapacity = active.reduce((sum, i) => sum + i.capacity, 0);
   const totalPotency = active.reduce((sum, i) => sum + i.potency, 0);
+  const potencyValue = Number.isFinite(state.coalitionPotencyValue) ? state.coalitionPotencyValue : 0;
   
   if (totalCapacity + request.capacity > improvements.maxTotalCapacity) {
     return {
@@ -250,10 +252,10 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
   
-  if (totalPotency + request.potency > improvements.maxTotalPotency) {
+  if (totalPotency + potencyValue > improvements.maxTotalPotency) {
     return {
       success: false,
-      error: `Would exceed potency limit (${totalPotency + request.potency}/${improvements.maxTotalPotency})`,
+      error: `Would exceed potency limit (${totalPotency + potencyValue}/${improvements.maxTotalPotency})`,
       log: []
     };
   }
@@ -262,7 +264,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   state.stockpiles.supplies -= request.suppliesCost;
   
   // Create improvement instance
-  const improvement = createImprovement(requestId, empireId, state.turn, request);
+  const improvement = createImprovement(requestId, empireId, state.turn, request, potencyValue);
   improvements.queue.push(improvement);
   
   logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} Supplies)`);
@@ -315,7 +317,8 @@ export function processImprovementsTick(state) {
       improvements.currentBuilds++;
       
       // Advance build progress
-      improvement.buildProgress++;
+      const potencyBoost = Number.isFinite(state.coalitionPotencyValue) ? state.coalitionPotencyValue : 0;
+      improvement.buildProgress += 1 + potencyBoost;
       
       // Check if build is complete
       if (improvement.buildProgress >= improvement.buildDuration) {

@@ -47,7 +47,7 @@ export function createUI() {
     combinedInfoBox,
     logsWindow,
     inputBox,
-    commandHistoryBox
+    commandHistoryBox // null when status panel is removed
   };
 }
 
@@ -191,7 +191,14 @@ function attachLogHistory(logBox) {
 
   // Override log method to properly handle tags
   logBox.log = function(message) {
-    this.logLines.push(message);
+    const raw = String(message ?? '');
+    const singleLine = raw.replace(/\s+/g, ' ').trim();
+    const maxLength = 120;
+    const compact = singleLine.length > maxLength
+      ? `${singleLine.slice(0, maxLength - 3)}...`
+      : singleLine;
+
+    this.logLines.push(compact);
     if (this.logLines.length > this.maxLines) {
       this.logLines.shift(); // Remove oldest line
     }
@@ -251,8 +258,7 @@ function createCommandInputs(screen) {
   // Input box at the bottom (rows 10-11 out of 12 total rows)
   // Position: 10/12 = 83.33% from top
   const INPUT_BOX_TOP_PERCENT = '83.33%';
-  const INPUT_BOX_WIDTH_PERCENT = '75%';
-  const COMMAND_HISTORY_WIDTH_PERCENT = '25%';
+  const INPUT_BOX_WIDTH_PERCENT = '100%';
 
   const inputBox = blessed.textbox({
     top: INPUT_BOX_TOP_PERCENT,
@@ -275,31 +281,13 @@ function createCommandInputs(screen) {
     tags: true
   });
 
-  // Command history display (rows 10-11, cols 9-12)
-  const commandHistoryBox = blessed.box({
-    top: INPUT_BOX_TOP_PERCENT,
-    left: INPUT_BOX_WIDTH_PERCENT,
-    width: COMMAND_HISTORY_WIDTH_PERCENT,
-    height: 3,
-    label: ' Status ',
-    content: 'Ready',
-    tags: true,
-    border: {
-      type: 'line'
-    },
-    style: {
-      border: { fg: 'white' }
-    }
-  });
-
   screen.append(inputBox);
-  screen.append(commandHistoryBox);
 
   // Store command history
   inputBox.commandHistory = [];
   inputBox.historyIndex = -1;
 
-  return { inputBox, commandHistoryBox };
+  return { inputBox, commandHistoryBox: null };
 }
 
 function createLogsWindow(screen) {
@@ -383,7 +371,7 @@ export function renderActionPanel(ui, state) {
       items = buildRequestMenuItems(state);
       break;
     case 'improvements':
-      label = ' Improvements Queue (TAB: cycle, ESC: back) ';
+      label = ' Works (TAB: cycle, ESC: back) ';
       items = buildImprovementMenuItems(state);
       break;
     case 'info_select':
@@ -422,7 +410,7 @@ function buildMainMenuItems(state) {
     { id: 'view_market', label: 'View Market', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'view_armies', label: 'View Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
     { id: 'view_empires', label: 'View Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
-    { id: 'view_queue', label: 'View Queue', hint: '[/]', action: 'SET_VIEW', view: 'queue' },
+    { id: 'view_queue', label: 'View Works', hint: '[W]', action: 'SET_VIEW', view: 'queue' },
     { id: 'divider2', label: '─────────────────', divider: true },
     { id: 'toggle_pause', label: state.paused ? 'Resume Game' : 'Pause Game', hint: '[SPACE]', action: 'TOGGLE_PAUSE' },
     { id: 'view_logs', label: 'View Logs', hint: '[L]', action: 'TOGGLE_LOGS' }
@@ -496,9 +484,10 @@ function buildRequestMenuItems(state) {
   }
 
   state.improvements.requests.forEach((request, idx) => {
+    const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
     items.push({
       id: `request_${request.id}`,
-      label: request.name,
+      label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
       hint: `${request.suppliesCost} supplies`,
       action: 'ACCEPT_REQUEST',
       requestIndex: idx
@@ -515,15 +504,20 @@ function buildImprovementMenuItems(state) {
   ];
 
   if (!state.improvements || !state.improvements.queue || state.improvements.queue.length === 0) {
-    items.push({ id: 'no_queue', label: 'No improvements in queue', info: true });
+    items.push({ id: 'no_queue', label: 'No works in progress', info: true });
     return items;
   }
 
   state.improvements.queue.forEach((improvement, idx) => {
     const stateLabel = improvement.state || 'BUILDING';
+    const progress = improvement.buildDuration > 0
+      ? Math.min(1, improvement.buildProgress / improvement.buildDuration)
+      : 0;
+    const bar = formatProgressBar(progress, 12);
+    const { label, colorTag } = formatSuggestionLabel(improvement.suggestedBy, state);
     items.push({
       id: `improvement_${improvement.id}`,
-      label: `${improvement.name} [${stateLabel}]`,
+      label: `${improvement.name} ${bar} [${stateLabel}] {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
       hint: 'cancel',
       action: 'CANCEL_IMPROVEMENT',
       improvementIndex: idx
@@ -531,6 +525,24 @@ function buildImprovementMenuItems(state) {
   });
 
   return items;
+}
+
+function formatProgressBar(progress, width) {
+  const clamped = Math.max(0, Math.min(1, progress));
+  const filled = Math.round(clamped * width);
+  const empty = Math.max(0, width - filled);
+  return `{green-fg}[${'#'.repeat(filled)}${'-'.repeat(empty)}]{/green-fg}`;
+}
+
+function formatSuggestionLabel(suggestedBy, state) {
+  if (!suggestedBy || suggestedBy === 'coalition') {
+    return { label: 'Coalition', colorTag: 'cyan' };
+  }
+
+  const empire = state.empires?.find(e => e.id === suggestedBy || e.name === suggestedBy);
+  const label = empire?.name || suggestedBy;
+  const colorTag = empire?.color || 'yellow';
+  return { label, colorTag };
 }
 
 /**
@@ -543,7 +555,7 @@ function buildInfoSelectItems() {
     { id: 'market', label: 'Market Economy', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'armies', label: 'Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
     { id: 'empires', label: 'Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
-    { id: 'queue', label: 'Improvements Queue', hint: '[/]', action: 'SET_VIEW', view: 'queue' }
+    { id: 'queue', label: 'Works', hint: '[W]', action: 'SET_VIEW', view: 'queue' }
   ];
 }
 
@@ -585,7 +597,7 @@ function formatMenuItems(items, selectedIndex) {
 export function renderEvent(ui, state) {
   if (!state.activeEvent) {
     const pauseHint = state.paused ? 'Press SPACE to resume.' : 'Game running in real-time.';
-    ui.eventBox.setContent(`No active event.\n\n${pauseHint}\nPress [ or ] to adjust speed.`);
+    ui.eventBox.setContent(`No active event.\n\n${pauseHint}\nPress - or + to adjust speed.`);
     ui.eventBox.style.border.fg = 'white';
     return;
   }
@@ -622,7 +634,8 @@ export function renderTables(ui, state) {
   
   content += `{bold}Empires:{/bold}\n`;
   state.empires.forEach(empire => {
-    content += `  ${empire.name}: Approval ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}, Aid ${empire.aidCapacity}\n`;
+    content += `  ${empire.name}: Approval ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}\n`;
+
   });
   
   content += `\n{bold}Armies:{/bold}\n`;
@@ -963,22 +976,22 @@ export function renderCombinedInfo(ui, state) {
 
 const COMBINED_INFO_VIEWS = {
   market: {
-    label: ' Market Economy (m/a/e/q: switch, [/]: cycle) ',
+    label: ' Market Economy (m/a/e/w: switch, [/]: cycle) ',
     borderColor: 'green',
     render: renderMarketView
   },
   armies: {
-    label: ' Armies (m/a/e/q: switch, [/]: cycle) ',
+    label: ' Armies (m/a/e/w: switch, [/]: cycle) ',
     borderColor: 'cyan',
     render: renderArmiesView
   },
   empires: {
-    label: ' Empires (m/a/e/q: switch, [/]: cycle) ',
+    label: ' Empires (m/a/e/w: switch, [/]: cycle) ',
     borderColor: 'yellow',
     render: renderEmpiresView
   },
   queue: {
-    label: ' Improvements Queue (m/a/e/q: switch, [/]: cycle) ',
+    label: ' Works (m/a/e/w: switch, [/]: cycle) ',
     borderColor: 'blue',
     render: renderImprovementsQueueView
   }
@@ -1001,7 +1014,7 @@ function formatStats(state) {
 
   if (state.playerInfluence !== undefined) {
     lines.push(`{bold}Player Influence:{/bold} ${state.playerInfluence}`);
-    lines.push(`  (${state.influenceProgress || 0}/100 ticks)`, '');
+    lines.push(`  (+1 per tick)`, '');
   }
 
   const activeLawCount = getActiveLawCount(state);
@@ -1151,7 +1164,7 @@ function appendInsurrectionInfo(lines, insurrections) {
 function formatEmpireBlock(empire, regularArmies) {
   const lines = [`{bold}${empire.name}{/bold}`];
   lines.push(`  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`);
-  lines.push(`  Aid Capacity: ${empire.aidCapacity}`);
+
   if (empire.stats) {
     lines.push(`  Population: ${formatNumber(empire.stats.population || 0)}`);
     lines.push(`  Influence: ${formatNumber(empire.stats.influence || 0)}`);
@@ -1314,77 +1327,7 @@ function renderImprovementsQueueView(state) {
 
   return lines.join('\n');
 }
-  
-  const improvements = state.improvements;
-  const queue = improvements.queue;
-  
-  // Show stats
-  lines.push('{bold}Improvement Stats:{/bold}');
-  lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}/${improvements.maxConcurrentBuilds}`);
-  lines.push(`  Active: {green-fg}${queue.filter(i => i.state === 'ACTIVE').length}{/green-fg}`);
-  lines.push(`  Degraded: {yellow-fg}${queue.filter(i => i.state === 'DEGRADED').length}{/yellow-fg}`);
-  lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
-  lines.push(`  Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
-  lines.push('');
-  
-  if (queue.length === 0) {
-    lines.push('{yellow-fg}No improvements in queue{/yellow-fg}');
-    lines.push('');
-    lines.push('{gray-fg}Switch to Requests (R) to start an improvement{/gray-fg}');
-    return lines.join('\n');
-  }
-  
-  lines.push('{bold}Improvements Queue:{/bold}');
-  lines.push('');
-  
-  // Store selected index in state for persistence
-  if (state._ui === undefined) state._ui = {};
-  if (state._ui.selectedImprovementIndex === undefined) state._ui.selectedImprovementIndex = 0;
-  
-  queue.forEach((improvement, idx) => {
-    const isSelected = idx === state._ui.selectedImprovementIndex;
-    const marker = isSelected ? '{cyan-fg}>{/cyan-fg}' : ' ';
-    
-    // State indicator
-    let stateStr = '';
-    if (improvement.state === 'BUILDING') {
-      const progress = Math.floor((improvement.buildProgress / improvement.buildDuration) * 100);
-      stateStr = `{yellow-fg}BUILDING{/yellow-fg} (${progress}%)`;
-    } else if (improvement.state === 'ACTIVE') {
-      stateStr = '{green-fg}ACTIVE{/green-fg}';
-    } else if (improvement.state === 'DEGRADED') {
-      stateStr = '{red-fg}DEGRADED{/red-fg}';
-    }
-    
-    lines.push(`${marker} {bold}${improvement.name}{/bold} - ${stateStr}`);
-    
-    // Get empire name
-    const empire = state.empires.find(e => e.id === improvement.empireId);
-    const empireName = empire ? empire.name : improvement.empireId;
-    lines.push(`  Empire: ${empireName}`);
-    
-    if (improvement.state === 'BUILDING') {
-      const remaining = improvement.buildDuration - improvement.buildProgress;
-      lines.push(`  Remaining: ${remaining} turns`);
-    }
-    
-    if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
-      lines.push(`  Cap: ${improvement.capacity} | Pot: ${improvement.potency}`);
-      
-      // Show sustainment status
-      if (improvement.state === 'DEGRADED') {
-        const ticksDegraded = state.turn - (improvement.degradedSince || state.turn);
-        lines.push(`  {red-fg}Degraded for ${ticksDegraded} turns{/red-fg}`);
-      }
-    }
-    
-    lines.push('');
-  });
-  
-  lines.push('{gray-fg}Press X to cancel selected improvement{/gray-fg}');
-  
-  return lines.join('\n');
-}
+
 
 export function renderAll(ui, state) {
   renderActiveFronts(ui, state);

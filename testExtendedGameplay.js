@@ -100,8 +100,8 @@ function runMultipleTurns(state, turnCount, rng, verbose = false) {
  * Helper to create a test state with sample content
  */
 function createTestState(seed = 12345) {
-  const state = createGameState();
-  const content = createSampleContent();
+  const state = createGameState(seed);
+  const content = createSampleContent(seed);
   
   state.empires = content.empires;
   state.armies = content.armies;

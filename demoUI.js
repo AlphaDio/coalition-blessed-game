@@ -13,8 +13,8 @@ import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
 import { startLawProcess } from './src/game/lawProcessManager.js';
 
 // Initialize game state
-const state = createGameState();
-const content = createSampleContent();
+const state = createGameState(12345);
+const content = createSampleContent(12345);
 
 // Populate state with content
 state.empires = content.empires;

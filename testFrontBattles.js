@@ -12,7 +12,7 @@ import { collectArmiesInBattle, isRegularArmy } from './src/game/turn.js';
 
 // Helper to create a test state with two armies
 function createTestState() {
-  const state = createGameState();
+  const state = createGameState(12345);
   
   const army1 = createArmy('army1', 'empire1', 'Test Army 1', 50, 60, 50);
   const army2 = createArmy('army2', 'empire2', 'Test Army 2', 50, 60, 50);

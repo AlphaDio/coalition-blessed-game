@@ -21,7 +21,7 @@ console.log('='.repeat(70));
 // Demo 1: Space-themed empires and armies
 console.log('\n📡 DEMO 1: Space-Themed Empires and Armies');
 console.log('-'.repeat(70));
-const { empires, armies } = createSampleContent();
+const { empires, armies } = createSampleContent(12345);
 console.log('\nEmpires:');
 empires.forEach(e => console.log(`  • ${e.name} (${e.id})`));
 console.log('\nArmies:');
@@ -30,7 +30,7 @@ armies.forEach(a => console.log(`  • ${a.name} (Org: ${a.organization}, Recove
 // Demo 2: Organization determines participation
 console.log('\n\n⚔️  DEMO 2: Organization Determines Battle Participation');
 console.log('-'.repeat(70));
-const state1 = createGameState();
+const state1 = createGameState(12345);
 const highOrg = createArmy('high_org', 'empire1', 'High Organization Fleet', 50, 90, 50, 60);
 const lowOrg = createArmy('low_org', 'empire2', 'Low Organization Fleet', 50, 30, 50, 60);
 
@@ -49,7 +49,7 @@ console.log('\n  ✓ Organization determines how much of army participates, not 
 // Demo 3: Recovery as independent stat
 console.log('\n\n🔧 DEMO 3: Recovery as Independent Stat');
 console.log('-'.repeat(70));
-const state2 = createGameState();
+const state2 = createGameState(12345);
 const highRecovery = createArmy('high_rec', 'empire1', 'Fast Recovery Fleet', 50, 60, 50, 80);
 const lowRecovery = createArmy('low_rec', 'empire2', 'Slow Recovery Fleet', 50, 60, 50, 20);
 
@@ -70,7 +70,7 @@ console.log('\n  ✓ Recovery is now an independent stat, with organization as a
 // Demo 4: Insurrection armies excluded from Scourge battles
 console.log('\n\n🚨 DEMO 4: Insurrection Armies Excluded from Scourge Battles');
 console.log('-'.repeat(70));
-const state3 = createGameState();
+const state3 = createGameState(12345);
 const loyalArmy = createArmy('loyal', 'empire1', 'Loyal Fleet', 60, 70, 50, 55);
 const rebelliousArmy = createArmy('rebel', 'empire2', 'Rebellious Fleet', 60, 70, 50, 55);
 

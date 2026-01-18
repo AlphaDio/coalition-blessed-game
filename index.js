@@ -23,7 +23,7 @@ const __dirname = path.dirname(__filename);
 const seed = Math.floor(Math.random() * 1_000_000);
 const state = createGameState(seed);
 console.log(`Seed: ${seed}`);
-const content = createSampleContent();
+const content = createSampleContent(seed);
 
 // Populate state with content
 state.empires = content.empires;
