@@ -135,6 +135,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
   let totalProtection = 0;
   let totalResolve = 0;
   let totalKillRate = 0;
+  let totalCommand = 0;
   let totalRecovery = 0;
   let totalReinforcementRate = 0;
   
@@ -149,7 +150,8 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     totalProtection += army.protection * power;
     totalResolve += army.resolve * power;
     totalKillRate += army.killRate * power;
-    totalRecovery += (army.command || 50) * power;
+    totalCommand += (army.command || 50) * power;
+    totalRecovery += (army.recovery || 50) * power;
     totalReinforcementRate += army.reinforcementRate * power;
   });
   
