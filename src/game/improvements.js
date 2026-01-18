@@ -90,13 +90,11 @@ export function initializeImprovementsState() {
     queue: [], // Improvements being built or active
     completed: [], // Archive of completed/removed improvements
     
-    // Concurrency limits
-    maxConcurrentBuilds: 3,
-    maxTotalCapacity: 10,
-    
-    // Current utilization
-    currentBuilds: 0,
-    currentCapacity: 0
+  // Capacity limit (applies only to BUILDING improvements)
+  maxTotalCapacity: 10,
+  
+  // Current utilization (BUILDING only)
+  currentCapacity: 0
   };
 }
 
@@ -224,21 +222,11 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
   
-  // Check concurrency limits
+  // Check capacity limits (BUILDING improvements only)
   const improvements = state.improvements;
-  const building = improvements.queue.filter(i => i.state === 'BUILDING').length;
-  
-  if (building >= improvements.maxConcurrentBuilds) {
-    return {
-      success: false,
-      error: `Max concurrent builds reached (${improvements.maxConcurrentBuilds})`,
-      log: []
-    };
-  }
-  
-  // Check capacity limits for active improvements
-  const active = improvements.queue.filter(i => i.state === 'ACTIVE' || i.state === 'DEGRADED');
-  const totalCapacity = active.reduce((sum, i) => sum + i.capacity, 0);
+  const totalCapacity = improvements.queue
+    .filter(i => i.state === 'BUILDING')
+    .reduce((sum, i) => sum + i.capacity, 0);
   
   if (totalCapacity + request.capacity > improvements.maxTotalCapacity) {
     return {
@@ -295,17 +283,16 @@ export function processImprovementsTick(state) {
   const log = [];
   const improvements = state.improvements;
   
-  // Update current utilization counters
-  improvements.currentBuilds = 0;
-  improvements.currentCapacity = 0;
+  // Update current capacity (BUILDING improvements only)
+  improvements.currentCapacity = improvements.queue
+    .filter(i => i.state === 'BUILDING')
+    .reduce((sum, i) => sum + i.capacity, 0);
   
   // Get construction value (how much progress ALL building items get per tick)
   const constructionValue = Number.isFinite(state.coalitionConstruction) ? state.coalitionConstruction : 1;
   
   improvements.queue.forEach(improvement => {
     if (improvement.state === 'BUILDING') {
-      improvements.currentBuilds++;
-      
       // Advance build progress by construction value
       improvement.buildProgress += constructionValue;
       
@@ -318,8 +305,6 @@ export function processImprovementsTick(state) {
     }
     
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
-      improvements.currentCapacity += improvement.capacity;
-      
       // Process sustainment
       const sustainmentResult = processImprovementSustainment(state, improvement);
       log.push(...sustainmentResult.log);
@@ -520,7 +505,6 @@ export function getImprovementStats(state) {
     degraded: degraded.length,
     capacity: improvements.currentCapacity,
     maxCapacity: improvements.maxTotalCapacity,
-    maxBuilds: improvements.maxConcurrentBuilds,
     construction: state.coalitionConstruction,
     availableRequests: improvements.requests.length
   };

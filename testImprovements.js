@@ -43,7 +43,6 @@ state.empires = [
 state.stockpiles.supplies = 1000;
 
 console.log(`Requests available: ${state.improvements.requests.length}`);
-console.log(`Max concurrent builds: ${state.improvements.maxConcurrentBuilds}`);
 console.log(`Max capacity: ${state.improvements.maxTotalCapacity}`);
 console.log(`Construction: ${state.coalitionConstruction}/tick`);
 console.log(`Initial supplies: ${state.stockpiles.supplies}`);
@@ -112,52 +111,56 @@ if (improvement.state === 'ACTIVE') {
 }
 console.log();
 
-// Test 5: Concurrency limits
-console.log('=== Test 5: Concurrency Limits ===');
-console.log('Testing concurrent build limit...');
+// Test 5: Capacity limits (BUILDING improvements only)
+console.log('=== Test 5: Capacity Limits ===');
+console.log('Testing capacity limit...');
 
-// Try to start 3 more builds (max is 3 concurrent)
-const request2 = state.improvements.requests[1]; // Research Lab
-const request3 = state.improvements.requests[2]; // Military Depot
-const request4 = state.improvements.requests[3]; // Medical Center
+// Try to start more builds (limited by building capacity only)
+const request2 = state.improvements.requests[1]; // Ascension Spire (cap 4)
+const request3 = state.improvements.requests[2]; // Grand War Symposium (cap 3)
+const request4 = state.improvements.requests[3]; // Festival of Worlds (cap 4)
 
 const result2 = acceptImprovementRequest(state, request2.id, 'empire1');
 const result3 = acceptImprovementRequest(state, request3.id, 'empire2');
 const result4 = acceptImprovementRequest(state, request4.id, 'empire1');
 
-console.log(`  Request 2 (Research Lab): ${result2.success ? 'Accepted' : 'Rejected'}`);
-console.log(`  Request 3 (Military Depot): ${result3.success ? 'Accepted' : 'Rejected'}`);
-console.log(`  Request 4 (Medical Center): ${result4.success ? 'Accepted' : 'Rejected'}`);
+console.log(`  Request 2 (Ascension Spire, cap 4): ${result2.success ? 'Accepted' : 'Rejected - ' + result2.error}`);
+console.log(`  Request 3 (Grand War Symposium, cap 3): ${result3.success ? 'Accepted' : 'Rejected - ' + result3.error}`);
+console.log(`  Request 4 (Festival of Worlds, cap 4): ${result4.success ? 'Accepted' : 'Rejected - ' + result4.error}`);
 
-const buildingCount = state.improvements.queue.filter(i => i.state === 'BUILDING').length;
-console.log(`  Building improvements: ${buildingCount}`);
+const totalCapacityUsed = state.improvements.queue
+  .filter(i => i.state === 'BUILDING')
+  .reduce((sum, i) => sum + i.capacity, 0);
+console.log(`  Building capacity used: ${totalCapacityUsed}/${state.improvements.maxTotalCapacity}`);
 
-if (buildingCount <= state.improvements.maxConcurrentBuilds) {
-  console.log('✓ Concurrency limit enforced correctly');
+if (totalCapacityUsed <= state.improvements.maxTotalCapacity) {
+  console.log('✓ Capacity limit enforced correctly');
 } else {
-  console.log(`✗ Exceeded concurrent build limit: ${buildingCount} > ${state.improvements.maxConcurrentBuilds}`);
+  console.log(`✗ Exceeded capacity limit: ${totalCapacityUsed} > ${state.improvements.maxTotalCapacity}`);
   process.exit(1);
 }
 console.log();
 
-// Test 6: Capacity limits
-console.log('=== Test 6: Capacity Limits ===');
+// Test 6: Verify queue builds complete
+console.log('=== Test 6: Build Completion ===');
 // Complete all building improvements
 for (let i = 0; i < 30; i++) {
   state.turn++;
   processImprovementsTick(state);
 }
 
-const activeImprovements = state.improvements.queue.filter(i => i.state === 'ACTIVE');
-const totalCapacity = activeImprovements.reduce((sum, i) => sum + i.capacity, 0);
+const completedImprovements = state.improvements.queue.filter(i => i.state === 'ACTIVE' || i.state === 'DEGRADED');
+const buildingCapacity = state.improvements.queue
+  .filter(i => i.state === 'BUILDING')
+  .reduce((sum, i) => sum + i.capacity, 0);
 
-console.log(`  Active improvements: ${activeImprovements.length}`);
-console.log(`  Total capacity: ${totalCapacity}/${state.improvements.maxTotalCapacity}`);
+console.log(`  Completed improvements (ACTIVE or DEGRADED): ${completedImprovements.length}`);
+console.log(`  Building capacity: ${buildingCapacity}/${state.improvements.maxTotalCapacity}`);
 
-if (totalCapacity <= state.improvements.maxTotalCapacity) {
-  console.log('✓ Capacity within limits');
+if (completedImprovements.length > 0) {
+  console.log('✓ Improvements completed successfully');
 } else {
-  console.log(`✗ Exceeded limits`);
+  console.log(`✗ No improvements completed`);
   process.exit(1);
 }
 console.log();
@@ -275,8 +278,8 @@ console.log('✓ System initialization');
 console.log('✓ Accept improvement request');
 console.log('✓ Build progress');
 console.log('✓ Complete build');
-console.log('✓ Concurrency limits');
 console.log('✓ Capacity limits');
+console.log('✓ Build completion');
 console.log('✓ Degradation state');
 console.log('✓ Improvement cancellation');
 console.log('✓ Production outputs');
