@@ -34,9 +34,9 @@ export const PHASE_ORDER = ['DEBATE', 'FALLOUT', 'VOTING'];
  * Reduced to halve overall event cadence
  */
 export const EVENT_BUDGET = {
-  MAJOR_EVENT_CHANCE: 0.25, // Chance to fire a major event per cycle
-  MINOR_EVENT_CHANCE: 0.5,  // Chance to fire minor events per cycle
-  MINOR_EVENTS_MAX: 1       // Maximum number of minor events per cycle
+  MAJOR_EVENT_CHANCE: 0.5, // Chance to fire a major event per cycle
+  MINOR_EVENT_CHANCE: 1,   // Chance to fire minor events per cycle
+  MINOR_EVENTS_MAX: 1      // Maximum number of minor events per cycle
 };
 
 

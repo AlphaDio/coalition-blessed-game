@@ -1164,6 +1164,16 @@ function appendInsurrectionInfo(lines, insurrections) {
 function formatEmpireBlock(empire, regularArmies) {
   const lines = [`{bold}${empire.name}{/bold}`];
   lines.push(`  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`);
+  const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
+  let stabilityDisplay = stabilityValue;
+  if (empire.stability !== undefined) {
+    if (empire.stability < 40) {
+      stabilityDisplay = `{red-fg}${stabilityValue}{/red-fg}`;
+    } else if (empire.stability < 60) {
+      stabilityDisplay = `{yellow-fg}${stabilityValue}{/yellow-fg}`;
+    }
+  }
+  lines.push(`  Stability: ${stabilityDisplay}`);
 
   if (empire.stats) {
     lines.push(`  Population: ${formatNumber(empire.stats.population || 0)}`);
@@ -1228,8 +1238,7 @@ function renderRequestsView(state) {
   const requests = improvements.requests;
 
   lines.push('{bold}Improvement Limits:{/bold}');
-  lines.push(`  Concurrent Builds: ${improvements.currentBuilds || 0}/${improvements.maxConcurrentBuilds}`);
-  lines.push(`  Total Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
+  lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
   lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
   lines.push(`  Supplies: {green-fg}${state.stockpiles.supplies || 0}{/green-fg}`);
   lines.push('');
@@ -1286,7 +1295,7 @@ function renderImprovementsQueueView(state) {
   const queue = improvements.queue;
 
   lines.push('{bold}Improvement Stats:{/bold}');
-  lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}/${improvements.maxConcurrentBuilds}`);
+  lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}`);
   lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
   lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
   lines.push('');
