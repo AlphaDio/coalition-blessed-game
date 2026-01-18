@@ -215,7 +215,7 @@ function createStatsBox(grid) {
 }
 
 function createCombinedInfoBox(grid) {
-  // Combined panel for Market Economy, Armies, and Empires (rows 3-12, cols 8-12) - now 1/3 of width (4 cols), moved up
+  // Combined panel for Market Economy, Armies, Empires, Requests, and Improvements (rows 3-12, cols 8-12) - now 1/3 of width (4 cols), moved up
   const combinedInfoBox = grid.set(3, 8, 9, 4, blessed.box, {
     label: ' Market Economy ',
     content: '',
@@ -234,9 +234,11 @@ function createCombinedInfoBox(grid) {
     }
   });
 
-  // Track current view state (market, armies, empires)
-  combinedInfoBox.currentView = 'market'; // 'market' | 'armies' | 'empires'
+  // Track current view state (market, armies, empires, requests, improvements)
+  combinedInfoBox.currentView = 'market'; // 'market' | 'armies' | 'empires' | 'requests' | 'improvements'
   combinedInfoBox.scrollOffset = 0;
+  combinedInfoBox.selectedRequestIndex = 0; // For request selection
+  combinedInfoBox.selectedImprovementIndex = 0; // For improvement selection
   return combinedInfoBox;
 }
 
@@ -755,19 +757,29 @@ export function renderCombinedInfo(ui, state) {
 
 const COMBINED_INFO_VIEWS = {
   market: {
-    label: ' Market Economy (m/a/e: switch, [/]: cycle) ',
+    label: ' Market Economy (m/a/e/r/i: switch, [/]: cycle) ',
     borderColor: 'green',
     render: renderMarketView
   },
   armies: {
-    label: ' Armies (m/a/e: switch, [/]: cycle) ',
+    label: ' Armies (m/a/e/r/i: switch, [/]: cycle) ',
     borderColor: 'cyan',
     render: renderArmiesView
   },
   empires: {
-    label: ' Empires (m/a/e: switch, [/]: cycle) ',
+    label: ' Empires (m/a/e/r/i: switch, [/]: cycle) ',
     borderColor: 'yellow',
     render: renderEmpiresView
+  },
+  requests: {
+    label: ' Requests (m/a/e/r/i: switch, Enter: accept) ',
+    borderColor: 'magenta',
+    render: renderRequestsView
+  },
+  improvements: {
+    label: ' Improvements (m/a/e/r/i: switch, x: cancel) ',
+    borderColor: 'blue',
+    render: renderImprovementsView
   }
 };
 
@@ -983,6 +995,159 @@ function formatVolume(volume) {
   if (volume < 1000) return volume.toFixed(0);
   if (volume < 1000000) return (volume / 1000).toFixed(1) + 'K';
   return (volume / 1000000).toFixed(1) + 'M';
+}
+
+/**
+ * Render Requests view (available improvements to accept)
+ */
+function renderRequestsView(state) {
+  const lines = [];
+  
+  if (!state.improvements || !state.improvements.requests) {
+    lines.push('{yellow-fg}No improvements system initialized{/yellow-fg}');
+    return lines.join('\n');
+  }
+  
+  const improvements = state.improvements;
+  const requests = improvements.requests;
+  
+  // Show stats
+  lines.push('{bold}Improvement Limits:{/bold}');
+  lines.push(`  Concurrent Builds: ${improvements.currentBuilds || 0}/${improvements.maxConcurrentBuilds}`);
+  lines.push(`  Total Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
+  lines.push(`  Total Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
+  lines.push(`  Supplies: {green-fg}${state.stockpiles.supplies || 0}{/green-fg}`);
+  lines.push('');
+  
+  if (requests.length === 0) {
+    lines.push('{yellow-fg}No improvement requests available{/yellow-fg}');
+    return lines.join('\n');
+  }
+  
+  lines.push('{bold}Available Requests:{/bold}');
+  lines.push('');
+  
+  // Store selected index in state for persistence
+  if (state._ui === undefined) state._ui = {};
+  if (state._ui.selectedRequestIndex === undefined) state._ui.selectedRequestIndex = 0;
+  
+  requests.forEach((request, idx) => {
+    const isSelected = idx === state._ui.selectedRequestIndex;
+    const marker = isSelected ? '{cyan-fg}>{/cyan-fg}' : ' ';
+    
+    lines.push(`${marker} {bold}${request.name}{/bold}`);
+    lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.buildDuration}{/yellow-fg} turns`);
+    lines.push(`  Cap: ${request.capacity} | Pot: ${request.potency}`);
+    
+    // Show sustainment costs
+    const sustainKeys = Object.keys(request.sustainmentCost);
+    if (sustainKeys.length > 0) {
+      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
+      lines.push(`  Sustain: {yellow-fg}${sustainStr}{/yellow-fg}`);
+    }
+    
+    // Show production outputs
+    const outputKeys = Object.keys(request.productionOutputs);
+    if (outputKeys.length > 0) {
+      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
+      lines.push(`  Produces: {green-fg}${outputStr}{/green-fg}`);
+    }
+    
+    // Show modifiers
+    const modKeys = Object.keys(request.modifiers);
+    if (modKeys.length > 0) {
+      const modStr = modKeys.map(k => `${k}:${request.modifiers[k]}`).join(', ');
+      lines.push(`  Bonus: {cyan-fg}${modStr}{/cyan-fg}`);
+    }
+    
+    lines.push('');
+  });
+  
+  lines.push('{gray-fg}Press Enter to accept selected request{/gray-fg}');
+  
+  return lines.join('\n');
+}
+
+/**
+ * Render Improvements view (active and building improvements)
+ */
+function renderImprovementsView(state) {
+  const lines = [];
+  
+  if (!state.improvements || !state.improvements.queue) {
+    lines.push('{yellow-fg}No improvements system initialized{/yellow-fg}');
+    return lines.join('\n');
+  }
+  
+  const improvements = state.improvements;
+  const queue = improvements.queue;
+  
+  // Show stats
+  lines.push('{bold}Improvement Stats:{/bold}');
+  lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}/${improvements.maxConcurrentBuilds}`);
+  lines.push(`  Active: {green-fg}${queue.filter(i => i.state === 'ACTIVE').length}{/green-fg}`);
+  lines.push(`  Degraded: {yellow-fg}${queue.filter(i => i.state === 'DEGRADED').length}{/yellow-fg}`);
+  lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
+  lines.push(`  Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
+  lines.push('');
+  
+  if (queue.length === 0) {
+    lines.push('{yellow-fg}No improvements in queue{/yellow-fg}');
+    lines.push('');
+    lines.push('{gray-fg}Switch to Requests (R) to start an improvement{/gray-fg}');
+    return lines.join('\n');
+  }
+  
+  lines.push('{bold}Improvements Queue:{/bold}');
+  lines.push('');
+  
+  // Store selected index in state for persistence
+  if (state._ui === undefined) state._ui = {};
+  if (state._ui.selectedImprovementIndex === undefined) state._ui.selectedImprovementIndex = 0;
+  
+  queue.forEach((improvement, idx) => {
+    const isSelected = idx === state._ui.selectedImprovementIndex;
+    const marker = isSelected ? '{cyan-fg}>{/cyan-fg}' : ' ';
+    
+    // State indicator
+    let stateStr = '';
+    if (improvement.state === 'BUILDING') {
+      const progress = Math.floor((improvement.buildProgress / improvement.buildDuration) * 100);
+      stateStr = `{yellow-fg}BUILDING{/yellow-fg} (${progress}%)`;
+    } else if (improvement.state === 'ACTIVE') {
+      stateStr = '{green-fg}ACTIVE{/green-fg}';
+    } else if (improvement.state === 'DEGRADED') {
+      stateStr = '{red-fg}DEGRADED{/red-fg}';
+    }
+    
+    lines.push(`${marker} {bold}${improvement.name}{/bold} - ${stateStr}`);
+    
+    // Get empire name
+    const empire = state.empires.find(e => e.id === improvement.empireId);
+    const empireName = empire ? empire.name : improvement.empireId;
+    lines.push(`  Empire: ${empireName}`);
+    
+    if (improvement.state === 'BUILDING') {
+      const remaining = improvement.buildDuration - improvement.buildProgress;
+      lines.push(`  Remaining: ${remaining} turns`);
+    }
+    
+    if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
+      lines.push(`  Cap: ${improvement.capacity} | Pot: ${improvement.potency}`);
+      
+      // Show sustainment status
+      if (improvement.state === 'DEGRADED') {
+        const ticksDegraded = state.turn - (improvement.degradedSince || state.turn);
+        lines.push(`  {red-fg}Degraded for ${ticksDegraded} turns{/red-fg}`);
+      }
+    }
+    
+    lines.push('');
+  });
+  
+  lines.push('{gray-fg}Press X to cancel selected improvement{/gray-fg}');
+  
+  return lines.join('\n');
 }
 
 export function renderAll(ui, state) {
