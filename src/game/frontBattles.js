@@ -276,14 +276,14 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
 
 /**
  * Apply recovery: convert recoveryPool to mp.current
- * Recovery rate is based on the army's recovery stat, modified by organization
+ * Recovery rate is based on the army's Recovery stat, modified by organization
  * During battles, recovery is significantly reduced (can't fully recover while fighting)
  */
 function applyRecovery(army, inBattle = false) {
   if (army.recoveryPool <= 0) return;
   
-  // Base recovery rate from recovery stat (0-100 -> 0-1000 MP/tick)
-  const baseRecoveryRate = army.recovery * 10;
+  // Base recovery rate from Recovery stat (0-100 -> 0-1000 MP/tick)
+  const baseRecoveryRate = (army.recovery || 50) * 10;
   
   // Organization provides a multiplier (0.5x to 1.5x)
   const orgModifier = 0.5 + (army.organization / 100);
@@ -303,7 +303,7 @@ function applyRecovery(army, inBattle = false) {
   // Debug logging
   const logger = getLogger();
   logger.debug(`Recovery${inBattle ? ' (battle)' : ''}: ${army.name}`, {
-    recoveryStat: army.recovery,
+    recovery: (army.recovery || 50).toFixed(0),
     org: army.organization.toFixed(1),
     baseRate: baseRecoveryRate.toFixed(0),
     orgMod: orgModifier.toFixed(2),

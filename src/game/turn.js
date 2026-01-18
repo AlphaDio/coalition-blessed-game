@@ -13,6 +13,146 @@ import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 
 /**
+ * Recover organization for all armies
+ * Recovery rate is based on:
+ * - Army Command stat (0-100, determines base recovery speed)
+ * - Reduced during active battles (50% of normal rate)
+ * @param {Object} state - Game state
+ * @param {Array} activeBattles - Array of active battle fronts
+ */
+function recoverArmyOrganization(state, activeBattles) {
+  const logger = getLogger();
+  
+  // Get IDs of armies currently in active battles
+  const armiesInBattle = new Set();
+  activeBattles.forEach(front => {
+    if (front.leftArmyId) armiesInBattle.add(front.leftArmyId);
+    if (front.rightArmyId) armiesInBattle.add(front.rightArmyId);
+    
+    // Also check for combined armies (Scourge/Insurrection battles)
+    if (front.participatingArmyIds) {
+      front.participatingArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+    if (front.rebelliousArmyIds) {
+      front.rebelliousArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+    if (front.loyalArmyIds) {
+      front.loyalArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+  });
+  
+  // Filter out temporary armies
+  const regularArmies = state.armies.filter(army => 
+    !army.id.startsWith('_scourge') &&
+    !army.id.startsWith('_coalition_combined') &&
+    !army.id.startsWith('_insurrection')
+  );
+  
+  regularArmies.forEach(army => {
+    // Skip if already at max organization
+    if (army.organization >= 100) return;
+    
+    const inBattle = armiesInBattle.has(army.id);
+    
+    // Base recovery rate: Command stat (0-100) determines recovery per tick
+    // Scale: 0 command = 0.1 per tick, 100 command = 1.0 per tick
+    const baseRecoveryRate = 0.1 + ((army.command || 50) / 100) * 0.9;
+    
+    // During battles, recovery is slower (50% of normal rate)
+    const effectiveRate = inBattle ? baseRecoveryRate * 0.5 : baseRecoveryRate;
+    
+    // Apply organization recovery
+    const spaceAvailable = 100 - army.organization;
+    const recovered = Math.min(effectiveRate, spaceAvailable);
+    army.organization = clampStat(army.organization + recovered, 0, 100);
+    
+    // Debug logging for significant recovery
+    if (recovered > 0.5) {
+      logger.debug(`Organization recovery: ${army.name} +${recovered.toFixed(2)} org (command: ${(army.command || 50).toFixed(0)}, inBattle: ${inBattle}, new: ${army.organization.toFixed(1)})`);
+    }
+  });
+}
+
+/**
+ * Replenish manpower for armies not currently in active battles
+ * Replenishment rate is based on:
+ * - Army fervor (higher fervor = faster replenishment)
+ * - Empire size (population/influence - larger empires can replenish faster)
+ * @param {Object} state - Game state
+ * @param {Array} activeBattles - Array of active battle fronts
+ */
+function replenishArmyManpower(state, activeBattles) {
+  const logger = getLogger();
+  
+  // Get IDs of armies currently in active battles
+  const armiesInBattle = new Set();
+  activeBattles.forEach(front => {
+    if (front.leftArmyId) armiesInBattle.add(front.leftArmyId);
+    if (front.rightArmyId) armiesInBattle.add(front.rightArmyId);
+    
+    // Also check for combined armies (Scourge/Insurrection battles)
+    if (front.participatingArmyIds) {
+      front.participatingArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+    if (front.rebelliousArmyIds) {
+      front.rebelliousArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+    if (front.loyalArmyIds) {
+      front.loyalArmyIds.forEach(id => armiesInBattle.add(id));
+    }
+  });
+  
+  // Filter out temporary armies and armies in battle
+  const regularArmies = state.armies.filter(army => 
+    !army.id.startsWith('_scourge') &&
+    !army.id.startsWith('_coalition_combined') &&
+    !army.id.startsWith('_insurrection') &&
+    !armiesInBattle.has(army.id)
+  );
+  
+  // Build empire lookup map
+  const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
+  
+  regularArmies.forEach(army => {
+    // Skip if already at max
+    if (army.mp.current >= army.mp.max) return;
+    
+    const empire = empireMap.get(army.empireId);
+    if (!empire) {
+      logger.debug(`Army ${army.name} has no empire, skipping replenishment`);
+      return;
+    }
+    
+    // Base replenishment rate (per tick)
+    const baseRate = army.reinforcementRate || 100;
+    
+    // Fervor modifier: 0.5x at 0 fervor, 1.5x at 100 fervor
+    // Linear interpolation: 0.5 + (fervor / 100) * 1.0
+    const fervorModifier = 0.5 + (army.fervor / 100) * 1.0;
+    
+    // Empire size modifier based on population
+    // Normalize population: log10 scale, then scale to 0.5x - 2.0x range
+    const population = empire.stats?.population || 1000;
+    const logPopulation = Math.log10(Math.max(1, population));
+    // Scale: 1000 (3.0) = 0.5x, 1M (6.0) = 1.0x, 1B (9.0) = 2.0x
+    const populationModifier = Math.max(0.5, Math.min(2.0, 0.5 + (logPopulation - 3.0) / 3.0));
+    
+    // Calculate effective replenishment rate
+    const effectiveRate = baseRate * fervorModifier * populationModifier;
+    
+    // Apply replenishment
+    const spaceAvailable = army.mp.max - army.mp.current;
+    const replenished = Math.min(effectiveRate, spaceAvailable);
+    army.mp.current += replenished;
+    
+    // Debug logging for significant replenishment
+    if (replenished > 50) {
+      logger.debug(`Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP (fervor: ${army.fervor.toFixed(0)}, pop: ${population.toFixed(0)}, rate: ${effectiveRate.toFixed(0)})`);
+    }
+  });
+}
+
+/**
  * Advances the game state by one turn, processing all game systems
  * @param {Object} state - The game state to advance
  * @param {Function} rng - Random number generator (default: Math.random)
@@ -218,16 +358,22 @@ export function advanceTurn(state, rng = Math.random) {
     });
   }
   
-  // 6. Update meters
+  // 6. Replenish army manpower (for armies not in active battles)
+  replenishArmyManpower(state, activeBattles);
+  
+  // 6.5. Recover army organization (all armies, but slower during battles)
+  recoverArmyOrganization(state, activeBattles);
+  
+  // 7. Update meters
   const prevFervor = state.scourgeFervor;
   state.scourgeFervor = clampStat(state.scourgeFervor + ECONOMY_CONSTANTS.SCOURGE_FERVOR_GROWTH, 0, 100);
   logger.debug(`Scourge fervor: ${prevFervor.toFixed(1)} -> ${state.scourgeFervor.toFixed(1)}`);
   
-  // 7. Check insurrections
+  // 8. Check insurrections
   const insurrectionLog = checkInsurrections(state);
   log.push(...insurrectionLog.log);
   
-  // 8. Check win/lose conditions
+  // 9. Check win/lose conditions
   if (state.coalitionCohesion <= 0) {
     logger.error('GAME OVER: Coalition collapsed!');
     log.push('GAME OVER: Coalition collapsed!');

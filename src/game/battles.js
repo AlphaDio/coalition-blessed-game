@@ -92,7 +92,8 @@ function getOrCreateScourgeArmy(state) {
       
       // Sustain stats
       recoveryPool: 0,
-      recovery: 40,             // Lower recovery stat than coalition armies
+      command: 40,              // Lower Command stat than coalition armies
+      recovery: 40,             // Lower Recovery stat than coalition armies
       reinforcementRate: 80     // Slower reinforcement
     };
     
@@ -148,7 +149,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     totalProtection += army.protection * power;
     totalResolve += army.resolve * power;
     totalKillRate += army.killRate * power;
-    totalRecovery += army.recovery * power;
+    totalRecovery += (army.command || 50) * power;
     totalReinforcementRate += army.reinforcementRate * power;
   });
   
@@ -187,6 +188,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     
     // Sustain stats
     recoveryPool: 0,
+    command: totalCommand / totalPower,
     recovery: totalRecovery / totalPower,
     reinforcementRate: totalReinforcementRate / totalPower,
     

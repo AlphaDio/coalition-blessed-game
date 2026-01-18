@@ -35,7 +35,8 @@ export function createSampleContent() {
       data.fervor,
       data.organization,
       data.aggravation, // This is supplyNeed in the original data
-      data.recovery || 50 // Default recovery if not specified
+      data.command || 50, // Default Command if not specified
+      data.recovery || 50 // Default Recovery if not specified
     );
   });
   
