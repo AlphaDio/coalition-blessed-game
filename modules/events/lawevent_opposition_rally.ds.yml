@@ -1,0 +1,58 @@
+module:
+  id: "lawevent_opposition_rally"
+  name: "Opposition Rally"
+  description: "A large opposition rally taking place during law fallout"
+  version: "1.0.0"
+  type: "law_event"
+  category: "event"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["fallout", "protest", "reject"]
+  created_at: "2026-01-18T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_event:
+    id: "fallout_choice_opposition_rally"
+    name: "Opposition Rally"
+    description: "A large opposition rally is taking place. How should you respond?"
+    scope: "LAW"
+    phase_tags:
+      - "FALLOUT"
+    nature: "REJECT"
+    tier: "MAJOR"
+    triggers:
+      - type: "meter_above"
+        meter: "unrest"
+        threshold: 0.3
+    base_weight: 1.0
+    choices:
+      - text: "Engage with protesters (reduce unrest, slow progress)"
+        effects:
+          progress: -0.1
+          meters:
+            unrest: -0.15
+            legitimacy: 0.1
+            reject_pressure: 0.05
+            momentum: -0.1
+      - text: "Suppress the rally (reduce momentum, increase unrest)"
+        effects:
+          progress: -0.05
+          meters:
+            unrest: 0.2
+            momentum: -0.15
+            reject_pressure: 0.15
+            legitimacy: -0.15
+      - text: "Ignore and continue (maintain course, moderate risk)"
+        effects:
+          progress: 0.05
+          meters:
+            unrest: 0.05
+            polarization: 0.1
+            momentum: 0.05
+    weight_modifiers:
+      - type: "polarization_boost"
+        multiplier: 0.8

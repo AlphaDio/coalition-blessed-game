@@ -1,0 +1,42 @@
+module:
+  id: "law_organic_deliberation"
+  name: "Organic Deliberation and Consensus Act"
+  description: "Establish slow, deliberative consensus-building processes that favor organic decision-making"
+  version: "1.0.0"
+  type: "law"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["biologic", "natural", "consensus", "deliberation"]
+  created_at: "2026-01-18T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_data:
+    id: "law_organic_deliberation"
+    name: "Organic Deliberation and Consensus Act"
+    tier: 1
+    cost: 5
+    effects: {}
+    vector:
+      natural_mechanical: -0.7
+      spiritual_materialistic: -0.5
+      authoritarian_liberal: 0.4
+    weights:
+      natural_mechanical: 1.0
+      spiritual_materialistic: 0.8
+      authoritarian_liberal: 0.6
+    tag_effects:
+      - if_empire_has_tag: "Biologic"
+        add_alignment: 0.30
+        multiply_intensity: 1.25
+      - if_empire_has_tag: "Mechanical"
+        add_alignment: -0.25
+        multiply_intensity: 1.15
+    modifiers:
+      tick_delay_multiplier: 2.0
+      enactment_chance_bonus: 0.1
+      progress_per_event: 1.0
