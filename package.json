@@ -7,9 +7,10 @@
     "scripts": {
         "start": "node index.js",
         "dev": "nodemon index.js",
-        "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js",
+        "test": "node testDeterminism.js && node testFrontBattles.js && node testImprovements.js && node testExtendedGameplay.js",
         "test:determinism": "node testDeterminism.js",
         "test:battles": "node testFrontBattles.js",
+        "test:improvements": "node testImprovements.js",
         "test:gameplay": "node testExtendedGameplay.js"
     },
     "author": "diop.alpha@tribalcreative.xyz",

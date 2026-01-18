@@ -300,32 +300,42 @@ export function refreshRequestsIfDue(state, templates, rng) {
 function generateRequest(state, templates, rng) {
   const logger = getLogger();
   
+  // Helper to call rng - handles both function and object with .random()
+  const random = () => {
+    if (typeof rng === 'function') {
+      return rng();
+    } else if (rng && typeof rng.random === 'function') {
+      return rng.random();
+    }
+    return Math.random();
+  };
+  
   // Simple generation: pick a random template and random target empire
   const templateKeys = Object.keys(templates);
   if (templateKeys.length === 0) return null;
   
-  const templateKey = templateKeys[Math.floor(rng() * templateKeys.length)];
+  const templateKey = templateKeys[Math.floor(random() * templateKeys.length)];
   const template = templates[templateKey];
   
   // Pick a random empire as target (75%) or coalition (25%)
   let target = 'coalition';
   let source = 'system';
   
-  if (rng() < 0.75 && state.empires.length > 0) {
-    const targetEmpire = state.empires[Math.floor(rng() * state.empires.length)];
+  if (random() < 0.75 && state.empires.length > 0) {
+    const targetEmpire = state.empires[Math.floor(random() * state.empires.length)];
     target = `empire:${targetEmpire.id}`;
     
     // Sometimes the source is another empire (50%)
-    if (rng() < 0.5 && state.empires.length > 1) {
+    if (random() < 0.5 && state.empires.length > 1) {
       const otherEmpires = state.empires.filter(e => e.id !== targetEmpire.id);
       if (otherEmpires.length > 0) {
-        const sourceEmpire = otherEmpires[Math.floor(rng() * otherEmpires.length)];
+        const sourceEmpire = otherEmpires[Math.floor(random() * otherEmpires.length)];
         source = `empire:${sourceEmpire.id}`;
       }
     }
   }
   
-  const requestId = `req_${state.turn}_${Math.floor(rng() * 10000)}`;
+  const requestId = `req_${state.turn}_${Math.floor(random() * 10000)}`;
   const request = createRequest(requestId, {
     source,
     target,
