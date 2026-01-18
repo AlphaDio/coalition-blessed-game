@@ -1,7 +1,7 @@
 module:
   id: "empire_1"
-  name: "The Northern Federation"
-  description: "Industrial powerhouse of the Coalition"
+  name: "Stellar Federation"
+  description: "Industrial powerhouse spanning multiple star systems"
   version: "1.0.0"
   type: "empire"
   category: "faction"
@@ -9,7 +9,7 @@ module:
 
 metadata:
   author: "Coalition Team"
-  tags: ["industrial", "north", "federation"]
+  tags: ["industrial", "federation", "stellar"]
   created_at: "2026-01-16T00:00:00Z"
 
 schema_version: "0.1"
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   empire_data:
     id: "empire_1"
-    name: "The Northern Federation"
+    name: "Stellar Federation"
     approval: 60
     aggravation: 120
     traits:

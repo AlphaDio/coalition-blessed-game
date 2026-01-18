@@ -3,12 +3,12 @@ import { getLogger } from '../modules/logger.js';
 import { clamp } from '../utils/math.js';
 
 /**
- * Calculate engagement width utilization based on organization
- * Simple monotonic function: better org = better width utilization
+ * Calculate MP participation rate based on organization
+ * Organization determines how much of the army can participate in the battle
  * @param {number} organization - Army organization (0..100)
- * @returns {number} Width utilization multiplier (0..1)
+ * @returns {number} Participation multiplier (0..1)
  */
-function widthUtilization(organization) {
+function participationRate(organization) {
   // Linear scaling: 0 org = 0%, 100 org = 100%
   return Math.max(0, Math.min(1, organization / 100));
 }
@@ -21,17 +21,18 @@ function widthUtilization(organization) {
  * @returns {number} Number of engaged units (MP throughput)
  */
 function calculateEngagedUnits(army, battlefieldSize, isBroken) {
-  const baseUtil = widthUtilization(army.organization);
+  // Organization determines how much of the army can participate
+  const participation = participationRate(army.organization);
+  const participatingMP = army.mp.current * participation;
   
-  // If broken, apply penalty to width utilization (can't hold the line)
+  // If broken, apply penalty to engagement (can't hold the line)
   const brokenPenalty = isBroken ? 0.5 : 1.0;
-  const effectiveUtil = baseUtil * brokenPenalty;
   
-  // Engagement is limited by battlefield size and current MP
+  // Engagement is limited by battlefield size and participating MP
   const maxEngaged = Math.min(
-    battlefieldSize * effectiveUtil,
-    army.mp.current
-  );
+    battlefieldSize,
+    participatingMP
+  ) * brokenPenalty;
   
   return maxEngaged;
 }
@@ -225,11 +226,19 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
 
 /**
  * Apply recovery: convert recoveryPool to mp.current
+ * Recovery rate is based on the army's recovery stat, modified by organization
  */
 function applyRecovery(army) {
   if (army.recoveryPool <= 0) return;
   
-  const recovered = Math.min(army.recoveryRate, army.recoveryPool);
+  // Base recovery rate from recovery stat (0-100 -> 0-1000 MP/tick)
+  const baseRecoveryRate = army.recovery * 10;
+  
+  // Organization provides a multiplier (0.5x to 1.5x)
+  const orgModifier = 0.5 + (army.organization / 100);
+  
+  const recoveryRate = baseRecoveryRate * orgModifier;
+  const recovered = Math.min(recoveryRate, army.recoveryPool);
   const spaceAvailable = army.mp.max - army.mp.current;
   const actualRecovered = Math.min(recovered, spaceAvailable);
   

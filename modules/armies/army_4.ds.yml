@@ -1,7 +1,7 @@
 module:
   id: "army_4"
-  name: "Eastern Fleet Marines"
-  description: "Naval infantry of the Eastern Republic"
+  name: "Nexus Hyperspace Marines"
+  description: "Elite jump troops of the Nexus Dominion"
   version: "1.0.0"
   type: "army"
   category: "military"
@@ -9,7 +9,7 @@ module:
 
 metadata:
   author: "Coalition Team"
-  tags: ["eastern", "fleet", "marines", "naval"]
+  tags: ["nexus", "hyperspace", "marines"]
   created_at: "2026-01-16T00:00:00Z"
 
 schema_version: "0.1"
@@ -18,7 +18,8 @@ declares:
   army_data:
     id: "army_4"
     empireId: "empire_3"
-    name: "Eastern Fleet Marines"
+    name: "Nexus Hyperspace Marines"
     organization: 75
     fervor: 65
     aggravation: 45
+    recovery: 58
