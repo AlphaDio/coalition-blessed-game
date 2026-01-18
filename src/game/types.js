@@ -152,6 +152,7 @@ export function createLawProcess(lawId, startTick = 0) {
     rejects: 0, // 0..4, burial at 4
     startTick,
     pendingEvent: null, // ID of event waiting for player choice
+    ticksSinceLastResolve: 0, // Counter for tick delay multiplier
     
     // Meters that bias event likelihood
     meters: {

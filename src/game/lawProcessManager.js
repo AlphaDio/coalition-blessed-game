@@ -378,8 +378,11 @@ export function tallyVotes(lawProcess, state) {
   log.push(`  Oppose: ${opposeVotes}`);
   log.push(`  Abstain: ${abstainVotes}`);
   log.push(`  Quorum: ${totalCast}/${quorumNeeded.toFixed(1)} ${totalCast >= quorumNeeded ? '✓' : '✗'}`);
+  
   if (enactmentBonus > 0) {
-    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${(adjustedPassThreshold * 100).toFixed(0)}% with +${(enactmentBonus * 100).toFixed(0)}% bonus) ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
+    const adjustedPercentage = (adjustedPassThreshold * 100).toFixed(0);
+    const bonusPercentage = (enactmentBonus * 100).toFixed(0);
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${adjustedPercentage}% with +${bonusPercentage}% bonus) ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
   } else {
     log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
   }
@@ -579,16 +582,14 @@ export function resolveAllLawProcesses(state, rng) {
       return;
     }
     
-    // Initialize tick counter if not present
-    if (lawProcess.ticksSinceLastResolve === undefined) {
-      lawProcess.ticksSinceLastResolve = 0;
-    }
+    // Increment tick counter
+    lawProcess.ticksSinceLastResolve++;
     
     // Calculate ticks needed based on tick_delay_multiplier
+    // Note: Uses active law process count as base to distribute events fairly
+    // Each law gets a turn proportionally based on its delay multiplier
     const tickDelayMultiplier = lawDef.modifiers?.tick_delay_multiplier || 1.0;
     const ticksNeeded = Math.max(1, Math.round(state.lawProcesses.length * tickDelayMultiplier));
-    
-    lawProcess.ticksSinceLastResolve++;
     
     // Check if enough ticks have passed
     const shouldResolve = lawProcess.ticksSinceLastResolve >= ticksNeeded;

@@ -4,8 +4,25 @@
 
 /**
  * Create a law event template
+ * @param {string} id - Event identifier
+ * @param {string} name - Event name
+ * @param {Object} options - Event configuration options
+ * @returns {Object} Law event
  */
-export function createLawEvent(id, name, scope, phase_tags, nature, tier, triggers, base_weight, effects, weight_modifiers = [], description = '', choices = null) {
+export function createLawEvent(id, name, options = {}) {
+  const {
+    scope = 'LAW',
+    phase_tags = [],
+    nature = 'NEUTRAL',
+    tier = 'MAJOR',
+    triggers = [],
+    base_weight = 1.0,
+    effects = null,
+    weight_modifiers = [],
+    description = '',
+    choices = null
+  } = options;
+  
   return {
     id,
     name,
@@ -29,61 +46,67 @@ export const DEBATE_EVENTS = [
   createLawEvent(
     'debate_passionate_speech',
     'Passionate Speech in Council',
-    'LAW',
-    ['DEBATE'],
-    'APPROVE',
-    'MAJOR',
-    [],
-    1.0,
     {
-      progress: 0.3,
-      meters: {
-        momentum: 0.1,
-        polarization: 0.05
-      }
-    },
-    [
-      { type: 'momentum_boost', multiplier: 0.5 }
-    ]
+      scope: 'LAW',
+      phase_tags: ['DEBATE'],
+      nature: 'APPROVE',
+      tier: 'MAJOR',
+      triggers: [],
+      base_weight: 1.0,
+      effects: {
+        progress: 0.3,
+        meters: {
+          momentum: 0.1,
+          polarization: 0.05
+        }
+      },
+      weight_modifiers: [
+        { type: 'momentum_boost', multiplier: 0.5 }
+      ]
+    }
   ),
   
   createLawEvent(
     'debate_technical_objection',
     'Technical Objection Raised',
-    'LAW',
-    ['DEBATE'],
-    'REJECT',
-    'MAJOR',
-    [],
-    1.0,
     {
-      progress: -0.1,
-      meters: {
-        reject_pressure: 0.15,
-        momentum: -0.1
-      }
-    },
-    [
-      { type: 'reject_pressure_boost', multiplier: 0.8 }
-    ]
+      scope: 'LAW',
+      phase_tags: ['DEBATE'],
+      nature: 'REJECT',
+      tier: 'MAJOR',
+      triggers: [],
+      base_weight: 1.0,
+      effects: {
+        progress: -0.1,
+        meters: {
+          reject_pressure: 0.15,
+          momentum: -0.1
+        }
+      },
+      weight_modifiers: [
+        { type: 'reject_pressure_boost', multiplier: 0.8 }
+      ]
+    }
   ),
   
   createLawEvent(
     'debate_amendment_proposed',
     'Amendment Proposed',
-    'LAW',
-    ['DEBATE'],
-    'ADVANCE',
-    'MAJOR',
-    [
-      { type: 'meter_above', meter: 'momentum', threshold: 0.4 }
-    ],
-    0.8,
     {
-      progress: 0.25,
-      meters: {
-        momentum: 0.05,
-        legitimacy: 0.1
+      scope: 'LAW',
+      phase_tags: ['DEBATE'],
+      nature: 'ADVANCE',
+      tier: 'MAJOR',
+      triggers: [
+        { type: 'meter_above', meter: 'momentum', threshold: 0.4 }
+      ],
+      base_weight: 0.8,
+      effects: {
+        progress: 0.25,
+        meters: {
+          momentum: 0.05,
+          legitimacy: 0.1
+        }
       }
     }
   ),
@@ -91,16 +114,18 @@ export const DEBATE_EVENTS = [
   createLawEvent(
     'debate_empire_endorsement',
     'Empire Public Endorsement',
-    'LAW',
-    ['DEBATE'],
-    'APPROVE',
-    'MINOR',
-    [],
-    0.6,
     {
-      meters: {
-        momentum: 0.05,
-        legitimacy: 0.05
+      scope: 'LAW',
+      phase_tags: ['DEBATE'],
+      nature: 'APPROVE',
+      tier: 'MINOR',
+      triggers: [],
+      base_weight: 0.6,
+      effects: {
+        meters: {
+          momentum: 0.05,
+          legitimacy: 0.05
+        }
       }
     }
   ),
@@ -108,16 +133,18 @@ export const DEBATE_EVENTS = [
   createLawEvent(
     'debate_heated_exchange',
     'Heated Exchange',
-    'LAW',
-    ['DEBATE'],
-    'NEUTRAL',
-    'MINOR',
-    [],
-    0.5,
     {
-      meters: {
-        polarization: 0.1,
-        unrest: 0.05
+      scope: 'LAW',
+      phase_tags: ['DEBATE'],
+      nature: 'NEUTRAL',
+      tier: 'MINOR',
+      triggers: [],
+      base_weight: 0.5,
+      effects: {
+        meters: {
+          polarization: 0.1,
+          unrest: 0.05
+        }
       }
     }
   )
