@@ -29,6 +29,11 @@ The game now features a command input box at the bottom of the screen for text-b
 - `help` - Show all available commands
 - `law <number>` or `enact <number>` - Enact a law (e.g., `law 1`)
 - `event <number>` or `choice <number>` - Choose event option (e.g., `event 1`)
+- `req list` - List available improvement requests
+- `req inspect <id>` - Inspect a request
+- `req accept <id>` - Accept a request (costs supplies)
+- `imp show <owner>` - Show improvement queue (e.g., `imp show coalition`)
+- `imp cancel <owner> <id>` - Cancel an improvement
 - `pause` - Pause the game
 - `resume` or `unpause` - Resume the game
 - `speed <value>` - Set game speed (0.5-3.0, e.g., `speed 2`)
@@ -68,6 +73,7 @@ You manage a coalition of empires fighting against the Scourge in **real-time**.
 - **Scourge Fervor**: Increases each turn, making Scourge battles harder
 - **Supplies**: Manage supply stockpiles to keep armies operational. Shortages reduce Organization and increase Aggravation
 - **Laws**: Enact policies to modify empire approval, army effectiveness, and resource generation
+- **Improvements**: Accept requests to build infrastructure and industry improvements. Each improvement provides benefits when completed and requires queue capacity. See [Improvements System](docs/systems/IMPROVEMENTS_SYSTEM.md) for details.
 - **Events**: Random events with choices that affect various game metrics
 - **Battles**: External (vs Scourge) and internal (vs Insurrections)
 
