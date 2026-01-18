@@ -10,9 +10,11 @@
  * - Production outputs (resources/modifiers)
  * - Economy order tagging (originator, payer, beneficiary)
  * - Stats and modifiers application
+ * - Tiered progression (T1/T2/T3) with per-empire unlock tracking
  */
 
 import { getLogger } from '../modules/logger.js';
+import { canStartImprovement, getTieredImprovementRequests, generateImprovementSuggestions } from './improvementDefinitions.js';
 
 // Constants for sustainment and modifier scaling
 const SUSTAINMENT_MAX_PRICE_MULTIPLIER = 2.0; // Willing to pay up to 2x market price
@@ -30,7 +32,9 @@ export function createImprovementRequest(id, name, description, {
   productionOutputs = {}, // { commodity_key: qty_per_tick }
   modifiers = {}, // { stat_key: value }
   tags = [],
-  suggestedBy = 'coalition'
+  suggestedBy = 'coalition',
+  tier = 1,
+  branch = 'general'
 } = {}) {
   return {
     id,
@@ -43,7 +47,9 @@ export function createImprovementRequest(id, name, description, {
     productionOutputs,
     modifiers,
     tags,
-    suggestedBy
+    suggestedBy,
+    tier,
+    branch
   };
 }
 
@@ -58,6 +64,10 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     name: request.name,
     description: request.description,
     suggestedBy: request.suggestedBy || empireId || 'coalition',
+    
+    // Tier and branch (for tier unlock tracking)
+    tier: request.tier || 1,
+    branch: request.branch || 'general',
     
     // Build phase
     buildProgress: 0,
@@ -100,106 +110,25 @@ export function initializeImprovementsState() {
 
 /**
  * Get available improvement requests (sample content)
- * Themed as epic mega-structures and galactic-scale events
+ * Uses the new tiered improvement definitions.
+ * Note: For dynamic suggestions based on empire tier access, use 
+ * generateImprovementSuggestions() from improvementDefinitions.js instead.
  */
 export function getSampleImprovementRequests() {
-  return [
-    createImprovementRequest('titan_forge', 'Titan Forge Network', 'Galaxy-spanning industrial mega-structure harvesting stellar matter to forge alloys of unparalleled strength', {
-      suppliesCost: 200,
-      build: 20,
-      capacity: 3,
-      sustainmentCost: {
-        biomass: 5,
-        ice: 3
-      },
-      productionOutputs: {
-        super_alloys: 15
-      },
-      modifiers: {
-        industrial_output: 0.05
-      },
-      tags: ['mega_structure', 'industrial', 'production'],
-      suggestedBy: 'coalition'
-    }),
-    
-    createImprovementRequest('ascension_spire', 'Ascension Spire', 'Colossal monument to knowledge where the greatest minds pursue transcendent breakthroughs', {
-      suppliesCost: 300,
-      build: 25,
-      capacity: 4,
-      sustainmentCost: {
-        super_alloys: 3,
-        rare_gases: 2
-      },
-      productionOutputs: {
-        rare_gases: 8,
-        quantum_circuits: 2
-      },
-      modifiers: {
-        research_speed: 0.10,
-        tech_level: 1
-      },
-      tags: ['mega_structure', 'science', 'transcendence'],
-      suggestedBy: 'empire_1'
-    }),
-    
-    createImprovementRequest('war_symposium', 'Grand War Symposium', 'Galactic convocation of military leaders coordinating fleets across a thousand battlefronts', {
-      suppliesCost: 150,
-      build: 18,
-      capacity: 3,
-      sustainmentCost: {
-        super_alloys: 4,
-        biomass: 6
-      },
-      productionOutputs: {
-        // Coordination enhances existing forces
-      },
-      modifiers: {
-        army_organization: 5,
-        supply_efficiency: 0.08
-      },
-      tags: ['grand_event', 'military', 'coordination'],
-      suggestedBy: 'empire_2'
-    }),
-    
-    createImprovementRequest('festival_of_worlds', 'Festival of Worlds', 'Massive celebration spanning entire star systems, uniting billions in shared culture and purpose', {
-      suppliesCost: 250,
-      build: 22,
-      capacity: 4,
-      sustainmentCost: {
-        biomass: 5,
-        genomes: 3,
-        psycho_implants: 1
-      },
-      productionOutputs: {
-        genomes: 4
-      },
-      modifiers: {
-        population_growth: 0.03,
-        empire_approval: 2
-      },
-      tags: ['grand_event', 'cultural', 'unity'],
-      suggestedBy: 'empire_3'
-    }),
-    
-    createImprovementRequest('convergence_nexus', 'Convergence Nexus', 'Hyperspatial marketplace where civilizations across the void exchange wealth and wonders', {
-      suppliesCost: 180,
-      build: 20,
-      capacity: 3,
-      sustainmentCost: {
-        ice: 4,
-        rare_gases: 2
-      },
-      productionOutputs: {
-        // Economic synergy generates wealth
-      },
-      modifiers: {
-        trade_income: 500, // Credits per tick
-        market_efficiency: 0.05
-      },
-      tags: ['mega_structure', 'economic', 'trade'],
-      suggestedBy: 'coalition'
-    })
-  ];
+  return getTieredImprovementRequests();
+}
+
+/**
+ * Initialize improvement suggestions with proper empire assignment
+ * Call this after empires are set up in game state.
+ * @param {Object} state - Game state with empires
+ * @param {function} rng - Random number generator
+ */
+export function initializeImprovementSuggestions(state, rng = Math.random) {
+  if (!state.improvements) {
+    state.improvements = initializeImprovementsState();
+  }
+  state.improvements.requests = generateImprovementSuggestions(state, rng);
 }
 
 /**
@@ -211,6 +140,14 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   
   if (!request) {
     return { success: false, error: 'Request not found', log: [] };
+  }
+  
+  // Check tier requirements for this empire (if tier is defined)
+  if (request.tier && request.tier > 1) {
+    const tierCheck = canStartImprovement(requestId, state, empireId);
+    if (!tierCheck.canStart) {
+      return { success: false, error: tierCheck.reason, log: [] };
+    }
   }
   
   // Check supplies cost
@@ -243,12 +180,12 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   const improvement = createImprovement(requestId, empireId, state.turn, request);
   improvements.queue.push(improvement);
   
-  logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} Supplies)`);
+  logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} Supplies, Tier: ${improvement.tier})`);
   
   return {
     success: true,
     improvement,
-    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (build cost: ${request.build})`]
+    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (build cost: ${request.build}, T${improvement.tier})`]
   };
 }
 
