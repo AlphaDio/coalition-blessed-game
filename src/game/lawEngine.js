@@ -45,6 +45,14 @@ export const EVENT_BUDGET = {
 export const MAX_PHASE_PROGRESS = 2.0;
 
 /**
+ * Global phase progress multiplier
+ * Lower values slow law enactment; target ~150-200 ticks per law
+ * (to match influence generation of +1/tick with 100 cost per law)
+ */
+export const PHASE_PROGRESS_MULTIPLIER = 0.045;
+
+
+/**
  * Clamp meter values to 0..1 range
  */
 export function clampMeter(value) {
@@ -133,67 +141,52 @@ export function evaluateTriggers(triggers, context) {
 
 /**
  * Compute final selection weight for an event
+ * 
+ * METER PRIMARY EFFECTS (decoupled):
+ * - Momentum: boosts APPROVE/ADVANCE events (positive progress)
+ * - Reject_Pressure: boosts REJECT/STALL events (negative progress, hard rejects)
+ * - Legitimacy: no direct weight effect (affects unrest consequences + vote threshold)
+ * - Unrest: boosts EXTERNALITY events (negative spillover)
+ * 
  * @param {Object} event - Event template
  * @param {Object} context - Law context
  * @returns {number} Final weight for selection
  */
 export function computeEventWeight(event, context) {
   let weight = event.base_weight || 1.0;
+  const nature = event.nature || 'NEUTRAL';
   
-  // Apply trigger-based modifiers
-  if (event.weight_modifiers) {
-    event.weight_modifiers.forEach(modifier => {
-      if (modifier.type === 'momentum_boost') {
-        const momentum = context.meters.momentum || 0.5;
-        weight *= 1 + (modifier.multiplier * momentum);
-      }
-      
-      if (modifier.type === 'reject_pressure_boost') {
-        const pressure = context.meters.reject_pressure || 0.3;
-        weight *= 1 + (modifier.multiplier * pressure);
-      }
-      
-      if (modifier.type === 'polarization_boost') {
-        const polarization = context.meters.polarization || 0.3;
-        weight *= 1 + (modifier.multiplier * polarization);
-      }
-    });
+  const momentum = context.meters.momentum || 0.5;
+  const rejectPressure = context.meters.reject_pressure || 0.3;
+  const unrest = context.meters.unrest || 0.2;
+  
+  // MOMENTUM: Primary effect - boosts positive progress events
+  // Higher momentum = more likely to get APPROVE/ADVANCE events
+  if (nature === 'APPROVE' || nature === 'ADVANCE') {
+    weight *= 1 + (momentum * 1.0);  // 1x to 2x at full momentum
   }
   
-  // Apply context bias based on event nature and meters
-  weight = applyContextBias(weight, event, context);
+  // REJECT_PRESSURE: Primary effect - boosts negative progress events
+  // Higher pressure = more likely to get REJECT/STALL events and hard rejects
+  if (nature === 'REJECT' || nature === 'STALL') {
+    weight *= 1 + (rejectPressure * 1.5);  // 1x to 2.5x at full pressure
+  }
+  
+  // UNREST: Primary effect - boosts externality events
+  // High unrest causes negative spillover effects
+  if (nature === 'EXTERNALITY') {
+    weight *= 1 + (unrest * 2.0);  // 1x to 3x at full unrest
+  }
   
   return Math.max(0, weight);
 }
 
-/**
- * Apply context bias to event weight based on nature and meters
- * @param {number} baseWeight - Base weight
- * @param {Object} event - Event template
- * @param {Object} context - Law context
- * @returns {number} Adjusted weight
- */
-export function applyContextBias(baseWeight, event, context) {
-  const nature = event.nature || 'NEUTRAL';
-  const momentum = context.meters.momentum || 0.5;
-  const rejectPressure = context.meters.reject_pressure || 0.3;
-  
-  let bias = 1.0;
-  
-  // High momentum boosts APPROVE/ADVANCE, dampens REJECT
-  if (nature === 'APPROVE' || nature === 'ADVANCE') {
-    bias *= 1 + (momentum * 0.5);
-    bias *= 1 - (rejectPressure * 0.3);
-  }
-  
-  // High reject pressure boosts REJECT, dampens APPROVE
-  if (nature === 'REJECT') {
-    bias *= 1 + (rejectPressure * 0.8);
-    bias *= 1 - (momentum * 0.4);
-  }
-  
-  return baseWeight * bias;
-}
+// applyContextBias removed - cross-coupling eliminated
+// Each meter now has ONE primary effect in computeEventWeight:
+// - Momentum: boosts APPROVE/ADVANCE only
+// - Reject_Pressure: boosts REJECT/STALL only  
+// - Unrest: boosts EXTERNALITY only
+// - Legitimacy: affects unrest consequences + vote threshold (see applyUnrestExternalities)
 
 /**
  * Pick events using seeded weighted random selection
@@ -277,7 +270,12 @@ export function applyEventEffects(event, lawProcess, state) {
   // Apply progress delta
   if (event.effects.progress !== undefined) {
     const oldProgress = lawProcess.phaseProgress;
-    const newProgress = clamp(oldProgress + event.effects.progress, 0, MAX_PHASE_PROGRESS);
+    const newProgress = clamp(
+      oldProgress + (event.effects.progress * PHASE_PROGRESS_MULTIPLIER),
+      0,
+      MAX_PHASE_PROGRESS
+    );
+
     lawProcess.phaseProgress = newProgress;
     log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)}`);
   }
@@ -312,6 +310,84 @@ export function checkPhaseAdvancement(lawProcess) {
   }
   
   return false;
+}
+
+/**
+ * LEGITIMACY: Primary effect - reduces unrest consequences and improves vote threshold
+ * Higher legitimacy means the law process is seen as valid, reducing backlash.
+ * 
+ * @param {Object} lawProcess - Current law process
+ * @returns {number} Unrest damage multiplier (0.3 to 1.0, lower = less damage)
+ */
+export function getLegitimacyUnrestReduction(lawProcess) {
+  const legitimacy = lawProcess.meters.legitimacy || 0.5;
+  // High legitimacy (1.0) = 0.3x unrest damage, Low legitimacy (0) = 1.0x
+  return 1.0 - (legitimacy * 0.7);
+}
+
+/**
+ * LEGITIMACY: Vote threshold reduction
+ * Higher legitimacy reduces the required vote threshold to pass.
+ * 
+ * @param {Object} lawProcess - Current law process
+ * @param {number} baseThreshold - Base threshold (e.g. 0.5 = simple majority)
+ * @returns {number} Adjusted threshold
+ */
+export function getAdjustedVoteThreshold(lawProcess, baseThreshold = 0.5) {
+  const legitimacy = lawProcess.meters.legitimacy || 0.5;
+  // High legitimacy (1.0) reduces threshold by 0.15, low (0) adds 0.05
+  const adjustment = 0.05 - (legitimacy * 0.2);
+  return clamp(baseThreshold + adjustment, 0.35, 0.65);
+}
+
+/**
+ * UNREST: Primary effect - produces negative externalities
+ * Called each law tick when unrest is high.
+ * 
+ * @param {Object} lawProcess - Current law process
+ * @param {Object} state - Game state
+ * @returns {Object} Externality effects applied { cohesionLoss, approvalLoss, insurrectionRisk }
+ */
+export function applyUnrestExternalities(lawProcess, state) {
+  const unrest = lawProcess.meters.unrest || 0;
+  const legitimacy = lawProcess.meters.legitimacy || 0.5;
+  
+  // No effect below 0.3 unrest
+  if (unrest < 0.3) {
+    return { cohesionLoss: 0, approvalLoss: 0, insurrectionRisk: 0 };
+  }
+  
+  // Legitimacy reduces unrest damage
+  const damageMultiplier = getLegitimacyUnrestReduction(lawProcess);
+  
+  // Scale effects by unrest level above threshold
+  const unrestSeverity = (unrest - 0.3) / 0.7;  // 0 to 1 for unrest 0.3 to 1.0
+  
+  // Cohesion loss: up to -2 per tick at max unrest
+  const cohesionLoss = Math.floor(unrestSeverity * 2 * damageMultiplier);
+  if (cohesionLoss > 0) {
+    state.coalitionCohesion = clamp(state.coalitionCohesion - cohesionLoss, 0, 100);
+  }
+  
+  // Approval loss to all empires: up to -3 per tick at max unrest
+  const approvalLoss = Math.floor(unrestSeverity * 3 * damageMultiplier);
+  if (approvalLoss > 0) {
+    state.empires.forEach(empire => {
+      empire.approval = clamp(empire.approval - approvalLoss, -100, 100);
+    });
+  }
+  
+  // Insurrection risk: increases army aggravation
+  const insurrectionRisk = Math.floor(unrestSeverity * 5 * damageMultiplier);
+  if (insurrectionRisk > 0 && state.armies) {
+    state.armies.forEach(army => {
+      if (!army.isScourge && !army.isInsurrection) {
+        army.aggravation = clamp((army.aggravation || 0) + insurrectionRisk, 0, 100);
+      }
+    });
+  }
+  
+  return { cohesionLoss, approvalLoss, insurrectionRisk };
 }
 
 /**

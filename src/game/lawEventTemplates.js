@@ -1,11 +1,19 @@
 /**
- * Law Event Templates - Sample events for law enactment phases
+ * Law Event Templates - Events for law enactment phases
+ * 
+ * METER PRIMARY EFFECTS (decoupled):
+ * - Momentum: boosts APPROVE/ADVANCE event chance/size
+ * - Reject_Pressure: boosts REJECT/STALL event chance, hard rejects
+ * - Legitimacy: reduces unrest consequences, improves vote threshold
+ * - Unrest: produces externalities (cohesion/approval loss), boosts EXTERNALITY events
+ * 
+ * Events should primarily modify ONE meter. Progress is separate.
  */
 
 /**
  * Create a law event template
  */
-export function createLawEvent(id, name, scope, phase_tags, nature, tier, triggers, base_weight, effects, weight_modifiers = []) {
+export function createLawEvent(id, name, scope, phase_tags, nature, tier, triggers, base_weight, effects) {
   return {
     id,
     name,
@@ -15,15 +23,15 @@ export function createLawEvent(id, name, scope, phase_tags, nature, tier, trigge
     tier,
     triggers,
     base_weight,
-    effects,
-    weight_modifiers
+    effects
   };
 }
 
 /**
- * Sample DEBATE phase events
+ * DEBATE phase events
  */
 export const DEBATE_EVENTS = [
+  // APPROVE events - boosted by Momentum
   createLawEvent(
     'debate_passionate_speech',
     'Passionate Speech in Council',
@@ -35,54 +43,7 @@ export const DEBATE_EVENTS = [
     1.0,
     {
       progress: 0.3,
-      meters: {
-        momentum: 0.1,
-        polarization: 0.05
-      }
-    },
-    [
-      { type: 'momentum_boost', multiplier: 0.5 }
-    ]
-  ),
-  
-  createLawEvent(
-    'debate_technical_objection',
-    'Technical Objection Raised',
-    'LAW',
-    ['DEBATE'],
-    'REJECT',
-    'MAJOR',
-    [],
-    1.0,
-    {
-      progress: -0.1,
-      meters: {
-        reject_pressure: 0.15,
-        momentum: -0.1
-      }
-    },
-    [
-      { type: 'reject_pressure_boost', multiplier: 0.8 }
-    ]
-  ),
-  
-  createLawEvent(
-    'debate_amendment_proposed',
-    'Amendment Proposed',
-    'LAW',
-    ['DEBATE'],
-    'ADVANCE',
-    'MAJOR',
-    [
-      { type: 'meter_above', meter: 'momentum', threshold: 0.4 }
-    ],
-    0.8,
-    {
-      progress: 0.25,
-      meters: {
-        momentum: 0.05,
-        legitimacy: 0.1
-      }
+      meters: { momentum: 0.1 }  // Primary: momentum
     }
   ),
   
@@ -96,13 +57,108 @@ export const DEBATE_EVENTS = [
     [],
     0.6,
     {
-      meters: {
-        momentum: 0.05,
-        legitimacy: 0.05
-      }
+      meters: { momentum: 0.08 }  // Primary: momentum
     }
   ),
   
+  // ADVANCE events - boosted by Momentum
+  createLawEvent(
+    'debate_amendment_proposed',
+    'Amendment Proposed',
+    'LAW',
+    ['DEBATE'],
+    'ADVANCE',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'momentum', threshold: 0.4 }
+    ],
+    0.8,
+    {
+      progress: 0.25,
+      meters: { legitimacy: 0.1 }  // Primary: legitimacy (amendment adds validity)
+    }
+  ),
+  
+  // REJECT events - boosted by Reject_Pressure (require high pressure)
+  createLawEvent(
+    'debate_technical_objection',
+    'Technical Objection Raised',
+    'LAW',
+    ['DEBATE'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.5 }
+    ],
+    0.4,
+    {
+      progress: -0.1,
+      meters: { reject_pressure: 0.1 }  // Primary: reject_pressure
+    }
+  ),
+  
+  // Additional APPROVE/ADVANCE events to balance
+  createLawEvent(
+    'debate_coalition_backing',
+    'Coalition Leadership Backing',
+    'LAW',
+    ['DEBATE'],
+    'APPROVE',
+    'MAJOR',
+    [],
+    1.2,
+    {
+      progress: 0.25,
+      meters: { momentum: 0.08, legitimacy: 0.05 }
+    }
+  ),
+  
+  createLawEvent(
+    'debate_procedural_clarity',
+    'Procedural Clarity Achieved',
+    'LAW',
+    ['DEBATE'],
+    'ADVANCE',
+    'MINOR',
+    [],
+    0.8,
+    {
+      progress: 0.15,
+      meters: { momentum: 0.05 }
+    }
+  ),
+  
+  createLawEvent(
+    'debate_broad_consensus',
+    'Broad Consensus Emerging',
+    'LAW',
+    ['DEBATE'],
+    'APPROVE',
+    'MAJOR',
+    [],
+    1.0,
+    {
+      progress: 0.2,
+      meters: { momentum: 0.1, reject_pressure: -0.05 }
+    }
+  ),
+  
+  createLawEvent(
+    'debate_favorable_precedent',
+    'Favorable Precedent Cited',
+    'LAW',
+    ['DEBATE'],
+    'ADVANCE',
+    'MINOR',
+    [],
+    0.7,
+    {
+      progress: 0.12,
+      meters: { legitimacy: 0.08 }
+    }
+  ),
+  
+  // NEUTRAL events - general
   createLawEvent(
     'debate_heated_exchange',
     'Heated Exchange',
@@ -111,20 +167,18 @@ export const DEBATE_EVENTS = [
     'NEUTRAL',
     'MINOR',
     [],
-    0.5,
+    0.4,  // Slightly lower weight
     {
-      meters: {
-        polarization: 0.1,
-        unrest: 0.05
-      }
+      meters: { unrest: 0.05 }  // Reduced from 0.08 - less impactful
     }
   )
 ];
 
 /**
- * Sample FALLOUT phase events
+ * FALLOUT phase events
  */
 export const FALLOUT_EVENTS = [
+  // REJECT events - boosted by Reject_Pressure
   createLawEvent(
     'fallout_public_protest',
     'Public Protests Erupt',
@@ -133,56 +187,12 @@ export const FALLOUT_EVENTS = [
     'REJECT',
     'MAJOR',
     [
-      { type: 'meter_above', meter: 'polarization', threshold: 0.5 }
+      { type: 'meter_above', meter: 'unrest', threshold: 0.55 }
     ],
-    1.0,
+    0.5,
     {
-      progress: -0.2,
-      meters: {
-        unrest: 0.2,
-        reject_pressure: 0.15,
-        momentum: -0.15
-      }
-    },
-    [
-      { type: 'polarization_boost', multiplier: 1.0 }
-    ]
-  ),
-  
-  createLawEvent(
-    'fallout_media_support',
-    'Media Campaign in Support',
-    'LAW',
-    ['FALLOUT'],
-    'APPROVE',
-    'MAJOR',
-    [],
-    0.9,
-    {
-      progress: 0.2,
-      meters: {
-        momentum: 0.15,
-        legitimacy: 0.1,
-        unrest: -0.05
-      }
-    }
-  ),
-  
-  createLawEvent(
-    'fallout_economic_impact',
-    'Economic Impact Analysis Released',
-    'LAW',
-    ['FALLOUT'],
-    'ADVANCE',
-    'MAJOR',
-    [],
-    0.8,
-    {
-      progress: 0.15,
-      meters: {
-        economy_shock: 0.1,
-        legitimacy: 0.05
-      }
+      progress: -0.15,
+      meters: { reject_pressure: 0.15, unrest: -0.12 }  // Self-limiting: protests release tension
     }
   ),
   
@@ -191,17 +201,30 @@ export const FALLOUT_EVENTS = [
     'Minor Unrest Incidents',
     'LAW',
     ['FALLOUT'],
-    'NEUTRAL',
+    'REJECT',
     'MINOR',
     [
-      { type: 'meter_above', meter: 'unrest', threshold: 0.4 }
+      { type: 'meter_above', meter: 'unrest', threshold: 0.45 }
     ],
-    0.6,
+    0.4,
     {
-      meters: {
-        unrest: 0.1,
-        reject_pressure: 0.05
-      }
+      meters: { reject_pressure: 0.06, unrest: -0.05 }  // Self-limiting: minor release of tension
+    }
+  ),
+  
+  // APPROVE events - boosted by Momentum
+  createLawEvent(
+    'fallout_media_support',
+    'Media Campaign in Support',
+    'LAW',
+    ['FALLOUT'],
+    'APPROVE',
+    'MAJOR',
+    [],
+    1.2,
+    {
+      progress: 0.2,
+      meters: { momentum: 0.15, unrest: -0.04 }  // Media support calms public
     }
   ),
   
@@ -213,20 +236,64 @@ export const FALLOUT_EVENTS = [
     'APPROVE',
     'MINOR',
     [],
-    0.5,
+    0.8,
     {
-      meters: {
-        legitimacy: 0.08,
-        momentum: 0.03
-      }
+      meters: { legitimacy: 0.1 }  // Primary: legitimacy (expert validation)
+    }
+  ),
+  
+  createLawEvent(
+    'fallout_public_support',
+    'Public Support Rallies',
+    'LAW',
+    ['FALLOUT'],
+    'APPROVE',
+    'MAJOR',
+    [],
+    1.0,
+    {
+      progress: 0.2,
+      meters: { momentum: 0.1, unrest: -0.08 }  // Rallies reduce unrest more
+    }
+  ),
+  
+  createLawEvent(
+    'fallout_diplomatic_progress',
+    'Diplomatic Progress Made',
+    'LAW',
+    ['FALLOUT'],
+    'ADVANCE',
+    'MINOR',
+    [],
+    0.9,
+    {
+      progress: 0.15,
+      meters: { legitimacy: 0.08 }
+    }
+  ),
+  
+  // ADVANCE events - boosted by Momentum
+  createLawEvent(
+    'fallout_economic_impact',
+    'Economic Impact Analysis Released',
+    'LAW',
+    ['FALLOUT'],
+    'ADVANCE',
+    'MAJOR',
+    [],
+    0.8,
+    {
+      progress: 0.15,
+      meters: { legitimacy: 0.08 }  // Primary: legitimacy (informed process)
     }
   )
 ];
 
 /**
- * Sample VOTING phase events
+ * VOTING phase events
  */
 export const VOTING_EVENTS = [
+  // APPROVE events - boosted by Momentum
   createLawEvent(
     'voting_whip_success',
     'Vote Whipping Campaign',
@@ -240,68 +307,7 @@ export const VOTING_EVENTS = [
     1.0,
     {
       progress: 0.3,
-      meters: {
-        momentum: 0.1,
-        legitimacy: -0.05
-      }
-    }
-  ),
-  
-  createLawEvent(
-    'voting_procedural_delay',
-    'Procedural Delay Tactic',
-    'LAW',
-    ['VOTING'],
-    'REJECT',
-    'MAJOR',
-    [],
-    0.9,
-    {
-      progress: -0.15,
-      meters: {
-        reject_pressure: 0.1,
-        legitimacy: -0.05
-      }
-    }
-  ),
-  
-  createLawEvent(
-    'voting_compromise_reached',
-    'Last-Minute Compromise',
-    'LAW',
-    ['VOTING'],
-    'ADVANCE',
-    'MAJOR',
-    [
-      { type: 'rejects_at_least', count: 2 }
-    ],
-    0.7,
-    {
-      progress: 0.4,
-      meters: {
-        momentum: 0.2,
-        reject_pressure: -0.15,
-        legitimacy: 0.1
-      }
-    }
-  ),
-  
-  createLawEvent(
-    'voting_bribery_scandal',
-    'Bribery Allegations Surface',
-    'LAW',
-    ['VOTING'],
-    'REJECT',
-    'MAJOR',
-    [],
-    0.6,
-    {
-      progress: -0.25,
-      meters: {
-        reject_pressure: 0.2,
-        legitimacy: -0.15,
-        unrest: 0.1
-      }
+      meters: { momentum: 0.1 }  // Primary: momentum
     }
   ),
   
@@ -315,9 +321,73 @@ export const VOTING_EVENTS = [
     [],
     0.7,
     {
-      meters: {
-        momentum: 0.05
-      }
+      meters: { momentum: 0.08 }  // Primary: momentum
+    }
+  ),
+  
+  // REJECT events - boosted by Reject_Pressure
+  createLawEvent(
+    'voting_procedural_delay',
+    'Procedural Delay Tactic',
+    'LAW',
+    ['VOTING'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.65 }
+    ],
+    0.4,
+    {
+      progress: -0.12,
+      meters: { reject_pressure: -0.1 }  // Self-limiting: using the tactic exhausts it
+    }
+  ),
+  
+  createLawEvent(
+    'voting_bribery_scandal',
+    'Bribery Allegations Surface',
+    'LAW',
+    ['VOTING'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_below', meter: 'legitimacy', threshold: 0.4 }
+    ],
+    0.4,
+    {
+      progress: -0.25,
+      meters: { legitimacy: -0.2 }  // Primary: legitimacy (scandal hurts validity)
+    }
+  ),
+  
+  // Additional APPROVE events
+  createLawEvent(
+    'voting_coalition_endorsement',
+    'Coalition Formal Endorsement',
+    'LAW',
+    ['VOTING'],
+    'APPROVE',
+    'MAJOR',
+    [],
+    1.0,
+    {
+      progress: 0.25,
+      meters: { momentum: 0.1, legitimacy: 0.05 }
+    }
+  ),
+  
+  createLawEvent(
+    'voting_swing_vote',
+    'Swing Voter Secured',
+    'LAW',
+    ['VOTING'],
+    'ADVANCE',
+    'MINOR',
+    [],
+    0.9,
+    {
+      progress: 0.2,
+      meters: { momentum: 0.06 }
     }
   ),
   
@@ -326,15 +396,72 @@ export const VOTING_EVENTS = [
     'Abstention Threats',
     'LAW',
     ['VOTING'],
-    'NEUTRAL',
+    'STALL',
     'MINOR',
-    [],
-    0.5,
+    [
+      { type: 'meter_below', meter: 'legitimacy', threshold: 0.5 }  // Only when legitimacy is low
+    ],
+    0.3,  // Reduced weight
     {
-      meters: {
-        reject_pressure: 0.05,
-        polarization: 0.05
-      }
+      meters: { reject_pressure: 0.05 }  // Reduced impact
+    }
+  ),
+  
+  // ADVANCE events - boosted by Momentum
+  createLawEvent(
+    'voting_compromise_reached',
+    'Last-Minute Compromise',
+    'LAW',
+    ['VOTING'],
+    'ADVANCE',
+    'MAJOR',
+    [
+      { type: 'rejects_at_least', count: 2 }
+    ],
+    0.7,
+    {
+      progress: 0.4,
+      meters: { legitimacy: 0.15 }  // Primary: legitimacy (compromise = broad support)
+    }
+  )
+];
+
+/**
+ * EXTERNALITY events - triggered by high unrest, apply negative consequences
+ * These happen alongside normal events when unrest is very high.
+ */
+export const EXTERNALITY_EVENTS = [
+  createLawEvent(
+    'externality_cohesion_strain',
+    'Coalition Unity Strained',
+    'LAW',
+    ['DEBATE', 'FALLOUT', 'VOTING'],
+    'EXTERNALITY',
+    'MINOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.5 }
+    ],
+    0.8,
+    {
+      // Externality effects are applied via applyUnrestExternalities()
+      // This event just signals the consequence
+      meters: { unrest: -0.05 }  // Slight pressure release
+    }
+  ),
+  
+  createLawEvent(
+    'externality_approval_crisis',
+    'Public Opinion Plummets',
+    'LAW',
+    ['DEBATE', 'FALLOUT', 'VOTING'],
+    'EXTERNALITY',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.7 }
+    ],
+    0.6,
+    {
+      meters: { legitimacy: -0.1 }  // High unrest damages legitimacy
     }
   )
 ];
@@ -346,6 +473,7 @@ export function getAllLawEvents() {
   return [
     ...DEBATE_EVENTS,
     ...FALLOUT_EVENTS,
-    ...VOTING_EVENTS
+    ...VOTING_EVENTS,
+    ...EXTERNALITY_EVENTS
   ];
 }

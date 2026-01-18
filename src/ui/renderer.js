@@ -33,7 +33,7 @@ export function createUI() {
   const { inputBox, commandHistoryBox } = createCommandInputs(screen);
   const logsWindow = createLogsWindow(screen);
 
-  disableWidgetInput([lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox]);
+  disableWidgetInput([eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox]);
   screen.input = false;
 
   return {
@@ -92,13 +92,13 @@ function createActiveLawsBox(grid) {
 
 function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
-  // Left column: Available Laws (row 3-10)
-  const lawsBox = grid.set(3, 0, 7, 3, blessed.list, {
-    label: ' Laws (Enter to enact) ',
+  // Left column: Action Panel (row 3-10) - formerly Laws box
+  const actionPanel = grid.set(3, 0, 7, 3, blessed.box, {
+    label: ' Actions (TAB: cycle, ENTER: select) ',
+    scrollable: true,
+    alwaysScroll: true,
     keys: true,
-    vi: true,
-    input: false, // Disable text input - list navigation only
-    search: false, // Disable search mode
+    input: false,
     tags: true,
     style: {
       selected: { bg: 'blue', fg: 'white' },
@@ -109,8 +109,12 @@ function createLawsBox(grid) {
     }
   });
 
-  disableListSearch(lawsBox);
-  return lawsBox;
+  // Track action panel state
+  actionPanel.currentMode = 'main'; // 'main' | 'laws' | 'info_select'
+  actionPanel.selectedIndex = 0;
+  actionPanel.menuItems = [];
+
+  return actionPanel;
 }
 
 function disableListSearch(lawsBox) {
@@ -345,33 +349,172 @@ function disableWidgetInput(widgets) {
 }
 
 export function renderLaws(ui, state) {
+  renderActionPanel(ui, state);
+}
+
+/**
+ * Render the action panel (left panel) with different modes
+ */
+export function renderActionPanel(ui, state) {
+  const panel = ui.lawsBox;
+  if (!panel) return;
+
+  const mode = panel.currentMode || 'main';
+  const selectedIndex = panel.selectedIndex || 0;
+
+  let content = '';
+  let label = '';
   let items = [];
-  
-  // Show law definitions if available (new system)
-  if (state.lawDefinitions && state.lawDefinitions.length > 0) {
-    items = state.lawDefinitions.map((lawDef, idx) => {
-      const marker = idx === state.selectedLawIndex ? '> ' : '  ';
-      const cost = state.playerInfluence >= 100 ? '' : ' {red-fg}(need 100 influence){/red-fg}';
-      return `${marker}${lawDef.name}${cost}`;
-    });
-  } else {
-    // Fallback to old law system
-    items = state.laws.map((law, idx) => {
-      const cooldown = law.currentCooldown > 0 ? ` [CD: ${law.currentCooldown}]` : '';
-      const marker = idx === state.selectedLawIndex ? '> ' : '  ';
-      return `${marker}${law.name}${cooldown}`;
-    });
+
+  switch (mode) {
+    case 'main':
+      label = ' Actions (ENTER: select) ';
+      items = buildMainMenuItems(state);
+      break;
+    case 'laws':
+      label = ' Propose Law (ESC: back) ';
+      items = buildLawMenuItems(state);
+      break;
+    case 'info_select':
+      label = ' Select Info Panel (ESC: back) ';
+      items = buildInfoSelectItems();
+      break;
+    default:
+      label = ' Actions ';
+      items = buildMainMenuItems(state);
   }
-  
-  ui.lawsBox.setItems(items);
-  
+
+  panel.menuItems = items;
+  content = formatMenuItems(items, selectedIndex);
+
+  panel.setLabel(label);
+  panel.setContent(content);
+
   // Update border color based on focus
-  if (state.focus === 'laws') {
-    ui.lawsBox.style.border.fg = 'yellow';
-    ui.lawsBox.focus();
+  if (state.focus === 'laws' || state.focus === 'actions') {
+    panel.style.border.fg = 'yellow';
   } else {
-    ui.lawsBox.style.border.fg = 'white';
+    panel.style.border.fg = 'white';
   }
+}
+
+/**
+ * Build main menu items for action panel
+ */
+function buildMainMenuItems(state) {
+  const items = [
+    { id: 'propose_law', label: 'Propose Law', hint: 'Start a new law process', action: 'SWITCH_MODE', mode: 'laws' },
+    { id: 'info_panel', label: 'Info Panel', hint: 'Switch right panel view', action: 'SWITCH_MODE', mode: 'info_select' },
+    { id: 'divider1', label: '─────────────────', divider: true },
+    { id: 'view_market', label: 'View Market', hint: '[M]', action: 'SET_VIEW', view: 'market' },
+    { id: 'view_armies', label: 'View Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
+    { id: 'view_empires', label: 'View Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
+    { id: 'divider2', label: '─────────────────', divider: true },
+    { id: 'toggle_pause', label: state.paused ? 'Resume Game' : 'Pause Game', hint: '[SPACE]', action: 'TOGGLE_PAUSE' },
+    { id: 'view_logs', label: 'View Logs', hint: '[L]', action: 'TOGGLE_LOGS' }
+  ];
+
+  // Add active law count indicator
+  const activeLawCount = getActiveLawCount(state);
+  if (activeLawCount > 0) {
+    items.splice(1, 0, { 
+      id: 'active_laws_info', 
+      label: `  Active Laws: ${activeLawCount}`, 
+      hint: '', 
+      info: true 
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Build law menu items
+ */
+function buildLawMenuItems(state) {
+  const items = [
+    { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' },
+    { id: 'divider', label: '─────────────────', divider: true }
+  ];
+
+  if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+    state.lawDefinitions.forEach((lawDef, idx) => {
+      const canAfford = state.playerInfluence >= 100;
+      const costHint = canAfford ? '100 inf' : '{red-fg}need 100{/red-fg}';
+      items.push({
+        id: `law_${lawDef.id}`,
+        label: lawDef.name,
+        hint: costHint,
+        action: 'ENACT_LAW',
+        lawIndex: idx,
+        disabled: !canAfford
+      });
+    });
+  } else if (state.laws && state.laws.length > 0) {
+    state.laws.forEach((law, idx) => {
+      const onCooldown = law.currentCooldown > 0;
+      const hint = onCooldown ? `CD: ${law.currentCooldown}` : '';
+      items.push({
+        id: `law_${law.id}`,
+        label: law.name,
+        hint: hint,
+        action: 'ENACT_LAW',
+        lawIndex: idx,
+        disabled: onCooldown
+      });
+    });
+  } else {
+    items.push({ id: 'no_laws', label: 'No laws available', info: true });
+  }
+
+  return items;
+}
+
+/**
+ * Build info panel selection items
+ */
+function buildInfoSelectItems() {
+  return [
+    { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' },
+    { id: 'divider', label: '─────────────────', divider: true },
+    { id: 'market', label: 'Market Economy', hint: '[M]', action: 'SET_VIEW', view: 'market' },
+    { id: 'armies', label: 'Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
+    { id: 'empires', label: 'Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' }
+  ];
+}
+
+/**
+ * Format menu items for display
+ */
+function formatMenuItems(items, selectedIndex) {
+  const lines = [];
+
+  items.forEach((item, idx) => {
+    if (item.divider) {
+      lines.push(`{gray-fg}${item.label}{/gray-fg}`);
+      return;
+    }
+
+    if (item.info) {
+      lines.push(`{cyan-fg}${item.label}{/cyan-fg}`);
+      return;
+    }
+
+    const isSelected = idx === selectedIndex;
+    const marker = isSelected ? '{inverse} › {/inverse}' : '   ';
+    const labelColor = item.disabled ? 'gray' : (isSelected ? 'white' : 'white');
+    const hintText = item.hint ? ` {gray-fg}${item.hint}{/gray-fg}` : '';
+
+    if (item.disabled) {
+      lines.push(`${marker}{gray-fg}${item.label}{/gray-fg}${hintText}`);
+    } else if (isSelected) {
+      lines.push(`${marker}{bold}{yellow-fg}${item.label}{/yellow-fg}{/bold}${hintText}`);
+    } else {
+      lines.push(`${marker}{${labelColor}-fg}${item.label}{/${labelColor}-fg}${hintText}`);
+    }
+  });
+
+  return lines.join('\n');
 }
 
 export function renderEvent(ui, state) {

@@ -11,8 +11,9 @@ import { createSampleContent } from './src/game/content.js';
 import { advanceTurn } from './src/game/turn.js';
 import { DeterministicRNG } from './src/modules/rng.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { getAllLawEvents } from './src/game/lawEventTemplates.js';
+import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
+
 import { startLawProcess } from './src/game/lawProcessManager.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 
@@ -110,7 +111,24 @@ function createTestState(seed = 12345) {
   // Initialize law system
   state.lawDefinitions = getSampleLawDefinitions();
   state.events = [...state.events, ...getAllLawEvents()];
+  state.events.push(
+    createLawEvent(
+      'test_neutral_progress',
+      'Procedural Motion',
+      'LAW',
+      ['DEBATE', 'FALLOUT', 'VOTING'],
+      'NEUTRAL',
+      'MINOR',
+      [],
+      0.2,
+      {
+        progress: 0.1,
+        meters: { momentum: 0.02 }
+      }
+    )
+  );
   state.powerSystemPolicy = createPowerSystemPolicy(
+
     'equal_council',
     'Equal Council Votes',
     'equal_council',

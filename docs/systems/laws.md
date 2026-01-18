@@ -7,6 +7,7 @@ The law system manages multi-phase enactment (DEBATE, FALLOUT, VOTING) with weig
 - Convert ideological alignment into political friction and momentum.
 - Make law progress feel incremental rather than binary.
 - Tie laws to the wider state (cohesion, security, economy) via bias weights.
+- **Each meter has ONE primary effect** - avoid cross-coupling.
 
 ## Primary Flow
 - Law definitions are loaded into `state.lawDefinitions` on startup.
@@ -20,31 +21,69 @@ The law system manages multi-phase enactment (DEBATE, FALLOUT, VOTING) with weig
 - Support bias applies population, security, and economy incentives to shift stances.
 - Stances drive initial vote intent (support, oppose, abstain).
 
-## Law Events and Meters
-- Events are filtered by phase tags, triggers, and weight modifiers.
-- Major events advance or reject law progress; minor events adjust meters.
-- Meters (momentum, reject_pressure, legitimacy, unrest) influence eligibility and outcomes.
-- Phase progress generally advances in 0.1–0.4 increments per event.
+## Law Meters (Decoupled Design)
+
+Each meter has **one primary effect** to avoid over-coupling:
+
+| Meter | Range | Primary Effect | What It Means |
+|-------|-------|----------------|---------------|
+| **Momentum** | 0-1 | Boosts APPROVE/ADVANCE event weight | Forward drive - how much energy pushes the law forward |
+| **Reject_Pressure** | 0-1 | Boosts REJECT/STALL event weight, enables hard rejects | Opposition heat - risk of progress reversal or burial |
+| **Legitimacy** | 0-1 | Reduces unrest consequences (0.3x-1.0x), lowers vote threshold | Perceived validity - how "proper" the process feels |
+| **Unrest** | 0-1 | Produces externalities, boosts EXTERNALITY events | Populace volatility - spillover to cohesion/approval/armies |
+
+### Event Natures
+Events have a `nature` that determines which meter boosts their weight:
+
+| Nature | Boosted By | Typical Effect |
+|--------|-----------|----------------|
+| APPROVE | Momentum | +progress, +momentum |
+| ADVANCE | Momentum | +progress, +legitimacy |
+| REJECT | Reject_Pressure | -progress, +reject_pressure |
+| STALL | Reject_Pressure | no progress change, +reject_pressure |
+| EXTERNALITY | Unrest | triggers applyUnrestExternalities() |
+| NEUTRAL | (none) | varies |
+
+### Legitimacy Effects
+- **Unrest Damage Reduction**: `damageMultiplier = 1.0 - (legitimacy * 0.7)`
+  - At legitimacy 1.0: only 30% of unrest damage applies
+  - At legitimacy 0: full 100% damage
+- **Vote Threshold Adjustment**: `threshold = base + 0.05 - (legitimacy * 0.2)`
+  - At legitimacy 1.0: threshold reduced by 0.15 (e.g., 0.5 -> 0.35)
+  - At legitimacy 0: threshold increased by 0.05 (e.g., 0.5 -> 0.55)
+
+### Unrest Externalities
+When `unrest >= 0.3`, each law tick applies negative externalities (scaled by legitimacy):
+- **Cohesion Loss**: up to -2 per tick at max unrest
+- **Approval Loss**: up to -3 per tick to all empires
+- **Insurrection Risk**: up to +5 army aggravation per tick
+
+## Law Events
+- Events are filtered by phase tags and triggers (meter thresholds, reject counts).
+- Weight formula: `base_weight * meter_boost` where meter_boost depends on nature.
+- Major events drive progress; minor events adjust meters.
+- Phase progress advances in 0.1-0.4 increments per event.
 
 ## Voting
 - Voting uses the current power system policy (equal council, pressure-weighted, etc.).
 - Quorum and pass thresholds are derived from policy configuration.
+- **Legitimacy reduces required threshold** via `getAdjustedVoteThreshold()`.
 - Votes tally support, oppose, and abstain across empires.
-- Example: equal council uses `base_votes_per_empire` with quorum and pass thresholds.
 
 ## Data Flow
 - Inputs: law definition, empire values, current meters, RNG.
-- Tick: select eligible events → apply effects → update meters/progress.
+- Tick: select eligible events -> apply effects -> update meters/progress -> apply unrest externalities.
 - Phase change when `phaseProgress >= 1.0`, then reset and advance phase.
-- Final: tally votes and mark ENACTED or BURIED.
+- Final: tally votes (with legitimacy-adjusted threshold) and mark ENACTED or BURIED.
 
 ## Integration Points
-- `src/game/lawProcessManager.js` resolves law processes, stances, and voting.
-- `src/game/lawEventTemplates.js` provides core law event templates.
-- `src/game/lawDefinitions.js` defines the available law catalog.
+- `src/game/lawEngine.js` - core meter logic, event weighting, externalities.
+- `src/game/lawProcessManager.js` - resolves law processes, stances, and voting.
+- `src/game/lawEventTemplates.js` - event templates with decoupled meter effects.
+- `src/game/lawDefinitions.js` - defines the available law catalog.
 
 ## Files
+- `src/game/lawEngine.js`
 - `src/game/lawProcessManager.js`
 - `src/game/lawEventTemplates.js`
 - `src/game/lawDefinitions.js`
-- `docs/LAW_ENACTMENT_SYSTEM.md`

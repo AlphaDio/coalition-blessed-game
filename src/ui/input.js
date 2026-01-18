@@ -318,41 +318,130 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     // Allow normal list behavior when no event is active
   });
   
+  // Action panel navigation helpers
+  const getSelectableItems = () => {
+    const items = ui.lawsBox.menuItems || [];
+    return items.filter(item => !item.divider && !item.info);
+  };
+  
+  const findNextSelectableIndex = (currentIdx, direction) => {
+    const items = ui.lawsBox.menuItems || [];
+    let newIdx = currentIdx + direction;
+    
+    while (newIdx >= 0 && newIdx < items.length) {
+      const item = items[newIdx];
+      if (!item.divider && !item.info) {
+        return newIdx;
+      }
+      newIdx += direction;
+    }
+    return currentIdx; // Stay at current if no valid item found
+  };
+  
   ui.lawsBox.key(['up'], () => {
-    const maxIndex = (state.lawDefinitions?.length > 0 
-      ? state.lawDefinitions.length 
-      : state.laws?.length || 0) - 1;
-    if (maxIndex >= 0 && state.selectedLawIndex > 0) {
-      state.selectedLawIndex--;
-      renderLaws(ui, state);
+    const panel = ui.lawsBox;
+    const currentIdx = panel.selectedIndex || 0;
+    const newIdx = findNextSelectableIndex(currentIdx, -1);
+    
+    if (newIdx !== currentIdx) {
+      panel.selectedIndex = newIdx;
+      renderAll(ui, state);
     }
   });
   
   ui.lawsBox.key(['down'], () => {
-    const maxIndex = (state.lawDefinitions?.length > 0 
-      ? state.lawDefinitions.length 
-      : state.laws?.length || 0) - 1;
-    if (maxIndex >= 0 && state.selectedLawIndex < maxIndex) {
-      state.selectedLawIndex++;
-      renderLaws(ui, state);
+    const panel = ui.lawsBox;
+    const items = panel.menuItems || [];
+    const currentIdx = panel.selectedIndex || 0;
+    const newIdx = findNextSelectableIndex(currentIdx, 1);
+    
+    if (newIdx !== currentIdx && newIdx < items.length) {
+      panel.selectedIndex = newIdx;
+      renderAll(ui, state);
     }
   });
   
   ui.lawsBox.key(['enter'], () => {
-    // Try new law system first
-    if (state.lawDefinitions && state.lawDefinitions.length > 0) {
-      const lawDef = state.lawDefinitions[state.selectedLawIndex];
-      if (lawDef) {
-        executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+    const panel = ui.lawsBox;
+    const items = panel.menuItems || [];
+    const selectedItem = items[panel.selectedIndex || 0];
+    
+    if (!selectedItem || selectedItem.divider || selectedItem.info || selectedItem.disabled) {
+      return;
+    }
+    
+    // Handle action
+    switch (selectedItem.action) {
+      case 'SWITCH_MODE':
+        panel.currentMode = selectedItem.mode;
+        panel.selectedIndex = 0;
+        // Find first selectable item
+        const newItems = panel.menuItems || [];
+        for (let i = 0; i < newItems.length; i++) {
+          if (!newItems[i].divider && !newItems[i].info) {
+            panel.selectedIndex = i;
+            break;
+          }
+        }
         renderAll(ui, state);
-      }
-    } else {
-      // Fallback to old law system
-      const law = state.laws[state.selectedLawIndex];
-      if (law) {
-        executeLawEnactment(enactLaw(state, law.id));
+        break;
+        
+      case 'SET_VIEW':
+        if (ui.combinedInfoBox) {
+          ui.combinedInfoBox.currentView = selectedItem.view;
+          ui.combinedInfoBox.scrollOffset = 0;
+        }
         renderAll(ui, state);
-      }
+        break;
+        
+      case 'ENACT_LAW':
+        if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+          const lawDef = state.lawDefinitions[selectedItem.lawIndex];
+          if (lawDef) {
+            executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+          }
+        } else {
+          const law = state.laws[selectedItem.lawIndex];
+          if (law) {
+            executeLawEnactment(enactLaw(state, law.id));
+          }
+        }
+        // Return to main menu after enacting
+        panel.currentMode = 'main';
+        panel.selectedIndex = 0;
+        renderAll(ui, state);
+        break;
+        
+      case 'TOGGLE_PAUSE':
+        state.paused = !state.paused;
+        ui.logBox.log(state.paused ? 'Game PAUSED' : 'Game RESUMED');
+        renderAll(ui, state);
+        break;
+        
+      case 'TOGGLE_LOGS':
+        if (ui.logsWindow) {
+          const isCurrentlyVisible = !ui.logsWindow.hidden;
+          if (isCurrentlyVisible) {
+            ui.logsWindow.hide();
+          } else {
+            const logger = getLogger();
+            renderLogsWindow(ui, logger);
+            ui.logsWindow.show();
+            ui.logsWindow.focus();
+          }
+          ui.screen.render();
+        }
+        break;
+    }
+  });
+  
+  // ESC to go back in action panel
+  ui.lawsBox.key(['escape'], () => {
+    const panel = ui.lawsBox;
+    if (panel.currentMode !== 'main') {
+      panel.currentMode = 'main';
+      panel.selectedIndex = 0;
+      renderAll(ui, state);
     }
   });
   

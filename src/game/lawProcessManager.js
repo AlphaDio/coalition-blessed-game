@@ -10,9 +10,12 @@ import {
   pickEvents, 
   applyEventEffects,
   checkPhaseAdvancement,
-  checkBurialRule
+  checkBurialRule,
+  MAX_PHASE_PROGRESS
 } from './lawEngine.js';
+import { clamp } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
+
 
 /**
  * Constants for support bias calculations
@@ -200,9 +203,11 @@ export function resolveLawProcess(lawProcess, state, rng) {
   const eligible = filterEligibleEvents(allLawEvents, context);
   log.push(`Eligible events: ${eligible.length}`);
   
+  const preProgress = lawProcess.phaseProgress;
+
   if (eligible.length === 0) {
     log.push('No eligible events, advancing phase progress by default');
-    lawProcess.phaseProgress += 0.1;
+    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + 0.005, 0, MAX_PHASE_PROGRESS);
   } else {
     // Pick events
     const selected = pickEvents(eligible, context, rng);
@@ -245,15 +250,49 @@ export function resolveLawProcess(lawProcess, state, rng) {
       log.push(...effectLog);
     });
   }
+
+  const progressDelta = lawProcess.phaseProgress - preProgress;
+  if (progressDelta <= 0.001) {
+    lawProcess.stallTicks += 1;
+  } else {
+    lawProcess.stallTicks = 0;
+  }
+
+  if (lawProcess.stallTicks >= 15) {
+    const push = clamp(0.02 + (lawProcess.stallTicks - 15) * 0.005, 0.02, 0.06);
+    const oldProgress = lawProcess.phaseProgress;
+    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + push, 0, MAX_PHASE_PROGRESS);
+    log.push(`  Stalemate pressure: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
+
+    lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.03, 0, 1);
+    lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.02, 0, 1);
+  }
+
+  if (lawProcess.phaseTicks >= 50 && lawProcess.phaseProgress < 0.4) {
+    const nudge = clamp(0.03 + (lawProcess.phaseTicks - 50) * 0.003, 0.03, 0.08);
+    const oldProgress = lawProcess.phaseProgress;
+    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + nudge, 0, MAX_PHASE_PROGRESS);
+    log.push(`  Deadlock nudge: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
+
+    lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.05, 0, 1);
+    lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.03, 0, 1);
+  }
+
   
+  // Track phase progress for deadlock detection
+  lawProcess.phaseTicks += 1;
+
   // Check phase advancement
   if (checkPhaseAdvancement(lawProcess)) {
+    lawProcess.phaseTicks = 0;
+    lawProcess.stallTicks = 0;
     const logger = getLogger();
     const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
     const lawName = lawDef ? lawDef.name : lawProcess.lawId;
     logger.info(`Law phase: ${lawName} → ${lawProcess.phase}`);
     log.push(`\n>>> Phase advanced to: ${lawProcess.phase}`);
   }
+
   
   // Check if VOTING completed
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {

@@ -145,14 +145,16 @@ export function createLawProcess(lawId, startTick = 0) {
     phaseProgress: 0, // 0..1, advances to next phase at 1.0
     rejects: 0, // 0..4, burial at 4
     startTick,
+    phaseTicks: 0, // Resolutions spent in current phase
+    stallTicks: 0, // Resolutions without progress in current phase
     
     // Meters that bias event likelihood
     meters: {
-      momentum: 0.5, // 0..1, forward drive
-      reject_pressure: 0.3, // 0..1, fragility/heat
-      unrest: 0.2, // 0..1, populace volatility
-      polarization: 0.3, // 0..1, extremeness of empire positions
-      legitimacy: 0.7, // 0..1, perceived validity
+      momentum: 0.6, // 0..1, forward drive (higher = more APPROVE/ADVANCE events)
+      reject_pressure: 0.15, // 0..1, fragility/heat (lower = fewer REJECT events)
+      unrest: 0.15, // 0..1, populace volatility
+      polarization: 0.25, // 0..1, extremeness of empire positions
+      legitimacy: 0.75, // 0..1, perceived validity
       economy_shock: 0.1 // 0..1, economic disruption
     },
     

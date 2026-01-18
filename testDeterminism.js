@@ -10,7 +10,8 @@ import { createSampleContent } from './src/game/content.js';
 import { DeterministicRNG } from './src/modules/rng.js';
 import { startLawProcess, resolveAllLawProcesses } from './src/game/lawProcessManager.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { getAllLawEvents } from './src/game/lawEventTemplates.js';
+import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
+
 
 function runSimulation(seed) {
   const rng = new DeterministicRNG(seed);
@@ -21,7 +22,24 @@ function runSimulation(seed) {
   state.armies = content.armies;
   state.lawDefinitions = getSampleLawDefinitions();
   state.events = [...content.events, ...getAllLawEvents()];
+  state.events.push(
+    createLawEvent(
+      'test_neutral_progress',
+      'Procedural Motion',
+      'LAW',
+      ['DEBATE', 'FALLOUT', 'VOTING'],
+      'NEUTRAL',
+      'MINOR',
+      [],
+      0.2,
+      {
+        progress: 0.1,
+        meters: { momentum: 0.02 }
+      }
+    )
+  );
   state.powerSystemPolicy = createPowerSystemPolicy(
+
     'equal_council',
     'Equal Council Votes',
     'equal_council',
