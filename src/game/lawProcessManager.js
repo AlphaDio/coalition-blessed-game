@@ -14,6 +14,7 @@ import {
   MAX_PHASE_PROGRESS,
   clampMeter
 } from './lawEngine.js';
+import { canStartLaw } from './lawDefinitions.js';
 import { clamp } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
@@ -38,6 +39,17 @@ const SUPPORT_BIAS_CONSTANTS = {
  */
 export function startLawProcess(state, lawId, influenceCost = 100) {
   const logger = getLogger();
+  
+  // Check prerequisites and enacted status
+  const eligibility = canStartLaw(lawId, state);
+  if (!eligibility.canStart) {
+    logger.warn(`Cannot start law process: ${eligibility.reason}`, { lawId });
+    return { 
+      error: eligibility.reason,
+      log: []
+    };
+  }
+  
   // Check if player has enough influence
   if (state.playerInfluence < influenceCost) {
     logger.warn(`Cannot start law process: insufficient influence`, {
@@ -332,6 +344,13 @@ export function resolveLawProcess(lawProcess, state, rng) {
     
     if (tallyResult.passed) {
       lawProcess.phase = 'ENACTED';
+      
+      // Add to enacted laws (removes from available options, unlocks higher tiers)
+      if (!state.enactedLaws) {
+        state.enactedLaws = [];
+      }
+      state.enactedLaws.push(lawProcess.lawId);
+      
       logger.info(`Law ENACTED: ${lawDef.name} (${tallyResult.supportVotes} for, ${tallyResult.opposeVotes} against)`);
       logger.debug(`Law ENACTED: ${lawDef.name}`, {
         supportVotes: tallyResult.supportVotes,

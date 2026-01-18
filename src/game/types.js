@@ -302,6 +302,7 @@ export function createGameState(seed = 0) {
     lawDefinitions: [], // Available law definitions
     lawProcesses: [], // In-flight law processes
     powerSystemPolicy: null, // Current voting power system
+    enactedLaws: [], // Array of enacted law IDs (removed from available options)
     
     // Market economy system
     market: null, // Market state per commodity (initialized on first economy tick)
