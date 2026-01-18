@@ -1,6 +1,8 @@
 // Command parser for input box
 // Parses user text commands and executes corresponding actions
 
+import { handleReqCommand, handleImpCommand, getImprovementsHelpText } from './improvementsCommands.js';
+
 const COMMAND_ALIASES = new Map([
   ['help', 'help'],
   ['h', 'help'],
@@ -18,7 +20,11 @@ const COMMAND_ALIASES = new Map([
   ['next', 'next'],
   ['advance', 'next'],
   ['logs', 'logs'],
-  ['log', 'logs']
+  ['log', 'logs'],
+  ['req', 'req'],
+  ['request', 'req'],
+  ['imp', 'imp'],
+  ['improvement', 'imp']
 ]);
 
 export function parseCommand(commandText, state, ui, gameLoopCallbacks) {
@@ -56,11 +62,14 @@ const COMMAND_HANDLERS = {
     message: 'Quitting game...'
   }),
   next: (_args, state) => handleNextTurnCommand(state),
-  logs: (_args, _state, ui) => handleLogsCommand(ui)
+  logs: (_args, _state, ui) => handleLogsCommand(ui),
+  req: (args, state) => handleReqCommand(args, state),
+  imp: (args, state) => handleImpCommand(args, state)
 };
 
 
 function showHelp() {
+  const improvementsHelp = getImprovementsHelpText();
   const helpText = [
     '{bold}Available Commands:{/bold}',
     '',
@@ -78,6 +87,8 @@ function showHelp() {
     '{cyan-fg}Events:{/cyan-fg}',
     '  event <number>       - Choose event option (1-3)',
     '  choice <number>      - Same as event',
+    '',
+    ...improvementsHelp,
     '',
     '{cyan-fg}Interface:{/cyan-fg}',
     '  logs, log            - Toggle full logs window',
