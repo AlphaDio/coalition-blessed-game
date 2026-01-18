@@ -31,10 +31,12 @@ export const PHASE_ORDER = ['DEBATE', 'FALLOUT', 'VOTING'];
 /**
  * Event budget per resolution cycle
  * Controls how many events can occur during law resolution
+ * Reduced to halve overall event cadence
  */
 export const EVENT_BUDGET = {
-  MAJOR_EVENTS: 1,        // Maximum number of major events per cycle
-  MINOR_EVENTS_MAX: 2     // Maximum number of minor events per cycle
+  MAJOR_EVENT_CHANCE: 0.25, // Chance to fire a major event per cycle
+  MINOR_EVENT_CHANCE: 0.5,  // Chance to fire minor events per cycle
+  MINOR_EVENTS_MAX: 1       // Maximum number of minor events per cycle
 };
 
 
@@ -200,15 +202,19 @@ export function pickEvents(eligibleEvents, context, rng) {
   const majorEvents = eligibleEvents.filter(e => e.tier === 'MAJOR');
   const minorEvents = eligibleEvents.filter(e => e.tier === 'MINOR');
   
-  const selectedMajor = weightedPick(majorEvents, context, rng);
+  const selectedMajor = rng.random() < EVENT_BUDGET.MAJOR_EVENT_CHANCE
+    ? weightedPick(majorEvents, context, rng)
+    : null;
   
   const selectedMinors = [];
   const minorBudget = Math.min(EVENT_BUDGET.MINOR_EVENTS_MAX, minorEvents.length);
   
-  for (let i = 0; i < minorBudget; i++) {
+  if (rng.random() < EVENT_BUDGET.MINOR_EVENT_CHANCE) {
+    for (let i = 0; i < minorBudget; i++) {
     const minor = weightedPick(minorEvents, context, rng);
-    if (minor && !selectedMinors.includes(minor)) {
-      selectedMinors.push(minor);
+      if (minor && !selectedMinors.includes(minor)) {
+        selectedMinors.push(minor);
+      }
     }
   }
   
