@@ -55,8 +55,8 @@ console.log(`Empires: ${state.empires.length}\n`);
 
 state.improvements.requests.forEach((req, idx) => {
   console.log(`${idx + 1}. ${req.name}`);
-  console.log(`   Cost: ${req.suppliesCost} Supplies, Build: ${req.buildDuration} turns`);
-  console.log(`   Cap/Pot: ${req.capacity}/${req.potency}`);
+  console.log(`   Cost: ${req.suppliesCost} Supplies, Build: ${req.build}`);
+  console.log(`   Capacity: ${req.capacity}`);
   const sustain = Object.entries(req.sustainmentCost);
   if (sustain.length > 0) {
     console.log(`   Sustains: ${sustain.map(([k, v]) => `${k}:${v}`).join(', ')}`);
@@ -104,7 +104,7 @@ for (let i = 0; i < 15; i++) {
     state.improvements.queue.forEach(imp => {
       let status = '';
       if (imp.state === 'BUILDING') {
-        const pct = Math.floor((imp.buildProgress / imp.buildDuration) * 100);
+        const pct = Math.floor((imp.buildProgress / imp.build) * 100);
         status = `BUILDING (${pct}%)`;
       } else {
         status = imp.state;
@@ -121,7 +121,7 @@ console.log(`  Building: ${stats2.building}`);
 console.log(`  Active: ${stats2.active}`);
 console.log(`  Degraded: ${stats2.degraded}`);
 console.log(`  Capacity: ${stats2.capacity}/${stats2.maxCapacity}`);
-console.log(`  Potency: ${stats2.potency}/${stats2.maxPotency}\n`);
+console.log(`  Construction: ${stats2.construction}/tick\n`);
 
 console.log('\n🔧 PRODUCTION PHASE (5 turns)');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
@@ -210,7 +210,7 @@ console.log(`Total Improvements: ${finalStats.total}`);
 console.log(`Active: ${finalStats.active}`);
 console.log(`Degraded: ${finalStats.degraded}`);
 console.log(`Capacity Usage: ${finalStats.capacity}/${finalStats.maxCapacity}`);
-console.log(`Potency Usage: ${finalStats.potency}/${finalStats.maxPotency}`);
+console.log(`Construction: ${finalStats.construction}/tick`);
 console.log(`Supplies Remaining: ${state.stockpiles.supplies}`);
 console.log(`Turns Simulated: ${state.turn}\n`);
 

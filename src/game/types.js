@@ -309,7 +309,7 @@ export function createGameState(seed = 0) {
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
     
     // Improvements system
-    coalitionPotencyValue: 3, // Potency added per improvement
+    coalitionConstruction: 1, // Build progress added to ALL building improvements per tick
     improvements: null // Improvements queue and requests (initialized in index.js)
   };
 }

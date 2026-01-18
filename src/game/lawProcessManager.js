@@ -22,6 +22,7 @@ import { getLogger } from '../modules/logger.js';
  * Constants for support bias calculations
  */
 const SUPPORT_BIAS_CONSTANTS = {
+
   // Normalization for population factor: log10(1000) ≈ 3, log10(10000) ≈ 4
   // Dividing by 4 gives us a 0.75-1.0 range for typical populations
   POPULATION_LOG_DIVISOR: 4,
@@ -277,6 +278,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
     });
   }
 
+
   const progressDelta = lawProcess.phaseProgress - preProgress;
   if (progressDelta <= 0.001) {
     lawProcess.stallTicks += 1;
@@ -284,25 +286,26 @@ export function resolveLawProcess(lawProcess, state, rng) {
     lawProcess.stallTicks = 0;
   }
 
-  if (lawProcess.stallTicks >= 15) {
-    const push = clamp(0.02 + (lawProcess.stallTicks - 15) * 0.005, 0.02, 0.06);
-    const oldProgress = lawProcess.phaseProgress;
-    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + push, 0, MAX_PHASE_PROGRESS);
-    log.push(`  Stalemate pressure: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
+    if (lawProcess.stallTicks >= 15) {
+      const push = clamp(0.02 + (lawProcess.stallTicks - 15) * 0.005, 0.02, 0.06);
+      const oldProgress = lawProcess.phaseProgress;
+      lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + push, 0, MAX_PHASE_PROGRESS);
+      log.push(`  Stalemate pressure: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
 
-    lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.03, 0, 1);
-    lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.02, 0, 1);
-  }
+      lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.015, 0, 1);
+      lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.02, 0, 1);
+    }
 
-  if (lawProcess.phaseTicks >= 50 && lawProcess.phaseProgress < 0.4) {
-    const nudge = clamp(0.03 + (lawProcess.phaseTicks - 50) * 0.003, 0.03, 0.08);
-    const oldProgress = lawProcess.phaseProgress;
-    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + nudge, 0, MAX_PHASE_PROGRESS);
-    log.push(`  Deadlock nudge: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
+    if (lawProcess.phaseTicks >= 50 && lawProcess.phaseProgress < 0.4) {
+      const nudge = clamp(0.03 + (lawProcess.phaseTicks - 50) * 0.003, 0.03, 0.08);
+      const oldProgress = lawProcess.phaseProgress;
+      lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + nudge, 0, MAX_PHASE_PROGRESS);
+      log.push(`  Deadlock nudge: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
 
-    lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.05, 0, 1);
-    lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.03, 0, 1);
-  }
+      lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + 0.025, 0, 1);
+      lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.03, 0, 1);
+    }
+
 
   
   // Track phase progress for deadlock detection

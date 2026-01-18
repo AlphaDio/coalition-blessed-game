@@ -34,8 +34,9 @@ export const PHASE_ORDER = ['DEBATE', 'FALLOUT', 'VOTING'];
  */
 export const EVENT_BUDGET = {
   MAJOR_EVENTS: 1,        // Maximum number of major events per cycle
-  MINOR_EVENTS_MAX: 3     // Maximum number of minor events per cycle
+  MINOR_EVENTS_MAX: 2     // Maximum number of minor events per cycle
 };
+
 
 /**
  * Maximum phase progress value

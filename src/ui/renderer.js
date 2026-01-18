@@ -258,7 +258,7 @@ function createCommandInputs(screen) {
   // Input box at the bottom (rows 10-11 out of 12 total rows)
   // Position: 10/12 = 83.33% from top
   const INPUT_BOX_TOP_PERCENT = '83.33%';
-  const INPUT_BOX_WIDTH_PERCENT = '100%';
+  const INPUT_BOX_WIDTH_PERCENT = '33%';
 
   const inputBox = blessed.textbox({
     top: INPUT_BOX_TOP_PERCENT,
@@ -510,8 +510,8 @@ function buildImprovementMenuItems(state) {
 
   state.improvements.queue.forEach((improvement, idx) => {
     const stateLabel = improvement.state || 'BUILDING';
-    const progress = improvement.buildDuration > 0
-      ? Math.min(1, improvement.buildProgress / improvement.buildDuration)
+    const progress = improvement.build > 0
+      ? Math.min(1, improvement.buildProgress / improvement.build)
       : 0;
     const bar = formatProgressBar(progress, 12);
     const { label, colorTag } = formatSuggestionLabel(improvement.suggestedBy, state);
@@ -1230,7 +1230,7 @@ function renderRequestsView(state) {
   lines.push('{bold}Improvement Limits:{/bold}');
   lines.push(`  Concurrent Builds: ${improvements.currentBuilds || 0}/${improvements.maxConcurrentBuilds}`);
   lines.push(`  Total Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
-  lines.push(`  Total Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
+  lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
   lines.push(`  Supplies: {green-fg}${state.stockpiles.supplies || 0}{/green-fg}`);
   lines.push('');
 
@@ -1244,8 +1244,8 @@ function renderRequestsView(state) {
 
   requests.forEach((request) => {
     lines.push(`{bold}${request.name}{/bold}`);
-    lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.buildDuration}{/yellow-fg} turns`);
-    lines.push(`  Cap: ${request.capacity} | Pot: ${request.potency}`);
+    lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.build}{/yellow-fg}`);
+    lines.push(`  Capacity: ${request.capacity}`);
 
     const sustainKeys = Object.keys(request.sustainmentCost);
     if (sustainKeys.length > 0) {
@@ -1288,7 +1288,7 @@ function renderImprovementsQueueView(state) {
   lines.push('{bold}Improvement Stats:{/bold}');
   lines.push(`  Building: ${queue.filter(i => i.state === 'BUILDING').length}/${improvements.maxConcurrentBuilds}`);
   lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
-  lines.push(`  Potency: ${improvements.currentPotency || 0}/${improvements.maxTotalPotency}`);
+  lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
   lines.push('');
 
   if (queue.length === 0) {
@@ -1301,8 +1301,8 @@ function renderImprovementsQueueView(state) {
 
   queue.forEach((improvement) => {
     lines.push(`{bold}${improvement.name}{/bold} [${improvement.state}]`);
-    lines.push(`  Turns left: ${improvement.turnsRemaining}`);
-    lines.push(`  Capacity: ${improvement.capacity} | Potency: ${improvement.potency}`);
+    lines.push(`  Progress: ${improvement.buildProgress}/${improvement.build}`);
+    lines.push(`  Capacity: ${improvement.capacity}`);
 
     const sustainKeys = Object.keys(improvement.sustainmentCost);
     if (sustainKeys.length > 0) {

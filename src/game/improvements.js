@@ -3,7 +3,8 @@
  * 
  * Implements a complete queue-based improvements system with:
  * - Requests feed (available improvements)
- * - Queue management with capacity/potency concurrency
+ * - Queue management with capacity concurrency
+ * - Construction stat advances ALL building items each tick
  * - Sustainment via stockpile/market (empires pay to maintain)
  * - Degraded state when sustainment fails
  * - Production outputs (resources/modifiers)
@@ -23,7 +24,7 @@ const MODIFIER_EMPIRE_APPROVAL_SCALE = 100; // Divide by 100 for gradual applica
  */
 export function createImprovementRequest(id, name, description, {
   suppliesCost = 0,
-  buildDuration = 0,
+  build = 0,
   capacity = 1,
   sustainmentCost = {}, // { commodity_key: qty_per_tick }
   productionOutputs = {}, // { commodity_key: qty_per_tick }
@@ -36,7 +37,7 @@ export function createImprovementRequest(id, name, description, {
     name,
     description,
     suppliesCost,
-    buildDuration,
+    build,
     capacity,
     sustainmentCost,
     productionOutputs,
@@ -49,7 +50,7 @@ export function createImprovementRequest(id, name, description, {
 /**
  * Create an improvement instance (in queue or completed)
  */
-export function createImprovement(requestId, empireId, startedAtTick, request, potencyValue) {
+export function createImprovement(requestId, empireId, startedAtTick, request) {
   return {
     id: `${requestId}_${empireId}_${startedAtTick}`,
     requestId,
@@ -60,13 +61,12 @@ export function createImprovement(requestId, empireId, startedAtTick, request, p
     
     // Build phase
     buildProgress: 0,
-    buildDuration: request.buildDuration,
+    build: request.build,
     startedAtTick,
     
     // Runtime state
     state: 'BUILDING', // BUILDING | ACTIVE | DEGRADED
     capacity: request.capacity,
-    potency: potencyValue,
     
     // Costs and outputs
     sustainmentCost: { ...request.sustainmentCost },
@@ -93,12 +93,10 @@ export function initializeImprovementsState() {
     // Concurrency limits
     maxConcurrentBuilds: 3,
     maxTotalCapacity: 10,
-    maxTotalPotency: 20,
     
     // Current utilization
     currentBuilds: 0,
-    currentCapacity: 0,
-    currentPotency: 0
+    currentCapacity: 0
   };
 }
 
@@ -110,7 +108,7 @@ export function getSampleImprovementRequests() {
   return [
     createImprovementRequest('titan_forge', 'Titan Forge Network', 'Galaxy-spanning industrial mega-structure harvesting stellar matter to forge alloys of unparalleled strength', {
       suppliesCost: 200,
-      buildDuration: 10,
+      build: 20,
       capacity: 3,
       sustainmentCost: {
         biomass: 5,
@@ -128,7 +126,7 @@ export function getSampleImprovementRequests() {
     
     createImprovementRequest('ascension_spire', 'Ascension Spire', 'Colossal monument to knowledge where the greatest minds pursue transcendent breakthroughs', {
       suppliesCost: 300,
-      buildDuration: 15,
+      build: 25,
       capacity: 4,
       sustainmentCost: {
         super_alloys: 3,
@@ -148,7 +146,7 @@ export function getSampleImprovementRequests() {
     
     createImprovementRequest('war_symposium', 'Grand War Symposium', 'Galactic convocation of military leaders coordinating fleets across a thousand battlefronts', {
       suppliesCost: 150,
-      buildDuration: 8,
+      build: 18,
       capacity: 3,
       sustainmentCost: {
         super_alloys: 4,
@@ -167,7 +165,7 @@ export function getSampleImprovementRequests() {
     
     createImprovementRequest('festival_of_worlds', 'Festival of Worlds', 'Massive celebration spanning entire star systems, uniting billions in shared culture and purpose', {
       suppliesCost: 250,
-      buildDuration: 12,
+      build: 22,
       capacity: 4,
       sustainmentCost: {
         biomass: 5,
@@ -187,7 +185,7 @@ export function getSampleImprovementRequests() {
     
     createImprovementRequest('convergence_nexus', 'Convergence Nexus', 'Hyperspatial marketplace where civilizations across the void exchange wealth and wonders', {
       suppliesCost: 180,
-      buildDuration: 10,
+      build: 20,
       capacity: 3,
       sustainmentCost: {
         ice: 4,
@@ -238,11 +236,9 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
   
-  // Check capacity/potency limits for active improvements
+  // Check capacity limits for active improvements
   const active = improvements.queue.filter(i => i.state === 'ACTIVE' || i.state === 'DEGRADED');
   const totalCapacity = active.reduce((sum, i) => sum + i.capacity, 0);
-  const totalPotency = active.reduce((sum, i) => sum + i.potency, 0);
-  const potencyValue = Number.isFinite(state.coalitionPotencyValue) ? state.coalitionPotencyValue : 0;
   
   if (totalCapacity + request.capacity > improvements.maxTotalCapacity) {
     return {
@@ -252,19 +248,11 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
   
-  if (totalPotency + potencyValue > improvements.maxTotalPotency) {
-    return {
-      success: false,
-      error: `Would exceed potency limit (${totalPotency + potencyValue}/${improvements.maxTotalPotency})`,
-      log: []
-    };
-  }
-  
   // Deduct supplies (no refunds on cancellation)
   state.stockpiles.supplies -= request.suppliesCost;
   
   // Create improvement instance
-  const improvement = createImprovement(requestId, empireId, state.turn, request, potencyValue);
+  const improvement = createImprovement(requestId, empireId, state.turn, request);
   improvements.queue.push(improvement);
   
   logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} Supplies)`);
@@ -272,7 +260,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   return {
     success: true,
     improvement,
-    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (${request.buildDuration} turns to complete)`]
+    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (build cost: ${request.build})`]
   };
 }
 
@@ -310,18 +298,19 @@ export function processImprovementsTick(state) {
   // Update current utilization counters
   improvements.currentBuilds = 0;
   improvements.currentCapacity = 0;
-  improvements.currentPotency = 0;
+  
+  // Get construction value (how much progress ALL building items get per tick)
+  const constructionValue = Number.isFinite(state.coalitionConstruction) ? state.coalitionConstruction : 1;
   
   improvements.queue.forEach(improvement => {
     if (improvement.state === 'BUILDING') {
       improvements.currentBuilds++;
       
-      // Advance build progress
-      const potencyBoost = Number.isFinite(state.coalitionPotencyValue) ? state.coalitionPotencyValue : 0;
-      improvement.buildProgress += 1 + potencyBoost;
+      // Advance build progress by construction value
+      improvement.buildProgress += constructionValue;
       
       // Check if build is complete
-      if (improvement.buildProgress >= improvement.buildDuration) {
+      if (improvement.buildProgress >= improvement.build) {
         improvement.state = 'ACTIVE';
         logger.info(`Improvement built: ${improvement.name}`);
         log.push(`{green-fg}Completed:{/green-fg} ${improvement.name} is now ACTIVE`);
@@ -330,7 +319,6 @@ export function processImprovementsTick(state) {
     
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
       improvements.currentCapacity += improvement.capacity;
-      improvements.currentPotency += improvement.potency;
       
       // Process sustainment
       const sustainmentResult = processImprovementSustainment(state, improvement);
@@ -531,10 +519,9 @@ export function getImprovementStats(state) {
     active: active.length,
     degraded: degraded.length,
     capacity: improvements.currentCapacity,
-    potency: improvements.currentPotency,
     maxCapacity: improvements.maxTotalCapacity,
-    maxPotency: improvements.maxTotalPotency,
     maxBuilds: improvements.maxConcurrentBuilds,
+    construction: state.coalitionConstruction,
     availableRequests: improvements.requests.length
   };
 }

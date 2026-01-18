@@ -45,7 +45,7 @@ state.stockpiles.supplies = 1000;
 console.log(`Requests available: ${state.improvements.requests.length}`);
 console.log(`Max concurrent builds: ${state.improvements.maxConcurrentBuilds}`);
 console.log(`Max capacity: ${state.improvements.maxTotalCapacity}`);
-console.log(`Max potency: ${state.improvements.maxTotalPotency}`);
+console.log(`Construction: ${state.coalitionConstruction}/tick`);
 console.log(`Initial supplies: ${state.stockpiles.supplies}`);
 console.log('✓ System initialized successfully\n');
 
@@ -54,7 +54,7 @@ console.log('=== Test 2: Accept Improvement Request ===');
 const request1 = state.improvements.requests[0]; // Basic Factory
 console.log(`Accepting: ${request1.name}`);
 console.log(`  Cost: ${request1.suppliesCost} Supplies`);
-console.log(`  Build Duration: ${request1.buildDuration} turns`);
+console.log(`  Build: ${request1.build}`);
 
 const result1 = acceptImprovementRequest(state, request1.id, 'empire1');
 if (result1.success) {
@@ -71,7 +71,7 @@ console.log();
 console.log('=== Test 3: Build Progress ===');
 const improvement = state.improvements.queue[0];
 console.log(`Building: ${improvement.name}`);
-console.log(`  Initial progress: ${improvement.buildProgress}/${improvement.buildDuration}`);
+console.log(`  Initial progress: ${improvement.buildProgress}/${improvement.build}`);
 
 // Advance several turns
 for (let i = 0; i < 5; i++) {
@@ -79,7 +79,7 @@ for (let i = 0; i < 5; i++) {
   processImprovementsTick(state);
 }
 
-console.log(`  After 5 turns: ${improvement.buildProgress}/${improvement.buildDuration}`);
+console.log(`  After 5 turns: ${improvement.buildProgress}/${improvement.build}`);
 console.log(`  State: ${improvement.state}`);
 
 if (improvement.buildProgress > 0) {
@@ -93,7 +93,7 @@ console.log();
 // Test 4: Complete build
 console.log('=== Test 4: Complete Build ===');
 // Advance remaining turns to complete
-const remainingTurns = Math.max(0, improvement.buildDuration - improvement.buildProgress);
+const remainingTurns = Math.max(0, improvement.build - improvement.buildProgress);
 console.log(`Advancing ${remainingTurns} more turns to complete build...`);
 
 for (let i = 0; i < remainingTurns; i++) {
@@ -101,7 +101,7 @@ for (let i = 0; i < remainingTurns; i++) {
   processImprovementsTick(state);
 }
 
-console.log(`  Final progress: ${improvement.buildProgress}/${improvement.buildDuration}`);
+console.log(`  Final progress: ${improvement.buildProgress}/${improvement.build}`);
 console.log(`  State: ${improvement.state}`);
 
 if (improvement.state === 'ACTIVE') {
@@ -140,25 +140,22 @@ if (buildingCount <= state.improvements.maxConcurrentBuilds) {
 }
 console.log();
 
-// Test 6: Capacity/Potency limits
-console.log('=== Test 6: Capacity/Potency Limits ===');
+// Test 6: Capacity limits
+console.log('=== Test 6: Capacity Limits ===');
 // Complete all building improvements
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 30; i++) {
   state.turn++;
   processImprovementsTick(state);
 }
 
 const activeImprovements = state.improvements.queue.filter(i => i.state === 'ACTIVE');
 const totalCapacity = activeImprovements.reduce((sum, i) => sum + i.capacity, 0);
-const totalPotency = activeImprovements.reduce((sum, i) => sum + i.potency, 0);
 
 console.log(`  Active improvements: ${activeImprovements.length}`);
 console.log(`  Total capacity: ${totalCapacity}/${state.improvements.maxTotalCapacity}`);
-console.log(`  Total potency: ${totalPotency}/${state.improvements.maxTotalPotency}`);
 
-if (totalCapacity <= state.improvements.maxTotalCapacity && 
-    totalPotency <= state.improvements.maxTotalPotency) {
-  console.log('✓ Capacity/Potency within limits');
+if (totalCapacity <= state.improvements.maxTotalCapacity) {
+  console.log('✓ Capacity within limits');
 } else {
   console.log(`✗ Exceeded limits`);
   process.exit(1);
@@ -279,7 +276,7 @@ console.log('✓ Accept improvement request');
 console.log('✓ Build progress');
 console.log('✓ Complete build');
 console.log('✓ Concurrency limits');
-console.log('✓ Capacity/Potency limits');
+console.log('✓ Capacity limits');
 console.log('✓ Degradation state');
 console.log('✓ Improvement cancellation');
 console.log('✓ Production outputs');
