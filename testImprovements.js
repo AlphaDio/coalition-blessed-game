@@ -37,11 +37,10 @@ function assert(condition, testName) {
     console.log(`✓ ${testName}`);
     testsPassed++;
     return true;
-  } else {
-    console.log(`✗ ${testName}`);
-    testsFailed++;
-    return false;
   }
+  console.log(`✗ ${testName}`);
+  testsFailed++;
+  return false;
 }
 
 // Test 1: Initialize improvements system
