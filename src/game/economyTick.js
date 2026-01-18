@@ -3,6 +3,7 @@
  */
 
 import { getLogger } from '../modules/logger.js';
+import { DeterministicRNG } from '../modules/rng.js';
 import {
   loadEconomyConfig,
   initializeMarket,
@@ -55,8 +56,10 @@ export function processEconomyTick(state) {
   
   // Initialize market if needed
   if (!state.market) {
-    state.market = initializeMarket(commodities);
-    logger.info('Market initialized');
+    const seed = Number.isFinite(state.rngSeed) ? state.rngSeed : 0;
+    const rng = new DeterministicRNG(seed || 0);
+    state.market = initializeMarket(commodities, rng.random.bind(rng));
+    logger.info(`Market initialized (seed=${seed})`);
   }
   
   // Initialize coalition economy state if needed

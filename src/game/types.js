@@ -270,7 +270,7 @@ export function createBattleFront(id, leftArmyId, rightArmyId, battlefieldSize =
   };
 }
 
-export function createGameState() {
+export function createGameState(seed = 0) {
   return {
     coalitionCohesion: 75,
     scourgeCohesion: 80,
@@ -293,6 +293,7 @@ export function createGameState() {
     focus: 'main', // 'main', 'laws', 'event'
     paused: false, // Real-time game pause state
     gameSpeed: 1, // Game speed multiplier (0.5 = slow, 1 = normal, 2 = fast)
+    rngSeed: seed, // Seed for deterministic content variation
     
     // Law enactment system
     playerInfluence: 0, // Influence currency for starting laws

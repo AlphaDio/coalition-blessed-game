@@ -9,6 +9,7 @@ import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from './src/game/marketEconomy.js';
+import { DeterministicRNG } from './src/modules/rng.js';
 import { initializeImprovementsState, getSampleImprovementRequests } from './src/game/improvements.js';
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +20,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize game state
-const state = createGameState();
+const seed = Math.floor(Math.random() * 1_000_000);
+const state = createGameState(seed);
+console.log(`Seed: ${seed}`);
 const content = createSampleContent();
 
 // Populate state with content
@@ -38,7 +41,8 @@ try {
   const commodities = resourcesDoc.resources?.commodities || [];
   
   // Initialize market
-  state.market = initializeMarket(commodities);
+  const marketRng = new DeterministicRNG(state.rngSeed);
+  state.market = initializeMarket(commodities, marketRng.random.bind(marketRng));
   
   // Initialize coalition economy
   state.coalitionEconomy = {

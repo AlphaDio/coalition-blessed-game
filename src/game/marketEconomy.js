@@ -86,15 +86,17 @@ function getDefaultEconomyConfig() {
  * Create market state for a commodity
  */
 export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice = null) {
+  const resolvedFloorPrice = floorPrice || initialPrice;
   return {
     commodity: commodityKey,
     price: initialPrice,
     last_price: initialPrice,
-    floor_price: floorPrice || initialPrice,
+    floor_price: resolvedFloorPrice,
+    base_floor_price: resolvedFloorPrice,
     demand_qty: 0,
     supply_qty: 0,
-    traded_qty: 0,
-    volatility_index: 0
+    buy_orders: [],
+    sell_offers: []
   };
 }
 
@@ -134,12 +136,15 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
  * Initialize market for all commodities
  * Prices start at floor_price with variance between 50% and 150% of floor
  */
-export function initializeMarket(commodities) {
+export function initializeMarket(commodities, rng = Math.random) {
   const market = {};
   commodities.forEach(commodity => {
-    const floorPrice = commodity.floor_price || 1.0;
+    const baseFloorPrice = commodity.floor_price || 1.0;
+    // Randomize floor price by seed (85% to 115%)
+    const floorVariance = 0.85 + rng() * 0.3;
+    const floorPrice = baseFloorPrice * floorVariance;
     // Random initial price between 50% and 150% of floor for reasonable starting range
-    const varianceFactor = 0.5 + Math.random() * 1.0; // 0.5 to 1.5
+    const varianceFactor = 0.5 + rng() * 1.0; // 0.5 to 1.5
     const initialPrice = floorPrice * varianceFactor;
     market[commodity.key] = createMarketState(commodity.key, initialPrice, floorPrice);
   });
