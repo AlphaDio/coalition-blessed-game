@@ -226,9 +226,9 @@ export function advanceTurn(state, rng = Math.random) {
   
   // 5. Check for battles
   const tier = getCohesionTier(state.coalitionCohesion);
-  let battleChance = 0.1;
-  if (tier?.name === 'Strained') battleChance = 0.2;
-  if (tier?.name === 'Desperate') battleChance = 0.3;
+  let battleChance = 0.01;  // 1% chance (was 10%)
+  if (tier?.name === 'Strained') battleChance = 0.02;  // 2% chance (was 20%)
+  if (tier?.name === 'Desperate') battleChance = 0.03;  // 3% chance (was 30%)
   
   logger.debug(`Battle check: tier=${tier?.name}, chance=${battleChance}`);
   
