@@ -24,8 +24,8 @@ export function createUI() {
   });
   
   // TOP PRIORITY PANELS: Active Battles and Laws (rows 0-3)
-  // Active Battles (top-left, rows 0-3, cols 0-6)
-  const activeFrontsBox = grid.set(0, 0, 3, 6, blessed.box, {
+  // Active Battles (top-left, rows 0-3, cols 0-4) - 1/3 of width
+  const activeFrontsBox = grid.set(0, 0, 3, 4, blessed.box, {
     label: ' ⚔️  ACTIVE BATTLES ',
     content: '',
     scrollable: true,
@@ -41,8 +41,8 @@ export function createUI() {
     }
   });
   
-  // Active Laws (top-right, rows 0-3, cols 6-12)
-  const activeLawsBox = grid.set(0, 6, 3, 6, blessed.box, {
+  // Active Laws (top-center, rows 0-3, cols 4-8) - 1/3 of width
+  const activeLawsBox = grid.set(0, 4, 3, 4, blessed.box, {
     label: ' 📜 ACTIVE LAWS ',
     content: '',
     scrollable: true,
@@ -93,7 +93,7 @@ export function createUI() {
   }
   
   // Center: Event box (row 3-5) and Log (row 5-12)
-  const eventBox = grid.set(3, 3, 2, 6, blessed.box, {
+  const eventBox = grid.set(3, 3, 2, 5, blessed.box, {
     label: ' Event ',
     content: '',
     scrollable: true,
@@ -111,7 +111,7 @@ export function createUI() {
   });
   
   // Use blessed.box instead of blessed.log for better tag support
-  const logBox = grid.set(5, 3, 5, 6, blessed.box, {
+  const logBox = grid.set(5, 3, 5, 5, blessed.box, {
     label: ' Log ',
     scrollable: true,
     alwaysScroll: true,
@@ -143,8 +143,8 @@ export function createUI() {
     this.setScrollPerc(100); // Auto-scroll to bottom
   };
   
-  // Right: Stats (row 3-5), Economy (row 5-8), and Tables (row 8-12)
-  const statsBox = grid.set(3, 9, 2, 3, blessed.box, {
+  // Right: Stats (row 0-3) and Combined Info (row 3-12) - now 1/3 of width (4 cols), moved up
+  const statsBox = grid.set(0, 8, 3, 4, blessed.box, {
     label: ' Stats ',
     content: '',
     tags: true,
@@ -158,14 +158,17 @@ export function createUI() {
     }
   });
   
-  const economyBox = grid.set(5, 9, 3, 3, blessed.box, {
+  // Combined panel for Market Economy, Armies, and Empires (rows 3-12, cols 8-12) - now 1/3 of width (4 cols), moved up
+  const combinedInfoBox = grid.set(3, 8, 9, 4, blessed.box, {
     label: ' 💰 Market Economy ',
     content: '',
     scrollable: true,
     alwaysScroll: true,
     tags: true,
     input: false, // Disable text input
-    keys: false, // Don't capture keys
+    keys: true, // Enable keys for scrolling and tab switching
+    vi: false,
+    mouse: false,
     style: {
       border: { fg: 'green' }
     },
@@ -174,21 +177,9 @@ export function createUI() {
     }
   });
   
-  const tablesBox = grid.set(8, 9, 2, 3, blessed.box, {
-    label: ' Tables ',
-    content: '',
-    scrollable: true,
-    alwaysScroll: true,
-    tags: true,
-    input: false, // Disable text input
-    keys: false, // Don't capture keys
-    style: {
-      border: { fg: 'white' }
-    },
-    border: {
-      type: 'line'
-    }
-  });
+  // Track current view state (market, armies, empires)
+  combinedInfoBox.currentView = 'market'; // 'market' | 'armies' | 'empires'
+  combinedInfoBox.scrollOffset = 0;
   
   // Input box at the bottom (rows 10-11 out of 12 total rows)
   // Position: 10/12 = 83.33% from top
@@ -275,7 +266,7 @@ export function createUI() {
   screen.input = false;
   
   // Prevent any widget from enabling input mode when focused (except inputBox)
-  const widgets = [lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, economyBox, tablesBox];
+  const widgets = [lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox];
   widgets.forEach(widget => {
     if (widget) {
       widget.input = false;
@@ -298,8 +289,7 @@ export function createUI() {
     activeLawsBox,
     logBox,
     statsBox,
-    economyBox,
-    tablesBox,
+    combinedInfoBox,
     logsWindow,
     inputBox,
     commandHistoryBox
@@ -445,8 +435,8 @@ export function renderTables(ui, state) {
     content += `\n{bold}Insurrections:{/bold} None`;
   }
   
-  ui.tablesBox.setContent(content);
-  ui.tablesBox.style.border.fg = 'white';
+  // renderTables is deprecated - content is now shown in renderCombinedInfo
+  // This function is kept for backwards compatibility
 }
 
 export function renderActiveFronts(ui, state) {
@@ -641,11 +631,12 @@ export function renderLogsWindow(ui, logger) {
 }
 
 
-export function renderEconomy(ui, state) {
+/**
+ * Render market economy view
+ */
+function renderMarketView(state) {
   if (!state.market || Object.keys(state.market).length === 0) {
-    ui.economyBox.setContent('{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}');
-    ui.economyBox.style.border.fg = 'green';
-    return;
+    return '{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}';
   }
   
   // Load resources to get commodity names
@@ -740,8 +731,146 @@ export function renderEconomy(ui, state) {
     }
   }
   
-  ui.economyBox.setContent(content);
-  ui.economyBox.style.border.fg = 'green';
+  return content;
+}
+
+/**
+ * Render armies view
+ */
+function renderArmiesView(state) {
+  let content = '{bold}Armies:{/bold}\n';
+  
+  if (!state.armies || state.armies.length === 0) {
+    content += '  {yellow-fg}No armies{/yellow-fg}\n';
+    return content;
+  }
+  
+  // Build empire lookup map for O(1) access
+  const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
+  
+  // Filter out temporary armies
+  const regularArmies = state.armies.filter(a => 
+    !a.id.startsWith('_scourge') && 
+    !a.id.startsWith('_coalition_combined') &&
+    !a.id.startsWith('_insurrection')
+  );
+  
+  regularArmies.forEach(army => {
+    const empire = empireMap.get(army.empireId);
+    const empireName = empire ? empire.name : 'Unknown';
+    content += `\n{bold}${army.name}{/bold} (${empireName})\n`;
+    content += `  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}\n`;
+    content += `  Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}\n`;
+    if (army.mp && army.mo) {
+      const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';
+      const moPct = army.mo.max > 0 ? ((army.mo.current / army.mo.max) * 100).toFixed(0) : '0';
+      content += `  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%)\n`;
+      content += `  Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)\n`;
+    }
+  });
+  
+  if (state.insurrections && state.insurrections.length > 0) {
+    content += `\n{bold}Insurrections:{/bold}\n`;
+    state.insurrections.forEach(ins => {
+      content += `  Active: ${ins.armies.length} armies\n`;
+    });
+  }
+  
+  return content;
+}
+
+/**
+ * Render empires view
+ */
+function renderEmpiresView(state) {
+  let content = '{bold}Empires:{/bold}\n';
+  
+  if (!state.empires || state.empires.length === 0) {
+    content += '  {yellow-fg}No empires{/yellow-fg}\n';
+    return content;
+  }
+  
+  state.empires.forEach(empire => {
+    content += `\n{bold}${empire.name}{/bold}\n`;
+    content += `  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}\n`;
+    content += `  Aid Capacity: ${empire.aidCapacity}\n`;
+    if (empire.stats) {
+      content += `  Population: ${formatNumber(empire.stats.population || 0)}\n`;
+      content += `  Influence: ${formatNumber(empire.stats.influence || 0)}\n`;
+    }
+    if (empire.budget_credits !== undefined) {
+      content += `  Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits\n`;
+    }
+    
+    // Count armies belonging to this empire
+    const empireArmies = state.armies.filter(a => 
+      a.empireId === empire.id && 
+      !a.id.startsWith('_scourge') && 
+      !a.id.startsWith('_coalition_combined') &&
+      !a.id.startsWith('_insurrection')
+    );
+    content += `  Armies: ${empireArmies.length}\n`;
+  });
+  
+  return content;
+}
+
+/**
+ * Render combined info panel (Market, Armies, or Empires based on current view)
+ */
+export function renderCombinedInfo(ui, state) {
+  const box = ui.combinedInfoBox;
+  if (!box) return;
+  
+  const view = box.currentView || 'market';
+  let content = '';
+  let label = '';
+  let borderColor = 'green';
+  
+  // Apply scroll offset
+  const scrollOffset = box.scrollOffset || 0;
+  
+  switch (view) {
+    case 'market':
+      label = ' 💰 Market Economy (m/a/e: switch, [/]: cycle) ';
+      borderColor = 'green';
+      content = renderMarketView(state);
+      break;
+    case 'armies':
+      label = ' ⚔️  Armies (m/a/e: switch, [/]: cycle) ';
+      borderColor = 'cyan';
+      content = renderArmiesView(state);
+      break;
+    case 'empires':
+      label = ' 👑 Empires (m/a/e: switch, [/]: cycle) ';
+      borderColor = 'yellow';
+      content = renderEmpiresView(state);
+      break;
+  }
+  
+  // Apply scrolling by splitting content into lines and showing subset
+  const lines = content.split('\n');
+  const visibleHeight = box.height - 2; // Account for border
+  const totalLines = lines.length;
+  
+  // Clamp scroll offset
+  const maxScroll = Math.max(0, totalLines - visibleHeight);
+  box.scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+  
+  // Get visible lines
+  const visibleLines = lines.slice(box.scrollOffset, box.scrollOffset + visibleHeight);
+  const scrolledContent = visibleLines.join('\n');
+  
+  // Add scroll indicator if needed
+  let finalContent = scrolledContent;
+  if (totalLines > visibleHeight) {
+    const scrollPct = totalLines > 0 ? ((box.scrollOffset / maxScroll) * 100).toFixed(0) : '0';
+    finalContent += `\n{gray-fg}--- Scroll: ${box.scrollOffset}/${maxScroll} (${scrollPct}%) ---{/gray-fg}`;
+  }
+  
+  box.setLabel(label);
+  box.setContent(finalContent);
+  box.style.border.fg = borderColor;
 }
 
 function formatVolume(volume) {
@@ -758,8 +887,7 @@ export function renderAll(ui, state) {
   renderLaws(ui, state);
   renderEvent(ui, state);
   renderStats(ui, state);
-  renderEconomy(ui, state);
-  renderTables(ui, state);
+  renderCombinedInfo(ui, state);
   renderLog(ui, state);
   ui.screen.render();
 }

@@ -1,5 +1,5 @@
-import { ECONOMY_CONSTANTS } from './constants.js';
-import { clampCohesion, clampStat } from './cohesion.js';
+import { ECONOMY_CONSTANTS, BATTLE_CONSTANTS } from './constants.js';
+import { clampCohesion, clampStat, clampApproval } from './cohesion.js';
 import { consumeSupplies } from './economy.js';
 import { processEconomyTick } from './economyTick.js';
 import { checkInsurrections } from './insurrection.js';
@@ -163,8 +163,19 @@ export function advanceTurn(state, rng = Math.random) {
         const battleResult = startScourgeBattle(state, participatingArmies, rng);
         log.push(...battleResult.log);
       } else {
-        logger.info('Scourge battle skipped: no armies with sufficient organization (need >30 org)');
-        logger.debug('Scourge battle skipped: no armies with sufficient organization');
+        // No armies can fight - Scourge wins by default
+        logger.warn('Scourge battle: No armies available! Scourge victory by default');
+        const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
+        const prevCoalitionCohesion = state.coalitionCohesion;
+        state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+        
+        const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
+        state.empires.forEach(empire => {
+          empire.approval = clampApproval(empire.approval - approvalLoss);
+        });
+        
+        log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+        logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
       }
     }
   } else {

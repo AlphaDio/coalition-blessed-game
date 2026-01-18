@@ -28,6 +28,7 @@ const LogLevelNames = {
 class Logger {
   constructor(config = {}) {
     this.level = config.level ?? LogLevel.INFO;
+    this.fileLevel = config.fileLevel ?? LogLevel.DEBUG; // File always logs DEBUG by default
     this.enableConsole = config.enableConsole ?? true;
     this.enableFile = config.enableFile ?? false;
     this.enableUI = config.enableUI ?? false;
@@ -142,31 +143,34 @@ class Logger {
    * Core log method
    */
   log(level, message, data = null) {
-    if (level < this.level) {
-      return; // Skip logs below current level
-    }
-    
     const formattedMessage = this.formatMessage(level, message, data);
     
-    // Store in history for logs window
-    this.logHistory.push({
-      level,
-      message,
-      formattedMessage,
-      timestamp: new Date().toISOString(),
-      data
-    });
-    
-    // Keep history size manageable
-    if (this.logHistory.length > this.maxHistorySize) {
-      this.logHistory = this.logHistory.slice(-this.maxHistorySize);
+    // Store in history for logs window (only if above console level)
+    if (level >= this.level) {
+      this.logHistory.push({
+        level,
+        message,
+        formattedMessage,
+        timestamp: new Date().toISOString(),
+        data
+      });
+      
+      // Keep history size manageable
+      if (this.logHistory.length > this.maxHistorySize) {
+        this.logHistory = this.logHistory.slice(-this.maxHistorySize);
+      }
     }
     
-    this.writeToConsole(level, formattedMessage);
-    this.writeToFile(formattedMessage);
+    // Console and UI respect the console log level
+    if (level >= this.level) {
+      this.writeToConsole(level, formattedMessage);
+      this.writeToUI(message, level);
+    }
     
-    // UI gets simpler message without timestamp
-    this.writeToUI(message, level);
+    // File always writes if above file level (defaults to DEBUG)
+    if (level >= this.fileLevel) {
+      this.writeToFile(formattedMessage);
+    }
   }
   
   /**

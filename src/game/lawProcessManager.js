@@ -248,6 +248,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
   
   // Check phase advancement
   if (checkPhaseAdvancement(lawProcess)) {
+    const logger = getLogger();
     const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
     const lawName = lawDef ? lawDef.name : lawProcess.lawId;
     logger.info(`Law phase: ${lawName} → ${lawProcess.phase}`);

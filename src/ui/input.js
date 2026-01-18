@@ -40,7 +40,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     ui.screen.input = false;
     const widgets = [
       ui.lawsBox, ui.eventBox, ui.logBox, ui.activeFrontsBox,
-      ui.activeLawsBox, ui.statsBox, ui.economyBox, ui.tablesBox
+      ui.activeLawsBox, ui.statsBox, ui.combinedInfoBox
     ];
     widgets.forEach(widget => {
       if (widget && widget.input !== false) {
@@ -196,8 +196,109 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   bindEventKeysToWidget(ui.activeFrontsBox);
   bindEventKeysToWidget(ui.activeLawsBox);
   bindEventKeysToWidget(ui.statsBox);
-  bindEventKeysToWidget(ui.economyBox);
-  bindEventKeysToWidget(ui.tablesBox);
+  bindEventKeysToWidget(ui.combinedInfoBox);
+  
+  // Combined Info Box: m/a/e to switch views, [/] to cycle, Page Up/Down to scroll
+  // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
+  if (ui.combinedInfoBox) {
+    // Helper to check if input box is focused and should capture keys
+    const shouldIgnoreKey = () => {
+      return ui.screen.focused === ui.inputBox && ui.inputBox.value && ui.inputBox.value.length > 0;
+    };
+    
+    // m: Switch to Market view
+    ui.screen.key(['m'], () => {
+      if (shouldIgnoreKey()) return; // Let input box handle it if typing
+      ui.combinedInfoBox.currentView = 'market';
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
+    // a: Switch to Armies view
+    ui.screen.key(['a'], () => {
+      if (shouldIgnoreKey()) return;
+      ui.combinedInfoBox.currentView = 'armies';
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
+    // e: Switch to Empires view
+    ui.screen.key(['e'], () => {
+      if (shouldIgnoreKey()) return;
+      ui.combinedInfoBox.currentView = 'empires';
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
+    // ]: Cycle to next view (only if not in input box)
+    ui.screen.key([']'], () => {
+      if (shouldIgnoreKey()) return;
+      const views = ['market', 'armies', 'empires'];
+      const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
+      const nextIndex = (currentIndex + 1) % views.length;
+      ui.combinedInfoBox.currentView = views[nextIndex];
+      ui.combinedInfoBox.scrollOffset = 0;
+      renderAll(ui, state);
+    });
+    
+    // [: Cycle to previous view (only if not in input box)
+    // Note: [ is already used for speed decrease, so we need to check focus
+    ui.screen.key(['['], (ch, key) => {
+      if (shouldIgnoreKey()) return;
+      // Only handle for combined info box if input box doesn't have focus
+      if (ui.screen.focused !== ui.inputBox) {
+        const views = ['market', 'armies', 'empires'];
+        const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
+        const prevIndex = (currentIndex - 1 + views.length) % views.length;
+        ui.combinedInfoBox.currentView = views[prevIndex];
+        ui.combinedInfoBox.scrollOffset = 0;
+        renderAll(ui, state);
+      }
+      // Otherwise let speed control handle it
+    });
+    
+    // Page Up: Scroll up
+    ui.screen.key(['pageup'], () => {
+      if (shouldIgnoreKey()) return;
+      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
+      renderAll(ui, state);
+    });
+    
+    // Page Down: Scroll down
+    ui.screen.key(['pagedown'], () => {
+      if (shouldIgnoreKey()) return;
+      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
+      renderAll(ui, state);
+    });
+    
+    // Vim-style scrolling: k for up, j for down (half screen)
+    ui.screen.key(['k'], () => {
+      if (shouldIgnoreKey()) return;
+      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
+      renderAll(ui, state);
+    });
+    
+    ui.screen.key(['j'], () => {
+      if (shouldIgnoreKey()) return;
+      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
+      renderAll(ui, state);
+    });
+    
+    // Also bind to the box itself for when it has focus
+    ui.combinedInfoBox.key(['up'], () => {
+      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - 1);
+      renderAll(ui, state);
+    });
+    
+    ui.combinedInfoBox.key(['down'], () => {
+      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + 1;
+      renderAll(ui, state);
+    });
+  }
   
   // Laws box - disable number keys when event is active
   // Note: This is handled by bindEventKeysToWidget above, but we keep this
@@ -434,6 +535,37 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       ui.inputBox.clearValue();
       ui.inputBox.cancel();
       ui.screen.render();
+    });
+    
+    // Prevent input box from capturing m/a/e/j/k when empty - let them go to combined info box
+    ui.inputBox.key(['m', 'a', 'e', 'j', 'k'], (ch, key) => {
+      // If input box is empty, don't process these keys - let screen handlers handle them
+      if (!ui.inputBox.value || ui.inputBox.value.length === 0) {
+        // Trigger the screen-level handlers by calling them directly
+        if (ch === 'm' && ui.combinedInfoBox) {
+          ui.combinedInfoBox.currentView = 'market';
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+        } else if (ch === 'a' && ui.combinedInfoBox) {
+          ui.combinedInfoBox.currentView = 'armies';
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+        } else if (ch === 'e' && ui.combinedInfoBox) {
+          ui.combinedInfoBox.currentView = 'empires';
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+        } else if (ch === 'j' && ui.combinedInfoBox) {
+          const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+          ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
+          renderAll(ui, state);
+        } else if (ch === 'k' && ui.combinedInfoBox) {
+          const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
+          ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
+          renderAll(ui, state);
+        }
+        return; // Don't let input box process these keys
+      }
+      // If input box has content, allow normal input processing
     });
     
     // Command history navigation

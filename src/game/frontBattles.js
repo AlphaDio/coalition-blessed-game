@@ -113,6 +113,23 @@ export function simulateBattleTick(front, worldState) {
   processSideAttack(front, leftArmy, rightArmy, 'left', 'right', worldState, log);
   processSideAttack(front, rightArmy, leftArmy, 'right', 'left', worldState, log);
   
+  // Check end conditions IMMEDIATELY after damage (before recovery/reinforcement)
+  // If an army is shattered (MP = 0), it cannot recover or reinforce
+  let winner = null;
+  if (leftArmy.mp.current <= 0) {
+    winner = 'right';
+    logger.info(`Battle ${front.id} ended: ${leftArmy.name} shattered! (Width: ${front.battlefieldSize})`);
+    log.push(`Battle ${front.id}: ${leftArmy.name} shattered!`);
+    endBattle(front, worldState, winner);
+    return log;
+  } else if (rightArmy.mp.current <= 0) {
+    winner = 'left';
+    logger.info(`Battle ${front.id} ended: ${rightArmy.name} shattered! (Width: ${front.battlefieldSize})`);
+    log.push(`Battle ${front.id}: ${rightArmy.name} shattered!`);
+    endBattle(front, worldState, winner);
+    return log;
+  }
+  
   // Apply morale regen (only if not broken)
   if (!front.moraleBroken.left) {
     const regen = calculateMoraleRegen(leftArmy);
@@ -125,28 +142,27 @@ export function simulateBattleTick(front, worldState) {
   }
   
   // Apply recovery (fast - from recoveryPool to mp.current)
-  applyRecovery(leftArmy);
-  applyRecovery(rightArmy);
-  
-  // Apply reinforcement (slower - new MP)
-  applyReinforcement(leftArmy);
-  applyReinforcement(rightArmy);
-  
-  // Check end conditions
-  let winner = null;
-  if (leftArmy.mp.current <= 0) {
-    winner = 'right';
-    logger.info(`Battle ${front.id} ended: ${leftArmy.name} shattered!`);
-    log.push(`Battle ${front.id}: ${leftArmy.name} shattered!`);
-  } else if (rightArmy.mp.current <= 0) {
-    winner = 'left';
-    logger.info(`Battle ${front.id} ended: ${rightArmy.name} shattered!`);
-    log.push(`Battle ${front.id}: ${rightArmy.name} shattered!`);
+  // NOTE: Recovery is significantly reduced during battles (can't fully recover while fighting)
+  // Only recover if army is not shattered
+  if (leftArmy.mp.current > 0) {
+    applyRecovery(leftArmy, true); // Pass inBattle flag
+  }
+  if (rightArmy.mp.current > 0) {
+    applyRecovery(rightArmy, true);
   }
   
-  if (winner) {
-    endBattle(front, worldState, winner);
-  } else {
+  // Apply reinforcement (slower - new MP)
+  // NOTE: Reinforcement is reduced during battles (10% of normal rate)
+  // Only reinforce if army is not shattered
+  if (leftArmy.mp.current > 0) {
+    applyReinforcement(leftArmy, true); // Pass flag to reduce during battle
+  }
+  if (rightArmy.mp.current > 0) {
+    applyReinforcement(rightArmy, true);
+  }
+  
+  // Battle continues
+  {
     // Compact INFO-level logging for battle rounds
     const leftMPPct = Math.floor((leftArmy.mp.current / leftArmy.mp.max) * 100);
     const rightMPPct = Math.floor((rightArmy.mp.current / rightArmy.mp.max) * 100);
@@ -166,6 +182,7 @@ export function simulateBattleTick(front, worldState) {
     const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
     const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
     logger.debug(`Battle ${front.id} round`, {
+      width: front.battlefieldSize,
       leftMP: `${Math.floor(leftArmy.mp.current)}/${Math.floor(leftArmy.mp.max)} (${leftMPPct}%)`,
       rightMP: `${Math.floor(rightArmy.mp.current)}/${Math.floor(rightArmy.mp.max)} (${rightMPPct}%)`,
       leftMO: `${Math.floor(leftArmy.mo.current)}/${Math.floor(leftArmy.mo.max)} (${leftMOPct}%)`,
@@ -205,6 +222,7 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const temporaryDmg = finalMPDmg - permanentDmg;
   
   // Apply damage
+  const prevMP = defendingArmy.mp.current;
   defendingArmy.mp.current -= finalMPDmg;
   defendingArmy.mp.current = Math.max(0, defendingArmy.mp.current);
   
@@ -213,6 +231,19 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   
   // Track permanent losses
   front.permanentLosses[defendingSide] += permanentDmg;
+  
+  // Debug: Log damage if significant
+  const logger = getLogger();
+  logger.debug(`Battle ${front.id} attack: ${attackingArmy.name} → ${defendingArmy.name}`, {
+    engagedUnits: engagedUnits.toFixed(0),
+    rawDamage: rawMPDmg.toFixed(1),
+    finalDamage: finalMPDmg.toFixed(1),
+    permanent: permanentDmg.toFixed(1),
+    temporary: temporaryDmg.toFixed(1),
+    mpBefore: prevMP.toFixed(0),
+    mpAfter: defendingArmy.mp.current.toFixed(0),
+    recoveryPool: defendingArmy.recoveryPool.toFixed(0)
+  });
   
   // 3. Calculate morale damage (NOT width-scaled)
   const rawMODmg = attackingArmy.dmgPerTickMO;
@@ -246,8 +277,9 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
 /**
  * Apply recovery: convert recoveryPool to mp.current
  * Recovery rate is based on the army's recovery stat, modified by organization
+ * During battles, recovery is significantly reduced (can't fully recover while fighting)
  */
-function applyRecovery(army) {
+function applyRecovery(army, inBattle = false) {
   if (army.recoveryPool <= 0) return;
   
   // Base recovery rate from recovery stat (0-100 -> 0-1000 MP/tick)
@@ -256,24 +288,54 @@ function applyRecovery(army) {
   // Organization provides a multiplier (0.5x to 1.5x)
   const orgModifier = 0.5 + (army.organization / 100);
   
-  const recoveryRate = baseRecoveryRate * orgModifier;
+  // During battles, recovery is much slower (20% of normal rate - can't fully recover while fighting)
+  const battleModifier = inBattle ? 0.2 : 1.0;
+  
+  const recoveryRate = baseRecoveryRate * orgModifier * battleModifier;
   const recovered = Math.min(recoveryRate, army.recoveryPool);
   const spaceAvailable = army.mp.max - army.mp.current;
   const actualRecovered = Math.min(recovered, spaceAvailable);
   
+  const prevMP = army.mp.current;
   army.mp.current += actualRecovered;
   army.recoveryPool -= actualRecovered;
+  
+  // Debug logging
+  const logger = getLogger();
+  logger.debug(`Recovery${inBattle ? ' (battle)' : ''}: ${army.name}`, {
+    recoveryStat: army.recovery,
+    org: army.organization.toFixed(1),
+    baseRate: baseRecoveryRate.toFixed(0),
+    orgMod: orgModifier.toFixed(2),
+    battleMod: battleModifier.toFixed(2),
+    recoveryRate: recoveryRate.toFixed(0),
+    poolBefore: (army.recoveryPool + actualRecovered).toFixed(0),
+    poolAfter: army.recoveryPool.toFixed(0),
+    recovered: actualRecovered.toFixed(0),
+    mpBefore: prevMP.toFixed(0),
+    mpAfter: army.mp.current.toFixed(0)
+  });
 }
 
 /**
  * Apply reinforcement: add new MP from reserves
+ * @param {Object} army - Army object
+ * @param {boolean} inBattle - If true, reduce reinforcement rate (battles are intense)
  */
-function applyReinforcement(army) {
+function applyReinforcement(army, inBattle = false) {
   const spaceAvailable = army.mp.max - army.mp.current;
   if (spaceAvailable <= 0) return;
   
-  const reinforced = Math.min(army.reinforcementRate, spaceAvailable);
+  // During battles, reinforcement is much slower (10% of normal rate)
+  const effectiveRate = inBattle ? army.reinforcementRate * 0.1 : army.reinforcementRate;
+  const reinforced = Math.min(effectiveRate, spaceAvailable);
   army.mp.current += reinforced;
+  
+  // Debug logging
+  if (inBattle && reinforced > 0) {
+    const logger = getLogger();
+    logger.debug(`Reinforcement (battle): ${army.name} +${reinforced.toFixed(0)} MP (reduced rate)`);
+  }
 }
 
 /**

@@ -51,13 +51,13 @@ export const INSURRECTION_CONSTANTS = {
 };
 
 export const EVENT_CONSTANTS = {
-  TIER_1_FREQUENCY: 0.1,
-  TIER_2_FREQUENCY: 0.2,
-  TIER_3_FREQUENCY: 0.3
+  TIER_1_FREQUENCY: 0.05,  // 5% chance (was 10%)
+  TIER_2_FREQUENCY: 0.10,  // 10% chance (was 20%)
+  TIER_3_FREQUENCY: 0.15   // 15% chance (was 30%)
 };
 
 export const REALTIME_CONSTANTS = {
-  BASE_TICK_INTERVAL: 5000, // milliseconds per turn at normal speed (5 seconds)
+  BASE_TICK_INTERVAL: 2500, // milliseconds per turn at normal speed (5 seconds)
   MIN_SPEED: 0.5, // slowest speed multiplier
   MAX_SPEED: 3, // fastest speed multiplier
   SPEED_STEP: 0.5, // speed adjustment increment
