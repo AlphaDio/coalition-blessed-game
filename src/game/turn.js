@@ -11,6 +11,13 @@ import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManag
 import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
+import { 
+  initializeImprovementsSystem, 
+  refreshRequestsIfDue, 
+  scheduleAllQueues, 
+  advanceImprovementProgress 
+} from './improvements.js';
+import { getImprovementTemplates } from './improvementTemplates.js';
 
 function isTemporaryArmy(army) {
   return (
@@ -369,6 +376,26 @@ function replenishArmyManpower(state, activeBattles) {
 }
 
 /**
+ * Handle improvements tick - request refresh, scheduling, progress
+ */
+function handleImprovementsTick(state, rng, log, logger) {
+  // Initialize improvements system if needed
+  if (!state.improvementTemplates) {
+    initializeImprovementsSystem(state);
+    state.improvementTemplates = getImprovementTemplates();
+  }
+  
+  // Refresh requests board if due
+  refreshRequestsIfDue(state, state.improvementTemplates, rng);
+  
+  // Schedule queues (move pending to active)
+  scheduleAllQueues(state);
+  
+  // Advance progress on active improvements
+  advanceImprovementProgress(state);
+}
+
+/**
  * Advances the game state by one turn, processing all game systems
  * @param {Object} state - The game state to advance
  * @param {Function} rng - Random number generator (default: Math.random)
@@ -396,6 +423,8 @@ export function advanceTurn(state, rng = Math.random) {
   // 2. Process economy tick (market economy system)
   handleEconomyTick(state, log, logger);
 
+  // 3. Improvements system
+  handleImprovementsTick(state, deterministicRng, log, logger);
   
   // 4. Update law cooldowns
   updateLawCooldowns(state);
