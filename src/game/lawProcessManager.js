@@ -11,7 +11,8 @@ import {
   applyEventEffects,
   checkPhaseAdvancement,
   checkBurialRule,
-  MAX_PHASE_PROGRESS
+  MAX_PHASE_PROGRESS,
+  clampMeter
 } from './lawEngine.js';
 import { clamp } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
@@ -184,6 +185,11 @@ export function resolveLawProcess(lawProcess, state, rng) {
     return log;
   }
   
+  // Skip if waiting for player choice on a law event
+  if (lawProcess.pendingEvent) {
+    return log;
+  }
+  
   // Get law definition
   const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
   if (!lawDef) {
@@ -216,7 +222,27 @@ export function resolveLawProcess(lawProcess, state, rng) {
       log.push(`\nMajor Event: ${selected.major.name}`);
       log.push(`  Nature: ${selected.major.nature || 'NEUTRAL'}`);
       
-      // Apply effects
+      // Check if event has choices (requires player interaction)
+      if (selected.major.choices && Array.isArray(selected.major.choices) && selected.major.choices.length > 0) {
+        log.push(`  Waiting for player choice...`);
+        
+        // Mark law process as having pending event
+        lawProcess.pendingEvent = selected.major.id;
+        
+        // Set as active event for player to respond to
+        state.activeEvent = {
+          ...selected.major,
+          title: selected.major.name,
+          text: selected.major.description || selected.major.name,
+          isLawEvent: true,
+          lawProcessId: lawProcess.lawId,
+          lawProcessPhase: lawProcess.phase
+        };
+        
+        return log;
+      }
+      
+      // Apply effects for auto-fire events
       const effectLog = applyEventEffects(selected.major, lawProcess, state);
       log.push(...effectLog);
       
@@ -243,7 +269,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
       });
     }
     
-    // Apply minor events
+    // Apply minor events (they don't have choices)
     selected.minors.forEach(minor => {
       log.push(`\nMinor Event: ${minor.name}`);
       const effectLog = applyEventEffects(minor, lawProcess, state);
@@ -350,6 +376,10 @@ export function tallyVotes(lawProcess, state) {
     return { passed: false, log };
   }
   
+  // Get law definition to check for enactment bonus
+  const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
+  const enactmentBonus = lawDef?.modifiers?.enactment_chance_bonus || 0;
+  
   let totalVotes = 0;
   let supportVotes = 0;
   let opposeVotes = 0;
@@ -376,7 +406,10 @@ export function tallyVotes(lawProcess, state) {
   });
   
   const quorumNeeded = totalVotes * policy.config.quorum_threshold;
-  const votesNeeded = totalVotes * policy.config.pass_threshold;
+  // Apply enactment bonus by reducing the threshold needed
+  const basePassThreshold = policy.config.pass_threshold;
+  const adjustedPassThreshold = Math.max(0, basePassThreshold - enactmentBonus);
+  const votesNeeded = totalVotes * adjustedPassThreshold;
   const totalCast = supportVotes + opposeVotes;
   
   log.push(`\nVote Tally:`);
@@ -384,7 +417,14 @@ export function tallyVotes(lawProcess, state) {
   log.push(`  Oppose: ${opposeVotes}`);
   log.push(`  Abstain: ${abstainVotes}`);
   log.push(`  Quorum: ${totalCast}/${quorumNeeded.toFixed(1)} ${totalCast >= quorumNeeded ? '✓' : '✗'}`);
-  log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
+  
+  if (enactmentBonus > 0) {
+    const adjustedPercentage = (adjustedPassThreshold * 100).toFixed(0);
+    const bonusPercentage = (enactmentBonus * 100).toFixed(0);
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${adjustedPercentage}% with +${bonusPercentage}% bonus) ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
+  } else {
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? '✓' : '✗'}`);
+  }
   
   const passed = totalCast >= quorumNeeded && supportVotes >= votesNeeded;
   
@@ -430,6 +470,128 @@ export function updatePlayerInfluence(state) {
 }
 
 /**
+ * Handle player choice for a law event
+ * @param {Object} state - Game state
+ * @param {string} lawId - Law process ID
+ * @param {string} eventId - Event ID
+ * @param {number} choiceIndex - Index of selected choice
+ * @returns {Object} Result with success/error and log
+ */
+export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
+  const logger = getLogger();
+  
+  // Find the law process
+  const lawProcess = state.lawProcesses.find(lp => lp.lawId === lawId);
+  if (!lawProcess) {
+    logger.error(`Law process not found: ${lawId}`);
+    return { error: 'Law process not found', log: [] };
+  }
+  
+  // Verify this is the pending event
+  if (lawProcess.pendingEvent !== eventId) {
+    logger.error(`Event ${eventId} is not the pending event for law ${lawId}`, {
+      expected: lawProcess.pendingEvent,
+      got: eventId
+    });
+    return { error: 'Event is not pending for this law', log: [] };
+  }
+  
+  // Find the event in state.events
+  const event = state.events.find(e => e.id === eventId);
+  if (!event) {
+    logger.error(`Event not found: ${eventId}`);
+    return { error: 'Event not found', log: [] };
+  }
+  
+  // Validate choice index
+  if (!event.choices || choiceIndex < 0 || choiceIndex >= event.choices.length) {
+    logger.error(`Invalid choice index: ${choiceIndex} for event ${eventId}`, {
+      choicesCount: event.choices ? event.choices.length : 0
+    });
+    return { error: 'Invalid choice index', log: [] };
+  }
+  
+  const choice = event.choices[choiceIndex];
+  const log = [];
+  
+  log.push(`Law Event: ${event.name} - ${choice.text}`);
+  
+  // Apply choice effects to law process
+  if (choice.effects) {
+    const effectLog = applyLawEventChoiceEffects(choice.effects, lawProcess, state);
+    log.push(...effectLog);
+  }
+  
+  // Track reject if applicable
+  if (event.nature === 'REJECT' && choice.effects && choice.effects.progress && choice.effects.progress < 0) {
+    lawProcess.rejects++;
+    log.push(`  REJECT count: ${lawProcess.rejects}/4`);
+    
+    // Check burial
+    if (checkBurialRule(lawProcess, state)) {
+      const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
+      const lawName = lawDef ? lawDef.name : lawProcess.lawId;
+      logger.warn(`Law BURIED: ${lawName} (4 rejects)`);
+      log.push(`\n*** LAW BURIED (4 rejects) ***`);
+      
+      // Clear pending event
+      lawProcess.pendingEvent = null;
+      state.activeEvent = null;
+      
+      return { success: true, log };
+    }
+  }
+  
+  // Record event in log
+  lawProcess.eventLog.push({
+    tick: state.turn,
+    phase: lawProcess.phase,
+    eventId: event.id,
+    nature: event.nature,
+    choiceIndex
+  });
+  
+  // Clear pending event
+  lawProcess.pendingEvent = null;
+  state.activeEvent = null;
+  
+  logger.info(`Law event choice processed: ${event.name} - choice ${choiceIndex}`);
+  
+  return { success: true, log };
+}
+
+/**
+ * Apply law event choice effects (similar to applyEventEffects but for choices)
+ * @param {Object} effects - Choice effects
+ * @param {Object} lawProcess - Law process
+ * @param {Object} state - Game state
+ * @returns {Array} Log of applied effects
+ */
+function applyLawEventChoiceEffects(effects, lawProcess, state) {
+  const log = [];
+  
+  // Apply meter deltas
+  if (effects.meters) {
+    Object.entries(effects.meters).forEach(([meter, delta]) => {
+      const oldValue = lawProcess.meters[meter] || 0;
+      const newValue = clampMeter(oldValue + delta);
+      lawProcess.meters[meter] = newValue;
+      log.push(`  ${meter}: ${oldValue.toFixed(2)} → ${newValue.toFixed(2)}`);
+    });
+  }
+  
+  // Apply progress delta
+  if (effects.progress !== undefined) {
+    const oldProgress = lawProcess.phaseProgress;
+    const newProgress = Math.max(0, Math.min(oldProgress + effects.progress, 2.0));
+    lawProcess.phaseProgress = newProgress;
+    log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)}`);
+  }
+  
+  return log;
+}
+
+/**
  * Resolve all active law processes
  * @param {Object} state - Game state
  * @param {Object} rng - Seeded RNG
@@ -453,11 +615,26 @@ export function resolveAllLawProcesses(state, rng) {
       return;
     }
     
-    // Resolve this law (round-robin, one per tick to avoid spam)
-    // Could implement more sophisticated scheduling
-    const shouldResolve = (state.turn % state.lawProcesses.length) === index;
+    // Get law definition to check for modifiers
+    const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
+    if (!lawDef) {
+      return;
+    }
+    
+    // Increment tick counter
+    lawProcess.ticksSinceLastResolve++;
+    
+    // Calculate ticks needed based on tick_delay_multiplier
+    // Note: Uses active law process count as base to distribute events fairly
+    // Each law gets a turn proportionally based on its delay multiplier
+    const tickDelayMultiplier = lawDef.modifiers?.tick_delay_multiplier || 1.0;
+    const ticksNeeded = Math.max(1, Math.round(state.lawProcesses.length * tickDelayMultiplier));
+    
+    // Check if enough ticks have passed
+    const shouldResolve = lawProcess.ticksSinceLastResolve >= ticksNeeded;
     
     if (shouldResolve) {
+      lawProcess.ticksSinceLastResolve = 0; // Reset counter
       const log = resolveLawProcess(lawProcess, state, rng);
       logs.push(...log);
     }

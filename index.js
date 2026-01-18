@@ -9,6 +9,7 @@ import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from './src/game/marketEconomy.js';
+import { initializeImprovementsState, getSampleImprovementRequests } from './src/game/improvements.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -50,6 +51,15 @@ try {
 } catch (error) {
   console.warn(`Economy initialization failed: ${error.message}`);
   // Continue without economy - will fall back to old supply system
+}
+
+// Initialize improvements system
+try {
+  state.improvements = initializeImprovementsState();
+  state.improvements.requests = getSampleImprovementRequests();
+  console.log(`Improvements system initialized: ${state.improvements.requests.length} requests available`);
+} catch (error) {
+  console.warn(`Improvements initialization failed: ${error.message}`);
 }
 
 // Initialize law enactment system

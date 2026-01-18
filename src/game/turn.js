@@ -11,6 +11,7 @@ import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManag
 import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
+import { processImprovementsTick, applyImprovementModifiers } from './improvements.js';
 
 function isTemporaryArmy(army) {
   return (
@@ -396,6 +397,16 @@ export function advanceTurn(state, rng = Math.random) {
   // 2. Process economy tick (market economy system)
   handleEconomyTick(state, log, logger);
 
+  // 3. Process improvements tick
+  if (state.improvements) {
+    const improvementResult = processImprovementsTick(state);
+    if (improvementResult.log && improvementResult.log.length > 0) {
+      log.push(...improvementResult.log);
+    }
+    
+    // Apply improvement modifiers
+    applyImprovementModifiers(state);
+  }
   
   // 4. Update law cooldowns
   updateLawCooldowns(state);

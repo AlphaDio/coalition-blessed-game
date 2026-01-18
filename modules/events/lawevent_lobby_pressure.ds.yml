@@ -1,0 +1,51 @@
+module:
+  id: "lawevent_lobby_pressure"
+  name: "Lobbyist Pressure"
+  description: "Powerful lobbyists pressuring the council during law debate"
+  version: "1.0.0"
+  type: "law_event"
+  category: "event"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["debate", "lobby", "neutral"]
+  created_at: "2026-01-18T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_event:
+    id: "debate_choice_lobby_pressure"
+    name: "Lobbyist Pressure"
+    description: "Powerful lobbyists from various factions are pressuring the council. How should you respond?"
+    scope: "LAW"
+    phase_tags:
+      - "DEBATE"
+    nature: "NEUTRAL"
+    tier: "MAJOR"
+    triggers: []
+    base_weight: 1.0
+    choices:
+      - text: "Accept their support (gain momentum, lose legitimacy)"
+        effects:
+          progress: 0.25
+          meters:
+            momentum: 0.15
+            legitimacy: -0.1
+            reject_pressure: -0.05
+      - text: "Reject their influence (lose momentum, gain legitimacy)"
+        effects:
+          progress: 0.1
+          meters:
+            momentum: -0.1
+            legitimacy: 0.15
+            polarization: 0.05
+      - text: "Negotiate a middle ground (moderate effects)"
+        effects:
+          progress: 0.15
+          meters:
+            momentum: 0.05
+            legitimacy: 0.05
+            polarization: -0.05
+    weight_modifiers: []

@@ -1,0 +1,46 @@
+module:
+  id: "lawevent_public_forum"
+  name: "Public Forum Requested"
+  description: "Citizens demanding a public forum to discuss the law"
+  version: "1.0.0"
+  type: "law_event"
+  category: "event"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["debate", "public", "neutral"]
+  created_at: "2026-01-18T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_event:
+    id: "debate_choice_public_forum"
+    name: "Public Forum Requested"
+    description: "Citizens are demanding a public forum to discuss the law. How do you proceed?"
+    scope: "LAW"
+    phase_tags:
+      - "DEBATE"
+    nature: "NEUTRAL"
+    tier: "MAJOR"
+    triggers: []
+    base_weight: 0.9
+    choices:
+      - text: "Hold an open forum (slow progress, gain legitimacy)"
+        effects:
+          progress: 0.05
+          meters:
+            momentum: -0.05
+            legitimacy: 0.2
+            unrest: -0.1
+            polarization: -0.05
+      - text: "Decline and expedite voting (fast progress, lose legitimacy)"
+        effects:
+          progress: 0.35
+          meters:
+            momentum: 0.15
+            legitimacy: -0.15
+            unrest: 0.15
+            reject_pressure: 0.1
+    weight_modifiers: []

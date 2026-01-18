@@ -8,7 +8,7 @@
 import { createGameState, createPowerSystemPolicy } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { DeterministicRNG } from './src/modules/rng.js';
-import { startLawProcess, resolveAllLawProcesses } from './src/game/lawProcessManager.js';
+import { startLawProcess, resolveAllLawProcesses, handleLawEventChoice } from './src/game/lawProcessManager.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 
@@ -111,6 +111,30 @@ while (tick < MAX_TICKS && lawProcess.phase !== 'ENACTED' && lawProcess.phase !=
   if (logs.length > 0) {
     console.log(`\nTick ${tick}:`);
     logs.forEach(line => console.log(line));
+  }
+  
+  // Auto-resolve law events with choices for testing
+  if (state.activeEvent && state.activeEvent.isLawEvent) {
+    const choiceCount = state.activeEvent.choices ? state.activeEvent.choices.length : 0;
+    if (choiceCount > 0) {
+      // Pick a random choice
+      const choiceIndex = Math.floor(rng.random() * choiceCount);
+      console.log(`  [AUTO] Selecting choice ${choiceIndex + 1} of ${choiceCount}: ${state.activeEvent.choices[choiceIndex].text}`);
+      
+      // Handle the choice
+      const result = handleLawEventChoice(
+        state,
+        state.activeEvent.lawProcessId,
+        state.activeEvent.id,
+        choiceIndex
+      );
+      
+      if (result.success) {
+        result.log.forEach(line => console.log(`  ${line}`));
+      } else {
+        console.log(`  [ERROR] Failed to handle choice: ${result.error}`);
+      }
+    }
   }
   
   // Check if process finished
