@@ -12,6 +12,261 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 
+function isTemporaryArmy(army) {
+  return (
+    army.id.startsWith('_scourge') ||
+    army.id.startsWith('_coalition_combined') ||
+    army.id.startsWith('_insurrection')
+  );
+}
+
+export function isRegularArmy(army) {
+  return !isTemporaryArmy(army);
+}
+
+export function collectArmiesInBattle(activeBattles) {
+  const armiesInBattle = new Set();
+
+  activeBattles.forEach(front => {
+    addBattleArmyId(armiesInBattle, front.leftArmyId);
+    addBattleArmyId(armiesInBattle, front.rightArmyId);
+
+    addBattleArmyIds(armiesInBattle, front.participatingArmyIds);
+    addBattleArmyIds(armiesInBattle, front.rebelliousArmyIds);
+    addBattleArmyIds(armiesInBattle, front.loyalArmyIds);
+  });
+
+  return armiesInBattle;
+}
+
+function addBattleArmyId(armiesInBattle, armyId) {
+  if (armyId) armiesInBattle.add(armyId);
+}
+
+function addBattleArmyIds(armiesInBattle, armyIds) {
+  if (!armyIds) return;
+  armyIds.forEach(id => addBattleArmyId(armiesInBattle, id));
+}
+
+function getEventTitle(event) {
+  return event.title || event.name || event.id || 'Unknown Event';
+}
+
+function getBattleWinner(leftArmy, rightArmy) {
+  if (!leftArmy || !rightArmy) return null;
+
+  if (leftArmy.mp.current <= 0) {
+    return 'right';
+  }
+
+  if (rightArmy.mp.current <= 0) {
+    return 'left';
+  }
+
+  return null;
+}
+
+function collectRebelliousArmyIds(insurrections) {
+  if (!insurrections || !Array.isArray(insurrections)) {
+    return new Set();
+  }
+
+  const rebelliousArmyIds = new Set();
+  insurrections.forEach(insurrection => {
+    if (insurrection && insurrection.active && insurrection.armies) {
+      insurrection.armies.forEach(armyId => rebelliousArmyIds.add(armyId));
+    }
+  });
+
+  return rebelliousArmyIds;
+}
+
+function getBattleChance(cohesionTierName) {
+  if (cohesionTierName === 'Strained') return 0.02;
+  if (cohesionTierName === 'Desperate') return 0.03;
+  return 0.01;
+}
+
+function partitionInsurrectionArmies(armies, rebelliousArmyIds) {
+  const rebelliousArmies = [];
+  const opposingArmies = [];
+
+  armies.forEach(army => {
+    if (rebelliousArmyIds.has(army.id)) {
+      rebelliousArmies.push(army);
+      return;
+    }
+
+    if (army.organization > 30 && isRegularArmy(army)) {
+      opposingArmies.push(army);
+    }
+  });
+
+  return { rebelliousArmies, opposingArmies };
+}
+
+function handleLawProcesses(state, rng, log, logger) {
+  if (state.lawProcesses && state.lawProcesses.length > 0) {
+    logger.debug(`Resolving ${state.lawProcesses.length} law process(es)`);
+    const lawLogs = resolveAllLawProcesses(state, rng);
+    if (lawLogs.length > 0) {
+      log.push(...lawLogs);
+    }
+    return;
+  }
+
+  if (state.playerInfluence !== undefined) {
+    const prevInfluence = state.playerInfluence;
+    updatePlayerInfluence(state);
+    if (state.playerInfluence > prevInfluence) {
+      logger.info(`Player influence increased to ${state.playerInfluence}`);
+    }
+  }
+}
+
+function handleEconomyTick(state, log, logger) {
+  try {
+    const economyResult = processEconomyTick(state);
+    if (economyResult.log && economyResult.log.length > 0) {
+      log.push(...economyResult.log);
+    }
+    logger.debug(`Economy tick: ${economyResult.trades} trades executed`);
+  } catch (error) {
+    logger.error(`Economy tick failed: ${error.message}`, { error });
+    const supplyLog = consumeSupplies(state);
+    log.push(...supplyLog.log);
+  }
+}
+
+function handleBattlePhase(state, rng, log, logger) {
+  const tier = getCohesionTier(state.coalitionCohesion);
+  const battleChance = getBattleChance(tier?.name);
+
+  logger.debug(`Battle check: tier=${tier?.name}, chance=${battleChance}`);
+
+  // Simulate active front battles
+  const activeBattles = getActiveBattles(state);
+  if (activeBattles.length > 0) {
+    logger.debug(`Processing ${activeBattles.length} active front battle(s)`);
+  }
+
+  // Process active battles (including Scourge battles)
+  // Store battles that end during this tick
+  const battlesEndedThisTick = [];
+  activeBattles.forEach(front => {
+    const wasActive = front.state === 'ACTIVE';
+    const battleLog = simulateBattleTick(front, state);
+    log.push(...battleLog);
+
+    // Check if battle just ended
+    if (wasActive && front.state === 'ENDED') {
+      battlesEndedThisTick.push(front);
+    }
+  });
+
+  // Handle battles that ended this turn
+  battlesEndedThisTick.forEach(front => {
+    // Determine winner from battle state
+    const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
+    const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
+    const winnerSide = getBattleWinner(leftArmy, rightArmy);
+
+    if (winnerSide) {
+      if (front.isScourgeBattle) {
+        handleScourgeBattleEnd(state, front, winnerSide);
+        log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
+      } else if (front.isInsurrectionBattle) {
+        handleInsurrectionBattleEnd(state, front, winnerSide);
+        log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
+      }
+    }
+  });
+
+  triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logger);
+  triggerInsurrectionBattles(state, rng, activeBattles, log, logger);
+
+  return activeBattles;
+}
+
+function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logger) {
+  const activeScourgeBattles = activeBattles.filter(f => f.isScourgeBattle);
+  if (activeScourgeBattles.length > 0) {
+    logger.debug('Scourge battle already active, skipping new battle trigger');
+    return;
+  }
+
+  const battleRoll = rng();
+  if (battleRoll >= battleChance || state.armies.length === 0) {
+    return;
+  }
+
+  const rebelliousArmyIds = collectRebelliousArmyIds(state.insurrections);
+  const participatingArmies = state.armies.filter(army =>
+    army.organization > 30 &&
+    isRegularArmy(army) &&
+    !rebelliousArmyIds.has(army.id)
+  );
+
+  logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
+  logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
+  if (participatingArmies.length > 0) {
+    const battleResult = startScourgeBattle(state, participatingArmies, rng);
+    log.push(...battleResult.log);
+    return;
+  }
+
+  // No armies can fight - Scourge wins by default
+  logger.warn('Scourge battle: No armies available! Scourge victory by default');
+  const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
+  const prevCoalitionCohesion = state.coalitionCohesion;
+  state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+
+  const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
+  state.empires.forEach(empire => {
+    empire.approval = clampApproval(empire.approval - approvalLoss);
+  });
+
+  log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+  logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+}
+
+function triggerInsurrectionBattles(state, rng, activeBattles, log, logger) {
+  if (!state.insurrections || !Array.isArray(state.insurrections)) {
+    return;
+  }
+
+  state.insurrections.forEach(insurrection => {
+    if (!insurrection || !insurrection.active) {
+      return;
+    }
+
+    const activeInsurrectionBattles = activeBattles.filter(f =>
+      f.isInsurrectionBattle && f.insurrectionId === insurrection.id
+    );
+
+    if (activeInsurrectionBattles.length > 0) {
+      logger.debug(`Insurrection battle already active for ${insurrection.id}, skipping new battle trigger`);
+      return;
+    }
+
+    const rebelliousArmyIds = new Set(insurrection.armies || []);
+    const { rebelliousArmies, opposingArmies } = partitionInsurrectionArmies(
+      state.armies,
+      rebelliousArmyIds
+    );
+
+    if (opposingArmies.length === 0 || rebelliousArmies.length === 0) {
+      return;
+    }
+
+    const battleResult = startInsurrectionBattle(state, insurrection, opposingArmies, rng);
+    if (battleResult && battleResult.log && battleResult.front) {
+      log.push(...battleResult.log);
+    }
+  });
+}
+
+
 /**
  * Recover organization for all armies
  * Recovery rate is based on:
@@ -23,30 +278,10 @@ import { getLogger } from '../modules/logger.js';
 function recoverArmyOrganization(state, activeBattles) {
   const logger = getLogger();
   
-  // Get IDs of armies currently in active battles
-  const armiesInBattle = new Set();
-  activeBattles.forEach(front => {
-    if (front.leftArmyId) armiesInBattle.add(front.leftArmyId);
-    if (front.rightArmyId) armiesInBattle.add(front.rightArmyId);
-    
-    // Also check for combined armies (Scourge/Insurrection battles)
-    if (front.participatingArmyIds) {
-      front.participatingArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-    if (front.rebelliousArmyIds) {
-      front.rebelliousArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-    if (front.loyalArmyIds) {
-      front.loyalArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-  });
-  
-  // Filter out temporary armies
-  const regularArmies = state.armies.filter(army => 
-    !army.id.startsWith('_scourge') &&
-    !army.id.startsWith('_coalition_combined') &&
-    !army.id.startsWith('_insurrection')
-  );
+  const armiesInBattle = collectArmiesInBattle(activeBattles);
+
+  const regularArmies = state.armies.filter(isRegularArmy);
+
   
   regularArmies.forEach(army => {
     // Skip if already at max organization
@@ -84,31 +319,12 @@ function recoverArmyOrganization(state, activeBattles) {
 function replenishArmyManpower(state, activeBattles) {
   const logger = getLogger();
   
-  // Get IDs of armies currently in active battles
-  const armiesInBattle = new Set();
-  activeBattles.forEach(front => {
-    if (front.leftArmyId) armiesInBattle.add(front.leftArmyId);
-    if (front.rightArmyId) armiesInBattle.add(front.rightArmyId);
-    
-    // Also check for combined armies (Scourge/Insurrection battles)
-    if (front.participatingArmyIds) {
-      front.participatingArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-    if (front.rebelliousArmyIds) {
-      front.rebelliousArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-    if (front.loyalArmyIds) {
-      front.loyalArmyIds.forEach(id => armiesInBattle.add(id));
-    }
-  });
-  
-  // Filter out temporary armies and armies in battle
-  const regularArmies = state.armies.filter(army => 
-    !army.id.startsWith('_scourge') &&
-    !army.id.startsWith('_coalition_combined') &&
-    !army.id.startsWith('_insurrection') &&
-    !armiesInBattle.has(army.id)
+  const armiesInBattle = collectArmiesInBattle(activeBattles);
+
+  const regularArmies = state.armies.filter(army =>
+    isRegularArmy(army) && !armiesInBattle.has(army.id)
   );
+
   
   // Build empire lookup map
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
@@ -175,34 +391,11 @@ export function advanceTurn(state, rng = Math.random) {
     : rng;
   
   // 1. Resolve law processes (if any)
-  if (state.lawProcesses && state.lawProcesses.length > 0) {
-    logger.debug(`Resolving ${state.lawProcesses.length} law process(es)`);
-    const lawLogs = resolveAllLawProcesses(state, deterministicRng);
-    if (lawLogs.length > 0) {
-      log.push(...lawLogs);
-    }
-  } else if (state.playerInfluence !== undefined) {
-    // Update player influence even if no law processes are active
-    const prevInfluence = state.playerInfluence;
-    updatePlayerInfluence(state);
-    if (state.playerInfluence > prevInfluence) {
-      logger.info(`Player influence increased to ${state.playerInfluence}`);
-    }
-  }
-  
+  handleLawProcesses(state, deterministicRng, log, logger);
+
   // 2. Process economy tick (market economy system)
-  try {
-    const economyResult = processEconomyTick(state);
-    if (economyResult.log && economyResult.log.length > 0) {
-      log.push(...economyResult.log);
-    }
-    logger.debug(`Economy tick: ${economyResult.trades} trades executed`);
-  } catch (error) {
-    logger.error(`Economy tick failed: ${error.message}`, { error });
-    // Fallback to old supply system if economy system fails
-    const supplyLog = consumeSupplies(state);
-    log.push(...supplyLog.log);
-  }
+  handleEconomyTick(state, log, logger);
+
   
   // 4. Update law cooldowns
   updateLawCooldowns(state);
@@ -211,152 +404,22 @@ export function advanceTurn(state, rng = Math.random) {
   const event = checkEvent(state, rng);
   if (event) {
     // Only set as activeEvent if it has choices that require player input
-    if (event.choices && Array.isArray(event.choices) && event.choices.length > 0) {
-      state.activeEvent = event;
-      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
-      logger.info(`Event triggered: ${eventTitle}`);
-      log.push(`Event: ${eventTitle}`);
-    } else {
-      // Event was auto-resolved in checkEvent, just log it
-      const eventTitle = event.title || event.name || event.id || 'Unknown Event';
-      logger.info(`Event auto-resolved: ${eventTitle} (no choices)`);
-      log.push(`Event: ${eventTitle} (auto-resolved)`);
-    }
+      const eventTitle = getEventTitle(event);
+      if (event.choices && Array.isArray(event.choices) && event.choices.length > 0) {
+        state.activeEvent = event;
+        logger.info(`Event triggered: ${eventTitle}`);
+        log.push(`Event: ${eventTitle}`);
+      } else {
+        // Event was auto-resolved in checkEvent, just log it
+        logger.info(`Event auto-resolved: ${eventTitle} (no choices)`);
+        log.push(`Event: ${eventTitle} (auto-resolved)`);
+      }
+
   }
   
   // 5. Check for battles
-  const tier = getCohesionTier(state.coalitionCohesion);
-  let battleChance = 0.01;  // 1% chance (was 10%)
-  if (tier?.name === 'Strained') battleChance = 0.02;  // 2% chance (was 20%)
-  if (tier?.name === 'Desperate') battleChance = 0.03;  // 3% chance (was 30%)
-  
-  logger.debug(`Battle check: tier=${tier?.name}, chance=${battleChance}`);
-  
-  // Simulate active front battles
-  const activeBattles = getActiveBattles(state);
-  if (activeBattles.length > 0) {
-    logger.debug(`Processing ${activeBattles.length} active front battle(s)`);
-  }
-  
-  // Process active battles (including Scourge battles)
-  // Store battles that end during this tick
-  const battlesEndedThisTick = [];
-  activeBattles.forEach(front => {
-    const wasActive = front.state === 'ACTIVE';
-    const battleLog = simulateBattleTick(front, state);
-    log.push(...battleLog);
-    
-    // Check if battle just ended
-    if (wasActive && front.state === 'ENDED') {
-      battlesEndedThisTick.push(front);
-    }
-  });
-  
-  // Handle battles that ended this turn
-  battlesEndedThisTick.forEach(front => {
-    // Determine winner from battle state
-    const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
-    const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
-    let winnerSide = null;
-    if (leftArmy && leftArmy.mp.current <= 0) {
-      winnerSide = 'right';
-    } else if (rightArmy && rightArmy.mp.current <= 0) {
-      winnerSide = 'left';
-    }
-    
-    if (winnerSide) {
-      if (front.isScourgeBattle) {
-        handleScourgeBattleEnd(state, front, winnerSide);
-        log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
-      } else if (front.isInsurrectionBattle) {
-        handleInsurrectionBattleEnd(state, front, winnerSide);
-        log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
-      }
-    }
-  });
-  
-  // Check for new Scourge battle (only if no active Scourge battle exists)
-  const activeScourgeBattles = activeBattles.filter(f => f.isScourgeBattle);
-  if (activeScourgeBattles.length === 0) {
-    const battleRoll = rng();
-    if (battleRoll < battleChance && state.armies.length > 0) {
-      // Get all rebellious army IDs from active insurrections
-      const rebelliousArmyIds = new Set();
-      if (state.insurrections && Array.isArray(state.insurrections)) {
-        state.insurrections.forEach(insurrection => {
-          if (insurrection && insurrection.active && insurrection.armies) {
-            insurrection.armies.forEach(armyId => rebelliousArmyIds.add(armyId));
-          }
-        });
-      }
-      
-      // Filter out temporary armies and rebellious armies
-      const participatingArmies = state.armies.filter(a => 
-        a.organization > 30 && 
-        !a.id.startsWith('_scourge') && 
-        !a.id.startsWith('_coalition_combined') &&
-        !rebelliousArmyIds.has(a.id) // Exclude armies in insurrection
-      );
-      logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
-      logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
-      if (participatingArmies.length > 0) {
-        const battleResult = startScourgeBattle(state, participatingArmies, rng);
-        log.push(...battleResult.log);
-      } else {
-        // No armies can fight - Scourge wins by default
-        logger.warn('Scourge battle: No armies available! Scourge victory by default');
-        const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
-        const prevCoalitionCohesion = state.coalitionCohesion;
-        state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
-        
-        const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
-        state.empires.forEach(empire => {
-          empire.approval = clampApproval(empire.approval - approvalLoss);
-        });
-        
-        log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-        logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-      }
-    }
-  } else {
-    logger.debug(`Scourge battle already active, skipping new battle trigger`);
-  }
-  
-  // Check for insurrection battles (only if no active insurrection battle exists for this insurrection)
-  if (state.insurrections && Array.isArray(state.insurrections)) {
-    state.insurrections.forEach(insurrection => {
-      if (insurrection && insurrection.active) {
-        // Check if there's already an active battle for this insurrection
-        const activeInsurrectionBattles = activeBattles.filter(f => 
-          f.isInsurrectionBattle && f.insurrectionId === insurrection.id
-        );
-        
-        if (activeInsurrectionBattles.length === 0) {
-          // Use Set for O(1) lookup instead of O(n) includes() calls
-          const rebelliousArmyIds = new Set(insurrection.armies || []);
-          const rebelliousArmies = state.armies.filter(army => 
-            rebelliousArmyIds.has(army.id)
-          );
-          const opposingArmies = state.armies.filter(army => 
-            !rebelliousArmyIds.has(army.id) && 
-            army.organization > 30 &&
-            !army.id.startsWith('_scourge') &&
-            !army.id.startsWith('_coalition_combined') &&
-            !army.id.startsWith('_insurrection')
-          );
-          
-          if (opposingArmies.length > 0 && rebelliousArmies.length > 0) {
-            const battleResult = startInsurrectionBattle(state, insurrection, opposingArmies, rng);
-            if (battleResult && battleResult.log && battleResult.front) {
-              log.push(...battleResult.log);
-            }
-          }
-        } else {
-          logger.debug(`Insurrection battle already active for ${insurrection.id}, skipping new battle trigger`);
-        }
-      }
-    });
-  }
+  const activeBattles = handleBattlePhase(state, rng, log, logger);
+
   
   // 6. Replenish army manpower (for armies not in active battles)
   replenishArmyManpower(state, activeBattles);

@@ -18,24 +18,23 @@ declares:
   event_data:
     id: "event_5"
     name: "Resource Discovery"
-    description: "A new resource cache has been discovered."
+    description: "A cache of coalition supplies and salvage has been discovered."
     choices:
-      - text: "Secure immediately (gain resources)"
+      - text: "Secure immediately (gain supplies)"
         effects:
           stockpiles:
             supplies: 200
-            alloys: 100
-            fuel: 75
       - text: "Share with all empires (gain approval)"
         effects:
           stockpiles:
             supplies: 100
-            alloys: 50
-            fuel: 35
           empireApproval:
             empire_1: 8
             empire_2: 8
             empire_3: 8
+            empire_clockwork: 6
+            empire_hive: 6
       - text: "Leave for later (gain cohesion)"
         effects:
           coalitionCohesion: 3
+

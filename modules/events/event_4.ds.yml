@@ -18,7 +18,7 @@ declares:
   event_data:
     id: "event_4"
     name: "Scourge Advance"
-    description: "Scourge forces are advancing on a key position."
+    description: "Scourge forces are advancing on a Nexus Dominion relay station."
     choices:
       - text: "Stand and fight (battle risk, potential victory)"
         effects:
@@ -32,5 +32,5 @@ declares:
         effects:
           stockpiles:
             supplies: -150
-            fuel: -50
           scourgeCohesion: -8
+

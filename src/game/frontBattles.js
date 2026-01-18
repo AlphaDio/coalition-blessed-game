@@ -60,6 +60,56 @@ function calculateMoraleRegen(army) {
 }
 
 /**
+ * Apply morale regen + recovery + reinforcement for a battle tick
+ */
+function applyBattleSustainment(army, isMoraleBroken) {
+  if (!isMoraleBroken) {
+    const regen = calculateMoraleRegen(army);
+    army.mo.current = clamp(army.mo.current + regen, 0, army.mo.max);
+  }
+
+  if (army.mp.current <= 0) {
+    return;
+  }
+
+  applyRecovery(army, true);
+  applyReinforcement(army, true);
+}
+
+function logBattleRound(front, leftArmy, rightArmy, logger) {
+  // Compact INFO-level logging for battle rounds
+  const leftMPPct = Math.floor((leftArmy.mp.current / leftArmy.mp.max) * 100);
+  const rightMPPct = Math.floor((rightArmy.mp.current / rightArmy.mp.max) * 100);
+  const leftMOPct = Math.floor((leftArmy.mo.current / leftArmy.mo.max) * 100);
+  const rightMOPct = Math.floor((rightArmy.mo.current / rightArmy.mo.max) * 100);
+
+  // Only log at INFO if there's a significant change or morale breaks
+  const leftBroken = front.moraleBroken.left;
+  const rightBroken = front.moraleBroken.right;
+
+  if (leftBroken || rightBroken) {
+    const brokenSide = leftBroken ? leftArmy.name : rightArmy.name;
+    logger.info(`Battle ${front.id}: ${brokenSide} morale broken`);
+  }
+
+  // Detailed DEBUG logging
+  const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
+  const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
+  logger.debug(`Battle ${front.id} round`, {
+    width: front.battlefieldSize,
+    leftMP: `${Math.floor(leftArmy.mp.current)}/${Math.floor(leftArmy.mp.max)} (${leftMPPct}%)`,
+    rightMP: `${Math.floor(rightArmy.mp.current)}/${Math.floor(rightArmy.mp.max)} (${rightMPPct}%)`,
+    leftMO: `${Math.floor(leftArmy.mo.current)}/${Math.floor(leftArmy.mo.max)} (${leftMOPct}%)`,
+    rightMO: `${Math.floor(rightArmy.mo.current)}/${Math.floor(rightArmy.mo.max)} (${rightMOPct}%)`,
+    leftBroken: front.moraleBroken.left,
+    rightBroken: front.moraleBroken.right,
+    leftEngaged: leftEngaged.toFixed(0),
+    rightEngaged: rightEngaged.toFixed(0)
+  });
+}
+
+
+/**
  * Apply simple combat modifiers based on army stats
  * @param {number} baseDamage - Base damage value
  * @param {Object} army - Attacking army
@@ -130,69 +180,12 @@ export function simulateBattleTick(front, worldState) {
     return log;
   }
   
-  // Apply morale regen (only if not broken)
-  if (!front.moraleBroken.left) {
-    const regen = calculateMoraleRegen(leftArmy);
-    leftArmy.mo.current = clamp(leftArmy.mo.current + regen, 0, leftArmy.mo.max);
-  }
+  applyBattleSustainment(leftArmy, front.moraleBroken.left);
+  applyBattleSustainment(rightArmy, front.moraleBroken.right);
+
   
-  if (!front.moraleBroken.right) {
-    const regen = calculateMoraleRegen(rightArmy);
-    rightArmy.mo.current = clamp(rightArmy.mo.current + regen, 0, rightArmy.mo.max);
-  }
-  
-  // Apply recovery (fast - from recoveryPool to mp.current)
-  // NOTE: Recovery is significantly reduced during battles (can't fully recover while fighting)
-  // Only recover if army is not shattered
-  if (leftArmy.mp.current > 0) {
-    applyRecovery(leftArmy, true); // Pass inBattle flag
-  }
-  if (rightArmy.mp.current > 0) {
-    applyRecovery(rightArmy, true);
-  }
-  
-  // Apply reinforcement (slower - new MP)
-  // NOTE: Reinforcement is reduced during battles (10% of normal rate)
-  // Only reinforce if army is not shattered
-  if (leftArmy.mp.current > 0) {
-    applyReinforcement(leftArmy, true); // Pass flag to reduce during battle
-  }
-  if (rightArmy.mp.current > 0) {
-    applyReinforcement(rightArmy, true);
-  }
-  
-  // Battle continues
-  {
-    // Compact INFO-level logging for battle rounds
-    const leftMPPct = Math.floor((leftArmy.mp.current / leftArmy.mp.max) * 100);
-    const rightMPPct = Math.floor((rightArmy.mp.current / rightArmy.mp.max) * 100);
-    const leftMOPct = Math.floor((leftArmy.mo.current / leftArmy.mo.max) * 100);
-    const rightMOPct = Math.floor((rightArmy.mo.current / rightArmy.mo.max) * 100);
-    
-    // Only log at INFO if there's a significant change or morale breaks
-    const leftBroken = front.moraleBroken.left;
-    const rightBroken = front.moraleBroken.right;
-    
-    if (leftBroken || rightBroken) {
-      const brokenSide = leftBroken ? leftArmy.name : rightArmy.name;
-      logger.info(`Battle ${front.id}: ${brokenSide} morale broken`);
-    }
-    
-    // Detailed DEBUG logging
-    const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
-    const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
-    logger.debug(`Battle ${front.id} round`, {
-      width: front.battlefieldSize,
-      leftMP: `${Math.floor(leftArmy.mp.current)}/${Math.floor(leftArmy.mp.max)} (${leftMPPct}%)`,
-      rightMP: `${Math.floor(rightArmy.mp.current)}/${Math.floor(rightArmy.mp.max)} (${rightMPPct}%)`,
-      leftMO: `${Math.floor(leftArmy.mo.current)}/${Math.floor(leftArmy.mo.max)} (${leftMOPct}%)`,
-      rightMO: `${Math.floor(rightArmy.mo.current)}/${Math.floor(rightArmy.mo.max)} (${rightMOPct}%)`,
-      leftBroken: front.moraleBroken.left,
-      rightBroken: front.moraleBroken.right,
-      leftEngaged: leftEngaged.toFixed(0),
-      rightEngaged: rightEngaged.toFixed(0)
-    });
-  }
+  logBattleRound(front, leftArmy, rightArmy, logger);
+
   
   return log;
 }

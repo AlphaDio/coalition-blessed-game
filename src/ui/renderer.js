@@ -16,17 +16,46 @@ export function createUI() {
     title: 'Coalition: The Blessed Game',
     fullUnicode: true
   });
-  
+
   const grid = new contrib.grid({
     rows: 12,
     cols: 12,
     screen: screen
   });
-  
+
+  const activeFrontsBox = createActiveFrontsBox(grid);
+  const activeLawsBox = createActiveLawsBox(grid);
+  const lawsBox = createLawsBox(grid);
+  const eventBox = createEventBox(grid);
+  const logBox = createLogBox(grid);
+  const statsBox = createStatsBox(grid);
+  const combinedInfoBox = createCombinedInfoBox(grid);
+  const { inputBox, commandHistoryBox } = createCommandInputs(screen);
+  const logsWindow = createLogsWindow(screen);
+
+  disableWidgetInput([lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox]);
+  screen.input = false;
+
+  return {
+    screen,
+    lawsBox,
+    eventBox,
+    activeFrontsBox,
+    activeLawsBox,
+    logBox,
+    statsBox,
+    combinedInfoBox,
+    logsWindow,
+    inputBox,
+    commandHistoryBox
+  };
+}
+
+function createActiveFrontsBox(grid) {
   // TOP PRIORITY PANELS: Active Battles and Laws (rows 0-3)
   // Active Battles (top-left, rows 0-3, cols 0-4) - 1/3 of width
-  const activeFrontsBox = grid.set(0, 0, 3, 4, blessed.box, {
-    label: ' ⚔️  ACTIVE BATTLES ',
+  return grid.set(0, 0, 3, 4, blessed.box, {
+    label: ' ACTIVE BATTLES ',
     content: '',
     scrollable: true,
     alwaysScroll: true,
@@ -40,10 +69,12 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+}
+
+function createActiveLawsBox(grid) {
   // Active Laws (top-center, rows 0-3, cols 4-8) - 1/3 of width
-  const activeLawsBox = grid.set(0, 4, 3, 4, blessed.box, {
-    label: ' 📜 ACTIVE LAWS ',
+  return grid.set(0, 4, 3, 4, blessed.box, {
+    label: ' ACTIVE LAWS ',
     content: '',
     scrollable: true,
     alwaysScroll: true,
@@ -57,7 +88,9 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+}
+
+function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
   // Left column: Available Laws (row 3-10)
   const lawsBox = grid.set(3, 0, 7, 3, blessed.list, {
@@ -66,6 +99,7 @@ export function createUI() {
     vi: true,
     input: false, // Disable text input - list navigation only
     search: false, // Disable search mode
+    tags: true,
     style: {
       selected: { bg: 'blue', fg: 'white' },
       border: { fg: 'white' }
@@ -74,26 +108,34 @@ export function createUI() {
       type: 'line'
     }
   });
-  
-  // Ensure lawsBox never enters input or search mode
-  if (lawsBox) {
-    lawsBox.input = false;
-    lawsBox.search = false;
-    // Override any methods that might enable input/search
-    const originalOnKeyPress = lawsBox._onKeyPress;
-    if (originalOnKeyPress) {
-      lawsBox._onKeyPress = function(ch, key) {
-        // Prevent '/' from entering search mode
-        if (ch === '/' || key.name === 'slash') {
-          return;
-        }
-        return originalOnKeyPress.call(this, ch, key);
-      };
-    }
+
+  disableListSearch(lawsBox);
+  return lawsBox;
+}
+
+function disableListSearch(lawsBox) {
+  if (!lawsBox) {
+    return;
   }
-  
+
+  lawsBox.input = false;
+  lawsBox.search = false;
+  // Override any methods that might enable input/search
+  const originalOnKeyPress = lawsBox._onKeyPress;
+  if (originalOnKeyPress) {
+    lawsBox._onKeyPress = function(ch, key) {
+      // Prevent '/' from entering search mode
+      if (ch === '/' || key.name === 'slash') {
+        return;
+      }
+      return originalOnKeyPress.call(this, ch, key);
+    };
+  }
+}
+
+function createEventBox(grid) {
   // Center: Event box (row 3-5) and Log (row 5-12)
-  const eventBox = grid.set(3, 3, 2, 5, blessed.box, {
+  return grid.set(3, 3, 2, 5, blessed.box, {
     label: ' Event ',
     content: '',
     scrollable: true,
@@ -109,7 +151,9 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+}
+
+function createLogBox(grid) {
   // Use blessed.box instead of blessed.log for better tag support
   const logBox = grid.set(5, 3, 5, 5, blessed.box, {
     label: ' Log ',
@@ -127,11 +171,20 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+
+  attachLogHistory(logBox);
+  return logBox;
+}
+
+function attachLogHistory(logBox) {
+  if (!logBox) {
+    return;
+  }
+
   // Store log lines for the logBox
   logBox.logLines = [];
   logBox.maxLines = 100;
-  
+
   // Override log method to properly handle tags
   logBox.log = function(message) {
     this.logLines.push(message);
@@ -142,9 +195,11 @@ export function createUI() {
     this.setContent(this.logLines.join('\n'));
     this.setScrollPerc(100); // Auto-scroll to bottom
   };
-  
+}
+
+function createStatsBox(grid) {
   // Right: Stats (row 0-3) and Combined Info (row 3-12) - now 1/3 of width (4 cols), moved up
-  const statsBox = grid.set(0, 8, 3, 4, blessed.box, {
+  return grid.set(0, 8, 3, 4, blessed.box, {
     label: ' Stats ',
     content: '',
     tags: true,
@@ -157,10 +212,12 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+}
+
+function createCombinedInfoBox(grid) {
   // Combined panel for Market Economy, Armies, and Empires (rows 3-12, cols 8-12) - now 1/3 of width (4 cols), moved up
   const combinedInfoBox = grid.set(3, 8, 9, 4, blessed.box, {
-    label: ' 💰 Market Economy ',
+    label: ' Market Economy ',
     content: '',
     scrollable: true,
     alwaysScroll: true,
@@ -176,17 +233,20 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+
   // Track current view state (market, armies, empires)
   combinedInfoBox.currentView = 'market'; // 'market' | 'armies' | 'empires'
   combinedInfoBox.scrollOffset = 0;
-  
+  return combinedInfoBox;
+}
+
+function createCommandInputs(screen) {
   // Input box at the bottom (rows 10-11 out of 12 total rows)
   // Position: 10/12 = 83.33% from top
   const INPUT_BOX_TOP_PERCENT = '83.33%';
   const INPUT_BOX_WIDTH_PERCENT = '75%';
   const COMMAND_HISTORY_WIDTH_PERCENT = '25%';
-  
+
   const inputBox = blessed.textbox({
     top: INPUT_BOX_TOP_PERCENT,
     left: 0,
@@ -207,7 +267,7 @@ export function createUI() {
     inputOnFocus: true,
     tags: true
   });
-  
+
   // Command history display (rows 10-11, cols 9-12)
   const commandHistoryBox = blessed.box({
     top: INPUT_BOX_TOP_PERCENT,
@@ -224,14 +284,18 @@ export function createUI() {
       border: { fg: 'white' }
     }
   });
-  
+
   screen.append(inputBox);
   screen.append(commandHistoryBox);
-  
+
   // Store command history
   inputBox.commandHistory = [];
   inputBox.historyIndex = -1;
-  
+
+  return { inputBox, commandHistoryBox };
+}
+
+function createLogsWindow(screen) {
   // Logs window (full-screen overlay, hidden by default, shown when toggled with L)
   const logsWindow = blessed.box({
     top: 0,
@@ -244,7 +308,7 @@ export function createUI() {
     keys: true,
     vi: true,
     tags: true,
-    label: ' 📋 LOGS (Q/Esc: close, R: refresh, ↑↓: scroll) ',
+    label: ' LOGS (Q/Esc: close, R: refresh, Up/Down: scroll) ',
     hidden: true,
     style: {
       border: { fg: 'cyan' },
@@ -257,16 +321,14 @@ export function createUI() {
       type: 'line'
     }
   });
-  
+
   // Make logs window appear on top of everything
   screen.append(logsWindow);
   logsWindow.hide(); // Explicitly hide it
-  
-  // Ensure screen never enters input mode
-  screen.input = false;
-  
-  // Prevent any widget from enabling input mode when focused (except inputBox)
-  const widgets = [lawsBox, eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox];
+  return logsWindow;
+}
+
+function disableWidgetInput(widgets) {
   widgets.forEach(widget => {
     if (widget) {
       widget.input = false;
@@ -280,20 +342,6 @@ export function createUI() {
       }
     }
   });
-  
-  return {
-    screen,
-    lawsBox,
-    eventBox,
-    activeFrontsBox,
-    activeLawsBox,
-    logBox,
-    statsBox,
-    combinedInfoBox,
-    logsWindow,
-    inputBox,
-    commandHistoryBox
-  };
 }
 
 export function renderLaws(ui, state) {
@@ -333,59 +381,13 @@ export function renderEvent(ui, state) {
     ui.eventBox.style.border.fg = 'white';
     return;
   }
-  
-  const event = state.activeEvent;
-  const eventTitle = event.title || event.name || event.id || 'Unknown Event';
-  let content = `{bold}${eventTitle}{/bold}\n\n${event.text || event.description || ''}\n\n`;
-  
-  if (event.choices && event.choices.length > 0) {
-    content += `{bold}Choices:{/bold}\n`;
-    event.choices.forEach((choice, idx) => {
-      content += `  ${idx + 1}. ${choice.text}\n`;
-    });
-    content += `\nPress 1/2/3 to choose.`;
-  }
-  
-  content += `\n{yellow-fg}Game auto-paused{/yellow-fg}`;
-  
-  ui.eventBox.setContent(content);
+
+  ui.eventBox.setContent(formatActiveEvent(state.activeEvent));
   ui.eventBox.style.border.fg = 'yellow';
 }
 
 export function renderStats(ui, state) {
-  const tier = getCohesionTier(state.coalitionCohesion);
-  
-  let content = `{bold}Coalition Cohesion:{/bold} ${formatCohesion(state.coalitionCohesion, tier)}\n`;
-  const scourgeCohesion = state.scourgeCohesion ?? 80; // Safety check
-  content += `{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}\n`;
-  content += `{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}\n\n`;
-  content += `{bold}Stockpiles:{/bold}\n`;
-  content += `  ${formatResource('Supplies', state.stockpiles.supplies)}\n\n`;
-  
-  // Player Influence
-  if (state.playerInfluence !== undefined) {
-    content += `{bold}Player Influence:{/bold} ${state.playerInfluence}\n`;
-    content += `  (${state.influenceProgress || 0}/100 ticks)\n\n`;
-  }
-  
-  // Active Law Processes
-  if (state.lawProcesses && state.lawProcesses.length > 0) {
-    const activeLaws = state.lawProcesses.filter(lawProcess => 
-      lawProcess.phase !== 'ENACTED' && lawProcess.phase !== 'BURIED'
-    );
-    if (activeLaws.length > 0) {
-      content += `{bold}Active Laws:{/bold} ${activeLaws.length}\n`;
-    }
-  }
-  
-  content += `{bold}Turn:{/bold} ${state.turn}\n`;
-  
-  // Real-time status
-  const pauseStatus = state.paused ? '{red-fg}PAUSED{/red-fg}' : '{green-fg}RUNNING{/green-fg}';
-  content += `{bold}Status:{/bold} ${pauseStatus}\n`;
-  content += `{bold}Speed:{/bold} ${state.gameSpeed}x`;
-  
-  ui.statsBox.setContent(content);
+  ui.statsBox.setContent(formatStats(state));
   ui.statsBox.style.border.fg = 'white';
 }
 
@@ -441,80 +443,80 @@ export function renderTables(ui, state) {
 
 export function renderActiveFronts(ui, state) {
   const activeBattles = (state.battleFronts || []).filter(f => f.state === 'ACTIVE');
-  
+
   if (activeBattles.length === 0) {
     ui.activeFrontsBox.setContent('{center}{yellow-fg}No active battles{/yellow-fg}{/center}');
     ui.activeFrontsBox.style.border.fg = 'white';
     return;
   }
-  
-  let content = '';
-  
-  activeBattles.forEach((front, idx) => {
-    const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
-    const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
-    
-    if (!leftArmy || !rightArmy) {
-      return;
-    }
-    
-    if (idx > 0) content += '\n';
-    
-    // Morale badges
-    const leftBadge = front.moraleBroken.left ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
-    const rightBadge = front.moraleBroken.right ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
-    
-    // MP values and percentages
-    const leftMP = Math.floor(leftArmy.mp.current);
-    const leftMaxMP = leftArmy.mp.max;
-    const rightMP = Math.floor(rightArmy.mp.current);
-    const rightMaxMP = rightArmy.mp.max;
-    
-    const leftPct = ((leftMP / leftMaxMP) * 100).toFixed(0);
-    const rightPct = ((rightMP / rightMaxMP) * 100).toFixed(0);
-    
-    // Title line - add battle type indicator
-    let battleType = '';
-    if (front.isScourgeBattle) {
-      battleType = '{red-fg}[SCOURGE BATTLE]{/red-fg} ';
-    } else if (front.isInsurrectionBattle) {
-      battleType = '{yellow-fg}[INSURRECTION]{/yellow-fg} ';
-    }
-    content += `${battleType}{bold}{cyan-fg}${front.id}{/cyan-fg}{/bold}\n`;
-    
-    // Army names and morale status
-    content += `{bold}${leftArmy.name}{/bold} [${leftBadge}]  vs  {bold}${rightArmy.name}{/bold} [${rightBadge}]\n`;
-    
-    // MP Bar visualization
-    const totalMP = leftArmy.mp.current + rightArmy.mp.current;
-    const barWidth = 40;
-    const leftBarWidth = totalMP > 0 ? Math.floor((leftArmy.mp.current / totalMP) * barWidth) : barWidth / 2;
-    const rightBarWidth = barWidth - leftBarWidth;
-    
-    const leftBar = '█'.repeat(Math.max(0, leftBarWidth));
-    const rightBar = '█'.repeat(Math.max(0, rightBarWidth));
-    
-    content += `{cyan-fg}${leftBar}{/cyan-fg}{yellow-fg}${rightBar}{/yellow-fg}\n`;
-    
-    // MP stats
-    content += `MP: ${leftMP}/${leftMaxMP} (${leftPct}%)`;
-    content += '  '.repeat(Math.max(1, Math.floor(barWidth / 10) - 5));
-    content += `${rightMP}/${rightMaxMP} (${rightPct}%)\n`;
-    
-    // Morale stats
-    const leftMO = Math.floor(leftArmy.mo.current);
-    const rightMO = Math.floor(rightArmy.mo.current);
-    content += `Morale: ${leftMO}/${leftArmy.mo.max}`;
-    content += '  '.repeat(Math.max(1, Math.floor(barWidth / 10)));
-    content += `${rightMO}/${rightArmy.mo.max}\n`;
-    
-    // Battle metadata
-    const duration = state.turn - front.startedAtTick;
-    content += `{gray-fg}Field Size: ${front.battlefieldSize} | Duration: ${duration} turns{/gray-fg}`;
-  });
-  
+
+  const content = activeBattles
+    .map(front => formatActiveBattle(front, state))
+    .filter(Boolean)
+    .join('\n\n');
+
   ui.activeFrontsBox.setContent(content);
   ui.activeFrontsBox.style.border.fg = 'cyan';
+}
+
+function formatActiveBattle(front, state) {
+  const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
+  const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
+
+  if (!leftArmy || !rightArmy) {
+    return '';
+  }
+
+  const leftBadge = front.moraleBroken.left ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
+  const rightBadge = front.moraleBroken.right ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
+
+  const leftMP = Math.floor(leftArmy.mp.current);
+  const leftMaxMP = leftArmy.mp.max;
+  const rightMP = Math.floor(rightArmy.mp.current);
+  const rightMaxMP = rightArmy.mp.max;
+
+  const leftPct = ((leftMP / leftMaxMP) * 100).toFixed(0);
+  const rightPct = ((rightMP / rightMaxMP) * 100).toFixed(0);
+
+  const battleType = getBattleTypeTag(front);
+  const barWidth = 40;
+  const mpBar = buildBattleMpBar(leftArmy.mp.current, rightArmy.mp.current, barWidth);
+  const mpSpacing = '  '.repeat(Math.max(1, Math.floor(barWidth / 10) - 5));
+  const moraleSpacing = '  '.repeat(Math.max(1, Math.floor(barWidth / 10)));
+
+  const leftMO = Math.floor(leftArmy.mo.current);
+  const rightMO = Math.floor(rightArmy.mo.current);
+  const duration = state.turn - front.startedAtTick;
+
+  return [
+    `${battleType}{bold}{cyan-fg}${front.id}{/cyan-fg}{/bold}`,
+    `{bold}${leftArmy.name}{/bold} [${leftBadge}]  vs  {bold}${rightArmy.name}{/bold} [${rightBadge}]`,
+    mpBar,
+    `MP: ${leftMP}/${leftMaxMP} (${leftPct}%)${mpSpacing}${rightMP}/${rightMaxMP} (${rightPct}%)`,
+    `Morale: ${leftMO}/${leftArmy.mo.max}${moraleSpacing}${rightMO}/${rightArmy.mo.max}`,
+    `{gray-fg}Field Size: ${front.battlefieldSize} | Duration: ${duration} turns{/gray-fg}`
+  ].join('\n');
+}
+
+function getBattleTypeTag(front) {
+  if (front.isScourgeBattle) {
+    return '{red-fg}[SCOURGE BATTLE]{/red-fg} ';
+  }
+  if (front.isInsurrectionBattle) {
+    return '{yellow-fg}[INSURRECTION]{/yellow-fg} ';
+  }
+  return '';
+}
+
+function buildBattleMpBar(leftMp, rightMp, barWidth) {
+  const totalMP = leftMp + rightMp;
+  const leftBarWidth = totalMP > 0 ? Math.floor((leftMp / totalMP) * barWidth) : Math.floor(barWidth / 2);
+  const rightBarWidth = barWidth - leftBarWidth;
+
+  const leftBar = '█'.repeat(Math.max(0, leftBarWidth));
+  const rightBar = '█'.repeat(Math.max(0, rightBarWidth));
+
+  return `{cyan-fg}${leftBar}{/cyan-fg}{yellow-fg}${rightBar}{/yellow-fg}`;
 }
 
 export function renderActiveLaws(ui, state) {
@@ -523,68 +525,76 @@ export function renderActiveLaws(ui, state) {
     ui.activeLawsBox.style.border.fg = 'white';
     return;
   }
-  
+
   const activeLaws = state.lawProcesses.filter(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED');
-  
+
   if (activeLaws.length === 0) {
     ui.activeLawsBox.setContent('{center}{yellow-fg}No active laws{/yellow-fg}{/center}');
     ui.activeLawsBox.style.border.fg = 'white';
     return;
   }
-  
-  let content = '';
-  
-  activeLaws.forEach((lp, idx) => {
-    const lawDef = state.lawDefinitions?.find(ld => ld.id === lp.lawId);
-    const lawName = lawDef ? lawDef.name : lp.lawId;
-    
-    if (idx > 0) content += '\n';
-    
-    // Law name and phase
-    content += `{bold}{magenta-fg}${lawName}{/magenta-fg}{/bold}\n`;
-    
-    // Phase with color coding
-    let phaseColor = 'yellow';
-    if (lp.phase === 'DEBATE') phaseColor = 'cyan';
-    else if (lp.phase === 'FALLOUT') phaseColor = 'yellow';
-    else if (lp.phase === 'VOTING') phaseColor = 'green';
-    
-    const phaseProgress = (lp.phaseProgress * 100).toFixed(0);
-    content += `Phase: {${phaseColor}-fg}${lp.phase}{/${phaseColor}-fg} (${phaseProgress}%)\n`;
-    
-    // Progress bar for phase
-    const barWidth = 30;
-    const filledWidth = Math.floor((lp.phaseProgress || 0) * barWidth);
-    const emptyWidth = barWidth - filledWidth;
-    const progressBar = '█'.repeat(filledWidth) + '░'.repeat(emptyWidth);
-    content += `{${phaseColor}-fg}${progressBar}{/${phaseColor}-fg}\n`;
-    
-    // Rejects counter
-    const rejectColor = lp.rejects >= 3 ? 'red' : lp.rejects >= 2 ? 'yellow' : 'white';
-    content += `Rejects: {${rejectColor}-fg}${lp.rejects}/4{/${rejectColor}-fg}`;
-    
-    // Only show additional info if there's space
-    if (activeLaws.length <= 2) {
-      content += '\n';
-      
-      // Meter bars (with null checks)
-      const momentum = (lp.meters && lp.meters.momentum) || 0;
-      const rejectPressure = (lp.meters && lp.meters.reject_pressure) || 0;
-      
-      // Momentum bar
-      const momWidth = Math.floor(momentum * 20);
-      const momBar = '█'.repeat(momWidth) + '░'.repeat(20 - momWidth);
-      content += `Momentum:       {green-fg}${momBar}{/green-fg} ${(momentum * 100).toFixed(0)}%\n`;
-      
-      // Reject pressure bar
-      const rejWidth = Math.floor(rejectPressure * 20);
-      const rejBar = '█'.repeat(rejWidth) + '░'.repeat(20 - rejWidth);
-      content += `Reject Pressure: {red-fg}${rejBar}{/red-fg} ${(rejectPressure * 100).toFixed(0)}%`;
-    }
-  });
-  
+
+  const content = activeLaws
+    .map(lp => formatActiveLaw(lp, state, activeLaws.length))
+    .join('\n\n');
+
   ui.activeLawsBox.setContent(content);
   ui.activeLawsBox.style.border.fg = 'magenta';
+}
+
+function formatActiveLaw(lawProcess, state, activeLawCount) {
+  const lawDef = state.lawDefinitions?.find(ld => ld.id === lawProcess.lawId);
+  const lawName = lawDef ? lawDef.name : lawProcess.lawId;
+
+  const phaseColor = getPhaseColor(lawProcess.phase);
+  const phaseProgress = (lawProcess.phaseProgress * 100).toFixed(0);
+  const progressBar = buildProgressBar(lawProcess.phaseProgress || 0, 30);
+  const rejectColor = getRejectColor(lawProcess.rejects);
+
+  const lines = [
+    `{bold}{magenta-fg}${lawName}{/magenta-fg}{/bold}`,
+    `Phase: {${phaseColor}-fg}${lawProcess.phase}{/${phaseColor}-fg} (${phaseProgress}%)`,
+    `{${phaseColor}-fg}${progressBar}{/${phaseColor}-fg}`,
+    `Rejects: {${rejectColor}-fg}${lawProcess.rejects}/4{/${rejectColor}-fg}`
+  ];
+
+  if (activeLawCount <= 2) {
+    lines.push(formatLawMeters(lawProcess));
+  }
+
+  return lines.join('\n');
+}
+
+function getPhaseColor(phase) {
+  if (phase === 'DEBATE') return 'cyan';
+  if (phase === 'FALLOUT') return 'yellow';
+  if (phase === 'VOTING') return 'green';
+  return 'yellow';
+}
+
+function getRejectColor(rejects) {
+  if (rejects >= 3) return 'red';
+  if (rejects >= 2) return 'yellow';
+  return 'white';
+}
+
+function buildProgressBar(value, width) {
+  const filledWidth = Math.floor(value * width);
+  const emptyWidth = Math.max(0, width - filledWidth);
+  return '█'.repeat(filledWidth) + '░'.repeat(emptyWidth);
+}
+
+function formatLawMeters(lawProcess) {
+  const momentum = (lawProcess.meters && lawProcess.meters.momentum) || 0;
+  const rejectPressure = (lawProcess.meters && lawProcess.meters.reject_pressure) || 0;
+
+  const momBar = buildProgressBar(momentum, 20);
+  const rejBar = buildProgressBar(rejectPressure, 20);
+
+  return [
+    `Momentum:       {green-fg}${momBar}{/green-fg} ${(momentum * 100).toFixed(0)}%`,
+    `Reject Pressure: {red-fg}${rejBar}{/red-fg} ${(rejectPressure * 100).toFixed(0)}%`
+  ].join('\n');
 }
 
 export function renderLog(ui, state) {
@@ -638,181 +648,64 @@ function renderMarketView(state) {
   if (!state.market || Object.keys(state.market).length === 0) {
     return '{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}';
   }
-  
-  // Load resources to get commodity names
-  let commodities = [];
-  try {
-    const resourcesPath = path.join(__dirname, '..', '..', 'docs', 'input', 'resources.yaml');
-    const content = fs.readFileSync(resourcesPath, 'utf8');
-    const doc = yaml.load(content);
-    commodities = doc.resources?.commodities || [];
-  } catch (error) {
-    // Fallback: use market keys
-    commodities = Object.keys(state.market).map(key => ({ key, name: key }));
-  }
-  
-  // Create a map for quick lookup
-  const commodityMap = new Map(commodities.map(c => [c.key, c]));
-  
-  let content = '';
-  
-  // Sort commodities by tier (t1, t2, t3, t4) then by name
-  const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
-  const sortedCommodities = Object.entries(state.market)
-    .map(([key, marketState]) => {
-      const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
-      return { key, commodity, marketState };
-    })
-    .sort((a, b) => {
-      const tierDiff = (tierOrder[a.commodity.tier] || 5) - (tierOrder[b.commodity.tier] || 5);
-      if (tierDiff !== 0) return tierDiff;
-      return a.commodity.name.localeCompare(b.commodity.name);
-    });
-  
-  // Header
-  content += '{bold}{green-fg}Commodity{/green-fg}  {cyan-fg}Price{/cyan-fg}  {yellow-fg}Buy{/yellow-fg}  {red-fg}Sell{/red-fg}  {magenta-fg}Vol{/magenta-fg}{/bold}\n';
-  content += '─'.repeat(45) + '\n';
-  
-  // Display each commodity
-  sortedCommodities.forEach(({ key, commodity, marketState }) => {
-    const name = commodity.name || key;
-    const price = marketState.price || 0;
-    const demand = marketState.demand_qty || 0;
-    const supply = marketState.supply_qty || 0;
-    const traded = marketState.traded_qty || 0;
-    
-    // Truncate name if too long
-    const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
-    const namePad = ' '.repeat(Math.max(0, 12 - displayName.length));
-    
-    // Format numbers
-    const priceStr = price.toFixed(2).padStart(6);
-    const demandStr = formatVolume(demand).padStart(6);
-    const supplyStr = formatVolume(supply).padStart(6);
-    const tradedStr = formatVolume(traded).padStart(6);
-    
-    // Color coding for price changes
-    let priceColor = 'cyan';
-    if (marketState.last_price) {
-      const change = price - marketState.last_price;
-      const changePct = marketState.last_price > 0 ? (change / marketState.last_price) * 100 : 0;
-      if (changePct > 5) priceColor = 'red'; // Significant increase
-      else if (changePct < -5) priceColor = 'green'; // Significant decrease
-    }
-    
-    // Color coding for supply/demand imbalance
-    let demandColor = 'yellow';
-    let supplyColor = 'red';
-    if (supply > 0 && demand > 0) {
-      const ratio = demand / supply;
-      if (ratio > 1.5) {
-        demandColor = 'red'; // High demand
-        supplyColor = 'yellow';
-      } else if (ratio < 0.67) {
-        demandColor = 'yellow';
-        supplyColor = 'green'; // High supply
-      }
-    }
-    
-    content += `${displayName}${namePad} {${priceColor}-fg}${priceStr}{/${priceColor}-fg}  `;
-    content += `{${demandColor}-fg}${demandStr}{/${demandColor}-fg}  `;
-    content += `{${supplyColor}-fg}${supplyStr}{/${supplyColor}-fg}  `;
-    content += `{magenta-fg}${tradedStr}{/magenta-fg}\n`;
+
+  const commodityMap = loadCommodityMap(state.market);
+  const sortedCommodities = sortMarketCommodities(state.market, commodityMap);
+
+  const lines = [
+    '{bold}{green-fg}Commodity{/green-fg}  {cyan-fg}Price{/cyan-fg}  {yellow-fg}Buy{/yellow-fg}  {red-fg}Sell{/red-fg}  {magenta-fg}Vol{/magenta-fg}{/bold}',
+    '─'.repeat(45)
+  ];
+
+  sortedCommodities.forEach(entry => {
+    lines.push(formatMarketRow(entry));
   });
-  
-  // Show coalition economy info if available
-  if (state.coalitionEconomy) {
-    content += '\n{bold}Coalition:{/bold}\n';
-    content += `Budget: {green-fg}${formatNumber(state.coalitionEconomy.budget_credits || 0, 0)}{/green-fg} credits\n`;
-    
-    const stockpileCount = Object.keys(state.coalitionEconomy.stockpiles || {}).length;
-    if (stockpileCount > 0) {
-      content += `Stockpiles: {cyan-fg}${stockpileCount}{/cyan-fg} commodities\n`;
-    }
-  }
-  
-  return content;
+
+  appendCoalitionEconomyInfo(lines, state.coalitionEconomy);
+  return lines.join('\n');
 }
 
 /**
  * Render armies view
  */
 function renderArmiesView(state) {
-  let content = '{bold}Armies:{/bold}\n';
-  
+  const lines = ['{bold}Armies:{/bold}'];
+
   if (!state.armies || state.armies.length === 0) {
-    content += '  {yellow-fg}No armies{/yellow-fg}\n';
-    return content;
+    lines.push('  {yellow-fg}No armies{/yellow-fg}');
+    return lines.join('\n');
   }
-  
-  // Build empire lookup map for O(1) access
+
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
-  
-  // Filter out temporary armies
-  const regularArmies = state.armies.filter(a => 
-    !a.id.startsWith('_scourge') && 
-    !a.id.startsWith('_coalition_combined') &&
-    !a.id.startsWith('_insurrection')
-  );
-  
+  const regularArmies = filterRegularArmies(state.armies);
+
   regularArmies.forEach(army => {
-    const empire = empireMap.get(army.empireId);
-    const empireName = empire ? empire.name : 'Unknown';
-    content += `\n{bold}${army.name}{/bold} (${empireName})\n`;
-    content += `  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}\n`;
-    content += `  Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}\n`;
-    if (army.mp && army.mo) {
-      const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';
-      const moPct = army.mo.max > 0 ? ((army.mo.current / army.mo.max) * 100).toFixed(0) : '0';
-      content += `  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%)\n`;
-      content += `  Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)\n`;
-    }
+    const empireName = empireMap.get(army.empireId)?.name || 'Unknown';
+    lines.push('', formatArmyBlock(army, empireName));
   });
-  
-  if (state.insurrections && state.insurrections.length > 0) {
-    content += `\n{bold}Insurrections:{/bold}\n`;
-    state.insurrections.forEach(ins => {
-      content += `  Active: ${ins.armies.length} armies\n`;
-    });
-  }
-  
-  return content;
+
+  appendInsurrectionInfo(lines, state.insurrections);
+  return lines.join('\n');
 }
 
 /**
  * Render empires view
  */
 function renderEmpiresView(state) {
-  let content = '{bold}Empires:{/bold}\n';
-  
+  const lines = ['{bold}Empires:{/bold}'];
+
   if (!state.empires || state.empires.length === 0) {
-    content += '  {yellow-fg}No empires{/yellow-fg}\n';
-    return content;
+    lines.push('  {yellow-fg}No empires{/yellow-fg}');
+    return lines.join('\n');
   }
-  
+
+  const regularArmies = filterRegularArmies(state.armies || []);
+
   state.empires.forEach(empire => {
-    content += `\n{bold}${empire.name}{/bold}\n`;
-    content += `  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}\n`;
-    content += `  Aid Capacity: ${empire.aidCapacity}\n`;
-    if (empire.stats) {
-      content += `  Population: ${formatNumber(empire.stats.population || 0)}\n`;
-      content += `  Influence: ${formatNumber(empire.stats.influence || 0)}\n`;
-    }
-    if (empire.budget_credits !== undefined) {
-      content += `  Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits\n`;
-    }
-    
-    // Count armies belonging to this empire
-    const empireArmies = state.armies.filter(a => 
-      a.empireId === empire.id && 
-      !a.id.startsWith('_scourge') && 
-      !a.id.startsWith('_coalition_combined') &&
-      !a.id.startsWith('_insurrection')
-    );
-    content += `  Armies: ${empireArmies.length}\n`;
+    lines.push('', formatEmpireBlock(empire, regularArmies));
   });
-  
-  return content;
+
+  return lines.join('\n');
 }
 
 /**
@@ -829,24 +722,11 @@ export function renderCombinedInfo(ui, state) {
   
   // Apply scroll offset
   const scrollOffset = box.scrollOffset || 0;
-  
-  switch (view) {
-    case 'market':
-      label = ' 💰 Market Economy (m/a/e: switch, [/]: cycle) ';
-      borderColor = 'green';
-      content = renderMarketView(state);
-      break;
-    case 'armies':
-      label = ' ⚔️  Armies (m/a/e: switch, [/]: cycle) ';
-      borderColor = 'cyan';
-      content = renderArmiesView(state);
-      break;
-    case 'empires':
-      label = ' 👑 Empires (m/a/e: switch, [/]: cycle) ';
-      borderColor = 'yellow';
-      content = renderEmpiresView(state);
-      break;
-  }
+  const viewConfig = COMBINED_INFO_VIEWS[view] || COMBINED_INFO_VIEWS.market;
+
+  label = viewConfig.label;
+  borderColor = viewConfig.borderColor;
+  content = viewConfig.render(state);
   
   // Apply scrolling by splitting content into lines and showing subset
   const lines = content.split('\n');
@@ -871,6 +751,230 @@ export function renderCombinedInfo(ui, state) {
   box.setLabel(label);
   box.setContent(finalContent);
   box.style.border.fg = borderColor;
+}
+
+const COMBINED_INFO_VIEWS = {
+  market: {
+    label: ' Market Economy (m/a/e: switch, [/]: cycle) ',
+    borderColor: 'green',
+    render: renderMarketView
+  },
+  armies: {
+    label: ' Armies (m/a/e: switch, [/]: cycle) ',
+    borderColor: 'cyan',
+    render: renderArmiesView
+  },
+  empires: {
+    label: ' Empires (m/a/e: switch, [/]: cycle) ',
+    borderColor: 'yellow',
+    render: renderEmpiresView
+  }
+};
+
+function formatStats(state) {
+  const tier = getCohesionTier(state.coalitionCohesion);
+
+  const lines = [
+    `{bold}Coalition Cohesion:{/bold} ${formatCohesion(state.coalitionCohesion, tier)}`
+  ];
+
+  const scourgeCohesion = state.scourgeCohesion ?? 80;
+  lines.push(`{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}`);
+  lines.push(`{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}`);
+  lines.push('', '{bold}Stockpiles:{/bold}');
+  lines.push(`  ${formatResource('Supplies', state.stockpiles.supplies)}`, '');
+
+  if (state.playerInfluence !== undefined) {
+    lines.push(`{bold}Player Influence:{/bold} ${state.playerInfluence}`);
+    lines.push(`  (${state.influenceProgress || 0}/100 ticks)`, '');
+  }
+
+  const activeLawCount = getActiveLawCount(state);
+  if (activeLawCount > 0) {
+    lines.push(`{bold}Active Laws:{/bold} ${activeLawCount}`);
+  }
+
+  lines.push(`{bold}Turn:{/bold} ${state.turn}`);
+  const pauseStatus = state.paused ? '{red-fg}PAUSED{/red-fg}' : '{green-fg}RUNNING{/green-fg}';
+  lines.push(`{bold}Status:{/bold} ${pauseStatus}`);
+  lines.push(`{bold}Speed:{/bold} ${state.gameSpeed}x`);
+
+  return lines.join('\n');
+}
+
+function loadCommodityMap(market) {
+  // Load resources to get commodity names
+  let commodities = [];
+  try {
+    const resourcesPath = path.join(__dirname, '..', '..', 'docs', 'input', 'resources.yaml');
+    const content = fs.readFileSync(resourcesPath, 'utf8');
+    const doc = yaml.load(content);
+    commodities = doc.resources?.commodities || [];
+  } catch (error) {
+    // Fallback: use market keys
+    commodities = Object.keys(market).map(key => ({ key, name: key }));
+  }
+
+  return new Map(commodities.map(c => [c.key, c]));
+}
+
+function sortMarketCommodities(market, commodityMap) {
+  const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
+  return Object.entries(market)
+    .map(([key, marketState]) => {
+      const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
+      return { key, commodity, marketState };
+    })
+    .sort((a, b) => {
+      const tierDiff = (tierOrder[a.commodity.tier] || 5) - (tierOrder[b.commodity.tier] || 5);
+      if (tierDiff !== 0) return tierDiff;
+      return a.commodity.name.localeCompare(b.commodity.name);
+    });
+}
+
+function formatMarketRow({ key, commodity, marketState }) {
+  const name = commodity.name || key;
+  const price = marketState.price || 0;
+  const demand = marketState.demand_qty || 0;
+  const supply = marketState.supply_qty || 0;
+  const traded = marketState.traded_qty || 0;
+
+  const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
+  const namePad = ' '.repeat(Math.max(0, 12 - displayName.length));
+
+  const priceStr = price.toFixed(2).padStart(6);
+  const demandStr = formatVolume(demand).padStart(6);
+  const supplyStr = formatVolume(supply).padStart(6);
+  const tradedStr = formatVolume(traded).padStart(6);
+
+  const priceColor = getPriceColor(marketState, price);
+  const { demandColor, supplyColor } = getSupplyDemandColors(demand, supply);
+
+  return `${displayName}${namePad} {${priceColor}-fg}${priceStr}{/${priceColor}-fg}  ` +
+    `{${demandColor}-fg}${demandStr}{/${demandColor}-fg}  ` +
+    `{${supplyColor}-fg}${supplyStr}{/${supplyColor}-fg}  ` +
+    `{magenta-fg}${tradedStr}{/magenta-fg}`;
+}
+
+function getPriceColor(marketState, price) {
+  if (!marketState.last_price) {
+    return 'cyan';
+  }
+
+  const change = price - marketState.last_price;
+  const changePct = marketState.last_price > 0 ? (change / marketState.last_price) * 100 : 0;
+  if (changePct > 5) return 'red';
+  if (changePct < -5) return 'green';
+  return 'cyan';
+}
+
+function getSupplyDemandColors(demand, supply) {
+  let demandColor = 'yellow';
+  let supplyColor = 'red';
+  if (supply > 0 && demand > 0) {
+    const ratio = demand / supply;
+    if (ratio > 1.5) {
+      demandColor = 'red';
+      supplyColor = 'yellow';
+    } else if (ratio < 0.67) {
+      demandColor = 'yellow';
+      supplyColor = 'green';
+    }
+  }
+
+  return { demandColor, supplyColor };
+}
+
+function appendCoalitionEconomyInfo(lines, coalitionEconomy) {
+  if (!coalitionEconomy) {
+    return;
+  }
+
+  lines.push('', '{bold}Coalition:{/bold}');
+  lines.push(`Budget: {green-fg}${formatNumber(coalitionEconomy.budget_credits || 0, 0)}{/green-fg} credits`);
+
+  const stockpileCount = Object.keys(coalitionEconomy.stockpiles || {}).length;
+  if (stockpileCount > 0) {
+    lines.push(`Stockpiles: {cyan-fg}${stockpileCount}{/cyan-fg} commodities`);
+  }
+}
+
+function filterRegularArmies(armies) {
+  return armies.filter(army =>
+    !army.id.startsWith('_scourge') &&
+    !army.id.startsWith('_coalition_combined') &&
+    !army.id.startsWith('_insurrection')
+  );
+}
+
+function formatArmyBlock(army, empireName) {
+  const lines = [`{bold}${army.name}{/bold} (${empireName})`];
+  lines.push(`  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}`);
+  lines.push(`  Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}`);
+
+  if (army.mp && army.mo) {
+    const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';
+    const moPct = army.mo.max > 0 ? ((army.mo.current / army.mo.max) * 100).toFixed(0) : '0';
+    lines.push(`  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%)`);
+    lines.push(`  Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)`);
+  }
+
+  return lines.join('\n');
+}
+
+function appendInsurrectionInfo(lines, insurrections) {
+  if (!insurrections || insurrections.length === 0) {
+    return;
+  }
+
+  lines.push('', '{bold}Insurrections:{/bold}');
+  insurrections.forEach(ins => {
+    lines.push(`  Active: ${ins.armies.length} armies`);
+  });
+}
+
+function formatEmpireBlock(empire, regularArmies) {
+  const lines = [`{bold}${empire.name}{/bold}`];
+  lines.push(`  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`);
+  lines.push(`  Aid Capacity: ${empire.aidCapacity}`);
+  if (empire.stats) {
+    lines.push(`  Population: ${formatNumber(empire.stats.population || 0)}`);
+    lines.push(`  Influence: ${formatNumber(empire.stats.influence || 0)}`);
+  }
+  if (empire.budget_credits !== undefined) {
+    lines.push(`  Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits`);
+  }
+
+  const empireArmies = regularArmies.filter(army => army.empireId === empire.id);
+  lines.push(`  Armies: ${empireArmies.length}`);
+  return lines.join('\n');
+}
+
+function formatActiveEvent(event) {
+  const eventTitle = event.title || event.name || event.id || 'Unknown Event';
+  const eventText = event.text || event.description || '';
+  const lines = [`{bold}${eventTitle}{/bold}`, '', eventText, ''];
+
+  if (event.choices && event.choices.length > 0) {
+    lines.push('{bold}Choices:{/bold}');
+    event.choices.forEach((choice, idx) => {
+      lines.push(`  ${idx + 1}. ${choice.text}`);
+    });
+    lines.push('', 'Press 1/2/3 to choose.');
+  }
+
+  lines.push('{yellow-fg}Game auto-paused{/yellow-fg}');
+  return lines.join('\n');
+}
+
+function getActiveLawCount(state) {
+  if (!state.lawProcesses || state.lawProcesses.length === 0) {
+    return 0;
+  }
+
+  return state.lawProcesses.filter(lawProcess =>
+    lawProcess.phase !== 'ENACTED' && lawProcess.phase !== 'BURIED'
+  ).length;
 }
 
 function formatVolume(volume) {

@@ -18,7 +18,7 @@ declares:
   event_data:
     id: "event_1"
     name: "Supply Convoy Attacked"
-    description: "A supply convoy has been ambushed by Scourge forces. How do you respond?"
+    description: "A supply convoy bound for the Stellar Federation and Verdant Colonies has been ambushed by Scourge forces. How do you respond?"
     choices:
       - text: "Send reinforcements (lose supplies, gain approval)"
         effects:
@@ -28,12 +28,17 @@ declares:
             empire_1: 5
             empire_2: 5
             empire_3: 5
+            empire_clockwork: 4
+            empire_hive: 4
       - text: "Abandon convoy (lose approval, save resources)"
         effects:
           empireApproval:
             empire_1: -10
             empire_2: -10
             empire_3: -10
+            empire_clockwork: -8
+            empire_hive: -8
+
       - text: "Negotiate with local forces (uncertain outcome)"
         effects:
           coalitionCohesion: "random"

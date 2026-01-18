@@ -18,24 +18,31 @@ declares:
   event_data:
     id: "event_3"
     name: "Diplomatic Crisis"
-    description: "Tensions rise between empires over resource allocation."
+    description: "Tensions rise between coalition members over resource allocations and war priorities."
     choices:
-      - text: "Favor Northern Federation"
+      - text: "Favor the Stellar Federation"
         effects:
           empireApproval:
             empire_1: 15
-            empire_2: -10
-            empire_3: -10
-      - text: "Favor Southern Alliance"
+            empire_2: -8
+            empire_3: -8
+            empire_clockwork: -6
+            empire_hive: -6
+      - text: "Favor the Verdant Colonies"
         effects:
           empireApproval:
-            empire_1: -10
+            empire_1: -8
             empire_2: 15
-            empire_3: -10
-      - text: "Mediate (small approval gains)"
+            empire_3: -8
+            empire_clockwork: -6
+            empire_hive: -6
+      - text: "Mediate coalition balance"
         effects:
           empireApproval:
             empire_1: 3
             empire_2: 3
             empire_3: 3
+            empire_clockwork: 3
+            empire_hive: 3
           coalitionCohesion: -2
+

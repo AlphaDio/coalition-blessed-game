@@ -100,6 +100,9 @@ src/
 
 The codebase follows a clean separation between simulation (pure functions in `src/game/`) and UI (blessed components in `src/ui/`). All game logic is deterministic and testable.
 
+System documentation lives in `docs/systems` for Economy, Events, Battles, and Laws. Update those docs whenever the corresponding implementation changes so they stay aligned with the game behavior.
+
+
 ## Testing
 
 The project includes several test suites to ensure gameplay mechanics work correctly:

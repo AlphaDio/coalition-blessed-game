@@ -1,64 +1,64 @@
 // Command parser for input box
 // Parses user text commands and executes corresponding actions
 
+const COMMAND_ALIASES = new Map([
+  ['help', 'help'],
+  ['h', 'help'],
+  ['?', 'help'],
+  ['law', 'law'],
+  ['enact', 'law'],
+  ['event', 'event'],
+  ['choice', 'event'],
+  ['pause', 'pause'],
+  ['resume', 'resume'],
+  ['unpause', 'resume'],
+  ['speed', 'speed'],
+  ['quit', 'quit'],
+  ['exit', 'quit'],
+  ['next', 'next'],
+  ['advance', 'next'],
+  ['logs', 'logs'],
+  ['log', 'logs']
+]);
+
 export function parseCommand(commandText, state, ui, gameLoopCallbacks) {
   const trimmed = commandText.trim().toLowerCase();
-  
+
   if (!trimmed) {
     return { success: false, message: 'Empty command' };
   }
-  
+
   const parts = trimmed.split(/\s+/);
   const command = parts[0];
   const args = parts.slice(1);
-  
-  switch (command) {
-    case 'help':
-    case 'h':
-    case '?':
-      return showHelp();
-      
-    case 'law':
-    case 'enact':
-      return handleLawCommand(args, state);
-      
-    case 'event':
-    case 'choice':
-      return handleEventCommand(args, state);
-      
-    case 'pause':
-      return handlePauseCommand(state);
-      
-    case 'resume':
-    case 'unpause':
-      return handleResumeCommand(state);
-      
-    case 'speed':
-      return handleSpeedCommand(args, state);
-      
-    case 'quit':
-    case 'exit':
-      return {
-        success: true,
-        action: 'QUIT_GAME',
-        message: 'Quitting game...'
-      };
-      
-    case 'next':
-    case 'advance':
-      return handleNextTurnCommand(state);
-      
-    case 'logs':
-    case 'log':
-      return handleLogsCommand(ui);
-      
-    default:
-      return {
-        success: false,
-        message: `Unknown command: '${command}'. Type 'help' for available commands.`
-      };
+  const commandKey = COMMAND_ALIASES.get(command);
+
+  if (!commandKey) {
+    return {
+      success: false,
+      message: `Unknown command: '${command}'. Type 'help' for available commands.`
+    };
   }
+
+  return COMMAND_HANDLERS[commandKey](args, state, ui, gameLoopCallbacks);
 }
+
+const COMMAND_HANDLERS = {
+  help: showHelp,
+  law: (args, state) => handleLawCommand(args, state),
+  event: (args, state) => handleEventCommand(args, state),
+  pause: (_args, state) => handlePauseCommand(state),
+  resume: (_args, state) => handleResumeCommand(state),
+  speed: (args, state) => handleSpeedCommand(args, state),
+  quit: () => ({
+    success: true,
+    action: 'QUIT_GAME',
+    message: 'Quitting game...'
+  }),
+  next: (_args, state) => handleNextTurnCommand(state),
+  logs: (_args, _state, ui) => handleLogsCommand(ui)
+};
+
 
 function showHelp() {
   const helpText = [
