@@ -95,7 +95,7 @@ Shows complete workflow: accept → build → produce → degrade → restore
    - Cost: 300 Supplies, Build: 15 turns
    - Sustains: super_alloys:3, rare_gases:2
    - Produces: rare_gases:+8, quantum_circuits:+2
-   - Modifiers: research_speed +10%, tech_level +1
+   - Modifiers: research_speed +15%
    - Description: Colossal monument to knowledge pursuing transcendent breakthroughs
 
 3. **Grand War Symposium**

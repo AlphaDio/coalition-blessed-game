@@ -1,4 +1,6 @@
 // Type definitions and initializers
+import { TECH_CONSTANTS } from './constants.js';
+
 
 export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
   return {
@@ -11,7 +13,8 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     values: values,
     stats: {
       population: stats.population || 1000,
-      influence: stats.influence || 50
+      influence: stats.influence || 50,
+      tech_rate_bonus: stats.tech_rate_bonus || 0
     },
     tags: tags,
     modifiers: {
@@ -33,7 +36,12 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
       surplus_to_armies_ratio: stats.allocation?.surplus_to_armies_ratio || 0.35,
       military_procurement_bias: stats.allocation?.military_procurement_bias || 0.15
     },
-    stockpiles: stats.stockpiles || {}
+    stockpiles: stats.stockpiles || {},
+    // Technology fields
+    techPoints: 0,
+    techThreshold: TECH_CONSTANTS.INITIAL_THRESHOLD,  // Points needed for next tech event
+    technologies: [],      // Array of unlocked tech IDs
+    techModifiers: {}      // Aggregate modifiers from unlocked technologies
   };
 }
 
@@ -143,6 +151,50 @@ export function createHero(id, empireId, name, modifiers = {}) {
       killRate: modifiers.killRate || 0,
       recovery: modifiers.recovery || 0,
       organization: modifiers.organization || 0
+    }
+  };
+}
+
+/**
+ * Create a technology definition
+ * @param {string} id - Tech identifier (e.g., "advanced_metallurgy")
+ * @param {string} name - Display name
+ * @param {string} description - Flavor text describing the technology
+ * @param {string} category - general | aligned | unique
+ * @param {Object} requirements - Optional requirements (axis alignment, tags, etc.)
+ * @param {Object} immediateEffects - One-time effects when unlocked
+ * @param {Object} modifiers - Ongoing modifier bonuses
+ * @returns {Object} Technology definition
+ */
+export function createTechnology(id, name, description, category = 'general', requirements = {}, immediateEffects = {}, modifiers = {}) {
+  return {
+    id,
+    name,
+    description,
+    category,  // 'general' | 'aligned' | 'unique'
+    requirements: {
+      axis: requirements.axis || null,        // e.g., { axis: 'natural_mechanical', direction: 1, threshold: 0.3 }
+      tags: requirements.tags || [],          // e.g., ['mechanical', 'hive']
+      techs: requirements.techs || []         // prerequisite tech IDs
+    },
+    immediateEffects: {
+      // One-time bonuses when tech is unlocked
+      approval: immediateEffects.approval || 0,
+      stability: immediateEffects.stability || 0,
+      credits: immediateEffects.credits || 0,
+      cohesion: immediateEffects.cohesion || 0
+    },
+    modifiers: {
+      // Ongoing bonuses while tech is active
+      research_speed: modifiers.research_speed || 0,
+      industrial_output: modifiers.industrial_output || 0,
+      army_organization: modifiers.army_organization || 0,
+      supply_efficiency: modifiers.supply_efficiency || 0,
+      trade_income: modifiers.trade_income || 0,
+      market_efficiency: modifiers.market_efficiency || 0,
+      population_growth: modifiers.population_growth || 0,
+      empire_approval: modifiers.empire_approval || 0,
+      energy_production: modifiers.energy_production || 0
     }
   };
 }

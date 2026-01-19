@@ -63,6 +63,17 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
   
+  const activeProcesses = (state.lawProcesses || []).filter(process =>
+    process.phase !== 'ENACTED' && process.phase !== 'BURIED'
+  );
+  if (activeProcesses.length > 0) {
+    logger.warn('Cannot start law process: another law is active', { lawId });
+    return {
+      error: 'Only one law can be enacted at a time',
+      log: []
+    };
+  }
+
   // Check if player has enough influence
   if (state.playerInfluence < influenceCost) {
     logger.warn(`Cannot start law process: insufficient influence`, {

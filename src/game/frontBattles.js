@@ -22,20 +22,26 @@ function participationRate(organization) {
  * @returns {number} Number of engaged units (MP throughput)
  */
 function calculateEngagedUnits(army, battlefieldSize, isBroken) {
+  // Guard against undefined or NaN values
+  if (!army || !army.mp || typeof army.mp.current !== 'number' || isNaN(army.mp.current)) {
+    return 0;
+  }
+  
   // Organization determines how much of the army can participate
-  const participation = participationRate(army.organization);
-  const participatingMP = army.mp.current * participation;
+  const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+  const participation = participationRate(org);
+  const participatingMP = (army.mp.current || 0) * participation;
   
   // If broken, apply penalty to engagement (can't hold the line)
   const brokenPenalty = isBroken ? 0.5 : 1.0;
   
   // Engagement is limited by battlefield size and participating MP
   const maxEngaged = Math.min(
-    battlefieldSize,
+    battlefieldSize || 0,
     participatingMP
   ) * brokenPenalty;
   
-  return maxEngaged;
+  return Math.max(0, maxEngaged);
 }
 
 /**
@@ -45,8 +51,10 @@ function calculateEngagedUnits(army, battlefieldSize, isBroken) {
  */
 function getEffectiveKillRate(army) {
   // Simple: base killRate with minor fervor modifier
-  const fervorBonus = (army.fervor / 100) * 0.05; // Up to +5% at max fervor
-  return Math.min(1, army.killRate + fervorBonus);
+  const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
+  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+  const fervorBonus = (fervor / 100) * 0.05; // Up to +5% at max fervor
+  return Math.min(1, killRate + fervorBonus);
 }
 
 /**
@@ -56,7 +64,8 @@ function getEffectiveKillRate(army) {
  */
 function calculateMoraleRegen(army) {
   // Organization boosts regen: 0.5 to 2.0 per tick
-  const orgFactor = army.organization / 100;
+  const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+  const orgFactor = org / 100;
   return 0.5 + (orgFactor * 1.5);
 }
 
@@ -68,28 +77,41 @@ function calculateMoraleRegen(army) {
  * @param {string} side - 'left' or 'right'
  */
 function applyBattleSustainment(army, isMoraleBroken, front, side) {
-  if (!isMoraleBroken) {
+  // Guard against undefined or invalid army structure
+  if (!army || !army.mo || !army.mp) {
+    return;
+  }
+  
+  if (!isMoraleBroken && typeof army.mo.current === 'number' && typeof army.mo.max === 'number') {
     const regen = calculateMoraleRegen(army);
     army.mo.current = clamp(army.mo.current + regen, 0, army.mo.max);
   }
 
-  if (army.mp.current <= 0) {
+  if (typeof army.mp.current !== 'number' || army.mp.current <= 0) {
     return;
   }
 
   const recovered = applyRecovery(army, true);
   if (front && side && recovered > 0) {
-    front.recoveredMP[side] += recovered;
+    if (!front.recoveredMP) {
+      front.recoveredMP = { left: 0, right: 0 };
+    }
+    front.recoveredMP[side] = (front.recoveredMP[side] || 0) + recovered;
   }
   applyReinforcement(army, true);
 }
 
 function logBattleRound(front, leftArmy, rightArmy, logger) {
   // Compact INFO-level logging for battle rounds
-  const leftMPPct = Math.floor((leftArmy.mp.current / leftArmy.mp.max) * 100);
-  const rightMPPct = Math.floor((rightArmy.mp.current / rightArmy.mp.max) * 100);
-  const leftMOPct = Math.floor((leftArmy.mo.current / leftArmy.mo.max) * 100);
-  const rightMOPct = Math.floor((rightArmy.mo.current / rightArmy.mo.max) * 100);
+  // Guard against division by zero or undefined
+  const leftMPMax = leftArmy.mp?.max || 1;
+  const rightMPMax = rightArmy.mp?.max || 1;
+  const leftMOMax = leftArmy.mo?.max || 1;
+  const rightMOMax = rightArmy.mo?.max || 1;
+  const leftMPPct = Math.floor(((leftArmy.mp?.current || 0) / leftMPMax) * 100);
+  const rightMPPct = Math.floor(((rightArmy.mp?.current || 0) / rightMPMax) * 100);
+  const leftMOPct = Math.floor(((leftArmy.mo?.current || 0) / leftMOMax) * 100);
+  const rightMOPct = Math.floor(((rightArmy.mo?.current || 0) / rightMOMax) * 100);
 
   // Only log at INFO if there's a significant change or morale breaks
   const leftBroken = front.moraleBroken.left;
@@ -105,14 +127,14 @@ function logBattleRound(front, leftArmy, rightArmy, logger) {
   const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
   logger.debug(`Battle ${front.id} round`, {
     width: front.battlefieldSize,
-    leftMP: `${Math.floor(leftArmy.mp.current)}/${Math.floor(leftArmy.mp.max)} (${leftMPPct}%)`,
-    rightMP: `${Math.floor(rightArmy.mp.current)}/${Math.floor(rightArmy.mp.max)} (${rightMPPct}%)`,
-    leftMO: `${Math.floor(leftArmy.mo.current)}/${Math.floor(leftArmy.mo.max)} (${leftMOPct}%)`,
-    rightMO: `${Math.floor(rightArmy.mo.current)}/${Math.floor(rightArmy.mo.max)} (${rightMOPct}%)`,
+    leftMP: `${Math.floor(leftArmy.mp?.current || 0)}/${Math.floor(leftMPMax)} (${leftMPPct}%)`,
+    rightMP: `${Math.floor(rightArmy.mp?.current || 0)}/${Math.floor(rightMPMax)} (${rightMPPct}%)`,
+    leftMO: `${Math.floor(leftArmy.mo?.current || 0)}/${Math.floor(leftMOMax)} (${leftMOPct}%)`,
+    rightMO: `${Math.floor(rightArmy.mo?.current || 0)}/${Math.floor(rightMOMax)} (${rightMOPct}%)`,
     leftBroken: front.moraleBroken.left,
     rightBroken: front.moraleBroken.right,
-    leftEngaged: leftEngaged.toFixed(0),
-    rightEngaged: rightEngaged.toFixed(0)
+    leftEngaged: isNaN(leftEngaged) ? '0' : leftEngaged.toFixed(0),
+    rightEngaged: isNaN(rightEngaged) ? '0' : rightEngaged.toFixed(0)
   });
 }
 
@@ -131,12 +153,21 @@ function logBattleRound(front, leftArmy, rightArmy, logger) {
  * Note: Expects army.fervor and army.organization to be in 0-100 range
  */
 function applyModifiers(baseDamage, army) {
-  // Fervor modifier: FERVOR_MIN to (FERVOR_MIN + FERVOR_RANGE)
-  const fervorMod = FRONT_BATTLE_MODIFIERS.FERVOR_MIN + (army.fervor / 100) * FRONT_BATTLE_MODIFIERS.FERVOR_RANGE;
-  // Organization modifier: ORG_MIN to (ORG_MIN + ORG_RANGE)
-  const orgMod = FRONT_BATTLE_MODIFIERS.ORG_MIN + (army.organization / 100) * FRONT_BATTLE_MODIFIERS.ORG_RANGE;
+  // Guard against NaN values
+  if (typeof baseDamage !== 'number' || isNaN(baseDamage)) {
+    return 0;
+  }
   
-  return baseDamage * fervorMod * orgMod;
+  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+  const organization = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+  
+  // Fervor modifier: FERVOR_MIN to (FERVOR_MIN + FERVOR_RANGE)
+  const fervorMod = FRONT_BATTLE_MODIFIERS.FERVOR_MIN + (fervor / 100) * FRONT_BATTLE_MODIFIERS.FERVOR_RANGE;
+  // Organization modifier: ORG_MIN to (ORG_MIN + ORG_RANGE)
+  const orgMod = FRONT_BATTLE_MODIFIERS.ORG_MIN + (organization / 100) * FRONT_BATTLE_MODIFIERS.ORG_RANGE;
+  
+  const result = baseDamage * fervorMod * orgMod;
+  return isNaN(result) ? baseDamage : result;
 }
 
 /**
@@ -166,6 +197,44 @@ export function simulateBattleTick(front, worldState) {
     const endLog = endBattle(front, worldState, null);
     log.push(...endLog);
     return log;
+  }
+  
+  // Validate army structures have required properties
+  if (!leftArmy.mp || !rightArmy.mp || !leftArmy.mo || !rightArmy.mo) {
+    logger.error(`Battle ${front.id}: Invalid army structure (missing mp/mo)`, {
+      leftArmy: { hasMP: !!leftArmy.mp, hasMO: !!leftArmy.mo },
+      rightArmy: { hasMP: !!rightArmy.mp, hasMO: !!rightArmy.mo }
+    });
+    log.push(`Battle ${front.id}: Invalid army structure, ending battle`);
+    const endLog = endBattle(front, worldState, null);
+    log.push(...endLog);
+    return log;
+  }
+  
+  // Ensure mp/mo values are valid numbers
+  if (typeof leftArmy.mp.current !== 'number' || isNaN(leftArmy.mp.current)) {
+    leftArmy.mp.current = 0;
+  }
+  if (typeof leftArmy.mp.max !== 'number' || isNaN(leftArmy.mp.max) || leftArmy.mp.max <= 0) {
+    leftArmy.mp.max = Math.max(1, leftArmy.mp.current || 1);
+  }
+  if (typeof rightArmy.mp.current !== 'number' || isNaN(rightArmy.mp.current)) {
+    rightArmy.mp.current = 0;
+  }
+  if (typeof rightArmy.mp.max !== 'number' || isNaN(rightArmy.mp.max) || rightArmy.mp.max <= 0) {
+    rightArmy.mp.max = Math.max(1, rightArmy.mp.current || 1);
+  }
+  if (typeof leftArmy.mo.current !== 'number' || isNaN(leftArmy.mo.current)) {
+    leftArmy.mo.current = 0;
+  }
+  if (typeof leftArmy.mo.max !== 'number' || isNaN(leftArmy.mo.max) || leftArmy.mo.max <= 0) {
+    leftArmy.mo.max = 100;
+  }
+  if (typeof rightArmy.mo.current !== 'number' || isNaN(rightArmy.mo.current)) {
+    rightArmy.mo.current = 0;
+  }
+  if (typeof rightArmy.mo.max !== 'number' || isNaN(rightArmy.mo.max) || rightArmy.mo.max <= 0) {
+    rightArmy.mo.max = 100;
   }
   
   // Process both sides attacking each other
@@ -205,20 +274,31 @@ export function simulateBattleTick(front, worldState) {
  * Process one side attacking the other
  */
 function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, defendingSide, worldState, log) {
+  // Guard against invalid army structures
+  if (!attackingArmy || !defendingArmy || !attackingArmy.mp || !defendingArmy.mp) {
+    return;
+  }
+  
   // 1. Calculate engaged units
   const isBroken = front.moraleBroken[attackingSide];
   const engagedUnits = calculateEngagedUnits(attackingArmy, front.battlefieldSize, isBroken);
   
-  if (engagedUnits <= 0) {
+  if (engagedUnits <= 0 || isNaN(engagedUnits)) {
     return; // No engagement possible
   }
   
   // 2. Calculate MP damage (width-scaled)
-  const rawMPDmg = engagedUnits * attackingArmy.dmgPerUnitMP;
+  const dmgPerUnitMP = typeof attackingArmy.dmgPerUnitMP === 'number' && !isNaN(attackingArmy.dmgPerUnitMP) 
+    ? attackingArmy.dmgPerUnitMP 
+    : 1.0;
+  const rawMPDmg = engagedUnits * dmgPerUnitMP;
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
   // Apply protection (damage reduction)
-  const finalMPDmg = modifiedMPDmg * (1 - defendingArmy.protection);
+  const protection = typeof defendingArmy.protection === 'number' && !isNaN(defendingArmy.protection) 
+    ? defendingArmy.protection 
+    : 0;
+  const finalMPDmg = modifiedMPDmg * (1 - protection);
   
   // Split into permanent and temporary
   const effectiveKillRate = getEffectiveKillRate(attackingArmy);
@@ -226,15 +306,20 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const temporaryDmg = finalMPDmg - permanentDmg;
   
   // Apply damage
-  const prevMP = defendingArmy.mp.current;
-  defendingArmy.mp.current -= finalMPDmg;
-  defendingArmy.mp.current = Math.max(0, defendingArmy.mp.current);
+  const prevMP = defendingArmy.mp.current || 0;
+  defendingArmy.mp.current = Math.max(0, prevMP - finalMPDmg);
   
   // Add temporary damage to recovery pool
+  if (typeof defendingArmy.recoveryPool !== 'number' || isNaN(defendingArmy.recoveryPool)) {
+    defendingArmy.recoveryPool = 0;
+  }
   defendingArmy.recoveryPool += temporaryDmg;
   
   // Track permanent losses
-  front.permanentLosses[defendingSide] += permanentDmg;
+  if (!front.permanentLosses) {
+    front.permanentLosses = { left: 0, right: 0 };
+  }
+  front.permanentLosses[defendingSide] = (front.permanentLosses[defendingSide] || 0) + permanentDmg;
   
   // Debug: Log damage if significant
   const logger = getLogger();
@@ -250,16 +335,26 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   });
   
   // 3. Calculate morale damage (NOT width-scaled)
-  const rawMODmg = attackingArmy.dmgPerTickMO;
+  // Guard against invalid structures
+  if (!defendingArmy.mo) {
+    defendingArmy.mo = { current: 0, max: 100 };
+  }
+  
+  const dmgPerTickMO = typeof attackingArmy.dmgPerTickMO === 'number' && !isNaN(attackingArmy.dmgPerTickMO) 
+    ? attackingArmy.dmgPerTickMO 
+    : 2.5;
+  const rawMODmg = dmgPerTickMO;
   const modifiedMODmg = applyModifiers(rawMODmg, attackingArmy);
   
   // Apply resolve (morale resistance)
-  const finalMODmg = modifiedMODmg * (1 - defendingArmy.resolve);
+  const resolve = typeof defendingArmy.resolve === 'number' && !isNaN(defendingArmy.resolve) 
+    ? defendingArmy.resolve 
+    : 0;
+  const finalMODmg = modifiedMODmg * (1 - resolve);
   
   // Apply morale damage
-  const previousMO = defendingArmy.mo.current;
-  defendingArmy.mo.current -= finalMODmg;
-  defendingArmy.mo.current = Math.max(0, defendingArmy.mo.current);
+  const previousMO = defendingArmy.mo.current || 0;
+  defendingArmy.mo.current = Math.max(0, previousMO - finalMODmg);
   
   // Check if morale just broke
   if (previousMO > 0 && defendingArmy.mo.current <= 0 && !front.moraleBroken[defendingSide]) {
@@ -285,31 +380,41 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
  * @returns {number} Amount of MP recovered
  */
 function applyRecovery(army, inBattle = false) {
-  if (army.recoveryPool <= 0) return 0;
+  // Guard against undefined or invalid army structure
+  if (!army || !army.mp || typeof army.recoveryPool !== 'number' || army.recoveryPool <= 0) {
+    return 0;
+  }
+  
+  // Ensure mp structure exists
+  if (typeof army.mp.current !== 'number' || typeof army.mp.max !== 'number') {
+    return 0;
+  }
   
   // Base recovery rate from Recovery stat (0-100 -> 0-1000 MP/tick)
-  const baseRecoveryRate = (army.recovery || 50) * 10;
+  const recovery = typeof army.recovery === 'number' && !isNaN(army.recovery) ? army.recovery : 50;
+  const baseRecoveryRate = recovery * 10;
   
   // Organization provides a multiplier (0.5x to 1.5x)
-  const orgModifier = 0.5 + (army.organization / 100);
+  const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+  const orgModifier = 0.5 + (org / 100);
   
   // During battles, recovery is much slower (20% of normal rate - can't fully recover while fighting)
   const battleModifier = inBattle ? 0.2 : 1.0;
   
   const recoveryRate = baseRecoveryRate * orgModifier * battleModifier;
   const recovered = Math.min(recoveryRate, army.recoveryPool);
-  const spaceAvailable = army.mp.max - army.mp.current;
+  const spaceAvailable = Math.max(0, army.mp.max - army.mp.current);
   const actualRecovered = Math.min(recovered, spaceAvailable);
   
   const prevMP = army.mp.current;
-  army.mp.current += actualRecovered;
-  army.recoveryPool -= actualRecovered;
+  army.mp.current = Math.max(0, Math.min(army.mp.max, army.mp.current + actualRecovered));
+  army.recoveryPool = Math.max(0, army.recoveryPool - actualRecovered);
   
   // Debug logging
   const logger = getLogger();
-  logger.debug(`Recovery${inBattle ? ' (battle)' : ''}: ${army.name}`, {
-    recovery: (army.recovery || 50).toFixed(0),
-    org: army.organization.toFixed(1),
+  logger.debug(`Recovery${inBattle ? ' (battle)' : ''}: ${army.name || 'Unknown'}`, {
+    recovery: recovery.toFixed(0),
+    org: org.toFixed(1),
     baseRate: baseRecoveryRate.toFixed(0),
     orgMod: orgModifier.toFixed(2),
     battleMod: battleModifier.toFixed(2),
@@ -330,13 +435,21 @@ function applyRecovery(army, inBattle = false) {
  * @param {boolean} inBattle - If true, reduce reinforcement rate (battles are intense)
  */
 function applyReinforcement(army, inBattle = false) {
-  const spaceAvailable = army.mp.max - army.mp.current;
+  // Guard against undefined or invalid army structure
+  if (!army || !army.mp || typeof army.mp.current !== 'number' || typeof army.mp.max !== 'number') {
+    return;
+  }
+  
+  const spaceAvailable = Math.max(0, army.mp.max - army.mp.current);
   if (spaceAvailable <= 0) return;
   
   // During battles, reinforcement is much slower (10% of normal rate)
-  const effectiveRate = inBattle ? army.reinforcementRate * 0.1 : army.reinforcementRate;
+  const reinforcementRate = typeof army.reinforcementRate === 'number' && !isNaN(army.reinforcementRate) 
+    ? army.reinforcementRate 
+    : 100;
+  const effectiveRate = inBattle ? reinforcementRate * 0.1 : reinforcementRate;
   const reinforced = Math.min(effectiveRate, spaceAvailable);
-  army.mp.current += reinforced;
+  army.mp.current = Math.max(0, Math.min(army.mp.max, army.mp.current + reinforced));
   
   // Debug logging
   if (inBattle && reinforced > 0) {

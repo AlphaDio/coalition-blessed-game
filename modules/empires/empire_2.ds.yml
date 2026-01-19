@@ -33,18 +33,19 @@ declares:
     stats:
       population: 900
       influence: 55
+      tech_rate_bonus: 0.02
       production:
         outputs_per_tick:
           biomass: 150
           genomes: 15
       needs:
         per_pop:
-          super_alloys: 0.05
-          ice: 0.08
+          super_alloys: 0.5
+          ice: 0.8
       wants:
         per_pop:
-          psycho_implants: 0.0008
-          ancient_relics: 0.0002
+          psycho_implants: 0.008
+          ancient_relics: 0.002
     tags: ["Agricultural", "Alliance", "Biologic"]
     modifiers:
       intensity: 1.1

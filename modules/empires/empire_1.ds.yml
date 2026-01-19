@@ -33,18 +33,19 @@ declares:
     stats:
       population: 1200
       influence: 65
+      tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
           super_alloys: 100
           rare_gases: 10
       needs:
         per_pop:
-          biomass: 0.1
-          ice: 0.05
+          biomass: 1.0
+          ice: 0.1
       wants:
         per_pop:
-          nano_machines: 0.001
-          quantum_circuits: 0.0005
+          nano_machines: 0.01
+          quantum_circuits: 0.005
     tags: ["Industrial", "Federation"]
     modifiers:
       intensity: 1.0

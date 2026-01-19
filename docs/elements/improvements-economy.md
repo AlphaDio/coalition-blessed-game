@@ -10,15 +10,15 @@ Improvements are grouped by branch and tier. Tier access is per-empire (T2 after
 - Orbital Foundry Complex (T1): cost 100, build 240, capacity 2, sustain biomass 3 + ice 2, produces super_alloys 8, industrial_output +0.02
 - Asteroid Mining Operation (T1): cost 80, build 200, capacity 2, sustain ice 2, produces rare_gases 5 + ice 3
 - Titan Forge Network (T2): cost 200, build 400, capacity 3, sustain biomass 5 + ice 3, produces super_alloys 15, industrial_output +0.05
-- Quantum Fabrication Array (T2): cost 220, build 440, capacity 3, sustain super_alloys 3 + rare_gases 2, produces quantum_circuits 4, tech_level +1
+- Quantum Fabrication Array (T2): cost 220, build 440, capacity 3, sustain super_alloys 3 + rare_gases 2, produces quantum_circuits 4, research_speed +0.05
 - Dyson Harvester Swarm (T3): cost 400, build 700, capacity 5, sustain quantum_circuits 2 + super_alloys 5, produces super_alloys 30 + rare_gases 15, industrial_output +0.15, energy_production +0.20
 
 ### Research Branch
 - Deep Space Research Station (T1): cost 90, build 220, capacity 2, sustain biomass 2 + rare_gases 1, produces rare_gases 3, research_speed +0.03
-- Universal Data Archive (T1): cost 70, build 160, capacity 1, sustain ice 2, research_speed +0.02, tech_level +0.5
-- Ascension Spire (T2): cost 300, build 500, capacity 4, sustain super_alloys 3 + rare_gases 2, produces rare_gases 8 + quantum_circuits 2, research_speed +0.10, tech_level +1
+- Universal Data Archive (T1): cost 70, build 160, capacity 1, sustain ice 2, research_speed +0.045
+- Ascension Spire (T2): cost 300, build 500, capacity 4, sustain super_alloys 3 + rare_gases 2, produces rare_gases 8 + quantum_circuits 2, research_speed +0.15
 - Xenobiology Research Complex (T2): cost 180, build 360, capacity 3, sustain biomass 4 + genomes 2, produces genomes 5, research_speed +0.05, population_growth +0.01
-- Reality Engineering Institute (T3): cost 450, build 800, capacity 6, sustain quantum_circuits 4 + rare_gases 5 + psycho_implants 2, produces quantum_circuits 6, research_speed +0.20, tech_level +3
+- Reality Engineering Institute (T3): cost 450, build 800, capacity 6, sustain quantum_circuits 4 + rare_gases 5 + psycho_implants 2, produces quantum_circuits 6, research_speed +0.35
 
 ### Military Branch
 - Orbital Defense Platform (T1): cost 100, build 200, capacity 2, sustain super_alloys 2, army_organization +2, supply_efficiency +0.02

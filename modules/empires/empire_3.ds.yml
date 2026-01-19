@@ -33,18 +33,19 @@ declares:
     stats:
       population: 800
       influence: 70
+      tech_rate_bonus: 0.08
       production:
         outputs_per_tick:
           ice: 120
           psycho_implants: 8
       needs:
         per_pop:
-          biomass: 0.12
-          super_alloys: 0.03
+          biomass: 1.2
+          super_alloys: 0.3
       wants:
         per_pop:
-          rare_gases: 0.001
-          sentient_cores: 0.0003
+          rare_gases: 0.01
+          sentient_cores: 0.003
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:
       intensity: 0.95

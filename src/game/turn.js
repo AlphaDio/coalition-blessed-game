@@ -14,6 +14,7 @@ import { getLogger } from '../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers } from './improvements.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
+import { processTechAccrual, createTechEvent } from './technology.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.0005;
 const MIN_POPULATION = 1;
@@ -138,7 +139,7 @@ function handleLawProcesses(state, rng, log, logger) {
     const prevInfluence = state.playerInfluence;
     updatePlayerInfluence(state);
     if (state.playerInfluence > prevInfluence) {
-      logger.info(`Player influence increased to ${state.playerInfluence}`);
+      // Player influence increases silently
     }
   }
 }
@@ -466,6 +467,23 @@ export function advanceTurn(state, rng = Math.random) {
     
     // Apply improvement modifiers
     applyImprovementModifiers(state);
+  }
+
+  // 3.3. Process technology accrual
+  const empiresReachedTechThreshold = processTechAccrual(state);
+  if (empiresReachedTechThreshold.length > 0 && !state.activeEvent) {
+    // Create tech event for the first empire that reached threshold
+    // (others will trigger on subsequent turns)
+    const empireId = empiresReachedTechThreshold[0];
+    const empire = state.empires.find(e => e.id === empireId);
+    if (empire) {
+      const techEvent = createTechEvent(empire, state, deterministicRng);
+      if (techEvent) {
+        state.activeEvent = techEvent;
+        logger.info(`Tech event triggered for ${empire.name}`);
+        log.push(`Technology breakthrough for ${empire.name}!`);
+      }
+    }
   }
 
   // 3.5. Apply baseline population growth

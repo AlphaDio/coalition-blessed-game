@@ -7,9 +7,10 @@
     "scripts": {
         "start": "node index.js",
         "dev": "nodemon index.js",
-        "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js && node testImprovements.js",
+        "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js && node testImprovements.js && node testBattleIntegration.js",
         "test:determinism": "node testDeterminism.js",
         "test:battles": "node testFrontBattles.js",
+        "test:integration": "node testBattleIntegration.js",
         "test:gameplay": "node testExtendedGameplay.js",
         "test:improvements": "node testImprovements.js"
     },

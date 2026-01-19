@@ -3,12 +3,19 @@ import { clampStat, clampCohesion, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { startBattle } from './frontBattles.js';
 import { syncUnitsFromArmy } from './armyComposition.js';
+import { createUnit } from './types.js';
 
 export function calculateArmyPower(army) {
-  return (
-    BATTLE_CONSTANTS.ARMY_POWER_ORG_WEIGHT * army.organization +
-    BATTLE_CONSTANTS.ARMY_POWER_FERVOR_WEIGHT * army.fervor
+  if (!army) {
+    return 0;
+  }
+  const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+  const power = (
+    BATTLE_CONSTANTS.ARMY_POWER_ORG_WEIGHT * org +
+    BATTLE_CONSTANTS.ARMY_POWER_FERVOR_WEIGHT * fervor
   );
+  return isNaN(power) ? 0 : power;
 }
 
 export function calculateCoalitionPower(armies) {
@@ -58,6 +65,7 @@ function calculateBattlefieldSize(totalForces, rng = Math.random) {
 
 function getOrCreateScourgeArmy(state) {
   const scourgeId = '_scourge_army';
+  const scourgeUnitId = '_scourge_unit';
   let scourgeArmy = state.armies.find(a => a.id === scourgeId);
   
   if (!scourgeArmy) {
@@ -105,9 +113,40 @@ function getOrCreateScourgeArmy(state) {
       recoveryPool: 0,
       command: 40,              // Lower Command stat than coalition armies
       recovery: 40,             // Lower Recovery stat than coalition armies
-      reinforcementRate: 80     // Slower reinforcement
+      reinforcementRate: 80,    // Slower reinforcement
+      
+      // Unit reference
+      unitIds: [scourgeUnitId]
     };
 
+    // Create default Scourge unit with matching stats
+    const scourgeUnit = createUnit(
+      scourgeUnitId,
+      scourgeId,
+      '_scourge',
+      'Scourge Horde',
+      {
+        mp: { current: totalMP, max: totalMP },
+        mo: { current: 100, max: 100 },
+        dmgPerUnitMP: 0.95 * powerScale,
+        dmgPerTickMO: 2.2 * powerScale,
+        protection: 0.15,
+        resolve: 0.25,
+        killRate: 0.09 * powerScale,
+        command: 40,
+        recovery: 40,
+        reinforcementRate: 80,
+        recoveryPool: 0
+      }
+    );
+    
+    // Ensure state.units exists and add the Scourge unit
+    if (!state.units) {
+      state.units = [];
+    }
+    // Remove any existing Scourge unit first (in case of state reset)
+    state.units = state.units.filter(u => u.id !== scourgeUnitId);
+    state.units.push(scourgeUnit);
     
     state.armies.push(scourgeArmy);
   } else {
@@ -120,15 +159,58 @@ function getOrCreateScourgeArmy(state) {
 
     
     // Scale MP proportionally
-    const mpRatio = scourgeArmy.mp.current / scourgeArmy.mp.max;
+    // Guard against division by zero or undefined
+    const currentMax = scourgeArmy.mp?.max || 0;
+    const mpRatio = currentMax > 0 ? (scourgeArmy.mp?.current || 0) / currentMax : 0.5;
+    scourgeArmy.mp = scourgeArmy.mp || { current: 0, max: 0 };
     scourgeArmy.mp.max = totalMP;
-    scourgeArmy.mp.current = totalMP * mpRatio;
+    scourgeArmy.mp.current = Math.max(0, totalMP * mpRatio);
     
     scourgeArmy.fervor = state.scourgeFervor;
     scourgeArmy.organization = Math.min(100, 50 + state.scourgeFervor * 0.5);
     scourgeArmy.dmgPerUnitMP = 0.95 * powerScale;
     scourgeArmy.dmgPerTickMO = 2.2 * powerScale;
     scourgeArmy.killRate = 0.09 * powerScale;
+    
+    // Ensure unitIds is set
+    if (!scourgeArmy.unitIds || scourgeArmy.unitIds.length === 0) {
+      scourgeArmy.unitIds = [scourgeUnitId];
+    }
+
+    // Update the Scourge unit stats to match
+    if (state.units) {
+      let scourgeUnit = state.units.find(u => u.id === scourgeUnitId);
+      if (!scourgeUnit) {
+        // Create the unit if it doesn't exist
+        scourgeUnit = createUnit(
+          scourgeUnitId,
+          scourgeId,
+          '_scourge',
+          'Scourge Horde',
+          {
+            mp: { current: totalMP * mpRatio, max: totalMP },
+            mo: { current: 100, max: 100 },
+            dmgPerUnitMP: 0.95 * powerScale,
+            dmgPerTickMO: 2.2 * powerScale,
+            protection: 0.15,
+            resolve: 0.25,
+            killRate: 0.09 * powerScale,
+            command: 40,
+            recovery: 40,
+            reinforcementRate: 80,
+            recoveryPool: 0
+          }
+        );
+        state.units.push(scourgeUnit);
+      } else {
+        // Update existing unit stats
+        scourgeUnit.mp.max = totalMP;
+        scourgeUnit.mp.current = Math.max(0, totalMP * mpRatio);
+        scourgeUnit.dmgPerUnitMP = 0.95 * powerScale;
+        scourgeUnit.dmgPerTickMO = 2.2 * powerScale;
+        scourgeUnit.killRate = 0.09 * powerScale;
+      }
+    }
 
   }
   
@@ -141,8 +223,8 @@ function getOrCreateScourgeArmy(state) {
  * @param {Array} participatingArmies - Array of army objects
  * @returns {Object} Combined coalition army
  */
-function createCombinedCoalitionArmy(state, participatingArmies) {
-  const combinedId = '_coalition_combined_' + state.turn;
+function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') {
+  const combinedId = '_coalition_combined_' + state.turn + idSuffix;
   
   // Calculate combined stats (weighted average)
   let totalMP = 0;
@@ -157,34 +239,81 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
   let totalCommand = 0;
   let totalRecovery = 0;
   let totalReinforcementRate = 0;
+  let rawOrg = 0;
+  let rawFervor = 0;
+  let rawDmgPerUnitMP = 0;
+  let rawDmgPerTickMO = 0;
+  let rawProtection = 0;
+  let rawResolve = 0;
+  let rawKillRate = 0;
+  let rawCommand = 0;
+  let rawRecovery = 0;
+  let rawReinforcementRate = 0;
   
   participatingArmies.forEach(army => {
+    // Guard against invalid army structures
+    if (!army || !army.mp) {
+      return;
+    }
+    
     const power = calculateArmyPower(army);
-    totalMP += army.mp.current;
-    totalMaxMP += army.mp.max;
-    totalOrg += army.organization * power;
-    totalFervor += army.fervor * power;
-    totalDmgPerUnitMP += army.dmgPerUnitMP * power;
-    totalDmgPerTickMO += army.dmgPerTickMO * power;
-    totalProtection += army.protection * power;
-    totalResolve += army.resolve * power;
-    totalKillRate += army.killRate * power;
-    totalCommand += (army.command || 50) * power;
-    totalRecovery += (army.recovery || 50) * power;
-    totalReinforcementRate += army.reinforcementRate * power;
+    const mpCurrent = typeof army.mp.current === 'number' && !isNaN(army.mp.current) ? army.mp.current : 0;
+    const mpMax = typeof army.mp.max === 'number' && !isNaN(army.mp.max) ? army.mp.max : 0;
+    const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+    const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+    const dmgPerUnitMP = typeof army.dmgPerUnitMP === 'number' && !isNaN(army.dmgPerUnitMP) ? army.dmgPerUnitMP : 1.0;
+    const dmgPerTickMO = typeof army.dmgPerTickMO === 'number' && !isNaN(army.dmgPerTickMO) ? army.dmgPerTickMO : 2.5;
+    const protection = typeof army.protection === 'number' && !isNaN(army.protection) ? army.protection : 0;
+    const resolve = typeof army.resolve === 'number' && !isNaN(army.resolve) ? army.resolve : 0;
+    const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
+    const command = typeof army.command === 'number' && !isNaN(army.command) ? army.command : 50;
+    const recovery = typeof army.recovery === 'number' && !isNaN(army.recovery) ? army.recovery : 50;
+    const reinforcementRate = typeof army.reinforcementRate === 'number' && !isNaN(army.reinforcementRate) ? army.reinforcementRate : 100;
+    
+    totalMP += mpCurrent;
+    totalMaxMP += mpMax;
+    totalOrg += org * power;
+    totalFervor += fervor * power;
+    totalDmgPerUnitMP += dmgPerUnitMP * power;
+    totalDmgPerTickMO += dmgPerTickMO * power;
+    totalProtection += protection * power;
+    totalResolve += resolve * power;
+    totalKillRate += killRate * power;
+    totalCommand += command * power;
+    totalRecovery += recovery * power;
+    totalReinforcementRate += reinforcementRate * power;
+    rawOrg += org;
+    rawFervor += fervor;
+    rawDmgPerUnitMP += dmgPerUnitMP;
+    rawDmgPerTickMO += dmgPerTickMO;
+    rawProtection += protection;
+    rawResolve += resolve;
+    rawKillRate += killRate;
+    rawCommand += command;
+    rawRecovery += recovery;
+    rawReinforcementRate += reinforcementRate;
   });
   
-  const totalPower = participatingArmies.reduce((sum, a) => sum + calculateArmyPower(a), 0);
+  const totalPower = participatingArmies.reduce((sum, a) => {
+    const power = calculateArmyPower(a);
+    return sum + (isNaN(power) ? 0 : power);
+  }, 0);
+  const powerDivisor = totalPower > 0 ? totalPower : Math.max(1, participatingArmies.length);
+  const useRawAverages = totalPower <= 0;
+  
+  // Ensure totalMaxMP is at least 1 to avoid division issues
+  const safeTotalMaxMP = Math.max(1, totalMaxMP || 0);
+  const safeTotalMP = Math.max(0, totalMP || 0);
   
   const combinedArmy = {
     id: combinedId,
     empireId: '_coalition',
     name: `Coalition Forces (${participatingArmies.length} armies)`,
-    fervor: totalFervor / totalPower,
-    organization: totalOrg / totalPower,
+    fervor: useRawAverages ? (rawFervor / powerDivisor) : (totalFervor / powerDivisor),
+    organization: useRawAverages ? (rawOrg / powerDivisor) : (totalOrg / powerDivisor),
     supplyNeed: 0,
     aggravation: 0,
-    manpower: totalMP,
+    manpower: safeTotalMP,
     owner_empire_id: '_coalition',
     performance: { base: 1.0, current: 1.0, bonusMultiplier: 1.0 },
     supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
@@ -192,35 +321,53 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     
     // MP and MO pools - combined
     mp: {
-      current: totalMP,
-      max: totalMaxMP
+      current: safeTotalMP,
+      max: safeTotalMaxMP
     },
     mo: {
       current: 100,
       max: 100
     },
     
-    // Combat stats - weighted average
-    dmgPerUnitMP: totalDmgPerUnitMP / totalPower,
-    dmgPerTickMO: totalDmgPerTickMO / totalPower,
-    protection: totalProtection / totalPower,
-    resolve: totalResolve / totalPower,
-    killRate: totalKillRate / totalPower,
+    // Combat stats - weighted average (with NaN guards)
+    dmgPerUnitMP: useRawAverages ? (rawDmgPerUnitMP / powerDivisor) : (totalDmgPerUnitMP / powerDivisor),
+    dmgPerTickMO: useRawAverages ? (rawDmgPerTickMO / powerDivisor) : (totalDmgPerTickMO / powerDivisor),
+    protection: useRawAverages ? (rawProtection / powerDivisor) : (totalProtection / powerDivisor),
+    resolve: useRawAverages ? (rawResolve / powerDivisor) : (totalResolve / powerDivisor),
+    killRate: useRawAverages ? (rawKillRate / powerDivisor) : (totalKillRate / powerDivisor),
     
     // Sustain stats
     recoveryPool: 0,
-    command: totalCommand / totalPower,
-    recovery: totalRecovery / totalPower,
-    reinforcementRate: totalReinforcementRate / totalPower,
+    command: useRawAverages ? (rawCommand / powerDivisor) : (totalCommand / powerDivisor),
+    recovery: useRawAverages ? (rawRecovery / powerDivisor) : (totalRecovery / powerDivisor),
+    reinforcementRate: useRawAverages ? (rawReinforcementRate / powerDivisor) : (totalReinforcementRate / powerDivisor),
     
     // Store reference to original armies for result distribution
     _originalArmies: participatingArmies.map(a => ({
       id: a.id,
-      originalMP: a.mp.current,
-      originalMaxMP: a.mp.max
+      originalMP: (a.mp && typeof a.mp.current === 'number' && !isNaN(a.mp.current)) ? a.mp.current : 0,
+      originalMaxMP: (a.mp && typeof a.mp.max === 'number' && !isNaN(a.mp.max)) ? a.mp.max : 1
     })),
     _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || [])
   };
+  
+  // Sanitize all numeric values to ensure no NaN
+  Object.keys(combinedArmy).forEach(key => {
+    if (typeof combinedArmy[key] === 'number' && isNaN(combinedArmy[key])) {
+      // Set defaults based on key
+      if (key === 'fervor' || key === 'organization') {
+        combinedArmy[key] = 0;
+      } else if (key === 'dmgPerUnitMP' || key === 'dmgPerTickMO') {
+        combinedArmy[key] = 1.0;
+      } else if (key === 'protection' || key === 'resolve' || key === 'killRate') {
+        combinedArmy[key] = 0;
+      } else if (key === 'command' || key === 'recovery') {
+        combinedArmy[key] = 50;
+      } else if (key === 'reinforcementRate') {
+        combinedArmy[key] = 100;
+      }
+    }
+  });
   
   state.armies.push(combinedArmy);
   return combinedArmy;
@@ -416,12 +563,12 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   logger.debug(`Loyal armies: ${opposingArmies.map(a => `${a.name} (Org: ${a.organization.toFixed(1)})`).join(', ')}`);
   
   // Create combined rebellious army
-  const rebelliousArmy = createCombinedCoalitionArmy(state, rebelliousArmies);
+  const rebelliousArmy = createCombinedCoalitionArmy(state, rebelliousArmies, '_rebel');
   rebelliousArmy.name = `Rebellious Forces (${rebelliousArmies.length} armies)`;
   rebelliousArmy.empireId = '_insurrection';
   
   // Create combined loyal army
-  const loyalArmy = createCombinedCoalitionArmy(state, opposingArmies);
+  const loyalArmy = createCombinedCoalitionArmy(state, opposingArmies, '_loyal');
   loyalArmy.name = `Loyal Forces (${opposingArmies.length} armies)`;
   loyalArmy.empireId = '_coalition';
   

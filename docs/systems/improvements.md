@@ -132,7 +132,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Capacity: 3, Potency: 5
 - Sustains: super_alloys:3, rare_gases:2
 - Produces: rare_gases:8, quantum_circuits:2
-- Modifiers: research_speed +10%, tech_level +1
+- Modifiers: research_speed +15%
 - Description: Colossal monument to knowledge pursuing transcendent breakthroughs
 
 ### Grand War Symposium
@@ -174,7 +174,6 @@ These epic mega-structures and grand events represent the peak of civilization's
 
 ### Research Modifiers
 - `research_speed`: Accelerates technology research
-- `tech_level`: Unlocks higher-tier capabilities
 
 ### Production Modifiers
 - `industrial_output`: Increases production efficiency

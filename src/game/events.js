@@ -4,6 +4,7 @@ import { clampApproval, clampCohesion, clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { resolveEventVariables, expandEffectTargets, interpolateText } from './selectors.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
+import { handleTechEventChoice } from './technology.js';
 
 
 export function checkEvent(state, rng = Math.random) {
@@ -116,6 +117,11 @@ export function handleEventChoice(state, eventId, choiceIndex) {
   if (!event) {
     logger.error(`Event not found: ${eventId}`);
     return { error: 'Event not found' };
+  }
+  
+  // Route tech events to specialized handler
+  if (event.scope === 'TECH') {
+    return handleTechEventChoice(state, event, choiceIndex);
   }
   
   // Get resolved context for expanding effect targets
