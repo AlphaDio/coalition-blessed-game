@@ -217,7 +217,8 @@ These epic mega-structures and grand events represent the peak of civilization's
 
 ### Input
 - Player commands (accept request, cancel improvement)
-- Empire stockpiles and budgets
+- Empire stockpiles
+
 - Market state (for buy orders)
 
 ### Processing

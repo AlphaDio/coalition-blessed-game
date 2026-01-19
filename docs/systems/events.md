@@ -13,6 +13,7 @@ Events are narrative choices triggered by coalition cohesion tiers. Each event p
 - Each tick, `checkEvent` rolls against tier-based frequencies derived from coalition cohesion.
 - A random non-law event is selected from `state.events`.
 - If the event has `variables`, they are resolved against current game state.
+- Resolved context is stored on the active event and used for interpolation and effect expansion.
 - The event becomes `state.activeEvent` until a player choice resolves it.
 - Choice effects mutate coalition cohesion, scourge cohesion, empire approval, army fervor, and stockpiles.
 - Events without choices are auto-resolved and logged.
@@ -75,6 +76,8 @@ description: "${favored.name} is demanding preferential treatment."
 choices:
   - text: "Favor ${favored.name}"
 ```
+
+Interpolation applies when the event is selected, so resolved context is reused for choice resolution.
 
 Interpolation supports:
 - `${varName}` - Entity name or value

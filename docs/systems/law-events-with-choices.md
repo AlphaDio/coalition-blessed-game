@@ -17,7 +17,8 @@ Law events can now include player choices. When a law event with choices is sele
   description: "Description presented to player",
   scope: "LAW",
   phase_tags: ["DEBATE", "FALLOUT", "VOTING"],
-  nature: "APPROVE" | "REJECT" | "ADVANCE" | "NEUTRAL",
+  nature: "APPROVE" | "REJECT" | "ADVANCE" | "STALL" | "EXTERNALITY" | "NEUTRAL",
+
   tier: "MAJOR" | "MINOR",
   triggers: [],
   base_weight: 1.0,

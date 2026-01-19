@@ -33,6 +33,7 @@ The economy system simulates a market-based supply/demand loop with coalition pr
 - Each commodity uses a priority threshold (`theta`) derived from tier defaults or coalition overrides.
 - Purchases stop when budget is exhausted; spent amount is deducted from `budget_credits`.
 - Default budget per tick is `budget_credits_per_tick` (100 by config), with a fixed starting coalition budget of 5,000 credits.
+- The fixed starting budget is defined in `COALITION_ECONOMY.INITIAL_BUDGET` for consistency with code defaults.
 
 ## Army Fulfillment
 - Needs penalties kick in below the fulfillment threshold (default 0.80).
@@ -53,6 +54,7 @@ The economy system simulates a market-based supply/demand loop with coalition pr
 
 ## Integration Points
 - `src/game/marketEconomy.js` handles pricing, market clearing, procurement, and fulfillment.
+- `src/game/constants.js` defines coalition budget defaults mirrored in docs.
 - `docs/input/economy_system.yaml` configures pricing parameters and procurement behavior.
 - `docs/input/resources.yaml` supplies commodity metadata and tiers.
 

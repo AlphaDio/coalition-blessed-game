@@ -79,7 +79,7 @@ function getOrCreateScourgeArmy(state) {
     supplyNeed: 0,
     aggravation: 0,
     manpower: totalMP,
-    owner_empire_id: '_insurrection',
+    owner_empire_id: '_scourge',
     performance: { base: 1.0, current: 1.0, bonusMultiplier: 1.0 },
     supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
     demands: { needs: {}, wants: {} },
@@ -523,6 +523,13 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
       // Insurrection spreads - no changes to rebellious armies, but approval shock
     }
   });
+  
+  if (loyalUnits.length > 0) {
+    syncUnitsFromArmy(loyalArmy, loyalUnits);
+  }
+  if (rebelliousUnits.length > 0) {
+    syncUnitsFromArmy(rebelliousArmy, rebelliousUnits);
+  }
   
   // Apply cohesion and approval changes
   if (loyalWon) {

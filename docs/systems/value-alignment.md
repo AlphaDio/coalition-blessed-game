@@ -150,9 +150,10 @@ This makes sense: a biological hive-mind strongly opposes granting rights to art
 - **src/game/types.js**: Empire and law type definitions
 - **src/game/reactions.js**: Alignment calculation logic
 - **src/game/laws.js**: Law enactment with reaction system
-- **src/game/content.js**: Content loading from YAML modules
+- **src/game/content.js**: Content loading and diplomacy seeding from value alignment
 - **modules/empires/*.ds.yml**: Empire definitions
 - **modules/laws/*.ds.yml**: Law definitions
+
 
 ## Usage in Game
 
@@ -163,7 +164,10 @@ When a law is enacted:
 3. Logs reaction messages (e.g., "The Northern Federation: Laud (+10)")
 4. Updates empire approval values
 
+Initial diplomacy relations are also seeded from value alignment during content loading.
+
 This creates dynamic, emergent behavior where empire reactions are consistent with their values rather than arbitrary.
+
 
 ## Design Benefits
 

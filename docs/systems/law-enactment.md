@@ -164,6 +164,11 @@ In VOTING phase, when phaseProgress >= 1.0:
 - **Starting a Law**: Costs 100 influence.
 - **Concurrent Laws**: Multiple laws can be in-flight simultaneously.
 
+## Law Modifiers
+
+- **tick_delay_multiplier**: Scales how many ticks are needed between law events (lower is faster).
+- **enactment_chance_bonus**: Lowers the pass threshold during vote tallying.
+
 ## Rejection & Burial
 
 - **Reject Tracking**: Each REJECT-nature major event increments rejects.

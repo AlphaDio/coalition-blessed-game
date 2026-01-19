@@ -70,6 +70,10 @@ When `unrest >= 0.3`, each law tick applies negative externalities (scaled by le
 - **Legitimacy reduces required threshold** via `getAdjustedVoteThreshold()`.
 - Votes tally support, oppose, and abstain across empires.
 
+## Law Modifiers
+- `tick_delay_multiplier` scales how quickly law ticks fire (lower is faster).
+- `enactment_chance_bonus` reduces the pass threshold during vote tallying.
+
 ## Data Flow
 - Inputs: law definition, empire values, current meters, RNG.
 - Tick: select eligible events -> apply effects -> update meters/progress -> apply unrest externalities.

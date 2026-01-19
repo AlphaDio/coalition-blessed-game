@@ -36,6 +36,10 @@ The battle system simulates MP-based front battles with morale, recovery, and re
 - Battle metadata (permanent losses, recovered MP, events) is emitted into `worldState.battleEvents`.
 - Battle end logs include per-side summaries of destroyed, recovered, and remaining MP.
 
+## Army Composition
+- Army combat stats are aggregated from attached units via `src/game/armyComposition.js`.
+- Combined battle resolution syncs MP/MO back into units to keep aggregates consistent.
+
 ## Data Flow
 - Inputs: battle front, army stats, battlefield size, RNG for triggers.
 - Tick: calculate engagement → apply MP + morale damage → check for shatter.
