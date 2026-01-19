@@ -94,7 +94,8 @@ Successfully implemented an interactive law event system with player choices dur
 - `modules/laws/law_organic_deliberation.ds.yml`
 
 #### Documentation
-- `docs/LAW_EVENTS_WITH_CHOICES.md` - Comprehensive guide
+- `docs/systems/law-events-with-choices.md` - Comprehensive guide
+
 
 ## Testing Results
 

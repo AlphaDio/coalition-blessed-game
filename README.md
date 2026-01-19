@@ -136,13 +136,16 @@ src/
     battles.md   # Battle system
     laws.md      # Law system
     improvements.md # Improvements system (NEW!)
+  docs/elements/ # Game element documentation
 ```
+
 
 ## Development
 
 The codebase follows a clean separation between simulation (pure functions in `src/game/`) and UI (blessed components in `src/ui/`). All game logic is deterministic and testable.
 
-System documentation lives in `docs/systems` for Economy, Events, Battles, Laws, and Improvements. Update those docs whenever the corresponding implementation changes so they stay aligned with the game behavior.
+System documentation lives in `docs/systems` for Economy, Events, Battles, Laws, Improvements, and law enactment/value alignment. Update those docs whenever the corresponding implementation changes so they stay aligned with the game behavior.
+
 
 
 ## Testing

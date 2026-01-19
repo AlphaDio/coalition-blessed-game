@@ -87,3 +87,8 @@ When `unrest >= 0.3`, each law tick applies negative externalities (scaled by le
 - `src/game/lawProcessManager.js`
 - `src/game/lawEventTemplates.js`
 - `src/game/lawDefinitions.js`
+
+## Additional Docs
+- `docs/systems/law-enactment.md`
+- `docs/systems/law-events-with-choices.md`
+- `docs/systems/value-alignment.md`

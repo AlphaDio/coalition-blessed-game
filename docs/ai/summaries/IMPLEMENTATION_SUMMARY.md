@@ -45,7 +45,8 @@ Successfully implemented a comprehensive Law Enactment system for the Coalition 
 5. **Testing & Tools**
    - **CLI Runner** (`lawRunner.js`): Simulate complete law processes with detailed logs
    - **Determinism Test** (`testDeterminism.js`): Validates identical outcomes from same seed
-   - **Documentation** (`docs/LAW_ENACTMENT_SYSTEM.md`): Comprehensive system guide
+    - **Documentation** (`docs/systems/law-enactment.md`): Comprehensive system guide
+
 
 ### Game Integration
 
@@ -126,7 +127,8 @@ Successfully implemented a comprehensive Law Enactment system for the Coalition 
 4. `src/game/lawEventTemplates.js` - Sample events (185 lines)
 5. `lawRunner.js` - CLI test runner (160 lines)
 6. `testDeterminism.js` - Determinism test (120 lines)
-7. `docs/LAW_ENACTMENT_SYSTEM.md` - Documentation (350 lines)
+7. `docs/systems/law-enactment.md` - Documentation (350 lines)
+
 8. `modules/laws/lawdef_ai_citizenship.ds.yml` - YAML law example
 9. `modules/events/lawevent_passionate_speech.ds.yml` - YAML event example
 
