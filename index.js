@@ -10,7 +10,8 @@ import { createPowerSystemPolicy } from './src/game/types.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from './src/game/marketEconomy.js';
 import { DeterministicRNG } from './src/modules/rng.js';
-import { initializeImprovementsState, getSampleImprovementRequests } from './src/game/improvements.js';
+import { initializeImprovementsState, getSampleImprovementRequests, initializeImprovementSuggestions } from './src/game/improvements.js';
+import { generateImprovementSuggestions } from './src/game/improvementDefinitions.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -60,7 +61,11 @@ try {
 // Initialize improvements system
 try {
   state.improvements = initializeImprovementsState();
-  state.improvements.requests = getSampleImprovementRequests();
+  
+  // Use deterministic RNG for improvement suggestions with empire assignments
+  const improvementRng = new DeterministicRNG(state.rngSeed + 1000);
+  state.improvements.requests = generateImprovementSuggestions(state, improvementRng.random.bind(improvementRng));
+  
   console.log(`Improvements system initialized: ${state.improvements.requests.length} requests available`);
 } catch (error) {
   console.warn(`Improvements initialization failed: ${error.message}`);

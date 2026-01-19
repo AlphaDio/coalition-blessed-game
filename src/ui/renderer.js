@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
+import { getAvailableLaws } from '../game/lawDefinitions.js';
+import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/improvementDefinitions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -439,16 +441,24 @@ function buildLawMenuItems(state) {
     { id: 'divider', label: '─────────────────', divider: true }
   ];
 
-  if (state.lawDefinitions && state.lawDefinitions.length > 0) {
-    state.lawDefinitions.forEach((lawDef, idx) => {
+  // Get only laws that meet tier requirements and haven't been enacted
+  const availableLaws = getAvailableLaws(state);
+  
+  if (availableLaws && availableLaws.length > 0) {
+    availableLaws.forEach((lawDef) => {
       const canAfford = state.playerInfluence >= 100;
-      const costHint = canAfford ? '100 inf' : '{red-fg}need 100{/red-fg}';
+      const costHint = canAfford ? `T${lawDef.tier} • 100 inf` : `T${lawDef.tier} • {red-fg}need 100{/red-fg}`;
+      
+      // Find the original index in lawDefinitions for action handling
+      const originalIndex = state.lawDefinitions?.findIndex(l => l.id === lawDef.id) ?? -1;
+      
       items.push({
         id: `law_${lawDef.id}`,
-        label: lawDef.name,
+        label: `${lawDef.name}`,
         hint: costHint,
         action: 'ENACT_LAW',
-        lawIndex: idx,
+        lawIndex: originalIndex,
+        lawId: lawDef.id,
         disabled: !canAfford
       });
     });
@@ -483,14 +493,41 @@ function buildRequestMenuItems(state) {
     return items;
   }
 
-  state.improvements.requests.forEach((request, idx) => {
+  // Filter requests to only show those that meet tier requirements
+  // An improvement can be shown if at least one empire can build it
+  const filteredRequests = state.improvements.requests.filter(request => {
+    // T1 is always available
+    if (!request.tier || request.tier === 1) {
+      return true;
+    }
+    // For T2/T3, check if the suggesting empire has access
+    if (request.suggestedBy && request.suggestedBy !== 'coalition') {
+      return isImprovementTierUnlocked(request.tier, state, request.suggestedBy);
+    }
+    // Coalition suggestions for T2/T3 should have been filtered in generateImprovementSuggestions
+    // but double-check: is there any empire with access?
+    return state.empires?.some(e => isImprovementTierUnlocked(request.tier, state, e.id)) || false;
+  });
+
+  if (filteredRequests.length === 0) {
+    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+    return items;
+  }
+
+  filteredRequests.forEach((request) => {
     const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
+    const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+    
+    // Find original index for action handling
+    const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
+    
     items.push({
       id: `request_${request.id}`,
       label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: `${request.suppliesCost} supplies`,
+      hint: `${tierLabel} • ${request.suppliesCost} sup`,
       action: 'ACCEPT_REQUEST',
-      requestIndex: idx
+      requestIndex: originalIndex,
+      requestId: request.id
     });
   });
 
