@@ -4,6 +4,7 @@
  */
 
 import { getLogger } from '../modules/logger.js';
+import { getCommodityTier, loadEconomySystemConfig } from '../utils/fileLoader.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -53,7 +54,7 @@ function getDefaultEconomyConfig() {
     coalition: {
       procurement: {
         enabled: true,
-        budget_credits_per_tick: 5000,
+        budget_credits_per_tick: 100,
         default_priority_by_tier: {
           t1: "-10%",
           t2: "10%",
@@ -385,8 +386,7 @@ export function coalitionProcurement(market, sellOffers, coalitionState, config)
     
     // Determine priority threshold
     const commodityPriority = perCommodityPriority[sell.commodity];
-    // TODO: Get commodity tier from resources
-    const tier = 't1'; // Default, should look up from resources
+    const tier = getCommodityTier(sell.commodity);
     const priorityKey = commodityPriority || defaultPriorities[tier] || "10%";
     const theta = priorityLevels[priorityKey]?.theta || 1.0;
     
@@ -431,6 +431,7 @@ export function coalitionProcurement(market, sellOffers, coalitionState, config)
 export function computeArmyFulfillment(army, config) {
   const { needs, wants } = army.demands || {};
   const supplyState = army.supply_state || {};
+  const manpower = army.manpower || army.mp?.max || 0;
   
   const needsFulfillment = {};
   const wantsFulfillment = {};
@@ -439,7 +440,7 @@ export function computeArmyFulfillment(army, config) {
   // Compute needs fulfillment
   if (needs) {
     Object.entries(needs).forEach(([commodity, neededPerManpower]) => {
-      const totalNeeded = neededPerManpower * (army.manpower || 0);
+      const totalNeeded = neededPerManpower * manpower;
       const received = supplyState.received?.[commodity] || 0;
       const fulfillment = totalNeeded > 0 ? Math.min(1.0, received / totalNeeded) : 1.0;
       
@@ -454,7 +455,7 @@ export function computeArmyFulfillment(army, config) {
   // Compute wants fulfillment
   if (wants) {
     Object.entries(wants).forEach(([commodity, wantedPerManpower]) => {
-      const totalWanted = wantedPerManpower * (army.manpower || 0);
+      const totalWanted = wantedPerManpower * manpower;
       const received = supplyState.received?.[commodity] || 0;
       const fulfillment = totalWanted > 0 ? Math.min(1.0, received / totalWanted) : 1.0;
       
@@ -475,13 +476,13 @@ export function computeArmyFulfillment(army, config) {
   
   let performanceModifier = 0;
   
-  // Needs: penalties below threshold
-  Object.values(needsFulfillment).forEach(fulfillment => {
-    if (fulfillment < threshold) {
-      const penaltyRatio = (threshold - fulfillment) / threshold;
-      performanceModifier -= max_penalty * penaltyRatio;
-    }
-  });
+  const needsValues = Object.values(needsFulfillment);
+  const worstNeeds = needsValues.length > 0 ? Math.min(...needsValues) : 1.0;
+  if (worstNeeds < threshold) {
+    const penaltyRatio = (threshold - worstNeeds) / threshold;
+    const severity = Math.pow(penaltyRatio, 1.5);
+    performanceModifier -= max_penalty * severity;
+  }
   
   // Wants: diminishing returns bonus
   Object.values(wantsFulfillment).forEach(fulfillment => {
@@ -494,9 +495,11 @@ export function computeArmyFulfillment(army, config) {
   
   // Update army performance
   const basePerformance = army.performance?.base || 1.0;
+  const bonusMultiplier = army.performance?.bonusMultiplier ?? 1.0;
   army.performance = {
     base: basePerformance,
-    current: basePerformance * (1 + performanceModifier)
+    bonusMultiplier,
+    current: basePerformance * (1 + performanceModifier) * bonusMultiplier
   };
   
   return { needsFulfillment, wantsFulfillment, shortages, performanceModifier };

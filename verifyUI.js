@@ -8,6 +8,8 @@
 import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
+
 
 // Initialize game state
 const state = createGameState(12345);
@@ -15,7 +17,12 @@ const content = createSampleContent(12345);
 
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.turn = 1;
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
+
 
 console.log('='.repeat(70));
 console.log('FRONT BATTLES UI VERIFICATION');

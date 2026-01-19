@@ -92,10 +92,12 @@ console.log();
 // Test 4: Complete build
 console.log('=== Test 4: Complete Build ===');
 // Advance remaining turns to complete
-const remainingTurns = Math.max(0, improvement.build - improvement.buildProgress);
-console.log(`Advancing ${remainingTurns} more turns to complete build...`);
+// Each turn adds coalitionConstruction (4) to buildProgress
+const remainingProgress = Math.max(0, improvement.build - improvement.buildProgress);
+const turnsToComplete = Math.ceil(remainingProgress / state.coalitionConstruction);
+console.log(`Advancing ${turnsToComplete} more turns to complete build...`);
 
-for (let i = 0; i < remainingTurns; i++) {
+for (let i = 0; i < turnsToComplete; i++) {
   state.turn++;
   processImprovementsTick(state);
 }

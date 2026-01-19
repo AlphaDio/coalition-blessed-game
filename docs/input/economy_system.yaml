@@ -89,7 +89,7 @@ economy_system:
   coalition:
     procurement:
       enabled: true
-      budget_credits_per_tick: 5000
+      budget_credits_per_tick: 100
       stockpiles: {} # commodity_key -> qty
 
       # Player-set priority per good chooses the threshold factor (theta).

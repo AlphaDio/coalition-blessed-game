@@ -5,9 +5,10 @@
  * Tests MP-axis battles with morale badges and lockout mechanics
  */
 
-import { createGameState, createArmy } from './src/game/types.js';
+import { createGameState, createArmy, createUnit } from './src/game/types.js';
 import { simulateBattleTick, startBattle, getActiveBattles } from './src/game/frontBattles.js';
 import { collectArmiesInBattle, isRegularArmy } from './src/game/turn.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 
 
 // Helper to create a test state with two armies
@@ -17,8 +18,15 @@ function createTestState() {
   const army1 = createArmy('army1', 'empire1', 'Test Army 1', 50, 60, 50);
   const army2 = createArmy('army2', 'empire2', 'Test Army 2', 50, 60, 50);
   
+  army1.unitIds = ['unit_army1'];
+  army2.unitIds = ['unit_army2'];
   state.armies = [army1, army2];
+  state.units = [
+    createUnit('unit_army1', 'army1', 'empire1', 'Test Unit 1'),
+    createUnit('unit_army2', 'army2', 'empire2', 'Test Unit 2')
+  ];
   state.turn = 1;
+  refreshArmyAggregates(state);
   
   return state;
 }

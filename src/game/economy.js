@@ -14,7 +14,7 @@ export function consumeSupplies(state) {
   let totalNeeded = 0;
   
   state.armies.forEach(army => {
-    totalNeeded += army.supplyNeed;
+    totalNeeded += army.supplyNeed || 0;
   });
   
   logger.debug(`Supply consumption: needed=${totalNeeded.toFixed(1)}, available=${state.stockpiles.supplies}`);

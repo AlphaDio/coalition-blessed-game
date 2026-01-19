@@ -18,22 +18,25 @@ declares:
   event_data:
     id: "event_3"
     name: "Diplomatic Crisis"
-    description: "Tensions rise between coalition members over resource allocations and war priorities."
+    description: "Tensions rise between coalition members over resource allocations and war priorities. ${favored.name} is demanding preferential treatment."
+    variables:
+      - type: empire
+        select: random
+        count: 1
+        as: favored
+      - type: empire
+        select: all
+        exclude: ["$favored"]
+        as: others
     choices:
-      - text: "Favor the Stellar Federation"
+      - text: "Favor ${favored.name}"
         effects:
           empireApproval:
-            empire_1: 15
-            empire_2: -8
-            empire_3: -8
-            empire_clockwork: -6
-            empire_hive: -6
-      - text: "Favor the Verdant Colonies"
+            "$favored": 15
+            "$others": -8
+      - text: "Maintain equal treatment"
         effects:
           empireApproval:
-            empire_1: -8
-            empire_2: 15
-            empire_3: -8
-            empire_clockwork: -6
-            empire_hive: -6
+            "@all": -3
+          coalitionCohesion: 5
 

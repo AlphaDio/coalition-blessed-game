@@ -16,6 +16,29 @@ export const INITIAL_STATE = {
   turn: 1
 };
 
+export const COALITION_ECONOMY = {
+  INITIAL_BUDGET: 5000,           // Starting coalition credits
+  BUDGET_PER_TICK: 100            // Credits gained per tick
+};
+
+export const MARKET_CONSTANTS = {
+  SELL_PRICE_DISCOUNT: 0.95,      // Empires sell at 95% of market price
+  BUY_NEEDS_PREMIUM: 1.1,         // Willing to pay 10% above market for needs
+  BUY_WANTS_PREMIUM: 1.05,        // Willing to pay 5% above market for wants
+  ARMY_NEEDS_PREMIUM: 1.2,        // Armies pay 20% above market for needs
+  ARMY_WANTS_PREMIUM: 1.15,       // Armies pay 15% above market for wants
+  SURPLUS_RATIO_THRESHOLD: 0.35,  // When stockpiles exceed this ratio, sell surplus
+  SURPLUS_TARGET_RATIO: 0.7,      // Target stockpile ratio after selling
+  SURPLUS_KEEP_RATIO: 0.5         // Keep at least this much when selling
+};
+
+export const FRONT_BATTLE_MODIFIERS = {
+  FERVOR_MIN: 0.8,                // 0 fervor = 0.8x damage
+  FERVOR_RANGE: 0.4,              // 100 fervor = 0.8 + 0.4 = 1.2x damage
+  ORG_MIN: 0.9,                   // 0 organization = 0.9x damage
+  ORG_RANGE: 0.2                  // 100 organization = 0.9 + 0.2 = 1.1x damage
+};
+
 export const BATTLE_CONSTANTS = {
   ARMY_POWER_ORG_WEIGHT: 0.6,
   ARMY_POWER_FERVOR_WEIGHT: 0.4,

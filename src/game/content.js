@@ -1,8 +1,43 @@
-import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
+import { createEmpire, createArmy, createLaw, createEvent, createUnit } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
 
 const EVENT_EFFECT_RANGE_MULTIPLIER = 2;
+
+const RELATION_BASE = 100;
+const RELATION_RANGE = 200;
+
+function calculateValueAlignmentScore(valuesA = {}, valuesB = {}) {
+  const axes = new Set([...Object.keys(valuesA || {}), ...Object.keys(valuesB || {})]);
+  if (axes.size === 0) return 0;
+
+  let totalDiff = 0;
+  axes.forEach(axis => {
+    const a = Number.isFinite(valuesA[axis]) ? valuesA[axis] : 0;
+    const b = Number.isFinite(valuesB[axis]) ? valuesB[axis] : 0;
+    totalDiff += Math.abs(a - b);
+  });
+
+  const averageDiff = totalDiff / axes.size; // 0..2
+  const normalized = Math.max(0, Math.min(1, averageDiff / 2));
+  return normalized;
+}
+
+function buildEmpireRelations(empires) {
+  const relations = {};
+
+  empires.forEach(empire => {
+    relations[empire.id] = {};
+    empires.forEach(other => {
+      if (empire.id === other.id) return;
+      const diff = calculateValueAlignmentScore(empire.values, other.values);
+      const relation = Math.round(RELATION_BASE - (diff * RELATION_RANGE));
+      relations[empire.id][other.id] = Math.max(-100, Math.min(100, relation));
+    });
+  });
+
+  return relations;
+}
 
 function scaleEventEffects(value) {
   if (value === null || value === undefined) {
@@ -68,12 +103,46 @@ export function createSampleContent(seed = 0) {
       data.name,
       data.fervor,
       data.organization,
-      data.aggravation, // This is supplyNeed in the original data
-      data.command || 50, // Default Command if not specified
-      data.recovery || 50 // Default Recovery if not specified
+      data.aggravation,
+      data.command || 50,
+      data.recovery || 50
     );
   });
-  
+
+  // Extract units from modules
+  const unitModules = getModulesByType(registry, 'unit');
+  const units = unitModules.map(entry => {
+    const moduleDoc = registry.modules[entry.id];
+    const data = moduleDoc.declares.unit_data;
+    return createUnit(
+      data.id,
+      data.armyId,
+      data.empireId,
+      data.name,
+      data.stats || {},
+      data.demands || {}
+    );
+  });
+
+  armies.forEach(army => {
+    const attachedUnits = units.filter(unit => unit.armyId === army.id);
+    army.unitIds = attachedUnits.map(unit => unit.id);
+  });
+
+  // Fallback: ensure every army has at least one unit
+  armies.forEach(army => {
+    if (army.unitIds.length > 0) return;
+    const fallbackId = `unit_${army.id}`;
+    const fallbackUnit = createUnit(
+      fallbackId,
+      army.id,
+      army.empireId,
+      `${army.name} Core Unit`
+    );
+    units.push(fallbackUnit);
+    army.unitIds = [fallbackId];
+  });
+
   // Extract laws from modules
   const lawModules = getModulesByType(registry, 'law');
   const laws = lawModules.map(entry => {
@@ -124,9 +193,12 @@ export function createSampleContent(seed = 0) {
       data.id,
       data.name,
       data.description,
-      choices
+      choices,
+      data.variables || null  // Pass through selector definitions
     );
   });
+
+  const relations = buildEmpireRelations(empires);
   
-  return { empires, armies, laws, events };
+  return { empires, armies, units, laws, events, diplomacy: { relations } };
 }

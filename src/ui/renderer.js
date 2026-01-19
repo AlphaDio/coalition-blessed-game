@@ -1104,6 +1104,10 @@ function formatStats(state) {
   const scourgeCohesion = state.scourgeCohesion ?? 80;
   lines.push(`{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}`);
   lines.push(`{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}`);
+  const targetEmpire = state.empires?.find(empire => empire.id === state.scourgeTargetEmpireId);
+  if (targetEmpire) {
+    lines.push(`{bold}Scourge Target:{/bold} ${targetEmpire.name}`);
+  }
   lines.push('', '{bold}Stockpiles:{/bold}');
   lines.push(`  ${formatResource('Supplies', state.stockpiles.supplies)}`, '');
 
@@ -1233,7 +1237,7 @@ function filterRegularArmies(armies) {
 function formatArmyBlock(army, empireName) {
   const lines = [`{bold}${army.name}{/bold} (${empireName})`];
   lines.push(`  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}`);
-  lines.push(`  Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}`);
+  lines.push(`  Units: ${army.unitIds?.length || 0}, Aggravation: ${formatNumber(army.aggravation)}`);
 
   if (army.mp && army.mo) {
     const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';

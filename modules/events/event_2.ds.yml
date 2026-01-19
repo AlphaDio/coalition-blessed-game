@@ -18,19 +18,18 @@ declares:
   event_data:
     id: "event_2"
     name: "Heroic Stand"
-    description: "The 1st Stellar Battle Fleet and Nexus Hyperspace Marines have held a breach against overwhelming odds."
+    description: "Coalition forces have held a breach against overwhelming odds. The ${heroArmy.name} led the defense."
+    variables:
+      - type: army
+        select: random
+        count: 1
+        as: heroArmy
     choices:
       - text: "Publicize the victory (gain fervor across the coalition)"
         effects:
           armyFervor:
-            army_1: 10
-            army_2: 10
-            army_3: 10
-            army_4: 10
+            "@all": 10
       - text: "Rotate forces (trade fervor for reorganization)"
         effects:
           armyFervor:
-            army_1: -5
-            army_2: -5
-            army_3: -5
-            army_4: -5
+            "@all": -5

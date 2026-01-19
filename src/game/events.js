@@ -2,6 +2,9 @@ import { EVENT_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
 import { clampApproval, clampCohesion, clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
+import { resolveEventVariables, expandEffectTargets, interpolateText } from './selectors.js';
+import { getEventTitle, hasValidChoices } from '../utils/events.js';
+
 
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
@@ -50,8 +53,8 @@ export function checkEvent(state, rng = Math.random) {
     }
     
     // Check if event has valid choices - if not, auto-resolve it
-    if (!event.choices || !Array.isArray(event.choices) || event.choices.length === 0) {
-      const eventTitle = event.title || event.name || event.id;
+    if (!hasValidChoices(event)) {
+      const eventTitle = getEventTitle(event);
       logger.warn(`Event "${eventTitle}" (${event.id}) has no choices array, auto-resolving`);
       // Auto-resolve by calling handleEventChoice with a default choice
       const autoResolveResult = autoResolveEvent(state, event);
@@ -64,8 +67,26 @@ export function checkEvent(state, rng = Math.random) {
       }
     }
     
-    const eventTitle = event.title || event.name || event.id;
+    const eventTitle = getEventTitle(event);
     logger.debug(`Event selected: ${eventTitle} (${event.id})`);
+    
+    // Resolve dynamic variables if present
+    if (event.variables) {
+      const resolvedContext = resolveEventVariables(event.variables, state);
+      // Return event with resolved context for use in handleEventChoice
+      // Interpolate title, text, and choice text with resolved values
+      return {
+        ...event,
+        _resolvedContext: resolvedContext,
+        title: interpolateText(event.title, resolvedContext, state),
+        text: interpolateText(event.text, resolvedContext, state),
+        choices: event.choices.map(choice => ({
+          ...choice,
+          text: interpolateText(choice.text, resolvedContext, state)
+        }))
+      };
+    }
+    
     return event;
   }
   
@@ -79,20 +100,30 @@ function autoResolveEvent(state, event) {
   // For events without choices, just clear the active event
   // This allows the game to continue without player input
   state.activeEvent = null;
-  return { success: true, log: [`Event ${event.title || event.name || event.id} occurred (no action required)`] };
+  return { success: true, log: [`Event ${getEventTitle(event)} occurred (no action required)`] };
 }
 
 export function handleEventChoice(state, eventId, choiceIndex) {
   const logger = getLogger();
-  const event = state.events.find(e => e.id === eventId);
+  
+  // Use activeEvent if available (has resolved context), otherwise find from events list
+  // This is important for dynamic selectors - the activeEvent has _resolvedContext attached
+  const activeEvent = state.activeEvent;
+  const event = activeEvent && activeEvent.id === eventId 
+    ? activeEvent 
+    : state.events.find(e => e.id === eventId);
+  
   if (!event) {
     logger.error(`Event not found: ${eventId}`);
     return { error: 'Event not found' };
   }
   
+  // Get resolved context for expanding effect targets
+  const resolvedContext = event._resolvedContext || {};
+  
   // If event has no choices, auto-resolve it
-  if (!event.choices || !Array.isArray(event.choices) || event.choices.length === 0) {
-    const eventTitle = event.title || event.name || event.id;
+  if (!hasValidChoices(event)) {
+    const eventTitle = getEventTitle(event);
     logger.warn(`Event "${eventTitle}" (${eventId}) has no choices array, auto-resolving`);
     const autoResolveResult = autoResolveEvent(state, event);
     if (autoResolveResult.success) {
@@ -114,30 +145,36 @@ export function handleEventChoice(state, eventId, choiceIndex) {
   }
   
   const choice = event.choices[choiceIndex];
-  const log = [`Event: ${event.title} - ${choice.text}`];
+  
+  // Interpolate choice text with resolved context
+  const choiceText = interpolateText(choice.text, resolvedContext, state);
+  const log = [`Event: ${event.title} - ${choiceText}`];
   
   // Apply choice effects
   if (choice.effects) {
+    // Expand effect targets using resolved context (converts $var references to IDs)
+    const expandedEffects = expandEffectTargets(choice.effects, resolvedContext, state);
+    
     // Handle coalitionCohesion (function or number)
-    if (choice.effects.coalitionCohesion !== undefined) {
-      const change = typeof choice.effects.coalitionCohesion === 'function' 
-        ? choice.effects.coalitionCohesion() 
-        : choice.effects.coalitionCohesion;
+    if (expandedEffects.coalitionCohesion !== undefined) {
+      const change = typeof expandedEffects.coalitionCohesion === 'function' 
+        ? expandedEffects.coalitionCohesion() 
+        : expandedEffects.coalitionCohesion;
       state.coalitionCohesion = clampCohesion(state.coalitionCohesion + change);
       log.push(`Coalition Cohesion ${change >= 0 ? '+' : ''}${change}`);
     }
     
     // Handle scourgeCohesion (function or number)
-    if (choice.effects.scourgeCohesion !== undefined) {
-      const change = typeof choice.effects.scourgeCohesion === 'function' 
-        ? choice.effects.scourgeCohesion() 
-        : choice.effects.scourgeCohesion;
+    if (expandedEffects.scourgeCohesion !== undefined) {
+      const change = typeof expandedEffects.scourgeCohesion === 'function' 
+        ? expandedEffects.scourgeCohesion() 
+        : expandedEffects.scourgeCohesion;
       state.scourgeCohesion = clampStat(state.scourgeCohesion + change, 0, 100);
       log.push(`Scourge Cohesion ${change >= 0 ? '+' : ''}${change}`);
     }
     
-    if (choice.effects.empireApproval) {
-      Object.entries(choice.effects.empireApproval).forEach(([empireId, change]) => {
+    if (expandedEffects.empireApproval) {
+      Object.entries(expandedEffects.empireApproval).forEach(([empireId, change]) => {
         const empire = state.empires.find(e => e.id === empireId);
         if (empire) {
           empire.approval = clampApproval(empire.approval + change);
@@ -146,8 +183,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       });
     }
     
-    if (choice.effects.armyFervor) {
-      Object.entries(choice.effects.armyFervor).forEach(([armyId, change]) => {
+    if (expandedEffects.armyFervor) {
+      Object.entries(expandedEffects.armyFervor).forEach(([armyId, change]) => {
         const army = state.armies.find(a => a.id === armyId);
         if (army) {
           army.fervor = clampStat(army.fervor + change);
@@ -156,8 +193,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       });
     }
     
-    if (choice.effects.stockpiles) {
-      Object.entries(choice.effects.stockpiles).forEach(([resource, change]) => {
+    if (expandedEffects.stockpiles) {
+      Object.entries(expandedEffects.stockpiles).forEach(([resource, change]) => {
         if (state.stockpiles[resource] !== undefined) {
           // Handle function-based effects (for random values)
           const actualChange = typeof change === 'function' ? change() : change;

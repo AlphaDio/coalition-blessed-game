@@ -48,7 +48,7 @@ Improvements are grouped by branch and tier. Tier access is per-empire (T2 after
 - Construction capacity limit: total BUILDING capacity cannot exceed 5
 
 ## Economy Notes
-- Coalition procurement budget: 5,000 credits per tick (default config)
+- Coalition procurement budget: 100 credits per tick (default config), with a fixed 5,000 credit starting budget
 - Sustainment buy orders use priority 800 and pay up to 2x market price
 - Performance penalties apply when army needs fulfillment drops below 0.80
 

@@ -8,6 +8,7 @@ Battlefronts represent the live military engagements in the war. Cohesion values
 - Morale-broken armies fight at 50% engagement.
 - Damage splits into permanent losses and recoverable losses.
 - Recovery and reinforcement slow during battle (20% recovery, 10% reinforcement).
+- Battle end logs include per-side summaries of destroyed, recovered, and remaining MP.
 
 ## Battle Stats (Defaults in Code)
 These are the baseline combat stats applied to armies when created:

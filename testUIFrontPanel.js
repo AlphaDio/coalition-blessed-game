@@ -2,6 +2,7 @@
 
 import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { startBattle } from './src/game/frontBattles.js';
 import { startLawProcess } from './src/game/lawProcessManager.js';
@@ -16,8 +17,12 @@ const content = createSampleContent(12345);
 // Populate state with content
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.laws = content.laws;
 state.events = content.events;
+state.diplomacy = content.diplomacy || { relations: {} };
+state.heroes = [];
+refreshArmyAggregates(state);
 
 // Initialize law enactment system
 state.lawDefinitions = getSampleLawDefinitions();

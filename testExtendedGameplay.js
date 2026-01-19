@@ -9,6 +9,7 @@
 import { createGameState, createArmy, createEmpire } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { advanceTurn } from './src/game/turn.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 import { DeterministicRNG } from './src/modules/rng.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
@@ -105,8 +106,21 @@ function createTestState(seed = 12345) {
   
   state.empires = content.empires;
   state.armies = content.armies;
+  state.units = content.units || [];
   state.laws = content.laws;
   state.events = content.events;
+  state.heroes = [];
+  state.diplomacy = content.diplomacy || { relations: {} };
+  if (Object.keys(state.diplomacy.relations).length === 0) {
+    state.empires.forEach(empire => {
+      state.diplomacy.relations[empire.id] = {};
+      state.empires.forEach(other => {
+        if (empire.id === other.id) return;
+        state.diplomacy.relations[empire.id][other.id] = 0;
+      });
+    });
+  }
+  refreshArmyAggregates(state);
   
   // Initialize law system
   state.lawDefinitions = getSampleLawDefinitions();

@@ -24,6 +24,7 @@ import {
 } from './src/game/lawDefinitions.js';
 import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 
 // Initialize logger with minimal output
 initializeLogger({
@@ -58,6 +59,7 @@ function createTestState() {
   
   state.empires = content.empires;
   state.armies = content.armies;
+  state.units = content.units || [];
   state.lawDefinitions = getSampleLawDefinitions();
   state.events = [...content.events, ...getAllLawEvents()];
   state.powerSystemPolicy = createPowerSystemPolicy(
@@ -70,6 +72,9 @@ function createTestState() {
       pass_threshold: 0.5
     }
   );
+  state.heroes = [];
+  state.diplomacy = content.diplomacy || { relations: {} };
+  refreshArmyAggregates(state);
   state.playerInfluence = 500; // Enough for multiple laws
   state.enactedLaws = []; // No enacted laws initially
   

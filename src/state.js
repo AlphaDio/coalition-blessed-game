@@ -18,6 +18,10 @@ export function initialState() {
     enactedLaws: [],
     events: [],
     currentEvent: null,
+    units: [],
+    heroes: [],
+    diplomacy: { relations: {} },
+    scourgeTargetEmpireId: null,
     log: [],
     gameOver: false,
     victory: false

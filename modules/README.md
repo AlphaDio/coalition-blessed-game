@@ -8,6 +8,7 @@ This directory contains the game content organized as modular YAML files. Each c
 modules/
 ├── empires/       # Empire faction definitions
 ├── armies/        # Army unit definitions
+├── units/         # Unit definitions
 ├── laws/          # Law/policy definitions
 ├── events/        # Event definitions
 ├── abilities/     # Ability definitions (for other modules)
@@ -15,6 +16,7 @@ modules/
 ├── creatures/     # Creature definitions (for other modules)
 └── maps/          # Map definitions (for other modules)
 ```
+
 
 ## Module Format
 
@@ -26,7 +28,7 @@ module:
   name: "Display Name"      # Human-readable name
   description: "..."        # Brief description
   version: "1.0.0"          # Semantic version
-  type: "empire|army|law|event"  # Module type
+  type: "empire|army|unit|law|event"  # Module type
   category: "..."           # Category grouping
   dependencies: []          # List of required module IDs
 
@@ -69,9 +71,41 @@ declares:
     aggravation: 60          # Supply need value
 ```
 
+### Units
+
+```yaml
+declares:
+  unit_data:
+    id: "unit_1"
+    armyId: "army_1"
+    empireId: "empire_1"
+    name: "1st Northern Division Core"
+    stats:
+      mp:
+        current: 10000
+        max: 10000
+      mo:
+        current: 100
+        max: 100
+      dmgPerUnitMP: 1.0
+      dmgPerTickMO: 2.5
+      protection: 0.2
+      resolve: 0.3
+      killRate: 0.1
+      command: 50
+      recovery: 50
+      reinforcementRate: 100
+    demands:
+      needs:
+        super_alloys: 0.02
+      wants:
+        rare_gases: 0.01
+```
+
 ### Laws
 
 ```yaml
+
 declares:
   law_data:
     id: "law_1"

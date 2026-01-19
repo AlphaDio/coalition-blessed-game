@@ -29,9 +29,5 @@ declares:
           stockpiles:
             supplies: 100
           empireApproval:
-            empire_1: 8
-            empire_2: 8
-            empire_3: 8
-            empire_clockwork: 6
-            empire_hive: 6
+            "@all": 8
 

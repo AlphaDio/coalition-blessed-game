@@ -3,7 +3,7 @@ import { createSampleContent } from './src/game/content.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { setupInputHandlers } from './src/ui/input.js';
 import { advanceTurn } from './src/game/turn.js';
-import { REALTIME_CONSTANTS } from './src/game/constants.js';
+import { REALTIME_CONSTANTS, COALITION_ECONOMY } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
@@ -29,8 +29,20 @@ const content = createSampleContent(seed);
 // Populate state with content
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.laws = content.laws;
 state.events = content.events;
+
+state.diplomacy = content.diplomacy || { relations: {} };
+if (Object.keys(state.diplomacy.relations).length === 0) {
+  state.empires.forEach(empire => {
+    state.diplomacy.relations[empire.id] = {};
+    state.empires.forEach(other => {
+      if (empire.id === other.id) return;
+      state.diplomacy.relations[empire.id][other.id] = 0;
+    });
+  });
+}
 
 // Initialize economy system EARLY (before UI)
 try {
@@ -47,7 +59,7 @@ try {
   
   // Initialize coalition economy
   state.coalitionEconomy = {
-    budget_credits: config.coalition.procurement.budget_credits_per_tick * 10, // Start with 10 ticks worth
+    budget_credits: COALITION_ECONOMY.INITIAL_BUDGET, // Fixed initial coalition budget
     stockpiles: {},
     per_commodity_priority: {}
   };
@@ -87,6 +99,8 @@ state.powerSystemPolicy = createPowerSystemPolicy(
 state.playerInfluence = 100; // Start with 100 influence to allow immediate law enactment
 state.influenceProgress = 0;
 state.lawProcesses = [];
+state.heroes = [];
+state.scourgeTargetEmpireId = null;
 
 // Initialize UI
 const ui = createUI();

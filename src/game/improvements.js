@@ -15,6 +15,7 @@
 
 import { getLogger } from '../modules/logger.js';
 import { canStartImprovement, getTieredImprovementRequests, generateImprovementSuggestions } from './improvementDefinitions.js';
+import { hasTag, empireHasTag } from '../utils/tags.js';
 
 // Constants for sustainment and modifier scaling
 const SUSTAINMENT_MAX_PRICE_MULTIPLIER = 2.0; // Willing to pay up to 2x market price
@@ -23,23 +24,6 @@ const MODIFIER_EMPIRE_APPROVAL_SCALE = 100; // Divide by 100 for gradual applica
 const POPULATION_GROWTH_SCALE = 100; // Convert percentage-based modifiers to ratios
 const BIOLOGIC_TAG = 'biologic';
 const BIOLOGIC_GROWTH_BONUS_MULTIPLIER = 1.5;
-
-function normalizeTag(tag) {
-  return String(tag || '').toLowerCase();
-}
-
-function hasTag(tags, targetTag) {
-  if (!Array.isArray(tags)) return false;
-  const normalizedTarget = normalizeTag(targetTag);
-  return tags.some(tag => normalizeTag(tag) === normalizedTarget);
-}
-
-function empireHasTag(empire, tag) {
-  if (!empire) return false;
-  if (hasTag(empire.tags, tag)) return true;
-  const traits = empire.traits || {};
-  return Object.keys(traits).some(trait => normalizeTag(trait) === normalizeTag(tag) && traits[trait]);
-}
 
 function improvementHasTag(improvement, tag) {
   if (!improvement) return false;

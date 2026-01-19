@@ -8,6 +8,7 @@
 import { createGameState, createPowerSystemPolicy } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { DeterministicRNG } from './src/modules/rng.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 import { startLawProcess, resolveAllLawProcesses } from './src/game/lawProcessManager.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
@@ -20,8 +21,21 @@ function runSimulation(seed) {
   
   state.empires = content.empires;
   state.armies = content.armies;
+  state.units = content.units || [];
   state.lawDefinitions = getSampleLawDefinitions();
   state.events = [...content.events, ...getAllLawEvents()];
+  state.heroes = [];
+  state.diplomacy = content.diplomacy || { relations: {} };
+  if (Object.keys(state.diplomacy.relations).length === 0) {
+    state.empires.forEach(empire => {
+      state.diplomacy.relations[empire.id] = {};
+      state.empires.forEach(other => {
+        if (empire.id === other.id) return;
+        state.diplomacy.relations[empire.id][other.id] = 0;
+      });
+    });
+  }
+  refreshArmyAggregates(state);
   state.events.push(
     createLawEvent(
       'test_neutral_progress',

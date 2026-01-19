@@ -9,6 +9,8 @@ import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { startBattle } from './src/game/frontBattles.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
+
 
 // Initialize game state
 const state = createGameState(12345);
@@ -17,7 +19,12 @@ const content = createSampleContent(12345);
 // Populate state with content
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.turn = 1;
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
+
 
 // Create a test battle between the first two armies
 if (state.armies.length >= 2) {

@@ -1,6 +1,7 @@
 // Front Battles - MP-axis battles with morale badges
 import { getLogger } from '../modules/logger.js';
 import { clamp } from '../utils/math.js';
+import { FRONT_BATTLE_MODIFIERS } from './constants.js';
 
 /**
  * Calculate MP participation rate based on organization
@@ -61,8 +62,12 @@ function calculateMoraleRegen(army) {
 
 /**
  * Apply morale regen + recovery + reinforcement for a battle tick
+ * @param {Object} army - Army object
+ * @param {boolean} isMoraleBroken - Whether morale is broken
+ * @param {Object} front - Battle front (for tracking stats)
+ * @param {string} side - 'left' or 'right'
  */
-function applyBattleSustainment(army, isMoraleBroken) {
+function applyBattleSustainment(army, isMoraleBroken, front, side) {
   if (!isMoraleBroken) {
     const regen = calculateMoraleRegen(army);
     army.mo.current = clamp(army.mo.current + regen, 0, army.mo.max);
@@ -72,7 +77,10 @@ function applyBattleSustainment(army, isMoraleBroken) {
     return;
   }
 
-  applyRecovery(army, true);
+  const recovered = applyRecovery(army, true);
+  if (front && side && recovered > 0) {
+    front.recoveredMP[side] += recovered;
+  }
   applyReinforcement(army, true);
 }
 
@@ -123,10 +131,10 @@ function logBattleRound(front, leftArmy, rightArmy, logger) {
  * Note: Expects army.fervor and army.organization to be in 0-100 range
  */
 function applyModifiers(baseDamage, army) {
-  // Fervor: 0.8x to 1.2x (0 fervor = 0.8x, 100 fervor = 1.2x)
-  const fervorMod = 0.8 + (army.fervor / 100) * 0.4;
-  // Organization: 0.9x to 1.1x (0 org = 0.9x, 100 org = 1.1x)
-  const orgMod = 0.9 + (army.organization / 100) * 0.2;
+  // Fervor modifier: FERVOR_MIN to (FERVOR_MIN + FERVOR_RANGE)
+  const fervorMod = FRONT_BATTLE_MODIFIERS.FERVOR_MIN + (army.fervor / 100) * FRONT_BATTLE_MODIFIERS.FERVOR_RANGE;
+  // Organization modifier: ORG_MIN to (ORG_MIN + ORG_RANGE)
+  const orgMod = FRONT_BATTLE_MODIFIERS.ORG_MIN + (army.organization / 100) * FRONT_BATTLE_MODIFIERS.ORG_RANGE;
   
   return baseDamage * fervorMod * orgMod;
 }
@@ -155,7 +163,8 @@ export function simulateBattleTick(front, worldState) {
       rightFound: !!rightArmy
     });
     log.push(`Battle ${front.id}: Missing army, ending battle`);
-    endBattle(front, worldState, null);
+    const endLog = endBattle(front, worldState, null);
+    log.push(...endLog);
     return log;
   }
   
@@ -170,18 +179,20 @@ export function simulateBattleTick(front, worldState) {
     winner = 'right';
     logger.info(`Battle ${front.id} ended: ${leftArmy.name} shattered! (Width: ${front.battlefieldSize})`);
     log.push(`Battle ${front.id}: ${leftArmy.name} shattered!`);
-    endBattle(front, worldState, winner);
+    const endLog = endBattle(front, worldState, winner);
+    log.push(...endLog);
     return log;
   } else if (rightArmy.mp.current <= 0) {
     winner = 'left';
     logger.info(`Battle ${front.id} ended: ${rightArmy.name} shattered! (Width: ${front.battlefieldSize})`);
     log.push(`Battle ${front.id}: ${rightArmy.name} shattered!`);
-    endBattle(front, worldState, winner);
+    const endLog = endBattle(front, worldState, winner);
+    log.push(...endLog);
     return log;
   }
   
-  applyBattleSustainment(leftArmy, front.moraleBroken.left);
-  applyBattleSustainment(rightArmy, front.moraleBroken.right);
+  applyBattleSustainment(leftArmy, front.moraleBroken.left, front, 'left');
+  applyBattleSustainment(rightArmy, front.moraleBroken.right, front, 'right');
 
   
   logBattleRound(front, leftArmy, rightArmy, logger);
@@ -271,9 +282,10 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
  * Apply recovery: convert recoveryPool to mp.current
  * Recovery rate is based on the army's Recovery stat, modified by organization
  * During battles, recovery is significantly reduced (can't fully recover while fighting)
+ * @returns {number} Amount of MP recovered
  */
 function applyRecovery(army, inBattle = false) {
-  if (army.recoveryPool <= 0) return;
+  if (army.recoveryPool <= 0) return 0;
   
   // Base recovery rate from Recovery stat (0-100 -> 0-1000 MP/tick)
   const baseRecoveryRate = (army.recovery || 50) * 10;
@@ -308,6 +320,8 @@ function applyRecovery(army, inBattle = false) {
     mpBefore: prevMP.toFixed(0),
     mpAfter: army.mp.current.toFixed(0)
   });
+  
+  return actualRecovered;
 }
 
 /**
@@ -333,13 +347,35 @@ function applyReinforcement(army, inBattle = false) {
 
 /**
  * End a battle and clean up
+ * @returns {Array} Log messages summarizing battle outcome
  */
 function endBattle(front, worldState, winnerSide) {
+  const logger = getLogger();
+  const log = [];
+  
   front.state = 'ENDED';
   front.endedAtTick = worldState.turn;
   
   const leftArmy = worldState.armies.find(a => a.id === front.leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === front.rightArmyId);
+  
+  // Generate battle summary
+  if (leftArmy && rightArmy) {
+    const leftDestroyed = Math.floor(front.permanentLosses.left);
+    const rightDestroyed = Math.floor(front.permanentLosses.right);
+    const leftRecovered = Math.floor(front.recoveredMP?.left || 0);
+    const rightRecovered = Math.floor(front.recoveredMP?.right || 0);
+    const leftRemaining = Math.floor(leftArmy.mp.current);
+    const rightRemaining = Math.floor(rightArmy.mp.current);
+    
+    const leftSummary = `${leftArmy.name}: ${leftDestroyed} destroyed, ${leftRecovered} recovered, ${leftRemaining} remaining`;
+    const rightSummary = `${rightArmy.name}: ${rightDestroyed} destroyed, ${rightRecovered} recovered, ${rightRemaining} remaining`;
+    
+    logger.info(`Battle ${front.id} summary - ${leftSummary}`);
+    logger.info(`Battle ${front.id} summary - ${rightSummary}`);
+    log.push(`${leftSummary}`);
+    log.push(`${rightSummary}`);
+  }
   
   // Refill morale to max
   if (leftArmy) {
@@ -359,8 +395,11 @@ function endBattle(front, worldState, winnerSide) {
     winnerSide: winnerSide,
     leftArmyId: front.leftArmyId,
     rightArmyId: front.rightArmyId,
-    permanentLosses: { ...front.permanentLosses }
+    permanentLosses: { ...front.permanentLosses },
+    recoveredMP: { ...(front.recoveredMP || { left: 0, right: 0 }) }
   });
+  
+  return log;
 }
 
 /**
@@ -403,6 +442,10 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
       right: false
     },
     permanentLosses: {
+      left: 0,
+      right: 0
+    },
+    recoveredMP: {
       left: 0,
       right: 0
     },

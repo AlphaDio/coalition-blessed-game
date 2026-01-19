@@ -11,6 +11,8 @@ import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
 import { startLawProcess } from './src/game/lawProcessManager.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
+
 
 // Initialize game state
 const state = createGameState(12345);
@@ -19,8 +21,12 @@ const content = createSampleContent(12345);
 // Populate state with content
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.laws = content.laws;
 state.events = content.events;
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
 
 // Initialize law enactment system
 state.lawDefinitions = getSampleLawDefinitions();

@@ -9,6 +9,7 @@ import { setupInputHandlers } from './src/ui/input.js';
 import { advanceTurn } from './src/game/turn.js';
 import { REALTIME_CONSTANTS } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from './src/game/types.js';
 
@@ -19,8 +20,12 @@ const content = createSampleContent(12345);
 // Populate state with content
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.laws = content.laws;
 state.events = content.events;
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
 
 // Initialize law enactment system
 state.lawDefinitions = getSampleLawDefinitions();

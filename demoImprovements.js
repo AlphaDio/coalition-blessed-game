@@ -8,6 +8,8 @@ import { createSampleContent } from './src/game/content.js';
 import { initializeImprovementsState, getSampleImprovementRequests, acceptImprovementRequest, processImprovementsTick, getImprovementStats } from './src/game/improvements.js';
 import { advanceTurn } from './src/game/turn.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
+
 
 // Initialize logger
 initializeLogger({
@@ -26,7 +28,12 @@ const state = createGameState(12345);
 const content = createSampleContent(12345);
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
 state.stockpiles.supplies = 2000;
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
+
 
 // Initialize improvements
 state.improvements = initializeImprovementsState();

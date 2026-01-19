@@ -27,22 +27,11 @@ declares:
       - text: "Propaganda campaign (gain fervor, lose approval)"
         effects:
           armyFervor:
-            army_1: 8
-            army_2: 8
-            army_3: 8
-            army_4: 8
+            "@all": 8
           empireApproval:
-            empire_1: -5
-            empire_2: -5
-            empire_3: -5
-            empire_clockwork: -4
-            empire_hive: -4
+            "@all": -5
       - text: "Crack down (reduce aggravation, lose approval)"
         effects:
           empireApproval:
-            empire_1: -8
-            empire_2: -8
-            empire_3: -8
-            empire_clockwork: -6
-            empire_hive: -6
+            "@all": -8
 

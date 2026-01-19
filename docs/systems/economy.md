@@ -32,7 +32,7 @@ The economy system simulates a market-based supply/demand loop with coalition pr
 - Coalition procurement scans sell offers (excluding coalition sellers) sorted by ask price.
 - Each commodity uses a priority threshold (`theta`) derived from tier defaults or coalition overrides.
 - Purchases stop when budget is exhausted; spent amount is deducted from `budget_credits`.
-- Default budget per tick is `budget_credits_per_tick` (5,000 by config).
+- Default budget per tick is `budget_credits_per_tick` (100 by config), with a fixed starting coalition budget of 5,000 credits.
 
 ## Army Fulfillment
 - Needs penalties kick in below the fulfillment threshold (default 0.80).

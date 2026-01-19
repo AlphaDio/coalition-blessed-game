@@ -9,10 +9,11 @@
  * 4. Space-themed empire and army names
  */
 
-import { createGameState, createArmy } from './src/game/types.js';
+import { createGameState, createArmy, createUnit } from './src/game/types.js';
 import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
 import { startScourgeBattle } from './src/game/battles.js';
 import { createSampleContent } from './src/game/content.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 
 console.log('='.repeat(70));
 console.log('BATTLE SYSTEM REFACTORING DEMO');
@@ -21,11 +22,13 @@ console.log('='.repeat(70));
 // Demo 1: Space-themed empires and armies
 console.log('\n📡 DEMO 1: Space-Themed Empires and Armies');
 console.log('-'.repeat(70));
-const { empires, armies } = createSampleContent(12345);
+const { empires, armies, units } = createSampleContent(12345);
 console.log('\nEmpires:');
 empires.forEach(e => console.log(`  • ${e.name} (${e.id})`));
 console.log('\nArmies:');
 armies.forEach(a => console.log(`  • ${a.name} (Org: ${a.organization}, Recovery: ${a.recovery})`));
+console.log('\nUnits:');
+units.forEach(u => console.log(`  • ${u.name} (${u.empireId})`));
 
 // Demo 2: Organization determines participation
 console.log('\n\n⚔️  DEMO 2: Organization Determines Battle Participation');
@@ -34,8 +37,15 @@ const state1 = createGameState(12345);
 const highOrg = createArmy('high_org', 'empire1', 'High Organization Fleet', 50, 90, 50, 60);
 const lowOrg = createArmy('low_org', 'empire2', 'Low Organization Fleet', 50, 30, 50, 60);
 
+highOrg.unitIds = ['unit_high_org'];
+lowOrg.unitIds = ['unit_low_org'];
+state1.units = [
+  createUnit('unit_high_org', 'high_org', 'empire1', 'High Org Unit'),
+  createUnit('unit_low_org', 'low_org', 'empire2', 'Low Org Unit')
+];
 state1.armies = [highOrg, lowOrg];
 state1.turn = 1;
+refreshArmyAggregates(state1);
 
 console.log('\nArmy Stats:');
 console.log(`  High Org Fleet: ${highOrg.organization}% organization, ${highOrg.mp.current} MP`);
@@ -53,8 +63,15 @@ const state2 = createGameState(12345);
 const highRecovery = createArmy('high_rec', 'empire1', 'Fast Recovery Fleet', 50, 60, 50, 80);
 const lowRecovery = createArmy('low_rec', 'empire2', 'Slow Recovery Fleet', 50, 60, 50, 20);
 
+highRecovery.unitIds = ['unit_high_rec'];
+lowRecovery.unitIds = ['unit_low_rec'];
+state2.units = [
+  createUnit('unit_high_rec', 'high_rec', 'empire1', 'Fast Recovery Unit', { recovery: 80 }),
+  createUnit('unit_low_rec', 'low_rec', 'empire2', 'Slow Recovery Unit', { recovery: 20 })
+];
 state2.armies = [highRecovery, lowRecovery];
 state2.turn = 1;
+refreshArmyAggregates(state2);
 
 console.log('\nRecovery Stats (same organization, different recovery):');
 console.log(`  Fast Recovery: Org ${highRecovery.organization}%, Recovery ${highRecovery.recovery}`);
@@ -74,6 +91,12 @@ const state3 = createGameState(12345);
 const loyalArmy = createArmy('loyal', 'empire1', 'Loyal Fleet', 60, 70, 50, 55);
 const rebelliousArmy = createArmy('rebel', 'empire2', 'Rebellious Fleet', 60, 70, 50, 55);
 
+loyalArmy.unitIds = ['unit_loyal'];
+rebelliousArmy.unitIds = ['unit_rebel'];
+state3.units = [
+  createUnit('unit_loyal', 'loyal', 'empire1', 'Loyal Unit'),
+  createUnit('unit_rebel', 'rebel', 'empire2', 'Rebel Unit')
+];
 state3.armies = [loyalArmy, rebelliousArmy];
 state3.insurrections = [{
   id: 'insurrection_1',
@@ -83,6 +106,7 @@ state3.insurrections = [{
 }];
 state3.turn = 1;
 state3.scourgeFervor = 10;
+refreshArmyAggregates(state3);
 
 console.log('\nSimulating Scourge battle with one rebellious army...');
 console.log('  Loyal Fleet: Available for Scourge battles');

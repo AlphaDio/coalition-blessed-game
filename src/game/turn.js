@@ -12,6 +12,8 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers } from './improvements.js';
+import { getEventTitle, hasValidChoices } from '../utils/events.js';
+import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.0005;
 const MIN_POPULATION = 1;
@@ -69,18 +71,14 @@ function addBattleArmyIds(armiesInBattle, armyIds) {
   armyIds.forEach(id => addBattleArmyId(armiesInBattle, id));
 }
 
-function getEventTitle(event) {
-  return event.title || event.name || event.id || 'Unknown Event';
-}
-
 function getBattleWinner(leftArmy, rightArmy) {
   if (!leftArmy || !rightArmy) return null;
 
-  if (leftArmy.mp.current <= 0) {
+  if (leftArmy.mp?.current <= 0) {
     return 'right';
   }
 
-  if (rightArmy.mp.current <= 0) {
+  if (rightArmy.mp?.current <= 0) {
     return 'left';
   }
 
@@ -204,11 +202,25 @@ function handleBattlePhase(state, rng, log, logger) {
 
     if (winnerSide) {
       if (front.isScourgeBattle) {
-        handleScourgeBattleEnd(state, front, winnerSide);
+        const result = handleScourgeBattleEnd(state, front, winnerSide);
         log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
+        if (result.log) log.push(...result.log);
+        if (leftArmy) {
+          const units = state.units.filter(unit => unit.armyId === leftArmy.id);
+          syncUnitsFromArmy(leftArmy, units);
+        }
       } else if (front.isInsurrectionBattle) {
-        handleInsurrectionBattleEnd(state, front, winnerSide);
+        const result = handleInsurrectionBattleEnd(state, front, winnerSide);
         log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
+        if (result.log) log.push(...result.log);
+        if (leftArmy) {
+          const units = state.units.filter(unit => unit.armyId === leftArmy.id);
+          syncUnitsFromArmy(leftArmy, units);
+        }
+        if (rightArmy) {
+          const units = state.units.filter(unit => unit.armyId === rightArmy.id);
+          syncUnitsFromArmy(rightArmy, units);
+        }
       }
     }
   });
@@ -237,6 +249,16 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
     isRegularArmy(army) &&
     !rebelliousArmyIds.has(army.id)
   );
+
+  if (state.empires.length > 0) {
+    const targetIndex = Math.floor(rng() * state.empires.length);
+    const targetEmpire = state.empires[targetIndex];
+    if (targetEmpire) {
+      state.scourgeTargetEmpireId = targetEmpire.id;
+      log.push(`Scourge targeting ${targetEmpire.name}`);
+      logger.info(`Scourge targeting ${targetEmpire.name}`);
+    }
+  }
 
   logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
   logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
@@ -361,6 +383,9 @@ function replenishArmyManpower(state, activeBattles) {
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
   
   regularArmies.forEach(army => {
+    const units = state.units.filter(unit => unit.armyId === army.id);
+    if (units.length === 0) return;
+
     // Skip if already at max
     if (army.mp.current >= army.mp.max) return;
     
@@ -391,6 +416,8 @@ function replenishArmyManpower(state, activeBattles) {
     const spaceAvailable = army.mp.max - army.mp.current;
     const replenished = Math.min(effectiveRate, spaceAvailable);
     army.mp.current += replenished;
+
+    syncUnitsFromArmy(army, units);
     
     // Debug logging for significant replenishment
     if (replenished > 50) {
@@ -427,6 +454,9 @@ export function advanceTurn(state, rng = Math.random) {
   // 2. Process economy tick (market economy system)
   handleEconomyTick(state, log, logger);
 
+  // 2.5. Refresh army stats from units after economy
+  refreshArmyAggregates(state);
+
   // 3. Process improvements tick
   if (state.improvements) {
     const improvementResult = processImprovementsTick(state);
@@ -442,7 +472,7 @@ export function advanceTurn(state, rng = Math.random) {
   applyBasePopulationGrowth(state);
   
   // 4. Update law cooldowns
-
+  
   updateLawCooldowns(state);
   
   // 5. Check for events
@@ -450,7 +480,7 @@ export function advanceTurn(state, rng = Math.random) {
   if (event) {
     // Only set as activeEvent if it has choices that require player input
       const eventTitle = getEventTitle(event);
-      if (event.choices && Array.isArray(event.choices) && event.choices.length > 0) {
+      if (hasValidChoices(event)) {
         state.activeEvent = event;
         logger.info(`Event triggered: ${eventTitle}`);
         log.push(`Event: ${eventTitle}`);

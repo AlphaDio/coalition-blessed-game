@@ -33,7 +33,8 @@ The battle system simulates MP-based front battles with morale, recovery, and re
 ## Battle Lifecycle
 - Battles end when an army reaches 0 MP.
 - Morale resets to max and morale-broken flags are cleared at end.
-- Battle metadata (permanent losses, events) is emitted into `worldState.battleEvents`.
+- Battle metadata (permanent losses, recovered MP, events) is emitted into `worldState.battleEvents`.
+- Battle end logs include per-side summaries of destroyed, recovered, and remaining MP.
 
 ## Data Flow
 - Inputs: battle front, army stats, battlefield size, RNG for triggers.

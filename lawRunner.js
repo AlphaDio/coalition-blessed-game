@@ -11,6 +11,8 @@ import { DeterministicRNG } from './src/modules/rng.js';
 import { startLawProcess, resolveAllLawProcesses, handleLawEventChoice } from './src/game/lawProcessManager.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
+
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -31,6 +33,11 @@ const content = createSampleContent(seed);
 // Populate state
 state.empires = content.empires;
 state.armies = content.armies;
+state.units = content.units || [];
+state.heroes = [];
+state.diplomacy = content.diplomacy || { relations: {} };
+refreshArmyAggregates(state);
+
 
 // Add law definitions
 state.lawDefinitions = getSampleLawDefinitions();

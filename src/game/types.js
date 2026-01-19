@@ -37,22 +37,24 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
   };
 }
 
-export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, supplyNeed = 50, initialCommand = 50, initialRecovery = 50) {
+export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, initialAggravation = 0, initialCommand = 50, initialRecovery = 50) {
   return {
     id,
     empireId,
     name,
     fervor: initialFervor,
     organization: initialOrg,
-    supplyNeed,
-    aggravation: 0,
+    supplyNeed: 0,
+    aggravation: initialAggravation,
+    unitIds: [],
     
-    // Economy fields
-    manpower: supplyNeed * 100, // Convert supplyNeed to approximate manpower
+    // Economy fields (derived from units)
+    manpower: 0,
     owner_empire_id: empireId,
     performance: {
       base: 1.0,
-      current: 1.0
+      current: 1.0,
+      bonusMultiplier: 1.0
     },
     supply_state: {
       needs_fulfillment: {},
@@ -65,37 +67,93 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
       wants: {} // commodity_key -> qty_per_manpower_per_tick
     },
     
-    // MP and MO pools for Front Battles
+    // MP and MO pools for Front Battles (derived from units)
     mp: {
-      current: 10000,
-      max: 10000
+      current: 0,
+      max: 0
     },
     mo: {
-      current: 100,
-      max: 100
+      current: 0,
+      max: 0
     },
     
-    // Combat stats (halved to make battles last twice as long)
-    dmgPerUnitMP: 1.0,        // MP damage per engaged unit per tick (was 2.0)
-    dmgPerTickMO: 2.5,        // Morale pressure per tick (was 5.0, NOT width-scaled)
-    protection: 0.2,          // MP damage resistance (0..1)
-    resolve: 0.3,             // MO damage resistance (0..1)
-    killRate: 0.1,            // Fraction of MP damage that becomes permanent (0..1)
+    // Combat stats (derived from units)
+    dmgPerUnitMP: 1.0,
+    dmgPerTickMO: 2.5,
+    protection: 0.2,
+    resolve: 0.3,
+    killRate: 0.1,
     
-    // Sustain stats
-    recoveryPool: 0,          // Temporary MP losses that can be recovered
-    command: initialCommand,  // Command stat (0-100) - determines organization recovery speed
-    recovery: initialRecovery, // Recovery stat (0-100) - determines MP recovery speed from recoveryPool
-    reinforcementRate: 100    // Slower MP reinforcement per tick
+    // Sustain stats (derived from units)
+    recoveryPool: 0,
+    command: initialCommand,
+    recovery: initialRecovery,
+    reinforcementRate: 100
   };
 }
 
-export function createLaw(id, name, cost, cooldown = 0, effects = {}, vector = {}, weights = {}, tag_effects = []) {
+export function createUnit(id, armyId, empireId, name, stats = {}, demands = {}) {
+  return {
+    id,
+    armyId,
+    empireId,
+    name,
+    mp: {
+      current: stats.mp?.current ?? 10000,
+      max: stats.mp?.max ?? 10000
+    },
+    mo: {
+      current: stats.mo?.current ?? 100,
+      max: stats.mo?.max ?? 100
+    },
+    dmgPerUnitMP: stats.dmgPerUnitMP ?? 1.0,
+    dmgPerTickMO: stats.dmgPerTickMO ?? 2.5,
+    protection: stats.protection ?? 0.2,
+    resolve: stats.resolve ?? 0.3,
+    killRate: stats.killRate ?? 0.1,
+    recoveryPool: stats.recoveryPool ?? 0,
+    command: stats.command ?? 50,
+    recovery: stats.recovery ?? 50,
+    reinforcementRate: stats.reinforcementRate ?? 100,
+    performance: {
+      base: 1.0,
+      current: 1.0
+    },
+    supply_state: {
+      needs_fulfillment: {},
+      wants_fulfillment: {},
+      shortages: {},
+      received: {}
+    },
+    demands: {
+      needs: demands.needs || {},
+      wants: demands.wants || {}
+    }
+  };
+}
+
+export function createHero(id, empireId, name, modifiers = {}) {
+  return {
+    id,
+    empireId,
+    name,
+    modifiers: {
+      dmgPerUnitMP: modifiers.dmgPerUnitMP || 0,
+      dmgPerTickMO: modifiers.dmgPerTickMO || 0,
+      killRate: modifiers.killRate || 0,
+      recovery: modifiers.recovery || 0,
+      organization: modifiers.organization || 0
+    }
+  };
+}
+
+export function createLaw(id, name, cost, tier = 0, effects = {}, vector = {}, weights = {}, tag_effects = []) {
   return {
     id,
     name,
     cost,
-    cooldown,
+    tier,
+    cooldown: 0, // Default cooldown (can be set by effects)
     currentCooldown: 0,
     effects,
     vector: vector,
@@ -220,12 +278,13 @@ export function createPowerSystemPolicy(id, name, type = 'equal_council', config
   };
 }
 
-export function createEvent(id, title, text, choices = []) {
+export function createEvent(id, title, text, choices = [], variables = null) {
   return {
     id,
     title,
     text,
-    choices
+    choices,
+    variables  // Selector definitions for dynamic targeting
   };
 }
 
@@ -281,6 +340,10 @@ export function createGameState(seed = 0) {
     },
     empires: [],
     armies: [],
+    units: [],
+    heroes: [],
+    diplomacy: { relations: {} },
+    scourgeTargetEmpireId: null,
     laws: [],
     activeLaws: [],
     insurrections: [],

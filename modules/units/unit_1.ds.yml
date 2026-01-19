@@ -1,0 +1,44 @@
+module:
+  id: "unit_1"
+  name: "1st Stellar Battle Fleet Core"
+  description: "Primary strike group core for the 1st Stellar Battle Fleet"
+  version: "1.0.0"
+  type: "unit"
+  category: "military"
+  dependencies: ["army_1", "empire_1"]
+
+metadata:
+  author: "Coalition Team"
+  tags: ["stellar", "fleet", "core"]
+  created_at: "2026-01-19T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  unit_data:
+    id: "unit_1"
+    armyId: "army_1"
+    empireId: "empire_1"
+    name: "1st Stellar Battle Fleet Core"
+    stats:
+      mp:
+        current: 10000
+        max: 10000
+      mo:
+        current: 100
+        max: 100
+      dmgPerUnitMP: 1.05
+      dmgPerTickMO: 2.6
+      protection: 0.22
+      resolve: 0.32
+      killRate: 0.11
+      recoveryPool: 0
+      command: 55
+      recovery: 55
+      reinforcementRate: 105
+    demands:
+      needs:
+        super_alloys: 0.02
+        ice: 0.015
+      wants:
+        rare_gases: 0.01

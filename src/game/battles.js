@@ -2,6 +2,7 @@ import { BATTLE_CONSTANTS } from './constants.js';
 import { clampStat, clampCohesion, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { startBattle } from './frontBattles.js';
+import { syncUnitsFromArmy } from './armyComposition.js';
 
 export function calculateArmyPower(army) {
   return (
@@ -75,13 +76,13 @@ function getOrCreateScourgeArmy(state) {
       name: 'The Scourge',
       fervor: state.scourgeFervor,
       organization: Math.min(100, 50 + state.scourgeFervor * 0.5), // 50-100 org based on fervor
-      supplyNeed: 0,
-      aggravation: 0,
-      manpower: totalMP,
-      owner_empire_id: '_scourge',
-      performance: { base: 1.0, current: 1.0 },
-      supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
-      demands: { needs: {}, wants: {} },
+    supplyNeed: 0,
+    aggravation: 0,
+    manpower: totalMP,
+    owner_empire_id: '_insurrection',
+    performance: { base: 1.0, current: 1.0, bonusMultiplier: 1.0 },
+    supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
+    demands: { needs: {}, wants: {} },
       
       // MP and MO pools
       mp: {
@@ -185,7 +186,7 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
     aggravation: 0,
     manpower: totalMP,
     owner_empire_id: '_coalition',
-    performance: { base: 1.0, current: 1.0 },
+    performance: { base: 1.0, current: 1.0, bonusMultiplier: 1.0 },
     supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
     demands: { needs: {}, wants: {} },
     
@@ -217,7 +218,8 @@ function createCombinedCoalitionArmy(state, participatingArmies) {
       id: a.id,
       originalMP: a.mp.current,
       originalMaxMP: a.mp.max
-    }))
+    })),
+    _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || [])
   };
   
   state.armies.push(combinedArmy);
@@ -280,20 +282,31 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
  * @param {Object} state - Game state
  * @param {Object} front - Battle front
  * @param {string} winnerSide - 'left' (coalition) or 'right' (scourge)
+ * @returns {Object} Result with log messages
  */
 export function handleScourgeBattleEnd(state, front, winnerSide) {
   const logger = getLogger();
+  const log = [];
   const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
   const scourgeArmy = state.armies.find(a => a.id === front.rightArmyId);
   
   if (!coalitionArmy || !scourgeArmy) {
     logger.error('Scourge battle end: missing armies', { frontId: front.id });
-    return;
+    return { log };
   }
+  
+  // Calculate battle stats for summary
+  const coalitionDestroyed = Math.floor(front.permanentLosses?.left || 0);
+  const scourgeDestroyed = Math.floor(front.permanentLosses?.right || 0);
+  const coalitionRecovered = Math.floor(front.recoveredMP?.left || 0);
+  const scourgeRecovered = Math.floor(front.recoveredMP?.right || 0);
+  const coalitionRemaining = Math.floor(coalitionArmy.mp.current);
+  const scourgeRemaining = Math.floor(scourgeArmy.mp.current);
   
   // Get original army data from the combined army
   const originalArmyData = coalitionArmy._originalArmies || [];
   const coalitionWon = winnerSide === 'left';
+  const coalitionUnitIds = coalitionArmy._originalUnitIds || [];
   
   // Calculate MP loss ratio for distributing damage
   const coalitionMPLoss = coalitionArmy.mp.max - coalitionArmy.mp.current;
@@ -304,7 +317,6 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
     
-    // Distribute MP loss proportionally based on original MP
     const armyMPLoss = armyData.originalMaxMP * coalitionMPLossRatio;
     army.mp.current = Math.max(0, armyData.originalMP - armyMPLoss);
     
@@ -317,6 +329,11 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
       army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.LOSS_FERVOR_LOSS);
     }
   });
+
+  if (coalitionUnitIds.length > 0 && state.units) {
+    const coalitionUnits = state.units.filter(unit => coalitionUnitIds.includes(unit.id));
+    syncUnitsFromArmy(coalitionArmy, coalitionUnits);
+  }
   
   // Apply cohesion and approval changes
   if (coalitionWon) {
@@ -337,6 +354,14 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     logger.info(`Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
   }
   
+  // Emit battle summary
+  const coalitionSummary = `Coalition: ${coalitionDestroyed} destroyed, ${coalitionRecovered} recovered, ${coalitionRemaining} remaining`;
+  const scourgeSummary = `Scourge: ${scourgeDestroyed} destroyed, ${scourgeRecovered} recovered, ${scourgeRemaining} remaining`;
+  logger.info(`Scourge battle summary - ${coalitionSummary}`);
+  logger.info(`Scourge battle summary - ${scourgeSummary}`);
+  log.push(coalitionSummary);
+  log.push(scourgeSummary);
+  
   // Clean up temporary armies
   const combinedIndex = state.armies.findIndex(a => a.id === coalitionArmy.id);
   if (combinedIndex >= 0) {
@@ -351,6 +376,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     scourgeArmy.mp.max = baseMP + fervorMPBonus;
     scourgeArmy.mp.current = scourgeArmy.mp.max * 0.5; // Start at 50% for next battle
   }
+  
+  return { log };
 }
 
 // Legacy function for backwards compatibility (now creates a battle front)
@@ -429,20 +456,39 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
  * @param {Object} state - Game state
  * @param {Object} front - Battle front
  * @param {string} winnerSide - 'left' (loyal) or 'right' (rebellious)
+ * @returns {Object} Result with log messages
  */
 export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   const logger = getLogger();
+  const log = [];
   const loyalArmy = state.armies.find(a => a.id === front.leftArmyId);
   const rebelliousArmy = state.armies.find(a => a.id === front.rightArmyId);
   
   if (!loyalArmy || !rebelliousArmy) {
     logger.error('Insurrection battle end: missing armies', { frontId: front.id });
-    return;
+    return { log };
   }
+  
+  // Calculate battle stats for summary
+  const loyalDestroyed = Math.floor(front.permanentLosses?.left || 0);
+  const rebelliousDestroyed = Math.floor(front.permanentLosses?.right || 0);
+  const loyalRecovered = Math.floor(front.recoveredMP?.left || 0);
+  const rebelliousRecovered = Math.floor(front.recoveredMP?.right || 0);
+  const loyalRemaining = Math.floor(loyalArmy.mp.current);
+  const rebelliousRemaining = Math.floor(rebelliousArmy.mp.current);
   
   // Get original army data
   const loyalArmyData = loyalArmy._originalArmies || [];
   const rebelliousArmyData = rebelliousArmy._originalArmies || [];
+  const loyalUnitIds = loyalArmy._originalUnitIds || [];
+  const rebelliousUnitIds = rebelliousArmy._originalUnitIds || [];
+
+  const loyalUnits = loyalUnitIds.length > 0
+    ? state.units.filter(unit => loyalUnitIds.includes(unit.id))
+    : [];
+  const rebelliousUnits = rebelliousUnitIds.length > 0
+    ? state.units.filter(unit => rebelliousUnitIds.includes(unit.id))
+    : [];
   
   const loyalWon = winnerSide === 'left';
   
@@ -510,6 +556,14 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     logger.info(`Insurrection battle: Spreads! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), Approval -${approvalShock}`);
   }
   
+  // Emit battle summary
+  const loyalSummary = `Loyal Forces: ${loyalDestroyed} destroyed, ${loyalRecovered} recovered, ${loyalRemaining} remaining`;
+  const rebelliousSummary = `Rebellious Forces: ${rebelliousDestroyed} destroyed, ${rebelliousRecovered} recovered, ${rebelliousRemaining} remaining`;
+  logger.info(`Insurrection battle summary - ${loyalSummary}`);
+  logger.info(`Insurrection battle summary - ${rebelliousSummary}`);
+  log.push(loyalSummary);
+  log.push(rebelliousSummary);
+  
   // Clean up temporary armies
   const loyalIndex = state.armies.findIndex(a => a.id === loyalArmy.id);
   if (loyalIndex >= 0) {
@@ -519,6 +573,8 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   if (rebelliousIndex >= 0) {
     state.armies.splice(rebelliousIndex, 1);
   }
+  
+  return { log };
 }
 
 // Legacy function for backwards compatibility (now creates a battle front)

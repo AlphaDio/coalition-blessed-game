@@ -4,6 +4,7 @@
 
 import { getLogger } from '../modules/logger.js';
 import { DeterministicRNG } from '../modules/rng.js';
+import { COALITION_ECONOMY, MARKET_CONSTANTS } from './constants.js';
 import {
   loadEconomyConfig,
   initializeMarket,
@@ -65,7 +66,7 @@ export function processEconomyTick(state) {
   // Initialize coalition economy state if needed
   if (!state.coalitionEconomy) {
     state.coalitionEconomy = {
-      budget_credits: config.coalition.procurement.budget_credits_per_tick * 10, // Start with 10 ticks worth
+      budget_credits: COALITION_ECONOMY.INITIAL_BUDGET, // Fixed initial coalition budget
       stockpiles: {},
       per_commodity_priority: {}
     };
@@ -84,7 +85,7 @@ export function processEconomyTick(state) {
       if (qty > 0) {
         // Create sell offer at market price (or slightly below for competitiveness)
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const askPrice = marketPrice * 0.95; // 5% below market
+        const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT; // Slightly below market
         
         const sellOffer = createSellOffer(
           `sell_${orderIdCounter++}`,
@@ -117,7 +118,7 @@ export function processEconomyTick(state) {
         
         if (neededFromMarket > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
-          const maxPrice = marketPrice * 1.1; // Willing to pay 10% above market
+          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM; // Pay premium for needs
           
           const buyOrder = createBuyOrder(
             `buy_empire_${orderIdCounter++}`,
@@ -149,7 +150,7 @@ export function processEconomyTick(state) {
       const totalWanted = qtyPerPop * population;
       if (totalWanted > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * 1.05; // Willing to pay 5% above market for wants
+        const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM; // Lower premium for wants
         
         const buyOrder = createBuyOrder(
           `buy_empire_want_${orderIdCounter++}`,
@@ -168,7 +169,12 @@ export function processEconomyTick(state) {
   // Step 3: Emit buy orders for army needs/wants
   state.armies.forEach(army => {
     if (!army.demands) return;
-    const manpower = army.manpower || 0;
+    const manpower = army.manpower || army.mp?.max || 0;
+
+    // Ensure supply_state is initialized
+    if (!army.supply_state) {
+      army.supply_state = { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} };
+    }
     
     // Reset received commodities for this tick
     army.supply_state.received = {};
@@ -215,7 +221,7 @@ export function processEconomyTick(state) {
       
       if (unmet > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * 1.2; // Armies pay premium
+        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_NEEDS_PREMIUM; // Armies pay premium
         
         const buyOrder = createBuyOrder(
           `buy_army_${orderIdCounter++}`,
@@ -238,7 +244,7 @@ export function processEconomyTick(state) {
       
       if (unmet > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * 1.15; // Lower priority than needs
+        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_WANTS_PREMIUM; // Lower priority than needs
         
         const buyOrder = createBuyOrder(
           `buy_army_want_${orderIdCounter++}`,
