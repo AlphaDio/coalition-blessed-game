@@ -101,7 +101,7 @@ export function initializeImprovementsState() {
     completed: [], // Archive of completed/removed improvements
     
   // Capacity limit (applies only to BUILDING improvements)
-  maxTotalCapacity: 10,
+  maxTotalCapacity: 3,
   
   // Current utilization (BUILDING only)
   currentCapacity: 0
