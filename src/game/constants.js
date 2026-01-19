@@ -45,7 +45,8 @@ export const BATTLE_CONSTANTS = {
   SCOURGE_BASE_POWER: 80, // Increased from 50 to make battles more challenging
   SCOURGE_FERVOR_MULTIPLIER: 2.0,
   SCOURGE_RNG_RANGE: 20,
-  SCOURGE_TURN_POWER_GROWTH: 0.15,
+  SCOURGE_TURN_POWER_GROWTH: 0.0015,
+
   SCOURGE_TURN_MP_GROWTH: 12,
   INSURRECTION_RNG_RANGE: 15,
   WIN_ORG_LOSS: 5,
@@ -120,4 +121,12 @@ export const REACTION_CONSTANTS = {
     POP_EXPONENT: 0.5,
     PRESSURE_LOG_DIVISOR: 5 // Normalizes log10(pressure) to ~0.2-1.5 range for scaling
   }
+};
+
+export const TECH_CONSTANTS = {
+  BASE_POINTS_PER_TICK: 10000,         // Base tech points gained per tick
+  INITIAL_THRESHOLD: 50000,          // First tech unlocks at ~500 ticks (50000 / 100)
+  THRESHOLD_EXPONENT: 1.10,          // Polynomial exponent: threshold = initial * (n+1)^exp
+  BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
+  TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
 };

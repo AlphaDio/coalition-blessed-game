@@ -104,7 +104,7 @@ const INDUSTRIAL_BRANCH = [
       capacity: 3,
       sustainmentCost: { super_alloys: 3, rare_gases: 2 },
       productionOutputs: { quantum_circuits: 4 },
-      modifiers: { tech_level: 1 },
+      modifiers: { research_speed: 0.05 },
       tags: ['mega_structure', 'industrial', 'quantum']
     }
   ),
@@ -163,7 +163,7 @@ const RESEARCH_BRANCH = [
       capacity: 1,
       sustainmentCost: { ice: 2 },
       productionOutputs: {},
-      modifiers: { research_speed: 0.02, tech_level: 0.5 },
+      modifiers: { research_speed: 0.045 },
       tags: ['research', 'knowledge', 'archive']
     }
   ),
@@ -181,7 +181,7 @@ const RESEARCH_BRANCH = [
       capacity: 4,
       sustainmentCost: { super_alloys: 3, rare_gases: 2 },
       productionOutputs: { rare_gases: 8, quantum_circuits: 2 },
-      modifiers: { research_speed: 0.10, tech_level: 1 },
+      modifiers: { research_speed: 0.15 },
       tags: ['mega_structure', 'science', 'transcendence']
     }
   ),
@@ -216,7 +216,7 @@ const RESEARCH_BRANCH = [
       capacity: 6,
       sustainmentCost: { quantum_circuits: 4, rare_gases: 5, psycho_implants: 2 },
       productionOutputs: { quantum_circuits: 6 },
-      modifiers: { research_speed: 0.20, tech_level: 3 },
+      modifiers: { research_speed: 0.35 },
       tags: ['mega_structure', 'transcendent', 'reality']
     }
   )
@@ -693,27 +693,8 @@ export function getEmpiresWithAccess(state, improvement) {
 }
 
 /**
- * Check if the Coalition can suggest an improvement.
- * Coalition can only suggest improvements that at least one empire can build.
- * @param {Object} state - Game state
- * @param {Object} improvement - Improvement definition
- * @returns {boolean} True if coalition can suggest this
- */
-export function canCoalitionSuggest(state, improvement) {
-  // T1 is always available to coalition
-  if (improvement.tier === 1) {
-    return true;
-  }
-  
-  // For T2/T3, coalition can only suggest if at least one empire has access
-  const eligibleEmpires = getEmpiresWithAccess(state, improvement);
-  return eligibleEmpires.length > 0;
-}
-
-/**
  * Generate improvement suggestions with proper suggestedBy assignment
  * Only includes improvements that at least one empire can access.
- * Coalition can only suggest what empires can build.
  * 
  * @param {Object} state - Game state with empires
  * @param {function} rng - Random number generator function (returns 0-1)
@@ -724,36 +705,16 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
   
   for (const improvement of TIERED_IMPROVEMENT_DEFINITIONS) {
     const eligibleEmpires = getEmpiresWithAccess(state, improvement);
-    const coalitionCanSuggest = canCoalitionSuggest(state, improvement);
     
-    // Skip improvements nobody can access (no empire has tier, and coalition can't suggest)
-    if (eligibleEmpires.length === 0 && !coalitionCanSuggest) {
+    // Skip improvements nobody can access
+    if (eligibleEmpires.length === 0) {
       continue;
     }
     
-    // Assign suggestedBy
-    let suggestedBy;
-    if (improvement.tier === 1) {
-      // T1 improvements: 50% chance coalition, 50% chance random empire
-      if (rng() < 0.5 || eligibleEmpires.length === 0) {
-        suggestedBy = 'coalition';
-      } else {
-        const idx = Math.floor(rng() * eligibleEmpires.length);
-        suggestedBy = eligibleEmpires[idx];
-      }
-    } else {
-      // T2/T3: Only empires with access can suggest (coalition cannot suggest T2/T3 directly)
-      if (eligibleEmpires.length === 0) {
-        // No empire has access - skip this improvement
-        continue;
-      }
-      const idx = Math.floor(rng() * eligibleEmpires.length);
-      suggestedBy = eligibleEmpires[idx];
-    }
-    
+    const idx = Math.floor(rng() * eligibleEmpires.length);
     suggestions.push({
       ...improvement,
-      suggestedBy
+      suggestedBy: eligibleEmpires[idx]
     });
   }
   

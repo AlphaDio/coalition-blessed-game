@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { getAvailableLaws } from '../game/lawDefinitions.js';
 import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/improvementDefinitions.js';
+import { calculateTechPointsPerTick } from '../game/technology.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -117,7 +118,7 @@ function createStockpilesBox(grid) {
 function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
   // Left column: Action Panel (row 4-10) - below stockpiles box
-  const actionPanel = grid.set(4, 0, 6, 3, blessed.box, {
+  const actionPanel = grid.set(4, 0, 5, 3, blessed.box, {
     label: ' Actions (TAB: cycle panels, ENTER: select) ', 
     scrollable: true,
     alwaysScroll: true,
@@ -466,11 +467,16 @@ function buildLawMenuItems(state) {
 
   // Get only laws that meet tier requirements and haven't been enacted
   const availableLaws = getAvailableLaws(state);
+  const activeLawCount = getActiveLawCount(state);
+  const hasActiveLaw = activeLawCount > 0;
   
   if (availableLaws && availableLaws.length > 0) {
     availableLaws.forEach((lawDef) => {
       const canAfford = state.playerInfluence >= 100;
-      const costHint = canAfford ? `T${lawDef.tier} • 100 inf` : `T${lawDef.tier} • {red-fg}need 100{/red-fg}`;
+      const isBlocked = hasActiveLaw || !canAfford;
+      const hint = hasActiveLaw
+        ? '{yellow-fg}Law already in progress{/yellow-fg}'
+        : (canAfford ? `T${lawDef.tier} • 100 inf` : `T${lawDef.tier} • {red-fg}need 100{/red-fg}`);
       
       // Find the original index in lawDefinitions for action handling
       const originalIndex = state.lawDefinitions?.findIndex(l => l.id === lawDef.id) ?? -1;
@@ -478,24 +484,27 @@ function buildLawMenuItems(state) {
       items.push({
         id: `law_${lawDef.id}`,
         label: `${lawDef.name}`,
-        hint: costHint,
+        hint: hint,
         action: 'ENACT_LAW',
         lawIndex: originalIndex,
         lawId: lawDef.id,
-        disabled: !canAfford
+        disabled: isBlocked
       });
     });
   } else if (state.laws && state.laws.length > 0) {
     state.laws.forEach((law, idx) => {
       const onCooldown = law.currentCooldown > 0;
-      const hint = onCooldown ? `CD: ${law.currentCooldown}` : '';
+      const isBlocked = hasActiveLaw || onCooldown;
+      const hint = hasActiveLaw
+        ? '{yellow-fg}Law already in progress{/yellow-fg}'
+        : (onCooldown ? `CD: ${law.currentCooldown}` : '');
       items.push({
         id: `law_${law.id}`,
         label: law.name,
         hint: hint,
         action: 'ENACT_LAW',
         lawIndex: idx,
-        disabled: onCooldown
+        disabled: isBlocked
       });
     });
   } else {
@@ -517,20 +526,13 @@ function buildRequestMenuItems(state) {
   }
 
   // Filter requests to only show those that meet tier requirements
-  // An improvement can be shown if at least one empire can build it
   const filteredRequests = state.improvements.requests.filter(request => {
-    // T1 is always available
-    if (!request.tier || request.tier === 1) {
-      return true;
+    if (!request.suggestedBy) {
+      return false;
     }
-    // For T2/T3, check if the suggesting empire has access
-    if (request.suggestedBy && request.suggestedBy !== 'coalition') {
-      return isImprovementTierUnlocked(request.tier, state, request.suggestedBy);
-    }
-    // Coalition suggestions for T2/T3 should have been filtered in generateImprovementSuggestions
-    // but double-check: is there any empire with access?
-    return state.empires?.some(e => isImprovementTierUnlocked(request.tier, state, e.id)) || false;
+    return isImprovementTierUnlocked(request.tier || 1, state, request.suggestedBy);
   });
+
 
   if (filteredRequests.length === 0) {
     items.push({ id: 'no_requests', label: 'No requests available', info: true });
@@ -595,9 +597,10 @@ function formatProgressBar(progress, width) {
 }
 
 function formatSuggestionLabel(suggestedBy, state) {
-  if (!suggestedBy || suggestedBy === 'coalition') {
-    return { label: 'Coalition', colorTag: 'cyan' };
+  if (!suggestedBy) {
+    return { label: 'Unknown', colorTag: 'gray' };
   }
+
 
   const empire = state.empires?.find(e => e.id === suggestedBy || e.name === suggestedBy);
   const label = empire?.name || suggestedBy;
@@ -786,22 +789,27 @@ function formatActiveBattle(front, state) {
   const leftBadge = front.moraleBroken.left ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
   const rightBadge = front.moraleBroken.right ? '{red-fg}BROKEN{/red-fg}' : '{green-fg}STEADY{/green-fg}';
 
-  const leftMP = Math.floor(leftArmy.mp.current);
-  const leftMaxMP = leftArmy.mp.max;
-  const rightMP = Math.floor(rightArmy.mp.current);
-  const rightMaxMP = rightArmy.mp.max;
+  // Guard against undefined or NaN values
+  const leftMP = Math.floor(leftArmy.mp?.current || 0);
+  const leftMaxMP = leftArmy.mp?.max || 1;
+  const rightMP = Math.floor(rightArmy.mp?.current || 0);
+  const rightMaxMP = rightArmy.mp?.max || 1;
 
-  const leftPct = ((leftMP / leftMaxMP) * 100).toFixed(0);
-  const rightPct = ((rightMP / rightMaxMP) * 100).toFixed(0);
+  const leftPct = leftMaxMP > 0 ? ((leftMP / leftMaxMP) * 100).toFixed(0) : '0';
+  const rightPct = rightMaxMP > 0 ? ((rightMP / rightMaxMP) * 100).toFixed(0) : '0';
 
   const battleType = getBattleTypeTag(front);
   const barWidth = 40;
-  const mpBar = buildBattleMpBar(leftArmy.mp.current, rightArmy.mp.current, barWidth);
+  const mpBar = buildBattleMpBar(
+    typeof leftArmy.mp?.current === 'number' && !isNaN(leftArmy.mp.current) ? leftArmy.mp.current : 0,
+    typeof rightArmy.mp?.current === 'number' && !isNaN(rightArmy.mp.current) ? rightArmy.mp.current : 0,
+    barWidth
+  );
   const mpSpacing = '  '.repeat(Math.max(1, Math.floor(barWidth / 10) - 5));
   const moraleSpacing = '  '.repeat(Math.max(1, Math.floor(barWidth / 10)));
 
-  const leftMO = Math.floor(leftArmy.mo.current);
-  const rightMO = Math.floor(rightArmy.mo.current);
+  const leftMO = Math.floor(leftArmy.mo?.current || 0);
+  const rightMO = Math.floor(rightArmy.mo?.current || 0);
   const duration = state.turn - front.startedAtTick;
 
   return [
@@ -825,8 +833,11 @@ function getBattleTypeTag(front) {
 }
 
 function buildBattleMpBar(leftMp, rightMp, barWidth) {
-  const totalMP = leftMp + rightMp;
-  const leftBarWidth = totalMP > 0 ? Math.floor((leftMp / totalMP) * barWidth) : Math.floor(barWidth / 2);
+  // Guard against NaN or invalid values
+  const safeLeftMp = typeof leftMp === 'number' && !isNaN(leftMp) ? Math.max(0, leftMp) : 0;
+  const safeRightMp = typeof rightMp === 'number' && !isNaN(rightMp) ? Math.max(0, rightMp) : 0;
+  const totalMP = safeLeftMp + safeRightMp;
+  const leftBarWidth = totalMP > 0 ? Math.floor((safeLeftMp / totalMP) * barWidth) : Math.floor(barWidth / 2);
   const rightBarWidth = barWidth - leftBarWidth;
 
   const leftBar = '█'.repeat(Math.max(0, leftBarWidth));
@@ -876,6 +887,10 @@ function formatActiveLaw(lawProcess, state, activeLawCount) {
 
   if (activeLawCount <= 2) {
     lines.push(formatLawMeters(lawProcess));
+  } else {
+    const legitimacy = (lawProcess.meters && lawProcess.meters.legitimacy) || 0;
+    const unrest = (lawProcess.meters && lawProcess.meters.unrest) || 0;
+    lines.push(`Legitimacy: ${(legitimacy * 100).toFixed(0)}%  Unrest: ${(unrest * 100).toFixed(0)}%`);
   }
 
   return lines.join('\n');
@@ -903,13 +918,17 @@ function buildProgressBar(value, width) {
 function formatLawMeters(lawProcess) {
   const momentum = (lawProcess.meters && lawProcess.meters.momentum) || 0;
   const rejectPressure = (lawProcess.meters && lawProcess.meters.reject_pressure) || 0;
+  const legitimacy = (lawProcess.meters && lawProcess.meters.legitimacy) || 0;
+  const unrest = (lawProcess.meters && lawProcess.meters.unrest) || 0;
 
   const momBar = buildProgressBar(momentum, 20);
   const rejBar = buildProgressBar(rejectPressure, 20);
 
   return [
     `Momentum:       {green-fg}${momBar}{/green-fg} ${(momentum * 100).toFixed(0)}%`,
-    `Reject Pressure: {red-fg}${rejBar}{/red-fg} ${(rejectPressure * 100).toFixed(0)}%`
+    `Reject Pressure: {red-fg}${rejBar}{/red-fg} ${(rejectPressure * 100).toFixed(0)}%`,
+    `Legitimacy:     ${(legitimacy * 100).toFixed(0)}%`,
+    `Unrest:         ${(unrest * 100).toFixed(0)}%`
   ].join('\n');
 }
 
@@ -1018,7 +1037,7 @@ function renderEmpiresView(state) {
   const regularArmies = filterRegularArmies(state.armies || []);
 
   state.empires.forEach(empire => {
-    lines.push('', formatEmpireBlock(empire, regularArmies));
+    lines.push('', formatEmpireBlock(empire, regularArmies, state));
   });
 
   return lines.join('\n');
@@ -1260,7 +1279,7 @@ function appendInsurrectionInfo(lines, insurrections) {
   });
 }
 
-function formatEmpireBlock(empire, regularArmies) {
+function formatEmpireBlock(empire, regularArmies, state) {
   const lines = [`{bold}${empire.name}{/bold}`];
   lines.push(`  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`);
   const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
@@ -1280,6 +1299,31 @@ function formatEmpireBlock(empire, regularArmies) {
   }
   if (empire.budget_credits !== undefined) {
     lines.push(`  Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits`);
+  }
+
+  // Technology progress
+  if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
+    const progress = Math.min(1, empire.techPoints / empire.techThreshold);
+    const barWidth = 15;
+    const filledWidth = Math.floor(progress * barWidth);
+    const emptyWidth = barWidth - filledWidth;
+    const techBar = `{blue-fg}[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}]{/blue-fg}`;
+    const pct = (progress * 100).toFixed(0);
+    
+    // Calculate points per tick for display
+    let rateStr = '';
+    if (state) {
+      const pointsPerTick = calculateTechPointsPerTick(empire, state);
+      rateStr = ` {gray-fg}+${pointsPerTick}{/gray-fg}`;
+    }
+    
+    lines.push(`  Research: ${techBar} ${pct}%${rateStr}`);
+    
+    // Show unlocked tech count
+    const techCount = empire.technologies?.length || 0;
+    if (techCount > 0) {
+      lines.push(`  Technologies: {cyan-fg}${techCount}{/cyan-fg}`);
+    }
   }
 
   const empireArmies = regularArmies.filter(army => army.empireId === empire.id);

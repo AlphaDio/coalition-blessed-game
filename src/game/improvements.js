@@ -41,7 +41,8 @@ export function createImprovementRequest(id, name, description, {
   productionOutputs = {}, // { commodity_key: qty_per_tick }
   modifiers = {}, // { stat_key: value }
   tags = [],
-  suggestedBy = 'coalition',
+  suggestedBy = null,
+
   tier = 1,
   branch = 'general'
 } = {}) {
@@ -72,7 +73,8 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     empireId,
     name: request.name,
     description: request.description,
-    suggestedBy: request.suggestedBy || empireId || 'coalition',
+    suggestedBy: request.suggestedBy || empireId || null,
+
     
     // Tier and branch (for tier unlock tracking)
     tier: request.tier || 1,
