@@ -20,6 +20,31 @@ import { canStartImprovement, getTieredImprovementRequests, generateImprovementS
 const SUSTAINMENT_MAX_PRICE_MULTIPLIER = 2.0; // Willing to pay up to 2x market price
 const MODIFIER_ARMY_ORG_SCALE = 10; // Divide by 10 for gradual application
 const MODIFIER_EMPIRE_APPROVAL_SCALE = 100; // Divide by 100 for gradual application
+const POPULATION_GROWTH_SCALE = 100; // Convert percentage-based modifiers to ratios
+const BIOLOGIC_TAG = 'biologic';
+const BIOLOGIC_GROWTH_BONUS_MULTIPLIER = 1.5;
+
+function normalizeTag(tag) {
+  return String(tag || '').toLowerCase();
+}
+
+function hasTag(tags, targetTag) {
+  if (!Array.isArray(tags)) return false;
+  const normalizedTarget = normalizeTag(targetTag);
+  return tags.some(tag => normalizeTag(tag) === normalizedTarget);
+}
+
+function empireHasTag(empire, tag) {
+  if (!empire) return false;
+  if (hasTag(empire.tags, tag)) return true;
+  const traits = empire.traits || {};
+  return Object.keys(traits).some(trait => normalizeTag(trait) === normalizeTag(tag) && traits[trait]);
+}
+
+function improvementHasTag(improvement, tag) {
+  if (!improvement) return false;
+  return hasTag(improvement.tags, tag);
+}
 
 /**
  * Create an improvement request (available to accept)
@@ -101,7 +126,7 @@ export function initializeImprovementsState() {
     completed: [], // Archive of completed/removed improvements
     
   // Capacity limit (applies only to BUILDING improvements)
-  maxTotalCapacity: 3,
+  maxTotalCapacity: 5,
   
   // Current utilization (BUILDING only)
   currentCapacity: 0
@@ -415,10 +440,19 @@ export function applyImprovementModifiers(state) {
         // Generate credits
         empire.budget_credits = (empire.budget_credits || 0) + value;
       } else if (stat === 'population_growth') {
-        empire.stats.population = Math.floor(empire.stats.population * (1 + value / 100));
+        const baseGrowth = value / POPULATION_GROWTH_SCALE;
+        const biologicBoost = improvementHasTag(improvement, BIOLOGIC_TAG) && empireHasTag(empire, BIOLOGIC_TAG)
+          ? BIOLOGIC_GROWTH_BONUS_MULTIPLIER
+          : 1;
+        const growthRate = baseGrowth * biologicBoost;
+        if (growthRate !== 0) {
+          const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
+          empire.stats.population = Math.max(0, Math.floor(currentPopulation * (1 + growthRate)));
+        }
       }
       // Other modifiers can be stored and applied elsewhere as needed
     }
+
   });
   
   return { success: true };

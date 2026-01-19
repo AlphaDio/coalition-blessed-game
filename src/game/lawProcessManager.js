@@ -19,6 +19,19 @@ import { clamp } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
 
+const LAW_UI_LOG_KEYWORDS = [
+  '*** LAW ENACTED ***',
+  '*** LAW FAILED',
+  '*** LAW BURIED',
+  'Phase advanced',
+  'VOTING phase complete',
+  'ERROR'
+];
+
+function filterLawLogs(logs) {
+  return logs.filter(line => LAW_UI_LOG_KEYWORDS.some(keyword => line.includes(keyword)));
+}
+
 /**
  * Constants for support bias calculations
  */
@@ -338,35 +351,20 @@ export function resolveLawProcess(lawProcess, state, rng) {
   // Check if VOTING completed
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
     const logger = getLogger();
-    log.push('\n>>> VOTING phase complete, tallying votes...');
-    const tallyResult = tallyVotes(lawProcess, state);
-    log.push(...tallyResult.log);
-    
-    if (tallyResult.passed) {
-      lawProcess.phase = 'ENACTED';
-      
-      // Add to enacted laws (removes from available options, unlocks higher tiers)
-      if (!state.enactedLaws) {
-        state.enactedLaws = [];
-      }
-      state.enactedLaws.push(lawProcess.lawId);
-      
-      logger.info(`Law ENACTED: ${lawDef.name} (${tallyResult.supportVotes} for, ${tallyResult.opposeVotes} against)`);
-      logger.debug(`Law ENACTED: ${lawDef.name}`, {
-        supportVotes: tallyResult.supportVotes,
-        opposeVotes: tallyResult.opposeVotes
-      });
-      log.push('\n*** LAW ENACTED ***');
-    } else {
-      lawProcess.phase = 'BURIED';
-      logger.info(`Law FAILED: ${lawDef.name} (${tallyResult.supportVotes} for, ${tallyResult.opposeVotes} against - insufficient votes)`);
-      logger.debug(`Law FAILED: ${lawDef.name} (insufficient votes)`, {
-        supportVotes: tallyResult.supportVotes,
-        opposeVotes: tallyResult.opposeVotes
-      });
-      log.push('\n*** LAW FAILED (insufficient votes) ***');
+    log.push('\n>>> VOTING phase complete, enacting law...');
+
+    lawProcess.phase = 'ENACTED';
+
+    // Add to enacted laws (removes from available options, unlocks higher tiers)
+    if (!state.enactedLaws) {
+      state.enactedLaws = [];
     }
+    state.enactedLaws.push(lawProcess.lawId);
+
+    logger.info(`Law ENACTED: ${lawDef.name}`);
+    log.push('\n*** LAW ENACTED ***');
   }
+
   
   return log;
 }
@@ -556,7 +554,7 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
       lawProcess.pendingEvent = null;
       state.activeEvent = null;
       
-      return { success: true, log };
+      return { success: true, log: filterLawLogs(log) };
     }
   }
   
@@ -575,7 +573,7 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
   
   logger.info(`Law event choice processed: ${event.name} - choice ${choiceIndex}`);
   
-  return { success: true, log };
+  return { success: true, log: filterLawLogs(log) };
 }
 
 /**
@@ -594,7 +592,8 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
       const oldValue = lawProcess.meters[meter] || 0;
       const newValue = clampMeter(oldValue + delta);
       lawProcess.meters[meter] = newValue;
-      log.push(`  ${meter}: ${oldValue.toFixed(2)} → ${newValue.toFixed(2)}`);
+      const deltaLabel = delta >= 0 ? `+${delta.toFixed(2)}` : `${delta.toFixed(2)}`;
+      log.push(`  ${meter}: ${oldValue.toFixed(2)} → ${newValue.toFixed(2)} (${deltaLabel})`);
     });
   }
   
@@ -603,8 +602,10 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
     const oldProgress = lawProcess.phaseProgress;
     const newProgress = Math.max(0, Math.min(oldProgress + effects.progress, 2.0));
     lawProcess.phaseProgress = newProgress;
-    log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)}`);
+    const deltaLabel = effects.progress >= 0 ? `+${effects.progress.toFixed(2)}` : `${effects.progress.toFixed(2)}`;
+    log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)} (${deltaLabel})`);
   }
+
   
   return log;
 }
@@ -654,7 +655,7 @@ export function resolveAllLawProcesses(state, rng) {
     if (shouldResolve) {
       lawProcess.ticksSinceLastResolve = 0; // Reset counter
       const log = resolveLawProcess(lawProcess, state, rng);
-      logs.push(...log);
+      logs.push(...filterLawLogs(log));
     }
   });
   

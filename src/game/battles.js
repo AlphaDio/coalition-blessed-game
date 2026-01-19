@@ -43,11 +43,18 @@ export function calculateInsurrectionPower(armies, rng = Math.random) {
   return basePower + noise;
 }
 
+function calculateBattlefieldSize(totalForces, rng = Math.random) {
+  const baseSize = Math.max(800, Math.min(2000, totalForces / 10));
+  const variance = 0.5 + (rng() * 1.0);
+  return Math.floor(baseSize * variance);
+}
+
 /**
  * Create or get the Scourge army entity
  * @param {Object} state - Game state
  * @returns {Object} Scourge army
  */
+
 function getOrCreateScourgeArmy(state) {
   const scourgeId = '_scourge_army';
   let scourgeArmy = state.armies.find(a => a.id === scourgeId);
@@ -87,11 +94,11 @@ function getOrCreateScourgeArmy(state) {
       },
       
       // Combat stats - Scourge is aggressive but less protected
-      dmgPerUnitMP: 1.2 * powerScale,        // Higher damage output
-      dmgPerTickMO: 3.0 * powerScale,        // Higher morale pressure
+      dmgPerUnitMP: 0.95 * powerScale,        // Higher damage output
+      dmgPerTickMO: 2.2 * powerScale,        // Higher morale pressure
       protection: 0.15,         // Less protection
       resolve: 0.25,            // Less resolve
-      killRate: 0.15 * powerScale,          // Higher kill rate
+      killRate: 0.09 * powerScale,          // Higher kill rate
       
       // Sustain stats
       recoveryPool: 0,
@@ -118,9 +125,9 @@ function getOrCreateScourgeArmy(state) {
     
     scourgeArmy.fervor = state.scourgeFervor;
     scourgeArmy.organization = Math.min(100, 50 + state.scourgeFervor * 0.5);
-    scourgeArmy.dmgPerUnitMP = 1.2 * powerScale;
-    scourgeArmy.dmgPerTickMO = 3.0 * powerScale;
-    scourgeArmy.killRate = 0.15 * powerScale;
+    scourgeArmy.dmgPerUnitMP = 0.95 * powerScale;
+    scourgeArmy.dmgPerTickMO = 2.2 * powerScale;
+    scourgeArmy.killRate = 0.09 * powerScale;
 
   }
   
@@ -246,7 +253,8 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
   
   // Calculate battlefield size based on total forces
   const totalForces = coalitionArmy.mp.current + scourgeArmy.mp.current;
-  const battlefieldSize = Math.max(800, Math.min(2000, totalForces / 10));
+  const battlefieldSize = calculateBattlefieldSize(totalForces, rng);
+
   
   // Start the battle front (coalition on left, Scourge on right)
   const front = startBattle(state, coalitionArmy.id, scourgeArmy.id, battlefieldSize);
@@ -392,7 +400,8 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   
   // Calculate battlefield size based on total forces
   const totalForces = rebelliousArmy.mp.current + loyalArmy.mp.current;
-  const battlefieldSize = Math.max(800, Math.min(2000, totalForces / 10));
+  const battlefieldSize = calculateBattlefieldSize(totalForces, rng);
+
   
   // Start the battle front (loyal on left, rebellious on right)
   const front = startBattle(state, loyalArmy.id, rebelliousArmy.id, battlefieldSize);

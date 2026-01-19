@@ -13,6 +13,26 @@ import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers } from './improvements.js';
 
+const BASE_POPULATION_GROWTH_RATE = 0.0005;
+const MIN_POPULATION = 1;
+
+function applyBasePopulationGrowth(state) {
+  if (!state.empires) return;
+  state.empires.forEach(empire => {
+    if (!empire.stats) empire.stats = { population: MIN_POPULATION, influence: 50 };
+    const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : MIN_POPULATION;
+    if (currentPopulation <= 0) {
+      empire.stats.population = MIN_POPULATION;
+      return;
+    }
+    empire.stats.population = Math.max(
+      MIN_POPULATION,
+      Math.floor(currentPopulation * (1 + BASE_POPULATION_GROWTH_RATE))
+    );
+  });
+}
+
+
 function isTemporaryArmy(army) {
   return (
     army.id.startsWith('_scourge') ||
@@ -417,8 +437,12 @@ export function advanceTurn(state, rng = Math.random) {
     // Apply improvement modifiers
     applyImprovementModifiers(state);
   }
+
+  // 3.5. Apply baseline population growth
+  applyBasePopulationGrowth(state);
   
   // 4. Update law cooldowns
+
   updateLawCooldowns(state);
   
   // 5. Check for events

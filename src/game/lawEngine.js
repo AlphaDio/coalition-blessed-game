@@ -270,33 +270,38 @@ export function applyEventEffects(event, lawProcess, state) {
       const oldValue = lawProcess.meters[meter] || 0;
       const newValue = clampMeter(oldValue + delta);
       lawProcess.meters[meter] = newValue;
-      log.push(`  ${meter}: ${oldValue.toFixed(2)} → ${newValue.toFixed(2)}`);
+      const deltaLabel = delta >= 0 ? `+${delta.toFixed(2)}` : `${delta.toFixed(2)}`;
+      log.push(`  ${meter}: ${oldValue.toFixed(2)} → ${newValue.toFixed(2)} (${deltaLabel})`);
     });
   }
-  
+
   // Apply progress delta
   if (event.effects.progress !== undefined) {
     const oldProgress = lawProcess.phaseProgress;
+    const adjustedDelta = event.effects.progress * PHASE_PROGRESS_MULTIPLIER;
     const newProgress = clamp(
-      oldProgress + (event.effects.progress * PHASE_PROGRESS_MULTIPLIER),
+      oldProgress + adjustedDelta,
       0,
       MAX_PHASE_PROGRESS
     );
 
     lawProcess.phaseProgress = newProgress;
-    log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)}`);
+    const deltaLabel = adjustedDelta >= 0 ? `+${adjustedDelta.toFixed(3)}` : `${adjustedDelta.toFixed(3)}`;
+    log.push(`  Phase progress: ${oldProgress.toFixed(2)} → ${newProgress.toFixed(2)} (${deltaLabel})`);
   }
-  
+
   // Apply empire-specific effects
   if (event.effects.empire_relations) {
     Object.entries(event.effects.empire_relations).forEach(([empireId, delta]) => {
       const empire = state.empires.find(e => e.id === empireId);
       if (empire) {
         // This could affect approval or other stats
-        log.push(`  ${empire.name} relations: ${delta >= 0 ? '+' : ''}${delta}`);
+        const deltaLabel = delta >= 0 ? `+${delta}` : `${delta}`;
+        log.push(`  ${empire.name} relations: ${deltaLabel}`);
       }
     });
   }
+
   
   return log;
 }
