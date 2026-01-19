@@ -677,9 +677,19 @@ export function renderStockpiles(ui, state) {
   }
 
   const stockpiles = state.stockpiles || {};
+  const commodityMap = loadCommodityMap(state.market || {});
   const entries = Object.entries(stockpiles)
     .filter(([, value]) => value > 0)
-    .sort((a, b) => a[0].localeCompare(b[0]));
+    .map(([key, value]) => {
+      const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
+      return { key, value, commodity };
+    })
+    .sort((a, b) => {
+      const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
+      const tierDiff = (tierOrder[a.commodity.tier] || 5) - (tierOrder[b.commodity.tier] || 5);
+      if (tierDiff !== 0) return tierDiff;
+      return (a.commodity.name || a.key).localeCompare(b.commodity.name || b.key);
+    });
 
   if (entries.length === 0) {
     ui.stockpilesBox.setContent('{center}{yellow-fg}No stockpiles{/yellow-fg}{/center}');
@@ -687,7 +697,10 @@ export function renderStockpiles(ui, state) {
     return;
   }
 
-  const lines = entries.map(([key, value]) => `  ${formatResource(key, value)}`);
+  const lines = entries.map(({ commodity, value }) => {
+    const displayName = commodity.name || commodity.key;
+    return `  ${formatResource(displayName, value)}`;
+  });
   ui.stockpilesBox.setContent(lines.join('\n'));
   ui.stockpilesBox.style.border.fg = 'green';
 }

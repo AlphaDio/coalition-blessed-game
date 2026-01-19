@@ -13,7 +13,35 @@ resources:
       name: "Tier 4"
       description: "Economy-warping rarity; mostly event-driven; extreme leverage."
 
+  tags:
+    industrial: "Heavy manufacturing, hulls, and infrastructure."
+    construction: "Fabrication inputs for building megastructures."
+    military: "Weapons, armor, and war logistics."
+    civilian: "Everyday goods that keep populations stable."
+    fuel: "Energy and propulsion related inputs."
+    sustenance: "Foodstock, water, and life support materials."
+    logistics: "Transport, storage, and supply chain stability."
+    coolant: "Thermal control and cryo systems."
+    life_support: "Habitat and fleet life support inputs."
+    electronics: "Circuitry, sensors, and computation."
+    science: "Research, labs, and experimental work."
+    medical: "Healthcare and biological enhancement."
+    agriculture: "Food production and biological feedstock."
+    biotech: "Genetic engineering and synthetic biology."
+    culture: "Prestige, diplomacy, and heritage."
+    strategic: "High leverage resources that shape policy or war."
+    psychology: "Morale, influence, and cognitive control."
+    repair: "Field repair and recovery systems."
+    intel: "Command, prediction, and targeting."
+    command: "Leadership, control, and coordination."
+    ethics: "Sensitive or controversial technology."
+    legendary: "Rare materials with mythic-scale impact."
+    propulsion: "Drives and movement systems."
+    megastructure: "Megastructure-scale construction inputs."
+    energy: "Power generation and grid stability."
+
   commodities:
+
     - key: super_alloys
       name: "Super Alloys"
       tier: t1
@@ -88,8 +116,11 @@ resources:
       name: "Wormhole Reactors"
       tier: t3
       floor_price: 150.0
-            
+      tags: [energy, propulsion, strategic]
+      notes: "Exotic power cores used for extreme-range logistics and experimental drives."
+
     - key: dark_matter
+
       name: "Dark Matter"
       tier: t4
       floor_price: 1000.0
