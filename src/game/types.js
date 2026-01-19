@@ -419,6 +419,21 @@ export function createGameState(seed = 0) {
     powerSystemPolicy: null, // Current voting power system
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
     
+    // Coalition coloration - aggregate axis values from enacted laws
+    // Each axis ranges from -1 to 1, used for visual theming
+    coalitionColor: {
+      pacifist_militaristic: 0,        // Peaceful <-> Warlike
+      authoritarian_liberal: 0,         // Control <-> Freedom
+      stoicist_hedonistic: 0,           // Sacrifice <-> Pleasure
+      natural_mechanical: 0,            // Organic <-> Synthetic
+      essentialist_constructivist: 0,   // Fixed identity <-> Malleable identity
+      spiritual_materialistic: 0        // Transcendent <-> Pragmatic
+    },
+    
+    // Emergency laws system - timed powerful modifiers with resource costs
+    activeEmergencyLaws: [],     // Active emergency law instances
+    emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
+    
     // Market economy system
     market: null, // Market state per commodity (initialized on first economy tick)
     coalitionEconomy: null, // Coalition procurement and stockpiles (initialized on first economy tick)

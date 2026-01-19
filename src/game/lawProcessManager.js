@@ -17,6 +17,7 @@ import {
 import { canStartLaw } from './lawDefinitions.js';
 import { clamp } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
+import { updateCoalitionColor } from './coalitionColor.js';
 
 
 const LAW_UI_LOG_KEYWORDS = [
@@ -371,6 +372,9 @@ export function resolveLawProcess(lawProcess, state, rng) {
       state.enactedLaws = [];
     }
     state.enactedLaws.push(lawProcess.lawId);
+
+    // Update Coalition coloration based on enacted laws
+    updateCoalitionColor(state);
 
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');

@@ -15,9 +15,79 @@ import { processImprovementsTick, applyImprovementModifiers } from './improvemen
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
+import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.0005;
 const MIN_POPULATION = 1;
+
+/**
+ * Apply emergency law modifiers to game state
+ * These are powerful temporary effects from active emergency laws
+ * @param {Object} state - Game state
+ * @param {Object} modifiers - Aggregate modifiers from active emergency laws
+ * @param {Array} log - Log array to append messages
+ */
+function applyEmergencyModifiers(state, modifiers, log) {
+  if (!modifiers || Object.keys(modifiers).length === 0) return;
+  
+  const logger = getLogger();
+  
+  // Apply cohesion modifiers (drain or bonus)
+  if (modifiers.cohesion_drain) {
+    const prevCohesion = state.coalitionCohesion;
+    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + modifiers.cohesion_drain);
+    if (modifiers.cohesion_drain < 0) {
+      logger.debug(`Emergency law cohesion drain: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
+    }
+  }
+  
+  if (modifiers.cohesion_bonus) {
+    const prevCohesion = state.coalitionCohesion;
+    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + modifiers.cohesion_bonus);
+    logger.debug(`Emergency law cohesion bonus: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
+  }
+  
+  // Apply empire-level modifiers
+  if (state.empires) {
+    state.empires.forEach(empire => {
+      // Apply approval modifier
+      if (modifiers.empire_approval) {
+        const prevApproval = empire.approval;
+        empire.approval = clampApproval(empire.approval + modifiers.empire_approval);
+        if (Math.abs(modifiers.empire_approval) > 3) {
+          logger.debug(`Emergency law approval impact on ${empire.name}: ${prevApproval.toFixed(1)} -> ${empire.approval.toFixed(1)}`);
+        }
+      }
+    });
+  }
+  
+  // Apply army-level modifiers
+  if (state.armies && (modifiers.army_organization_bonus || modifiers.army_fervor_bonus)) {
+    state.armies.forEach(army => {
+      if (!isTemporaryArmy(army)) {
+        // Organization bonus
+        if (modifiers.army_organization_bonus) {
+          army.organization = clampStat(
+            army.organization + modifiers.army_organization_bonus * 0.1, // Apply as gradual bonus
+            0, 100
+          );
+        }
+        
+        // Fervor bonus
+        if (modifiers.army_fervor_bonus) {
+          army.fervor = clampStat(
+            army.fervor + modifiers.army_fervor_bonus * 0.1, // Apply as gradual bonus
+            0, 100
+          );
+        }
+      }
+    });
+  }
+  
+  // Note: Other modifiers (army_damage_multiplier, army_protection_bonus, 
+  // industrial_output, research_speed, etc.) are read directly from 
+  // getActiveEmergencyModifiers() in their respective systems
+}
 
 function applyBasePopulationGrowth(state) {
   if (!state.empires) return;
@@ -468,6 +538,16 @@ export function advanceTurn(state, rng = Math.random) {
     // Apply improvement modifiers
     applyImprovementModifiers(state);
   }
+
+  // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
+  const emergencyResult = tickEmergencyLaws(state);
+  if (emergencyResult.log && emergencyResult.log.length > 0) {
+    log.push(...emergencyResult.log);
+  }
+  
+  // Apply emergency law modifiers to game systems
+  const emergencyModifiers = getActiveEmergencyModifiers(state);
+  applyEmergencyModifiers(state, emergencyModifiers, log);
 
   // 3.3. Process technology accrual
   const empiresReachedTechThreshold = processTechAccrual(state);
