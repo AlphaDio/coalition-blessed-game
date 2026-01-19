@@ -519,6 +519,11 @@ export function advanceTurn(state, rng = Math.random) {
     ? new DeterministicRNG(state.turn * 12345) 
     : rng;
   
+  // Create a callable RNG function for APIs that expect rng()
+  const rngFn = (deterministicRng instanceof DeterministicRNG)
+    ? () => deterministicRng.random()
+    : deterministicRng;
+  
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
 
@@ -557,7 +562,7 @@ export function advanceTurn(state, rng = Math.random) {
     const empireId = empiresReachedTechThreshold[0];
     const empire = state.empires.find(e => e.id === empireId);
     if (empire) {
-      const techEvent = createTechEvent(empire, state, deterministicRng);
+      const techEvent = createTechEvent(empire, state, rngFn);
       if (techEvent) {
         state.activeEvent = techEvent;
         logger.info(`Tech event triggered for ${empire.name}`);

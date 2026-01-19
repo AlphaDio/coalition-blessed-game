@@ -33,7 +33,7 @@ declares:
     stats:
       population: 900
       influence: 55
-      tech_rate_bonus: 0.02
+      tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
           biomass: 150
