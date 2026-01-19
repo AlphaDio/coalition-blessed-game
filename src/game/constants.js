@@ -124,8 +124,8 @@ export const REACTION_CONSTANTS = {
 };
 
 export const TECH_CONSTANTS = {
-  BASE_POINTS_PER_TICK: 10000,         // Base tech points gained per tick
-  INITIAL_THRESHOLD: 50000,          // First tech unlocks at ~500 ticks (50000 / 100)
+  BASE_POINTS_PER_TICK: 100,         // Base tech points gained per tick
+  INITIAL_THRESHOLD: 25000,          // First tech unlocks at ~500 ticks (50000 / 100)
   THRESHOLD_EXPONENT: 1.10,          // Polynomial exponent: threshold = initial * (n+1)^exp
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
   TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event

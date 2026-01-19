@@ -348,7 +348,8 @@ function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') 
       originalMP: (a.mp && typeof a.mp.current === 'number' && !isNaN(a.mp.current)) ? a.mp.current : 0,
       originalMaxMP: (a.mp && typeof a.mp.max === 'number' && !isNaN(a.mp.max)) ? a.mp.max : 1
     })),
-    _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || [])
+    _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || []),
+    isComposite: true
   };
   
   // Sanitize all numeric values to ensure no NaN

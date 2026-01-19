@@ -102,7 +102,12 @@ function applyBattleSustainment(army, isMoraleBroken, front, side) {
 }
 
 function logBattleRound(front, leftArmy, rightArmy, logger) {
-  // Compact INFO-level logging for battle rounds
+  // Initialize round counter if not present
+  if (typeof front.roundNumber !== 'number') {
+    front.roundNumber = 0;
+  }
+  front.roundNumber += 1;
+
   // Guard against division by zero or undefined
   const leftMPMax = leftArmy.mp?.max || 1;
   const rightMPMax = rightArmy.mp?.max || 1;
@@ -113,26 +118,40 @@ function logBattleRound(front, leftArmy, rightArmy, logger) {
   const leftMOPct = Math.floor(((leftArmy.mo?.current || 0) / leftMOMax) * 100);
   const rightMOPct = Math.floor(((rightArmy.mo?.current || 0) / rightMOMax) * 100);
 
-  // Only log at INFO if there's a significant change or morale breaks
   const leftBroken = front.moraleBroken.left;
   const rightBroken = front.moraleBroken.right;
 
+  // Get damage dealt this round
+  const roundDamage = front.roundDamage || { left: 0, right: 0 };
+  const leftDamageDealt = roundDamage.left || 0;
+  const rightDamageDealt = roundDamage.right || 0;
+
+  // Log round at INFO level so it appears in file logs
+  logger.info(`Battle ${front.id} Round ${front.roundNumber}: ${leftArmy.name} vs ${rightArmy.name}`, {
+    round: front.roundNumber,
+    leftMP: `${Math.floor(leftArmy.mp?.current || 0)}/${Math.floor(leftMPMax)} (${leftMPPct}%)`,
+    rightMP: `${Math.floor(rightArmy.mp?.current || 0)}/${Math.floor(rightMPMax)} (${rightMPPct}%)`,
+    leftMO: `${Math.floor(leftArmy.mo?.current || 0)}/${Math.floor(leftMOMax)} (${leftMOPct}%)`,
+    rightMO: `${Math.floor(rightArmy.mo?.current || 0)}/${Math.floor(rightMOMax)} (${rightMOPct}%)`,
+    damageDealt: {
+      left: `${leftDamageDealt.toFixed(1)} MP`,
+      right: `${rightDamageDealt.toFixed(1)} MP`
+    },
+    leftBroken: leftBroken,
+    rightBroken: rightBroken
+  });
+
+  // Log morale breaks separately
   if (leftBroken || rightBroken) {
     const brokenSide = leftBroken ? leftArmy.name : rightArmy.name;
     logger.info(`Battle ${front.id}: ${brokenSide} morale broken`);
   }
 
-  // Detailed DEBUG logging
+  // Detailed DEBUG logging for additional context
   const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
   const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
-  logger.debug(`Battle ${front.id} round`, {
+  logger.debug(`Battle ${front.id} round ${front.roundNumber} details`, {
     width: front.battlefieldSize,
-    leftMP: `${Math.floor(leftArmy.mp?.current || 0)}/${Math.floor(leftMPMax)} (${leftMPPct}%)`,
-    rightMP: `${Math.floor(rightArmy.mp?.current || 0)}/${Math.floor(rightMPMax)} (${rightMPPct}%)`,
-    leftMO: `${Math.floor(leftArmy.mo?.current || 0)}/${Math.floor(leftMOMax)} (${leftMOPct}%)`,
-    rightMO: `${Math.floor(rightArmy.mo?.current || 0)}/${Math.floor(rightMOMax)} (${rightMOPct}%)`,
-    leftBroken: front.moraleBroken.left,
-    rightBroken: front.moraleBroken.right,
     leftEngaged: isNaN(leftEngaged) ? '0' : leftEngaged.toFixed(0),
     rightEngaged: isNaN(rightEngaged) ? '0' : rightEngaged.toFixed(0)
   });
@@ -181,6 +200,9 @@ export function simulateBattleTick(front, worldState) {
   if (front.state !== 'ACTIVE') {
     return [];
   }
+  
+  // Initialize and reset round damage tracking for this round
+  front.roundDamage = { left: 0, right: 0 };
   
   const log = [];
   const leftArmy = worldState.armies.find(a => a.id === front.leftArmyId);
@@ -321,16 +343,26 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   }
   front.permanentLosses[defendingSide] = (front.permanentLosses[defendingSide] || 0) + permanentDmg;
   
-  // Debug: Log damage if significant
+  // Track damage dealt this round for round summary
+  if (!front.roundDamage) {
+    front.roundDamage = { left: 0, right: 0 };
+  }
+  front.roundDamage[attackingSide] = (front.roundDamage[attackingSide] || 0) + finalMPDmg;
+  
+  // Log damage at INFO level so it appears in file logs
   const logger = getLogger();
-  logger.debug(`Battle ${front.id} attack: ${attackingArmy.name} → ${defendingArmy.name}`, {
+  logger.info(`Battle ${front.id} damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
+    damage: `${finalMPDmg.toFixed(1)} MP (${permanentDmg.toFixed(1)} permanent, ${temporaryDmg.toFixed(1)} temporary)`,
     engagedUnits: engagedUnits.toFixed(0),
-    rawDamage: rawMPDmg.toFixed(1),
-    finalDamage: finalMPDmg.toFixed(1),
-    permanent: permanentDmg.toFixed(1),
-    temporary: temporaryDmg.toFixed(1),
     mpBefore: prevMP.toFixed(0),
-    mpAfter: defendingArmy.mp.current.toFixed(0),
+    mpAfter: defendingArmy.mp.current.toFixed(0)
+  });
+  
+  // Detailed DEBUG logging for additional context
+  logger.debug(`Battle ${front.id} attack details: ${attackingArmy.name} → ${defendingArmy.name}`, {
+    rawDamage: rawMPDmg.toFixed(1),
+    modifiedDamage: modifiedMPDmg.toFixed(1),
+    protection: `${(protection * 100).toFixed(1)}%`,
     recoveryPool: defendingArmy.recoveryPool.toFixed(0)
   });
   
@@ -355,7 +387,17 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   // Apply morale damage
   const previousMO = defendingArmy.mo.current || 0;
   defendingArmy.mo.current = Math.max(0, previousMO - finalMODmg);
-  
+
+  // Log morale damage at INFO level
+  if (finalMODmg > 0) {
+    const logger = getLogger();
+    logger.info(`Battle ${front.id} morale damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
+      moraleDamage: `${finalMODmg.toFixed(1)} MO`,
+      moraleBefore: previousMO.toFixed(0),
+      moraleAfter: defendingArmy.mo.current.toFixed(0)
+    });
+  }
+
   // Check if morale just broke
   if (previousMO > 0 && defendingArmy.mo.current <= 0 && !front.moraleBroken[defendingSide]) {
     front.moraleBroken[defendingSide] = true;
@@ -533,23 +575,30 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
     throw new Error('Invalid army IDs for battle');
   }
   
-  const leftMP = Math.floor(leftArmy.mp.current);
-  const rightMP = Math.floor(rightArmy.mp.current);
-  logger.debug(`Starting battle: ${leftArmy.name} vs ${rightArmy.name}`, {
-    battlefieldSize,
-    leftMP: leftArmy.mp.current,
-    rightMP: rightArmy.mp.current
-  });
-  
   // Create battle front inline to avoid circular dependency with types.js
   // (types.js imports from other game modules which may import this module)
   const battleId = `battle_${worldState.turn}_${leftArmyId}_${rightArmyId}`;
+  const leftMP = Math.floor(leftArmy.mp.current);
+  const rightMP = Math.floor(rightArmy.mp.current);
+  logger.info(`Battle started: ${leftArmy.name} vs ${rightArmy.name}`, {
+    battleId,
+    battlefieldSize,
+    leftMP: leftArmy.mp.current,
+    rightMP: rightArmy.mp.current,
+    leftMO: leftArmy.mo?.current || 0,
+    rightMO: rightArmy.mo?.current || 0
+  });
   const front = {
     id: battleId,
     state: 'ACTIVE',
     battlefieldSize,
     leftArmyId,
     rightArmyId,
+    roundNumber: 0,
+    roundDamage: {
+      left: 0,
+      right: 0
+    },
     moraleBroken: {
       left: false,
       right: false

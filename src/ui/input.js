@@ -223,52 +223,93 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   bindEventKeysToWidget(ui.statsBox);
   bindEventKeysToWidget(ui.combinedInfoBox);
   
-  // Combined Info Box: m/a/e to switch views, [/] to cycle, Page Up/Down to scroll
-  // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
-  if (ui.combinedInfoBox) {
-    // Helper to check if input box is focused and should capture keys
-    const shouldIgnoreKey = () => {
-      return ui.screen.focused === ui.inputBox && ui.inputBox.value && ui.inputBox.value.length > 0;
-    };
+    // Combined Info Box: m/a/e/s/w to switch views, [/] to cycle, Page Up/Down to scroll
+    // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
+    if (ui.combinedInfoBox) {
+      // Helper to check if input box is focused and should capture keys
+      const shouldIgnoreKey = () => {
+        return ui.screen.focused === ui.inputBox && ui.inputBox.value && ui.inputBox.value.length > 0;
+      };
+      
+      // m: Switch to Market view
+      ui.screen.key(['m'], () => {
+        if (shouldIgnoreKey()) return; // Let input box handle it if typing
+        ui.combinedInfoBox.currentView = 'market';
+        ui.combinedInfoBox.scrollOffset = 0;
+        renderAll(ui, state);
+      });
+      
+      // a: Switch to Armies view
+      ui.screen.key(['a'], () => {
+        if (shouldIgnoreKey()) return;
+        ui.combinedInfoBox.currentView = 'armies';
+        ui.combinedInfoBox.scrollOffset = 0;
+        renderAll(ui, state);
+      });
+      
+      // e/E: Cycle empires overview and detail views
+      ui.screen.key(['e', 'E'], () => {
+        if (shouldIgnoreKey()) return;
+        if (!ui.combinedInfoBox) return;
+
+        const hasEmpires = state.empires && state.empires.length > 0;
+        if (!hasEmpires) {
+          ui.combinedInfoBox.currentView = 'empires';
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+          return;
+        }
+
+        const currentView = ui.combinedInfoBox.currentView;
+        if (currentView !== 'empires' && currentView !== 'empire_detail') {
+          ui.combinedInfoBox.currentView = 'empires';
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+          return;
+        }
+
+        if (currentView === 'empires') {
+          ui.combinedInfoBox.currentView = 'empire_detail';
+          ui.combinedInfoBox.selectedEmpireIndex = 0;
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderAll(ui, state);
+          return;
+        }
+
+        const nextIndex = (ui.combinedInfoBox.selectedEmpireIndex || 0) + 1;
+        if (nextIndex >= state.empires.length) {
+          ui.combinedInfoBox.currentView = 'empires';
+          ui.combinedInfoBox.scrollOffset = 0;
+        } else {
+          ui.combinedInfoBox.selectedEmpireIndex = nextIndex;
+          ui.combinedInfoBox.scrollOffset = 0;
+        }
+        renderAll(ui, state);
+      });
+
+      // s: Switch to Stockpiles view
+      ui.screen.key(['s'], () => {
+        if (shouldIgnoreKey()) return;
+        ui.combinedInfoBox.currentView = 'stockpiles';
+        ui.combinedInfoBox.scrollOffset = 0;
+        renderAll(ui, state);
+      });
     
-    // m: Switch to Market view
-    ui.screen.key(['m'], () => {
-      if (shouldIgnoreKey()) return; // Let input box handle it if typing
-      ui.combinedInfoBox.currentView = 'market';
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
-    
-    // a: Switch to Armies view
-    ui.screen.key(['a'], () => {
-      if (shouldIgnoreKey()) return;
-      ui.combinedInfoBox.currentView = 'armies';
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
-    
-    // e: Switch to Empires view
-    ui.screen.key(['e'], () => {
-      if (shouldIgnoreKey()) return;
-      ui.combinedInfoBox.currentView = 'empires';
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
-    
-    // w: Switch to Works view
-    ui.screen.key(['w'], () => {
-      if (shouldIgnoreKey()) return;
-      if (state.focus === FOCUS_MODES.ACTIONS) return;
-      ui.combinedInfoBox.currentView = 'queue';
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
+      // w: Switch to Works view
+      ui.screen.key(['w'], () => {
+        if (shouldIgnoreKey()) return;
+        if (state.focus === FOCUS_MODES.ACTIONS) return;
+        ui.combinedInfoBox.currentView = 'queue';
+        ui.combinedInfoBox.scrollOffset = 0;
+        renderAll(ui, state);
+      });
+
 
     // ]: Cycle to next view (only if not in input box)
     ui.screen.key([']'], () => {
       if (shouldIgnoreKey()) return;
       if (state.focus === FOCUS_MODES.ACTIONS) return;
-      const views = ['market', 'armies', 'empires', 'queue'];
+      const views = ['market', 'armies', 'empires', 'stockpiles', 'queue'];
       const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
       const nextIndex = (currentIndex + 1) % views.length;
       ui.combinedInfoBox.currentView = views[nextIndex];
@@ -282,7 +323,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       if (state.focus === FOCUS_MODES.ACTIONS) return;
       // Only handle for combined info box if input box doesn't have focus
       if (ui.screen.focused !== ui.inputBox) {
-        const views = ['market', 'armies', 'empires', 'queue'];
+        const views = ['market', 'armies', 'empires', 'stockpiles', 'queue'];
         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
         const prevIndex = (currentIndex - 1 + views.length) % views.length;
         ui.combinedInfoBox.currentView = views[prevIndex];

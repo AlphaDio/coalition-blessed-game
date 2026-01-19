@@ -37,7 +37,7 @@ declares:
       production:
         outputs_per_tick:
           ice: 120
-          psycho_implants: 8
+          psycho_implants: 16
       needs:
         per_pop:
           biomass: 1.2

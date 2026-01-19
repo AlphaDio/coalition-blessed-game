@@ -17,14 +17,15 @@ export function getResearchSpeed(empire, state) {
     speed += state.improvements.empireModifiers[empire.id].research_speed;
   }
   
-  // Multiply by empire base tech rate bonus
-  if (empire.stats?.tech_rate_bonus) {
-    speed *= (1 + empire.stats.tech_rate_bonus);
-  }
-  
   // Add tech modifiers
   if (empire.techModifiers?.research_speed) {
     speed += empire.techModifiers.research_speed;
+  }
+  
+  // Add empire base tech rate bonus as percentage of base tick
+  // Instead of multiplying, add a percentage of the base research speed
+  if (empire.stats?.tech_rate_bonus) {
+    speed += TECH_CONSTANTS.BASE_RESEARCH_SPEED * empire.stats.tech_rate_bonus;
   }
   
   return Math.max(0.1, speed); // Minimum 10% research speed
@@ -302,7 +303,7 @@ function generateTechChoice(tech) {
   const effectText = [...immediateStrings, ...modifierStrings].join(', ') || 'No direct effects';
   
   return {
-    text: `${tech.name}: ${tech.description}`,
+    text: tech.name,
     effects: {
       // Tech granting is handled specially by handleTechEventChoice
       _grantTech: tech.id

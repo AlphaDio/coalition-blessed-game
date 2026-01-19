@@ -9,6 +9,8 @@ import yaml from 'js-yaml';
 import { getAvailableLaws } from '../game/lawDefinitions.js';
 import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/improvementDefinitions.js';
 import { calculateTechPointsPerTick } from '../game/technology.js';
+import { MARKET_CONSTANTS } from '../game/constants.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -164,8 +166,8 @@ function disableListSearch(lawsBox) {
 }
 
 function createEventBox(grid) {
-  // Center: Event box (row 3-5) and Log (row 5-12)
-  return grid.set(3, 3, 2, 5, blessed.box, {
+  // Center: Event box (row 3-6) and Log (row 6-10)
+  return grid.set(3, 3, 3, 5, blessed.box, {
     label: ' Event ',
     content: '',
     scrollable: true,
@@ -185,7 +187,7 @@ function createEventBox(grid) {
 
 function createLogBox(grid) {
   // Use blessed.box instead of blessed.log for better tag support
-  const logBox = grid.set(5, 3, 5, 5, blessed.box, {
+  const logBox = grid.set(6, 3, 4, 5, blessed.box, {
     label: ' Log ',
     scrollable: true,
     alwaysScroll: true,
@@ -273,10 +275,11 @@ function createCombinedInfoBox(grid) {
   });
 
   // Track current view state (market, armies, empires, queue)
-  combinedInfoBox.currentView = 'empires'; // 'market' | 'armies' | 'empires' | 'queue'
+  combinedInfoBox.currentView = 'empires'; // 'market' | 'armies' | 'empires' | 'queue' | 'empire_detail' | 'stockpiles'
   combinedInfoBox.scrollOffset = 0;
   combinedInfoBox.selectedRequestIndex = 0; // For request selection
   combinedInfoBox.selectedImprovementIndex = 0; // For improvement selection
+  combinedInfoBox.selectedEmpireIndex = 0; // For empire detail view
   return combinedInfoBox;
 }
 
@@ -542,14 +545,35 @@ function buildRequestMenuItems(state) {
   filteredRequests.forEach((request) => {
     const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
     const tierLabel = request.tier ? `T${request.tier}` : 'T1';
-    
+
+    const benefitParts = [];
+    const sustainKeys = Object.keys(request.sustainmentCost || {});
+    if (sustainKeys.length > 0) {
+      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
+      benefitParts.push(`-${sustainStr}`);
+    }
+
+    const outputKeys = Object.keys(request.productionOutputs || {});
+    if (outputKeys.length > 0) {
+      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
+      benefitParts.push(`+${outputStr}`);
+    }
+
+    const modKeys = Object.keys(request.modifiers || {});
+    if (modKeys.length > 0) {
+      const modStr = modKeys.map(k => formatImprovementModifier(k, request.modifiers[k])).join('  ');
+      benefitParts.push(modStr);
+    }
+
+    const benefitHint = benefitParts.length > 0 ? ` • ${benefitParts.join(' -> ')}` : '';
+
     // Find original index for action handling
     const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
     
     items.push({
       id: `request_${request.id}`,
       label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: `${tierLabel} • ${request.suppliesCost} sup`,
+      hint: `${tierLabel} • ${request.suppliesCost} sup • cap ${request.capacity}${benefitHint}`,
       action: 'ACCEPT_REQUEST',
       requestIndex: originalIndex,
       requestId: request.id
@@ -565,24 +589,80 @@ function buildImprovementMenuItems(state) {
     { id: 'divider', label: '─────────────────', divider: true }
   ];
 
-  if (!state.improvements || !state.improvements.queue || state.improvements.queue.length === 0) {
+  if (!state.improvements || !state.improvements.queue) {
     items.push({ id: 'no_queue', label: 'No works in progress', info: true });
     return items;
   }
 
-  state.improvements.queue.forEach((improvement, idx) => {
-    const stateLabel = improvement.state || 'BUILDING';
-    const progress = improvement.build > 0
-      ? Math.min(1, improvement.buildProgress / improvement.build)
-      : 0;
-    const bar = formatProgressBar(progress, 12);
-    const { label, colorTag } = formatSuggestionLabel(improvement.suggestedBy, state);
+  if (state.improvements.queue.length === 0) {
+    items.push({ id: 'no_queue', label: 'No works in progress', info: true });
+  } else {
+    state.improvements.queue.forEach((improvement, idx) => {
+      const stateLabel = improvement.state || 'BUILDING';
+      const progress = improvement.build > 0
+        ? Math.min(1, improvement.buildProgress / improvement.build)
+        : 0;
+      const bar = formatProgressBar(progress, 12);
+      const { label, colorTag } = formatSuggestionLabel(improvement.suggestedBy, state);
+      items.push({
+        id: `improvement_${improvement.id}`,
+        label: `${improvement.name} ${bar} [${stateLabel}] {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
+        hint: 'cancel',
+        action: 'CANCEL_IMPROVEMENT',
+        improvementIndex: idx
+      });
+    });
+  }
+
+  items.push({ id: 'divider_add', label: '─────────────────', divider: true });
+  items.push({ id: 'add_header', label: 'Add to Queue', info: true });
+
+  if (!state.improvements.requests || state.improvements.requests.length === 0) {
+    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+    return items;
+  }
+
+  const buildingCapacity = state.improvements.queue
+    .filter(i => i.state === 'BUILDING')
+    .reduce((sum, i) => sum + i.capacity, 0);
+
+  const filteredRequests = state.improvements.requests.filter(request => {
+    if (!request.suggestedBy) {
+      return false;
+    }
+    return isImprovementTierUnlocked(request.tier || 1, state, request.suggestedBy);
+  });
+
+  if (filteredRequests.length === 0) {
+    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+    return items;
+  }
+
+  filteredRequests.forEach((request) => {
+    const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
+    const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+    const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
+
+    const capacityNeeded = buildingCapacity + request.capacity;
+    const capacityOk = capacityNeeded <= state.improvements.maxTotalCapacity;
+    const suppliesOk = state.stockpiles.supplies >= request.suppliesCost;
+    const disabled = !capacityOk || !suppliesOk;
+
+    let hint = `${tierLabel} • ${request.suppliesCost} sup`;
+    if (!capacityOk) {
+      hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
+    } else if (!suppliesOk) {
+      hint = `{red-fg}need ${request.suppliesCost} sup{/red-fg}`;
+    }
+
     items.push({
-      id: `improvement_${improvement.id}`,
-      label: `${improvement.name} ${bar} [${stateLabel}] {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: 'cancel',
-      action: 'CANCEL_IMPROVEMENT',
-      improvementIndex: idx
+      id: `request_${request.id}`,
+      label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
+      hint: hint,
+      action: 'ACCEPT_REQUEST',
+      requestIndex: originalIndex,
+      requestId: request.id,
+      disabled
     });
   });
 
@@ -618,6 +698,7 @@ function buildInfoSelectItems() {
     { id: 'market', label: 'Market Economy', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'armies', label: 'Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
     { id: 'empires', label: 'Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
+    { id: 'stockpiles', label: 'Coalition Stockpiles', hint: '[S]', action: 'SET_VIEW', view: 'stockpiles' },
     { id: 'queue', label: 'Works', hint: '[W]', action: 'SET_VIEW', view: 'queue' }
   ];
 }
@@ -1043,6 +1124,142 @@ function renderEmpiresView(state) {
   return lines.join('\n');
 }
 
+function renderStockpilesView(state) {
+  const stockpiles = state.stockpiles || {};
+  const commodityMap = loadCommodityMap(state.market || {});
+  const entries = Object.entries(stockpiles)
+    .filter(([, value]) => value > 0)
+    .map(([key, value]) => {
+      const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
+      return { key, value, commodity };
+    })
+    .sort((a, b) => {
+      const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
+      const tierDiff = (tierOrder[a.commodity.tier] || 5) - (tierOrder[b.commodity.tier] || 5);
+      if (tierDiff !== 0) return tierDiff;
+      return (a.commodity.name || a.key).localeCompare(b.commodity.name || b.key);
+    });
+
+  if (entries.length === 0) {
+    return '{center}{yellow-fg}No stockpiles{/yellow-fg}{/center}';
+  }
+
+  const lines = ['{bold}Coalition Stockpiles:{/bold}'];
+  entries.forEach(({ commodity, value }) => {
+    const displayName = commodity.name || commodity.key;
+    lines.push(`  ${formatResource(displayName, value)}`);
+  });
+
+  return lines.join('\n');
+}
+
+function renderEmpireDetailView(state, ui) {
+  if (!state.empires || state.empires.length === 0) {
+    return '{center}{yellow-fg}No empires{/yellow-fg}{/center}';
+  }
+
+  const selectedIndex = ui?.combinedInfoBox?.selectedEmpireIndex || 0;
+  const empireIndex = Math.min(selectedIndex, state.empires.length - 1);
+  const empire = state.empires[empireIndex];
+  if (!empire) {
+    return '{center}{yellow-fg}No empire data{/yellow-fg}{/center}';
+  }
+
+  const commodityMap = loadCommodityMap(state.market || {});
+  const lines = [`{bold}${empire.name}{/bold}`];
+
+  const approval = `${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`;
+  const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
+  let stabilityDisplay = stabilityValue;
+  if (empire.stability !== undefined) {
+    if (empire.stability < 40) {
+      stabilityDisplay = `{red-fg}${stabilityValue}{/red-fg}`;
+    } else if (empire.stability < 60) {
+      stabilityDisplay = `{yellow-fg}${stabilityValue}{/yellow-fg}`;
+    }
+  }
+
+  lines.push(`Approval: ${approval}  Stability: ${stabilityDisplay}`);
+
+  if (empire.stats) {
+    const statParts = [];
+    statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
+    statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
+    if (empire.stats.tech_rate_bonus) {
+      statParts.push(`Tech Bonus: +${formatNumber(empire.stats.tech_rate_bonus * 100, 0)}%`);
+    }
+    lines.push(statParts.join('  '));
+  }
+
+  if (empire.budget_credits !== undefined) {
+    lines.push(`Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits`);
+  }
+
+  if (empire.economy_spend) {
+    const needsSpend = formatNumber(empire.economy_spend.needs || 0, 0);
+    const wantsSpend = formatNumber(empire.economy_spend.wants || 0, 0);
+    lines.push(`Spend/tick: Needs {yellow-fg}${needsSpend}{/yellow-fg}  Wants {cyan-fg}${wantsSpend}{/cyan-fg}`);
+  }
+
+  if (empire.production?.outputs_per_tick) {
+    const outputKeys = Object.keys(empire.production.outputs_per_tick);
+    if (outputKeys.length > 0) {
+      let totalProduceCredits = 0;
+      const outputStr = outputKeys.map(key => {
+        const qty = empire.production.outputs_per_tick[key];
+        const marketPrice = state.market?.[key]?.price || 0;
+        const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT;
+        totalProduceCredits += qty * askPrice;
+        const commodity = commodityMap.get(key);
+        const name = commodity?.name || key;
+        return `${name}:+${formatVolume(qty)}`;
+      }).join(', ');
+      const creditsStr = formatNumber(totalProduceCredits, 0);
+      lines.push(`Produces: {green-fg}${outputStr}{/green-fg}`);
+      lines.push(`Output value: {green-fg}${creditsStr}{/green-fg} credits/tick`);
+    }
+  }
+
+  const needLines = formatDemandLine('Needs', empire.needs?.per_pop, commodityMap);
+  if (needLines) {
+    lines.push(needLines);
+  }
+  const wantLines = formatDemandLine('Wants', empire.wants?.per_pop, commodityMap);
+  if (wantLines) {
+    lines.push(wantLines);
+  }
+
+  if (empire.stockpiles && Object.keys(empire.stockpiles).length > 0) {
+    const stockLines = Object.entries(empire.stockpiles)
+      .filter(([, value]) => value > 0)
+      .map(([key, value]) => {
+        const commodity = commodityMap.get(key);
+        const name = commodity?.name || key;
+        return `${name}:${formatVolume(value)}`;
+      });
+    if (stockLines.length > 0) {
+      lines.push(`Stockpiles: ${stockLines.join(', ')}`);
+    }
+  }
+
+  const marketOrders = formatEmpireMarketOrders(state, empire, commodityMap);
+  if (marketOrders.length > 0) {
+    lines.push('', '{bold}Market Orders:{/bold}', ...marketOrders);
+  }
+
+  if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
+    const progress = Math.min(1, empire.techPoints / empire.techThreshold);
+    const barWidth = 14;
+    const filledWidth = Math.floor(progress * barWidth);
+    const emptyWidth = barWidth - filledWidth;
+    const techBar = `{blue-fg}[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}]{/blue-fg}`;
+    const pct = (progress * 100).toFixed(0);
+    lines.push(`Research: ${techBar} ${pct}%`);
+  }
+
+  return lines.join('\n');
+}
+
 /**
  * Render combined info panel (Market, Armies, or Empires based on current view)
  */
@@ -1054,24 +1271,24 @@ export function renderCombinedInfo(ui, state) {
   let content = '';
   let label = '';
   let borderColor = 'green';
-  
+
   // Apply scroll offset
   const scrollOffset = box.scrollOffset || 0;
   const viewConfig = COMBINED_INFO_VIEWS[view] || COMBINED_INFO_VIEWS.market;
 
   label = viewConfig.label;
   borderColor = viewConfig.borderColor;
-  content = viewConfig.render(state);
-  
+  content = viewConfig.render(state, ui);
+
   // Apply scrolling by splitting content into lines and showing subset
   const lines = content.split('\n');
   const visibleHeight = box.height - 2; // Account for border
   const totalLines = lines.length;
-  
+
   // Clamp scroll offset
   const maxScroll = Math.max(0, totalLines - visibleHeight);
   box.scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
-  
+
   // Get visible lines
   const visibleLines = lines.slice(box.scrollOffset, box.scrollOffset + visibleHeight);
   const scrolledContent = visibleLines.join('\n');
@@ -1103,6 +1320,16 @@ const COMBINED_INFO_VIEWS = {
     label: ' Empires (m/a/e/w: switch, [/]: cycle) ',
     borderColor: 'yellow',
     render: renderEmpiresView
+  },
+  empire_detail: {
+    label: ' Empire Detail (Shift+E: cycle) ',
+    borderColor: 'yellow',
+    render: renderEmpireDetailView
+  },
+  stockpiles: {
+    label: ' Coalition Stockpiles (m/a/e/w/s: switch, [/]: cycle) ',
+    borderColor: 'green',
+    render: renderStockpilesView
   },
   queue: {
     label: ' Works (m/a/e/w: switch, [/]: cycle) ',
@@ -1280,8 +1507,8 @@ function appendInsurrectionInfo(lines, insurrections) {
 }
 
 function formatEmpireBlock(empire, regularArmies, state) {
-  const lines = [`{bold}${empire.name}{/bold}`];
-  lines.push(`  Approval: ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`);
+  const lines = [];
+  const approval = `${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`;
   const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
   let stabilityDisplay = stabilityValue;
   if (empire.stability !== undefined) {
@@ -1291,43 +1518,44 @@ function formatEmpireBlock(empire, regularArmies, state) {
       stabilityDisplay = `{yellow-fg}${stabilityValue}{/yellow-fg}`;
     }
   }
-  lines.push(`  Stability: ${stabilityDisplay}`);
 
+  lines.push(`{bold}${empire.name}{/bold}  Approval: ${approval}  Stability: ${stabilityDisplay}`);
+
+  const statParts = [];
   if (empire.stats) {
-    lines.push(`  Population: ${formatNumber(empire.stats.population || 0)}`);
-    lines.push(`  Influence: ${formatNumber(empire.stats.influence || 0)}`);
+    statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
+    statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
   }
   if (empire.budget_credits !== undefined) {
-    lines.push(`  Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits`);
+    statParts.push(`Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg}`);
+  }
+  const empireArmies = regularArmies.filter(army => army.empireId === empire.id);
+  statParts.push(`Armies: ${empireArmies.length}`);
+  if (statParts.length > 0) {
+    lines.push(`  ${statParts.join('  ')}`);
   }
 
   // Technology progress
   if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
     const progress = Math.min(1, empire.techPoints / empire.techThreshold);
-    const barWidth = 15;
+    const barWidth = 12;
     const filledWidth = Math.floor(progress * barWidth);
     const emptyWidth = barWidth - filledWidth;
     const techBar = `{blue-fg}[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}]{/blue-fg}`;
     const pct = (progress * 100).toFixed(0);
-    
+
     // Calculate points per tick for display
     let rateStr = '';
     if (state) {
       const pointsPerTick = calculateTechPointsPerTick(empire, state);
       rateStr = ` {gray-fg}+${pointsPerTick}{/gray-fg}`;
     }
-    
-    lines.push(`  Research: ${techBar} ${pct}%${rateStr}`);
-    
-    // Show unlocked tech count
+
     const techCount = empire.technologies?.length || 0;
-    if (techCount > 0) {
-      lines.push(`  Technologies: {cyan-fg}${techCount}{/cyan-fg}`);
-    }
+    const techCountText = techCount > 0 ? `  Techs: {cyan-fg}${techCount}{/cyan-fg}` : '';
+    lines.push(`  Research: ${techBar} ${pct}%${rateStr}${techCountText}`);
   }
 
-  const empireArmies = regularArmies.filter(army => army.empireId === empire.id);
-  lines.push(`  Armies: ${empireArmies.length}`);
   return lines.join('\n');
 }
 
@@ -1365,6 +1593,98 @@ function formatVolume(volume) {
   if (volume < 1000000) return (volume / 1000).toFixed(1) + 'K';
   return (volume / 1000000).toFixed(1) + 'M';
 }
+
+function formatDemandLine(label, demandMap, commodityMap) {
+  const entries = Object.entries(demandMap || {})
+    .filter(([, value]) => value > 0)
+    .map(([key, value]) => {
+      const commodity = commodityMap.get(key);
+      const name = commodity?.name || key;
+      return `${name}:${formatVolume(value)}`;
+    });
+
+  if (entries.length === 0) {
+    return '';
+  }
+
+  return `${label}: ${entries.join(', ')}`;
+}
+
+function formatEmpireMarketOrders(state, empire, commodityMap) {
+  const orders = [];
+  if (!state.market || !empire) {
+    return orders;
+  }
+
+  const buyOrders = [];
+  const sellOrders = [];
+  Object.values(state.market).forEach(marketState => {
+    marketState.buy_orders?.forEach(order => {
+      if (order.owner_type === 'empire' && order.owner_id === empire.id) {
+        buyOrders.push(order);
+      }
+    });
+    marketState.sell_offers?.forEach(order => {
+      if (order.owner_type === 'empire' && order.owner_id === empire.id) {
+        sellOrders.push(order);
+      }
+    });
+  });
+
+  const stateBuyOrders = state.marketOrders?.buyOrders || [];
+  stateBuyOrders.forEach(order => {
+    if (order.owner_type === 'empire' && order.owner_id === empire.id) {
+      buyOrders.push(order);
+    }
+  });
+
+  if (buyOrders.length > 0) {
+    const orderLines = buyOrders.slice(0, 6).map(order => {
+      const commodity = commodityMap.get(order.commodity);
+      const name = commodity?.name || order.commodity;
+      const remaining = Math.max(0, order.qty - (order.filled_qty || 0));
+      const price = order.max_price ?? order.ask_price ?? 0;
+      return `  Buy ${name}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`;
+    });
+    orders.push('{yellow-fg}Buy{/yellow-fg}');
+    orders.push(...orderLines);
+    if (buyOrders.length > 6) {
+      orders.push(`  ...${buyOrders.length - 6} more`);
+    }
+  }
+
+  if (sellOrders.length > 0) {
+    const orderLines = sellOrders.slice(0, 6).map(order => {
+      const commodity = commodityMap.get(order.commodity);
+      const name = commodity?.name || order.commodity;
+      const remaining = Math.max(0, order.qty - (order.filled_qty || 0));
+      const price = order.ask_price ?? order.max_price ?? 0;
+      return `  Sell ${name}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`;
+    });
+    orders.push('{green-fg}Sell{/green-fg}');
+    orders.push(...orderLines);
+    if (sellOrders.length > 6) {
+      orders.push(`  ...${sellOrders.length - 6} more`);
+    }
+  }
+
+  return orders;
+}
+
+function formatImprovementModifier(key, value) {
+  const sign = value > 0 ? '+' : '';
+  const percentageModifiers = [
+    'research_speed', 'industrial_output', 'supply_efficiency',
+    'market_efficiency', 'population_growth', 'energy_production'
+  ];
+
+  if (percentageModifiers.includes(key)) {
+    return `${sign}${(value * 100).toFixed(0)}% ${key.replace(/_/g, ' ')}`;
+  }
+
+  return `${sign}${value} ${key.replace(/_/g, ' ')}`;
+}
+
 
 /**
  * Render Requests view (available improvements to accept)
@@ -1453,25 +1773,30 @@ function renderImprovementsQueueView(state) {
 
   queue.forEach((improvement) => {
     lines.push(`{bold}${improvement.name}{/bold} [${improvement.state}]`);
-    lines.push(`  Progress: ${improvement.buildProgress}/${improvement.build}`);
-    lines.push(`  Capacity: ${improvement.capacity}`);
+    lines.push(`  Progress: ${improvement.buildProgress}/${improvement.build}  Capacity: ${improvement.capacity}`);
+
+    const benefitParts = [];
 
     const sustainKeys = Object.keys(improvement.sustainmentCost);
     if (sustainKeys.length > 0) {
       const sustainStr = sustainKeys.map(k => `${k}:${improvement.sustainmentCost[k]}`).join(', ');
-      lines.push(`  Sustain: {yellow-fg}${sustainStr}{/yellow-fg}`);
+      benefitParts.push(`{yellow-fg}-${sustainStr}{/yellow-fg}`);
     }
 
     const outputKeys = Object.keys(improvement.productionOutputs);
     if (outputKeys.length > 0) {
       const outputStr = outputKeys.map(k => `${k}:+${improvement.productionOutputs[k]}`).join(', ');
-      lines.push(`  Produces: {green-fg}${outputStr}{/green-fg}`);
+      benefitParts.push(`{green-fg}+${outputStr}{/green-fg}`);
     }
 
     const modKeys = Object.keys(improvement.modifiers);
     if (modKeys.length > 0) {
-      const modStr = modKeys.map(k => `${k}:${improvement.modifiers[k]}`).join(', ');
-      lines.push(`  Bonus: {cyan-fg}${modStr}{/cyan-fg}`);
+      const modStr = modKeys.map(k => formatImprovementModifier(k, improvement.modifiers[k])).join('  ');
+      benefitParts.push(`{cyan-fg}${modStr}{/cyan-fg}`);
+    }
+
+    if (benefitParts.length > 0) {
+      lines.push(`  ${benefitParts.join('  {white-fg}->{/white-fg}  ')}`);
     }
 
     lines.push('');

@@ -147,9 +147,18 @@ export function refreshArmyAggregates(state) {
   }
 
   state.armies.forEach(army => {
+    if (army.isComposite) {
+      return;
+    }
     const units = state.units.filter(unit => unit.armyId === army.id);
     aggregateArmyDemands(army, units);
     aggregateArmyCombatStats(state, army, units);
+  });
+
+  state.armies.forEach(army => {
+    if (army.isComposite) {
+      delete army.isComposite;
+    }
   });
 }
 

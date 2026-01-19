@@ -105,21 +105,24 @@ export function processEconomyTick(state) {
   state.empires.forEach(empire => {
     if (!empire.needs || !empire.needs.per_pop) return;
     const population = empire.stats?.population || 0;
-    
+
     // Ensure stockpiles is initialized
     if (!empire.stockpiles) empire.stockpiles = {};
-    
+    if (!empire.economy_spend) {
+      empire.economy_spend = { needs: 0, wants: 0 };
+    }
+
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
       const totalNeeded = qtyPerPop * population;
       if (totalNeeded > 0) {
         // Check stockpile first
         const stockpiled = empire.stockpiles[commodity] || 0;
         const neededFromMarket = Math.max(0, totalNeeded - stockpiled);
-        
+
         if (neededFromMarket > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
           const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM; // Pay premium for needs
-          
+
           const buyOrder = createBuyOrder(
             `buy_empire_${orderIdCounter++}`,
             'empire',
@@ -129,9 +132,10 @@ export function processEconomyTick(state) {
             maxPrice,
             1 // Higher priority for needs
           );
+          buyOrder.category = 'needs';
           buyOrders.push(buyOrder);
         }
-        
+
         // Consume from stockpile
         if (stockpiled > 0) {
           const consumed = Math.min(stockpiled, totalNeeded);
@@ -145,13 +149,13 @@ export function processEconomyTick(state) {
   state.empires.forEach(empire => {
     if (!empire.wants || !empire.wants.per_pop) return;
     const population = empire.stats?.population || 0;
-    
+
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
       const totalWanted = qtyPerPop * population;
       if (totalWanted > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM; // Lower premium for wants
-        
+
         const buyOrder = createBuyOrder(
           `buy_empire_want_${orderIdCounter++}`,
           'empire',
@@ -161,6 +165,7 @@ export function processEconomyTick(state) {
           maxPrice,
           0 // Normal priority for wants (lower than needs)
         );
+        buyOrder.category = 'wants';
         buyOrders.push(buyOrder);
       }
     });
@@ -268,6 +273,11 @@ export function processEconomyTick(state) {
   if (procurementResult.purchases.length > 0) {
     log.push(`Coalition procured ${procurementResult.purchases.length} commodities (spent ${procurementResult.spent.toFixed(0)} credits)`);
   }
+
+  // Reset empire spend tracking before market clearing
+  state.empires.forEach(empire => {
+    empire.economy_spend = { needs: 0, wants: 0 };
+  });
   
   // Step 6: Market clearing
   const allTrades = [];
@@ -291,7 +301,11 @@ export function processEconomyTick(state) {
           if (empire) {
             if (!empire.stockpiles) empire.stockpiles = {};
             empire.stockpiles[trade.commodity] = (empire.stockpiles[trade.commodity] || 0) + trade.qty;
-            empire.budget_credits = (empire.budget_credits || 0) - (trade.qty * trade.price);
+            const tradeCost = trade.qty * trade.price;
+            empire.budget_credits = (empire.budget_credits || 0) - tradeCost;
+            const category = buyOrder.category === 'wants' ? 'wants' : 'needs';
+            empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0 };
+            empire.economy_spend[category] += tradeCost;
           }
         } else if (buyOrder.owner_type === 'army') {
           const army = state.armies.find(a => a.id === buyOrder.owner_id);
