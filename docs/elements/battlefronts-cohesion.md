@@ -1,29 +1,28 @@
 # Battlefronts and Cohesion
 
 ## Overview
-Battlefronts are MP-based engagements that resolve each tick, while cohesion values track the coalition's stability and the Scourge's momentum. Together they drive win/lose conditions.
+Battlefronts represent the live military engagements in the war. Cohesion values define how close the coalition is to collapse or victory and gate the intensity of events.
 
-## Battlefront Elements
-Battlefronts are runtime objects that pair two armies on a front.
+## Battlefront Behavior
+- Engagement scales with organization and battlefield width.
+- Morale-broken armies fight at 50% engagement.
+- Damage splits into permanent losses and recoverable losses.
+- Recovery and reinforcement slow during battle (20% recovery, 10% reinforcement).
 
-- Identity: `id`, `leftArmyId`, `rightArmyId`, `battlefieldSize`
-- State: `ACTIVE` or `ENDED`
-- Morale flags: `moraleBroken` per side
-- Loss tracking: `permanentLosses`
-- Timing: `startedAtTick`, `endedAtTick`
+## Battle Stats (Defaults in Code)
+These are the baseline combat stats applied to armies when created:
+- MP pool: 10,000 max
+- Morale pool: 100 max
+- MP damage per unit: 1.0
+- Morale damage per tick: 2.5
+- Protection: 0.2, Resolve: 0.3
+- Kill rate: 0.1 (portion of MP damage that is permanent)
+- Reinforcement rate: 100 per tick
 
-### Battle Resolution
-- Engagement scales with organization, battlefield width, and morale status
-- Damage splits into permanent losses and recovery pool losses
-- Morale breaks reduce engagement to 50%
-- Sustainment applies morale regen, recovery, and reinforcement each tick
-
-## Cohesion Elements
-Cohesion represents the coalition's stability and the Scourge's threat.
-
-- `coalitionCohesion`: 0-100, defeat at 0
-- `scourgeCohesion`: 0-100, victory at 0
-- `scourgeFervor`: increases each turn, boosting Scourge battles
+## Cohesion Values
+- Coalition cohesion starts at 75 and ranges 0-100. Defeat at 0.
+- Scourge cohesion starts at 80 and ranges 0-100. Victory at 0.
+- Scourge fervor starts at 10 and increases each turn.
 
 ### Cohesion Tiers
 - Stable: 67-100
@@ -32,6 +31,5 @@ Cohesion represents the coalition's stability and the Scourge's threat.
 
 ## Content Sources
 - Battle system: `src/game/frontBattles.js`
-- Turn orchestration: `src/game/turn.js`
+- Army defaults: `src/game/types.js`
 - Cohesion tiers: `src/game/cohesion.js`
-- System docs: `docs/systems/battles.md`

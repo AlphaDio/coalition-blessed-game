@@ -27,6 +27,7 @@ export function createUI() {
 
   const activeFrontsBox = createActiveFrontsBox(grid);
   const activeLawsBox = createActiveLawsBox(grid);
+  const stockpilesBox = createStockpilesBox(grid);
   const lawsBox = createLawsBox(grid);
   const eventBox = createEventBox(grid);
   const logBox = createLogBox(grid);
@@ -35,12 +36,13 @@ export function createUI() {
   const { inputBox, commandHistoryBox } = createCommandInputs(screen);
   const logsWindow = createLogsWindow(screen);
 
-  disableWidgetInput([eventBox, logBox, activeFrontsBox, activeLawsBox, statsBox, combinedInfoBox]);
+  disableWidgetInput([eventBox, logBox, activeFrontsBox, activeLawsBox, stockpilesBox, statsBox, combinedInfoBox]);
   screen.input = false;
 
   return {
     screen,
     lawsBox,
+    stockpilesBox,
     eventBox,
     activeFrontsBox,
     activeLawsBox,
@@ -92,10 +94,30 @@ function createActiveLawsBox(grid) {
   });
 }
 
+function createStockpilesBox(grid) {
+  // Stockpiles (left column, rows 3-4, cols 0-3)
+  return grid.set(3, 0, 1, 3, blessed.box, {
+    label: ' Stockpiles ',
+    content: '',
+    scrollable: true,
+    alwaysScroll: true,
+    tags: true,
+    input: false,
+    keys: false,
+    style: {
+      border: { fg: 'green' }
+    },
+    border: {
+      type: 'line'
+    }
+  });
+}
+
+
 function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
-  // Left column: Action Panel (row 3-10) - formerly Laws box
-  const actionPanel = grid.set(3, 0, 7, 3, blessed.box, {
+  // Left column: Action Panel (row 4-10) - below stockpiles box
+  const actionPanel = grid.set(4, 0, 6, 3, blessed.box, {
     label: ' Actions (TAB: cycle panels, ENTER: select) ', 
     scrollable: true,
     alwaysScroll: true,
@@ -110,6 +132,7 @@ function createLawsBox(grid) {
       type: 'line'
     }
   });
+
 
   // Track action panel state
   actionPanel.currentMode = 'main'; // 'main' | 'laws' | 'info_select'
@@ -647,6 +670,28 @@ export function renderStats(ui, state) {
   ui.statsBox.setContent(formatStats(state));
   ui.statsBox.style.border.fg = 'white';
 }
+
+export function renderStockpiles(ui, state) {
+  if (!ui.stockpilesBox) {
+    return;
+  }
+
+  const stockpiles = state.stockpiles || {};
+  const entries = Object.entries(stockpiles)
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (entries.length === 0) {
+    ui.stockpilesBox.setContent('{center}{yellow-fg}No stockpiles{/yellow-fg}{/center}');
+    ui.stockpilesBox.style.border.fg = 'white';
+    return;
+  }
+
+  const lines = entries.map(([key, value]) => `  ${formatResource(key, value)}`);
+  ui.stockpilesBox.setContent(lines.join('\n'));
+  ui.stockpilesBox.style.border.fg = 'green';
+}
+
 
 export function renderTables(ui, state) {
   let content = '';
@@ -1381,7 +1426,9 @@ export function renderAll(ui, state) {
   renderLaws(ui, state);
   renderEvent(ui, state);
   renderStats(ui, state);
+  renderStockpiles(ui, state);
   renderCombinedInfo(ui, state);
   renderLog(ui, state);
   ui.screen.render();
 }
+

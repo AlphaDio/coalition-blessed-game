@@ -1,46 +1,104 @@
 # Factions and Armies
 
 ## Overview
-Factions (empires) and armies are content modules that define the coalition members, their ideology, and their military forces. Empires provide the political and economic backbone of the coalition; armies represent combat-ready forces that participate in battles, consume supplies, and accrue fervor.
+The coalition currently fields five empires and four frontline armies. Each empire contributes unique ideology, production, and economic needs; each army represents an empire's military identity with distinct combat stats.
 
-## Empire Elements
-Empires are declared in `modules/empires/*.ds.yml` and loaded into game state during startup.
+## Empires in Play
 
-- Identity: `id`, `name`, `color`, `tags`, `traits`
-- Approval: initial `approval` drives cohesion impacts
-- Ideology: `values` across six axes for value alignment
-- Stats: `population`, `influence`, and stability (calculated on load)
-- Economy: `budget_credits`, `production.outputs_per_tick`, `needs.per_pop`, `wants.per_pop`, `stockpiles`
-- Modifiers: `modifiers.intensity` and `modifiers.axis_gates`
+### Stellar Federation (empire_1)
+Industrial powerhouse anchoring heavy manufacturing.
+- Color: cyan
+- Approval: 60
+- Population: 1200, Influence: 65
+- Traits: industrial
+- Tags: Industrial, Federation
+- Production per tick: super_alloys 100, rare_gases 10
+- Needs per pop: biomass 0.1, ice 0.05
+- Wants per pop: nano_machines 0.001, quantum_circuits 0.0005
+- Values: authoritarian_liberal 0.3, spiritual_materialistic 0.7, natural_mechanical 0.8, pacifist_militaristic 0.1, stoicist_hedonistic -0.3, essentialist_constructivist 0.4
 
-### Value Axes
-Empires express ideology across the alignment axes used by the law system:
-- `authoritarian_liberal`
-- `spiritual_materialistic`
-- `natural_mechanical`
-- `pacifist_militaristic`
-- `stoicist_hedonistic`
-- `essentialist_constructivist`
+### Verdant Colonies (empire_2)
+Biosphere engineers and agricultural supply hub.
+- Color: green
+- Approval: 50
+- Population: 900, Influence: 55
+- Traits: agricultural
+- Tags: Agricultural, Alliance, Biologic
+- Production per tick: biomass 150, genomes 15
+- Needs per pop: super_alloys 0.05, ice 0.08
+- Wants per pop: psycho_implants 0.0008, ancient_relics 0.0002
+- Values: authoritarian_liberal -0.1, spiritual_materialistic -0.4, natural_mechanical -0.7, pacifist_militaristic -0.3, stoicist_hedonistic 0.2, essentialist_constructivist -0.5
 
-### Tags and Traits
-Tags and traits influence improvement synergies, law alignment, and narrative flavor. Use tags to drive conditional logic (for example, biologic empires gain extra population growth from biologic improvements).
+### Nexus Dominion (empire_3)
+Hyperspace crossroads with strategic military reach.
+- Color: yellow
+- Approval: 55
+- Population: 800, Influence: 70
+- Traits: maritime
+- Tags: Maritime, Republic, Militaristic
+- Production per tick: ice 120, psycho_implants 8
+- Needs per pop: biomass 0.12, super_alloys 0.03
+- Wants per pop: rare_gases 0.001, sentient_cores 0.0003
+- Values: authoritarian_liberal 0.6, spiritual_materialistic 0.2, natural_mechanical 0.1, pacifist_militaristic 0.5, stoicist_hedonistic 0.4, essentialist_constructivist 0.5
 
-## Army Elements
-Armies are declared in `modules/armies/*.ds.yml` and tied to empires by `empireId`.
+### Quantum Collective (empire_clockwork)
+Synthetic collective optimized for high-tech output.
+- Color: magenta
+- Approval: 60
+- Population: 300, Influence: 80
+- Traits: mechanical, synthetic
+- Tags: Mechanical, Warped
+- Production per tick: quantum_circuits 5, nano_machines 3
+- Needs per pop: rare_gases 0.15, super_alloys 0.08
+- Wants per pop: sentient_cores 0.002, wormhole_reactors 0.0001
+- Values: authoritarian_liberal 0.1, spiritual_materialistic 0.9, natural_mechanical 0.95, pacifist_militaristic 0.2, stoicist_hedonistic -0.2, essentialist_constructivist 0.7
 
-- Identity: `id`, `name`, `empireId`
-- Core stats: `organization`, `fervor`, `aggravation` (supply need)
-- Recovery: `recovery` (0-100) influences MP recovery rate
-- Combat pools: `mp` and `mo` are initialized at runtime
+### Synaptic Swarm (empire_hive)
+Hive-mind collective with massive biological throughput.
+- Color: red
+- Approval: 55
+- Population: 900, Influence: 55
+- Traits: hive_mind, biologic
+- Tags: Hive-Mind, Biologic
+- Production per tick: genomes 20, ancient_relics 2
+- Needs per pop: biomass 0.15, ice 0.06
+- Wants per pop: psycho_implants 0.001, nano_machines 0.0005
+- Values: authoritarian_liberal -0.9, spiritual_materialistic 0.2, natural_mechanical -0.6, pacifist_militaristic 0.4, stoicist_hedonistic -0.7, essentialist_constructivist -0.8
 
-### Combat-Relevant Stats
-- `organization`: participation rate for MP engagement and recovery modifier
-- `fervor`: impacts kill rate bonuses and event effects
-- `recovery`: sets MP recovery base rate
-- `aggravation`: drives insurrection risk and supply strain
+## Armies in Play
+
+### 1st Stellar Battle Fleet (army_1)
+Elite federation fleet.
+- Empire: Stellar Federation
+- Organization: 70
+- Fervor: 60
+- Aggravation (supply need): 60
+- Recovery: 55
+
+### 2nd Stellar Defense Fleet (army_2)
+Support fleet for defensive operations.
+- Empire: Stellar Federation
+- Organization: 65
+- Fervor: 55
+- Aggravation (supply need): 50
+- Recovery: 52
+
+### Verdant Planetary Guard (army_3)
+Ground defense force for the Verdant Colonies.
+- Empire: Verdant Colonies
+- Organization: 60
+- Fervor: 50
+- Aggravation (supply need): 55
+- Recovery: 48
+
+### Nexus Hyperspace Marines (army_4)
+Rapid-response strike marines.
+- Empire: Nexus Dominion
+- Organization: 75
+- Fervor: 65
+- Aggravation (supply need): 45
+- Recovery: 58
 
 ## Content Sources
 - Empires: `modules/empires/*.ds.yml`
 - Armies: `modules/armies/*.ds.yml`
-- Content loader: `src/game/content.js`
-- Types: `src/game/types.js`

@@ -22,8 +22,9 @@ declares:
     cost: 3
     effects:
       stockpiles:
-        alloys: 100
-        fuel: 50
+        super_alloys: 100
+        rare_gases: 50
+
     vector:
       authoritarian_liberal: 0.5
       spiritual_materialistic: 0.4
