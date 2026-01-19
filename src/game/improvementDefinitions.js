@@ -48,7 +48,7 @@ const INDUSTRIAL_BRANCH = [
     'industrial',
     {
       suppliesCost: 100,
-      build: 12,
+      build: 240,
       capacity: 2,
       sustainmentCost: { biomass: 3, ice: 2 },
       productionOutputs: { super_alloys: 8 },
@@ -65,7 +65,7 @@ const INDUSTRIAL_BRANCH = [
     'industrial',
     {
       suppliesCost: 80,
-      build: 10,
+      build: 200,
       capacity: 2,
       sustainmentCost: { ice: 2 },
       productionOutputs: { rare_gases: 5, ice: 3 },
@@ -83,7 +83,7 @@ const INDUSTRIAL_BRANCH = [
     'industrial',
     {
       suppliesCost: 200,
-      build: 20,
+      build: 400,
       capacity: 3,
       sustainmentCost: { biomass: 5, ice: 3 },
       productionOutputs: { super_alloys: 15 },
@@ -100,7 +100,7 @@ const INDUSTRIAL_BRANCH = [
     'industrial',
     {
       suppliesCost: 220,
-      build: 22,
+      build: 440,
       capacity: 3,
       sustainmentCost: { super_alloys: 3, rare_gases: 2 },
       productionOutputs: { quantum_circuits: 4 },
@@ -118,7 +118,7 @@ const INDUSTRIAL_BRANCH = [
     'industrial',
     {
       suppliesCost: 400,
-      build: 35,
+      build: 700,
       capacity: 5,
       sustainmentCost: { quantum_circuits: 2, super_alloys: 5 },
       productionOutputs: { super_alloys: 30, rare_gases: 15 },
@@ -142,7 +142,7 @@ const RESEARCH_BRANCH = [
     'research',
     {
       suppliesCost: 90,
-      build: 11,
+      build: 220,
       capacity: 2,
       sustainmentCost: { biomass: 2, rare_gases: 1 },
       productionOutputs: { rare_gases: 3 },
@@ -159,7 +159,7 @@ const RESEARCH_BRANCH = [
     'research',
     {
       suppliesCost: 70,
-      build: 8,
+      build: 160,
       capacity: 1,
       sustainmentCost: { ice: 2 },
       productionOutputs: {},
@@ -177,7 +177,7 @@ const RESEARCH_BRANCH = [
     'research',
     {
       suppliesCost: 300,
-      build: 25,
+      build: 500,
       capacity: 4,
       sustainmentCost: { super_alloys: 3, rare_gases: 2 },
       productionOutputs: { rare_gases: 8, quantum_circuits: 2 },
@@ -194,7 +194,7 @@ const RESEARCH_BRANCH = [
     'research',
     {
       suppliesCost: 180,
-      build: 18,
+      build: 360,
       capacity: 3,
       sustainmentCost: { biomass: 4, genomes: 2 },
       productionOutputs: { genomes: 5 },
@@ -212,7 +212,7 @@ const RESEARCH_BRANCH = [
     'research',
     {
       suppliesCost: 450,
-      build: 40,
+      build: 800,
       capacity: 6,
       sustainmentCost: { quantum_circuits: 4, rare_gases: 5, psycho_implants: 2 },
       productionOutputs: { quantum_circuits: 6 },
@@ -236,7 +236,7 @@ const MILITARY_BRANCH = [
     'military',
     {
       suppliesCost: 100,
-      build: 10,
+      build: 200,
       capacity: 2,
       sustainmentCost: { super_alloys: 2 },
       productionOutputs: {},
@@ -253,7 +253,7 @@ const MILITARY_BRANCH = [
     'military',
     {
       suppliesCost: 80,
-      build: 9,
+      build: 180,
       capacity: 2,
       sustainmentCost: { biomass: 3 },
       productionOutputs: {},
@@ -271,7 +271,7 @@ const MILITARY_BRANCH = [
     'military',
     {
       suppliesCost: 150,
-      build: 18,
+      build: 360,
       capacity: 3,
       sustainmentCost: { super_alloys: 4, biomass: 6 },
       productionOutputs: {},
@@ -288,7 +288,7 @@ const MILITARY_BRANCH = [
     'military',
     {
       suppliesCost: 250,
-      build: 24,
+      build: 480,
       capacity: 4,
       sustainmentCost: { super_alloys: 6, ice: 4 },
       productionOutputs: {},
@@ -306,7 +306,7 @@ const MILITARY_BRANCH = [
     'military',
     {
       suppliesCost: 500,
-      build: 45,
+      build: 900,
       capacity: 6,
       sustainmentCost: { super_alloys: 10, quantum_circuits: 3, rare_gases: 5 },
       productionOutputs: {},
@@ -330,7 +330,7 @@ const CULTURAL_BRANCH = [
     'cultural',
     {
       suppliesCost: 70,
-      build: 8,
+      build: 160,
       capacity: 1,
       sustainmentCost: { biomass: 2 },
       productionOutputs: {},
@@ -347,7 +347,7 @@ const CULTURAL_BRANCH = [
     'cultural',
     {
       suppliesCost: 60,
-      build: 7,
+      build: 140,
       capacity: 1,
       sustainmentCost: { biomass: 1, ice: 1 },
       productionOutputs: {},
@@ -365,7 +365,7 @@ const CULTURAL_BRANCH = [
     'cultural',
     {
       suppliesCost: 250,
-      build: 22,
+      build: 440,
       capacity: 4,
       sustainmentCost: { biomass: 5, genomes: 3, psycho_implants: 1 },
       productionOutputs: { genomes: 4 },
@@ -382,7 +382,7 @@ const CULTURAL_BRANCH = [
     'cultural',
     {
       suppliesCost: 200,
-      build: 20,
+      build: 400,
       capacity: 3,
       sustainmentCost: { super_alloys: 3, rare_gases: 2 },
       productionOutputs: {},
@@ -400,7 +400,7 @@ const CULTURAL_BRANCH = [
     'cultural',
     {
       suppliesCost: 400,
-      build: 38,
+      build: 760,
       capacity: 5,
       sustainmentCost: { biomass: 8, genomes: 4, psycho_implants: 3 },
       productionOutputs: { genomes: 6 },
@@ -424,7 +424,7 @@ const ECONOMIC_BRANCH = [
     'economic',
     {
       suppliesCost: 80,
-      build: 9,
+      build: 180,
       capacity: 2,
       sustainmentCost: { ice: 2 },
       productionOutputs: {},
@@ -441,7 +441,7 @@ const ECONOMIC_BRANCH = [
     'economic',
     {
       suppliesCost: 70,
-      build: 8,
+      build: 160,
       capacity: 1,
       sustainmentCost: { ice: 1 },
       productionOutputs: { ice: 3 },
@@ -459,7 +459,7 @@ const ECONOMIC_BRANCH = [
     'economic',
     {
       suppliesCost: 180,
-      build: 20,
+      build: 400,
       capacity: 3,
       sustainmentCost: { ice: 4, rare_gases: 2 },
       productionOutputs: {},
@@ -476,7 +476,7 @@ const ECONOMIC_BRANCH = [
     'economic',
     {
       suppliesCost: 160,
-      build: 18,
+      build: 360,
       capacity: 3,
       sustainmentCost: { super_alloys: 2, ice: 3 },
       productionOutputs: {},
@@ -494,7 +494,7 @@ const ECONOMIC_BRANCH = [
     'economic',
     {
       suppliesCost: 380,
-      build: 35,
+      build: 700,
       capacity: 5,
       sustainmentCost: { quantum_circuits: 3, rare_gases: 4, psycho_implants: 2 },
       productionOutputs: { rare_gases: 10 },
