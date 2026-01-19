@@ -34,7 +34,4 @@ declares:
             empire_3: 8
             empire_clockwork: 6
             empire_hive: 6
-      - text: "Leave for later (gain cohesion)"
-        effects:
-          coalitionCohesion: 3
 

@@ -36,13 +36,4 @@ declares:
             empire_3: -8
             empire_clockwork: -6
             empire_hive: -6
-      - text: "Mediate coalition balance"
-        effects:
-          empireApproval:
-            empire_1: 3
-            empire_2: 3
-            empire_3: 3
-            empire_clockwork: 3
-            empire_hive: 3
-          coalitionCohesion: -2
 

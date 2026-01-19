@@ -2,6 +2,36 @@ import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
 
+const EVENT_EFFECT_RANGE_MULTIPLIER = 2;
+
+function scaleEventEffects(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value * EVENT_EFFECT_RANGE_MULTIPLIER;
+  }
+
+  if (typeof value === 'function') {
+    return () => value() * EVENT_EFFECT_RANGE_MULTIPLIER;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(scaleEventEffects);
+  }
+
+  if (typeof value === 'object') {
+    const scaled = {};
+    Object.entries(value).forEach(([key, nestedValue]) => {
+      scaled[key] = scaleEventEffects(nestedValue);
+    });
+    return scaled;
+  }
+
+  return value;
+}
+
 export function createSampleContent(seed = 0) {
   // Load all modules from the modules directory
   const registry = createModuleRegistry();
@@ -83,10 +113,10 @@ export function createSampleContent(seed = 0) {
           processedEffects[key] = value;
         }
       }
-      
+
       return {
         text: choice.text,
-        effects: processedEffects
+        effects: scaleEventEffects(processedEffects)
       };
     });
     

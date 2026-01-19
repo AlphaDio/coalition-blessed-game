@@ -41,11 +41,4 @@ declares:
             momentum: -0.1
             legitimacy: 0.15
             polarization: 0.05
-      - text: "Negotiate a middle ground (moderate effects)"
-        effects:
-          progress: 0.15
-          meters:
-            momentum: 0.05
-            legitimacy: 0.05
-            polarization: -0.05
     weight_modifiers: []

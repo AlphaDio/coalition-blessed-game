@@ -34,6 +34,3 @@ declares:
             army_2: -5
             army_3: -5
             army_4: -5
-
-      - text: "Strategic withdrawal (minimal changes)"
-        effects: {}

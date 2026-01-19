@@ -38,8 +38,3 @@ declares:
             empire_3: -10
             empire_clockwork: -8
             empire_hive: -8
-
-      - text: "Negotiate with local forces (uncertain outcome)"
-        effects:
-          coalitionCohesion: "random"
-          scourgeCohesion: "random"

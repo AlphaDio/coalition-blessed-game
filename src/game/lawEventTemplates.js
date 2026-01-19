@@ -10,6 +10,52 @@
  * Events should primarily modify ONE meter. Progress is separate.
  */
 
+const EFFECT_RANGE_MULTIPLIER = 2;
+
+function scaleEffects(effects) {
+  if (!effects) {
+    return effects;
+  }
+
+  const scaled = { ...effects };
+
+  Object.entries(scaled).forEach(([key, value]) => {
+    if (key === 'meters' && value && typeof value === 'object') {
+      const meters = { ...value };
+      Object.keys(meters).forEach((meterKey) => {
+        if (typeof meters[meterKey] === 'number') {
+          meters[meterKey] *= EFFECT_RANGE_MULTIPLIER;
+        }
+      });
+      scaled.meters = meters;
+      return;
+    }
+
+    if (typeof value === 'number') {
+      scaled[key] = value * EFFECT_RANGE_MULTIPLIER;
+    }
+  });
+
+  return scaled;
+}
+
+function scaleChoices(choices) {
+  if (!choices) {
+    return choices;
+  }
+
+  return choices.map((choice) => {
+    if (!choice || !choice.effects) {
+      return choice;
+    }
+
+    return {
+      ...choice,
+      effects: scaleEffects(choice.effects)
+    };
+  });
+}
+
 /**
  * Create a law event template
  * @param {string} id - Event identifier
@@ -68,10 +114,10 @@ export function createLawEvent(
     tier: eventTier,
     triggers: eventTriggers,
     base_weight: baseWeight,
-    effects: eventEffects,
+    effects: scaleEffects(eventEffects),
     weight_modifiers: weightModifiers,
     description: eventDescription,
-    choices: eventChoices
+    choices: scaleChoices(eventChoices)
   };
 }
 
@@ -552,17 +598,6 @@ export const DEBATE_CHOICE_EVENTS = [
             polarization: 0.05
           }
         }
-      },
-      {
-        text: 'Negotiate a middle ground (moderate effects)',
-        effects: {
-          progress: 0.15,
-          meters: {
-            momentum: 0.05,
-            legitimacy: 0.05,
-            polarization: -0.05
-          }
-        }
       }
     ]
   ),
@@ -634,17 +669,6 @@ export const DEBATE_CHOICE_EVENTS = [
         }
       },
       {
-        text: 'Cherry-pick favorable points (balanced approach)',
-        effects: {
-          progress: 0.2,
-          meters: {
-            legitimacy: 0.1,
-            momentum: 0.1,
-            reject_pressure: 0.05
-          }
-        }
-      },
-      {
         text: 'Dismiss the panel (maintain momentum, risk legitimacy)',
         effects: {
           progress: 0.25,
@@ -701,17 +725,6 @@ export const FALLOUT_CHOICE_EVENTS = [
             momentum: -0.15,
             reject_pressure: 0.15,
             legitimacy: -0.15
-          }
-        }
-      },
-      {
-        text: 'Ignore and continue (maintain course, moderate risk)',
-        effects: {
-          progress: 0.05,
-          meters: {
-            unrest: 0.05,
-            polarization: 0.1,
-            momentum: 0.05
           }
         }
       }
@@ -794,18 +807,6 @@ export const FALLOUT_CHOICE_EVENTS = [
             polarization: 0.15
           }
         }
-      },
-      {
-        text: 'Seek compromise language (balanced approach)',
-        effects: {
-          progress: 0.2,
-          meters: {
-            momentum: 0.05,
-            legitimacy: 0.05,
-            reject_pressure: -0.05,
-            polarization: 0.05
-          }
-        }
       }
     ]
   )
@@ -879,18 +880,6 @@ export const VOTING_CHOICE_EVENTS = [
             legitimacy: -0.15,
             reject_pressure: -0.15,
             polarization: -0.05
-          }
-        }
-      },
-      {
-        text: 'Appeal to coalition values (maintain integrity, uncertain outcome)',
-        effects: {
-          progress: 0.15,
-          meters: {
-            momentum: 0.05,
-            legitimacy: 0.1,
-            reject_pressure: 0.05,
-            polarization: 0.05
           }
         }
       },

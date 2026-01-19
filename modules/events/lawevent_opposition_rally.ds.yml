@@ -46,13 +46,6 @@ declares:
             momentum: -0.15
             reject_pressure: 0.15
             legitimacy: -0.15
-      - text: "Ignore and continue (maintain course, moderate risk)"
-        effects:
-          progress: 0.05
-          meters:
-            unrest: 0.05
-            polarization: 0.1
-            momentum: 0.05
     weight_modifiers:
       - type: "polarization_boost"
         multiplier: 0.8
