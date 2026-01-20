@@ -8,3 +8,7 @@ Make the laws enacted give a "color" to the Coalition, pretty much adopting a Sp
 - Solid Ice -> Supply efficiency
 - Super Alloys -> Construction
 - Sentient Cores -> Law Progress
+
+Show relations in detailed Empire view
+
+
