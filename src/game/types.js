@@ -1,6 +1,35 @@
 // Type definitions and initializers
 import { TECH_CONSTANTS } from './constants.js';
 
+// Coalition procurement constants
+export const THETA_PRESETS = {
+  Scavenge: 0.80,
+  Frugal: 0.90,
+  Balanced: 1.00,
+  Assertive: 1.10,
+  Emergency: 1.25
+};
+
+export const COMMODITY_DEFINITIONS = {
+  biomass: { tier: 'T1' },
+  solid_ice: { tier: 'T1' },
+  super_alloys: { tier: 'T2' },
+  rare_gases: { tier: 'T2' },
+  quantum_circuits: { tier: 'T3' },
+  genomes: { tier: 'T3' },
+  psycho_implants: { tier: 'T4' },
+  ancient_relics: { tier: 'T4' }
+};
+
+export const MILLI_PER_UNIT_BY_TIER = {
+  T1: 1,
+  T2: 2,
+  T3: 5,
+  T4: 10
+};
+
+export const BATCH_SIZE_UNITS = 100;
+
 
 export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
   return {
@@ -434,9 +463,21 @@ export function createGameState(seed = 0) {
     activeEmergencyLaws: [],     // Active emergency law instances
     emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
     
-    // Market economy system
+    // Coalition procurement and supply conversion system
+    coalitionEconomy: {
+      treasury_credits: 10000, // Baseline B starting treasury
+      allowance_credits: 0, // Refilled each tick
+      reserve_floor_credits: 1500, // Baseline B reserve floor
+      supply_milli: 1000000, // Start with 1000 supplies (1M milli)
+      stockpile_by_commodity: {}, // Map<commodityId, int>
+      procurement: {
+        spend_throttle: 0.75, // Baseline B default
+        theta_preset_by_commodity: {} // Map<commodityId, ThetaPresetId>
+      }
+    },
+    
+    // Market economy system (updated with floor prices)
     market: null, // Market state per commodity (initialized on first economy tick)
-    coalitionEconomy: null, // Coalition procurement and stockpiles (initialized on first economy tick)
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
     
     // Improvements system

@@ -138,7 +138,13 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
  * Prices start at floor_price with variance between 50% and 150% of floor
  */
 export function initializeMarket(commodities, rng = Math.random) {
-  const market = {};
+  const market = {
+    price_by_commodity: {},
+    last_price_by_commodity: {},
+    floor_price_by_commodity: {},
+    remaining_sell_offers_post_clear: []
+  };
+
   commodities.forEach(commodity => {
     const baseFloorPrice = commodity.floor_price || 1.0;
     // Randomize floor price by seed (85% to 115%)
@@ -147,8 +153,16 @@ export function initializeMarket(commodities, rng = Math.random) {
     // Random initial price between 50% and 150% of floor for reasonable starting range
     const varianceFactor = 0.5 + rng() * 1.0; // 0.5 to 1.5
     const initialPrice = floorPrice * varianceFactor;
-    market[commodity.key] = createMarketState(commodity.key, initialPrice, floorPrice);
+
+    const marketState = createMarketState(commodity.key, initialPrice, floorPrice);
+    market[commodity.key] = marketState;
+
+    // Populate aggregate maps
+    market.price_by_commodity[commodity.key] = initialPrice;
+    market.last_price_by_commodity[commodity.key] = initialPrice;
+    market.floor_price_by_commodity[commodity.key] = floorPrice;
   });
+
   return market;
 }
 
@@ -208,15 +222,20 @@ export function updateMarketPrices(market, commodities, config) {
   commodities.forEach(commodity => {
     const marketState = market[commodity.key];
     if (!marketState) return;
-    
+
     const targetPrice = computeTargetPrice(marketState, config);
     const elasticity = getTierElasticity(commodity, config);
-    
+
     // Apply elasticity (higher elasticity = more price movement)
     const adjustedTarget = marketState.last_price + (targetPrice - marketState.last_price) * elasticity;
-    
+
     smoothPrice(marketState, adjustedTarget, config);
-    
+
+    // Update aggregate maps
+    market.price_by_commodity[commodity.key] = marketState.price;
+    market.last_price_by_commodity[commodity.key] = marketState.last_price;
+    market.floor_price_by_commodity[commodity.key] = marketState.floor_price;
+
     // Update volatility index (simple: track price change magnitude)
     const priceChange = Math.abs(marketState.price - marketState.last_price) / marketState.last_price;
     marketState.volatility_index = marketState.volatility_index * 0.9 + priceChange * 0.1;
@@ -355,6 +374,34 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
   marketState.traded_qty = trades.reduce((sum, t) => sum + t.qty, 0);
   
   return { trades, unfilledBuys, unfilledSells };
+}
+
+/**
+ * Execute full market clearing and update state with post-clear offers
+ */
+export function executeMarketClearing(state, buyOrders, sellOffers) {
+  const market = state.market;
+  const results = { totalTrades: 0, totalTradedQty: 0 };
+
+  // Clear market for each commodity
+  for (const commodityKey of Object.keys(market)) {
+    if (commodityKey === 'price_by_commodity' || commodityKey === 'last_price_by_commodity' ||
+        commodityKey === 'floor_price_by_commodity' || commodityKey === 'remaining_sell_offers_post_clear') {
+      continue;
+    }
+
+    const marketState = market[commodityKey];
+    const { trades, unfilledBuys, unfilledSells } = clearMarket(buyOrders, sellOffers, marketState);
+
+    results.totalTrades += trades.length;
+    results.totalTradedQty += marketState.traded_qty;
+  }
+
+  // Collect remaining sell offers post-clear
+  const remainingSellOffers = sellOffers.filter(offer => offer.filled_qty < offer.qty);
+  market.remaining_sell_offers_post_clear = remainingSellOffers;
+
+  return results;
 }
 
 /**

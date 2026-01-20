@@ -11,10 +11,16 @@ import {
   createBuyOrder,
   createSellOffer,
   updateMarketPrices,
-  clearMarket,
+  executeMarketClearing,
   coalitionProcurement,
   computeArmyFulfillment
 } from './marketEconomy.js';
+import {
+  refillCoalitionAllowance,
+  executeCoalitionProcurement,
+  executeSupplyConversion,
+  initializeCoalitionProcurement
+} from './coalitionProcurement.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -65,11 +71,8 @@ export function processEconomyTick(state) {
   
   // Initialize coalition economy state if needed
   if (!state.coalitionEconomy) {
-    state.coalitionEconomy = {
-      budget_credits: COALITION_ECONOMY.INITIAL_BUDGET, // Fixed initial coalition budget
-      stockpiles: {},
-      per_commodity_priority: {}
-    };
+    state.coalitionEconomy = initializeCoalitionProcurement();
+    logger.info('Coalition procurement initialized');
   }
   
   // Reset order books
@@ -96,6 +99,7 @@ export function processEconomyTick(state) {
           askPrice,
           0
         );
+        sellOffer.fee = 1;
         sellOffers.push(sellOffer);
       }
     });
@@ -109,7 +113,7 @@ export function processEconomyTick(state) {
     // Ensure stockpiles is initialized
     if (!empire.stockpiles) empire.stockpiles = {};
     if (!empire.economy_spend) {
-      empire.economy_spend = { needs: 0, wants: 0 };
+      empire.economy_spend = { needs: 0, wants: 0, order_fees: 0 };
     }
 
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
@@ -133,6 +137,7 @@ export function processEconomyTick(state) {
             1 // Higher priority for needs
           );
           buyOrder.category = 'needs';
+          buyOrder.fee = 1;
           buyOrders.push(buyOrder);
         }
 
@@ -166,6 +171,7 @@ export function processEconomyTick(state) {
           0 // Normal priority for wants (lower than needs)
         );
         buyOrder.category = 'wants';
+        buyOrder.fee = 1;
         buyOrders.push(buyOrder);
       }
     });
@@ -268,15 +274,37 @@ export function processEconomyTick(state) {
   // Step 4: Compute market target prices
   updateMarketPrices(state.market, commodities, config);
   
-  // Step 5: Coalition procurement pass
-  const procurementResult = coalitionProcurement(state.market, sellOffers, state.coalitionEconomy, config);
-  if (procurementResult.purchases.length > 0) {
-    log.push(`Coalition procured ${procurementResult.purchases.length} commodities (spent ${procurementResult.spent.toFixed(0)} credits)`);
-  }
+
+
+  // Apply empire order posting fees
+  const allBuyOrders = buyOrders.concat(state.marketOrders?.buyOrders || []);
+  const allSellOffers = sellOffers.concat(state.marketOrders?.sellOffers || []);
+
+  allBuyOrders.forEach(order => {
+    if (order.owner_type !== 'empire') return;
+    const empire = state.empires.find(e => e.id === order.owner_id);
+    if (!empire) return;
+    const fee = order.fee || 1;
+    empire.budget_credits = (empire.budget_credits || 0) - fee;
+    empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
+    empire.economy_spend.order_fees += fee;
+  });
+
+  allSellOffers.forEach(order => {
+    if (order.owner_type !== 'empire') return;
+    const empire = state.empires.find(e => e.id === order.owner_id);
+    if (!empire) return;
+    const fee = order.fee || 1;
+    empire.budget_credits = (empire.budget_credits || 0) - fee;
+    empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
+    empire.economy_spend.order_fees += fee;
+  });
 
   // Reset empire spend tracking before market clearing
   state.empires.forEach(empire => {
-    empire.economy_spend = { needs: 0, wants: 0 };
+    empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
+    empire.economy_spend.needs = 0;
+    empire.economy_spend.wants = 0;
   });
   
   // Step 6: Market clearing
@@ -285,8 +313,11 @@ export function processEconomyTick(state) {
     const marketState = state.market[commodity.key];
     if (!marketState) return;
     
-    const clearResult = clearMarket(buyOrders, sellOffers, marketState);
+    const clearResult = executeMarketClearing(buyOrders, sellOffers, marketState, config);
     allTrades.push(...clearResult.trades);
+    
+    // Store post-clear remaining offers for coalition procurement
+    marketState.remaining_sell_offers_post_clear = clearResult.remaining_sell_offers_post_clear;
     
     // Apply trades to entities
     clearResult.trades.forEach(trade => {
@@ -304,7 +335,7 @@ export function processEconomyTick(state) {
             const tradeCost = trade.qty * trade.price;
             empire.budget_credits = (empire.budget_credits || 0) - tradeCost;
             const category = buyOrder.category === 'wants' ? 'wants' : 'needs';
-            empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0 };
+            empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
             empire.economy_spend[category] += tradeCost;
           }
         } else if (buyOrder.owner_type === 'army') {
@@ -338,15 +369,31 @@ export function processEconomyTick(state) {
         }
       }
     });
-  });
-  
-  // Step 8: Compute army fulfillment and performance
+   });
+   
+   // Step 7: Coalition procurement after market clear
+   // Refill allowance
+   refillCoalitionAllowance(state.coalitionEconomy);
+   
+   // Procure from post-clear surplus
+   const procurementLog = executeCoalitionProcurement(state.market, state.coalitionEconomy, config);
+   if (procurementLog.length > 0) {
+     log.push(...procurementLog);
+   }
+   
+   // Convert stockpiles to supplies
+   const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
+   if (conversionLog.length > 0) {
+     log.push(...conversionLog);
+   }
+   
+   // Step 8: Compute army fulfillment and performance
   state.armies.forEach(army => {
     computeArmyFulfillment(army, config);
   });
   
-  // Replenish coalition budget
-  state.coalitionEconomy.budget_credits = (state.coalitionEconomy.budget_credits || 0) + 
+  // Replenish coalition treasury
+  state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + 
     config.coalition.procurement.budget_credits_per_tick;
   
   logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
