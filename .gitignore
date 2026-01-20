@@ -117,3 +117,4 @@ logs
 # Temporary files
 tmp/
 temp/
+verifyActionsPanelFix.js
