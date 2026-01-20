@@ -1716,7 +1716,12 @@ function loadCommodityMap(market) {
 
 function sortMarketCommodities(market, commodityMap) {
   const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
+  
+  // Filter out metadata keys that are not actual commodities
+  const METADATA_KEYS = ['price_by_commodity', 'last_price_by_commodity', 'floor_price_by_commodity', 'remaining_sell_offers_post_clear'];
+  
   return Object.entries(market)
+    .filter(([key]) => !METADATA_KEYS.includes(key))
     .map(([key, marketState]) => {
       const commodity = commodityMap.get(key) || { key, name: key, tier: 't1' };
       return { key, commodity, marketState };

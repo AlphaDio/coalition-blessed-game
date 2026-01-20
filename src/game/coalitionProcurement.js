@@ -104,14 +104,14 @@ export function executeCoalitionProcurement(market, coalitionEconomy, config) {
 
     const logEntry = `Coalition procured ${buyQty} ${offer.commodity_id} for ${cost} credits`;
     logEntries.push(logEntry);
-    logger.info(logEntry);
+    logger.debug(logEntry);
   }
 
   // Deduct from treasury and allowance
   coalitionEconomy.treasury_credits -= spent;
   coalitionEconomy.allowance_credits -= spent;
 
-  logger.info(`Coalition procurement completed: spent ${spent}/${targetSpend} credits`);
+  logger.debug(`Coalition procurement completed: spent ${spent}/${targetSpend} credits`);
 
   return logEntries;
 }
@@ -188,17 +188,17 @@ export function executeSupplyConversion(coalitionEconomy, config) {
 
     const logEntry = `Coalition converted ${convertQty} ${commodityId} to ${gainMilli} milli-supplies`;
     logEntries.push(logEntry);
-    logger.info(logEntry);
+    logger.debug(logEntry);
   }
 
   // Add batch conversion bonus
   const batchBonus = Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS) * BATCH_BONUS_MILLI;
   if (batchBonus > 0) {
     coalitionEconomy.supply_milli += batchBonus;
-    logger.info(`Coalition gained ${batchBonus} milli-supplies from batch conversion bonus`);
+    logger.debug(`Coalition gained ${batchBonus} milli-supplies from batch conversion bonus`);
   }
 
-  logger.info(`Supply conversion completed: ${logEntries.length} commodity batches processed, ${Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS)} total batches`);
+  logger.debug(`Supply conversion completed: ${logEntries.length} commodity batches processed, ${Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS)} total batches`);
 
   return logEntries;
 }
