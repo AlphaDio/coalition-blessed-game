@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { getAvailableLaws } from '../game/lawDefinitions.js';
 import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/improvements/definitions.js';
+import { EMERGENCY_LAW_DEFINITIONS, getActiveEmergencyLaws, getEmergencyLawCooldown, canActivateEmergencyLaw } from '../game/emergencyLaws.js';
 import { calculateTechPointsPerTick } from '../game/technology.js';
 import { MARKET_CONSTANTS } from '../game/constants.js';
 
@@ -275,11 +276,12 @@ function createCombinedInfoBox(grid) {
   });
 
   // Track current view state (market, armies, empires, queue)
-  combinedInfoBox.currentView = 'empires'; // 'market' | 'armies' | 'empires' | 'queue' | 'empire_detail' | 'stockpiles'
+  combinedInfoBox.currentView = 'empires'; // 'market' | 'armies' | 'empires' | 'queue' | 'empire_detail' | 'stockpiles' | 'commodity_detail'
   combinedInfoBox.scrollOffset = 0;
   combinedInfoBox.selectedRequestIndex = 0; // For request selection
   combinedInfoBox.selectedImprovementIndex = 0; // For improvement selection
   combinedInfoBox.selectedEmpireIndex = 0; // For empire detail view
+  combinedInfoBox.selectedCommodityIndex = 0; // For commodity detail view
   return combinedInfoBox;
 }
 
@@ -395,6 +397,10 @@ export function renderActionPanel(ui, state) {
       label = ' Propose Law (TAB: cycle, ESC: back) ';
       items = buildLawMenuItems(state);
       break;
+    case 'emergency':
+      label = ' Emergency Powers (ESC: back) ';
+      items = buildEmergencyMenuItems(state);
+      break;
     case 'requests':
       label = ' Improvement Requests (TAB: cycle, ESC: back) ';
       items = buildRequestMenuItems(state);
@@ -430,8 +436,15 @@ export function renderActionPanel(ui, state) {
  * Build main menu items for action panel
  */
 function buildMainMenuItems(state) {
+  // Count active emergency laws
+  const activeEmergencyLaws = getActiveEmergencyLaws(state);
+  const emergencyHint = activeEmergencyLaws.length > 0 
+    ? `${activeEmergencyLaws.length} active`
+    : 'Crisis powers';
+  
   const items = [
     { id: 'propose_law', label: 'Propose Law', hint: 'TAB: laws', action: 'SWITCH_MODE', mode: 'laws' },
+    { id: 'emergency_powers', label: 'Emergency Powers', hint: emergencyHint, action: 'SWITCH_MODE', mode: 'emergency' },
     { id: 'view_requests', label: 'Improvement Requests', hint: 'TAB: requests', action: 'SWITCH_MODE', mode: 'requests' },
     { id: 'view_improvements', label: 'Improvements Queue', hint: 'TAB: improvements', action: 'SWITCH_MODE', mode: 'improvements' },
     { id: 'info_panel', label: 'Info Panel', hint: 'Switch right panel view', action: 'SWITCH_MODE', mode: 'info_select' },
@@ -485,15 +498,16 @@ function buildLawMenuItems(state) {
       // Find the original index in lawDefinitions for action handling
       const originalIndex = state.lawDefinitions?.findIndex(l => l.id === lawDef.id) ?? -1;
       
-      items.push({
-        id: `law_${lawDef.id}`,
-        label: `${lawDef.name}`,
-        hint: hint,
-        action: 'ENACT_LAW',
-        lawIndex: originalIndex,
-        lawId: lawDef.id,
-        disabled: isBlocked
-      });
+       items.push({
+         id: `law_${lawDef.id}`,
+         label: `${lawDef.name}`,
+         hint: hint,
+         action: 'ENACT_LAW',
+         lawIndex: originalIndex,
+         lawId: lawDef.id,
+         disabled: isBlocked,
+         detailLine: formatLawEffects(lawDef.coalitionModifiers)
+       });
     });
   } else if (state.laws && state.laws.length > 0) {
     state.laws.forEach((law, idx) => {
@@ -513,6 +527,84 @@ function buildLawMenuItems(state) {
     });
   } else {
     items.push({ id: 'no_laws', label: 'No laws available', info: true });
+  }
+
+  return items;
+}
+
+/**
+ * Build emergency powers menu items
+ */
+function buildEmergencyMenuItems(state) {
+  const items = [
+    { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' },
+    { id: 'divider_header', label: '─────────────────', divider: true }
+  ];
+
+  // Show active emergency laws first
+  const activeEmergencyLaws = getActiveEmergencyLaws(state);
+  if (activeEmergencyLaws.length > 0) {
+    items.push({ id: 'active_header', label: '{yellow-fg}ACTIVE EMERGENCY POWERS{/yellow-fg}', info: true });
+    for (const activeLaw of activeEmergencyLaws) {
+      const progress = Math.round((1 - activeLaw.remainingDuration / activeLaw.totalDuration) * 100);
+      const progressBar = formatProgressBar(progress / 100, 8);
+      items.push({
+        id: `active_${activeLaw.lawId}`,
+        label: `  ${activeLaw.name} ${progressBar}`,
+        hint: `${activeLaw.remainingDuration}t left`,
+        info: true
+      });
+    }
+    items.push({ id: 'divider_active', label: '─────────────────', divider: true });
+  }
+
+  // Show available emergency laws
+  items.push({ id: 'available_header', label: 'Available Emergency Powers', info: true });
+
+  for (const def of EMERGENCY_LAW_DEFINITIONS) {
+    const check = canActivateEmergencyLaw(def.id, state);
+    const cooldown = getEmergencyLawCooldown(def.id, state);
+
+    let hint = '';
+    let disabled = false;
+
+    if (!check.canActivate) {
+      disabled = true;
+      if (cooldown.onCooldown) {
+        hint = `{cyan-fg}CD: ${cooldown.remainingTicks}t{/cyan-fg}`;
+      } else {
+        hint = `{red-fg}${check.reason}{/red-fg}`;
+      }
+    } else {
+      // Show cost preview
+      const costs = def.costs_per_tick;
+      const costParts = [`${costs.supplies} sup/t`];
+      for (const [comm, qty] of Object.entries(costs.commodities || {})) {
+        costParts.push(`${qty} ${comm}/t`);
+      }
+      hint = `${def.duration}t • ${costParts.slice(0, 2).join(', ')}`;
+    }
+
+    // Format modifiers for detail line
+    const modParts = [];
+    for (const [mod, val] of Object.entries(def.modifiers)) {
+      const sign = val >= 0 ? '+' : '';
+      if (mod.includes('multiplier') || mod.includes('output') || mod.includes('efficiency') || mod.includes('speed')) {
+        modParts.push(`${mod.replace(/_/g, ' ')}: ${sign}${Math.round(val * 100)}%`);
+      } else {
+        modParts.push(`${mod.replace(/_/g, ' ')}: ${sign}${val}`);
+      }
+    }
+
+    items.push({
+      id: `emergency_${def.id}`,
+      label: def.name,
+      hint: hint,
+      action: 'ACTIVATE_EMERGENCY',
+      emergencyLawId: def.id,
+      disabled: disabled,
+      detailLine: modParts.slice(0, 3).join(' • ')
+    });
   }
 
   return items;
@@ -1064,11 +1156,12 @@ export function renderLogsWindow(ui, logger) {
 /**
  * Render market economy view
  */
-function renderMarketView(state) {
+function renderMarketView(state, ui) {
   if (!state.market || Object.keys(state.market).length === 0) {
     return '{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}';
   }
 
+  const selectedIndex = ui?.combinedInfoBox?.selectedCommodityIndex || 0;
   const commodityMap = loadCommodityMap(state.market);
   const sortedCommodities = sortMarketCommodities(state.market, commodityMap);
 
@@ -1077,11 +1170,18 @@ function renderMarketView(state) {
     '─'.repeat(45)
   ];
 
-  sortedCommodities.forEach(entry => {
-    lines.push(formatMarketRow(entry));
+  sortedCommodities.forEach((entry, index) => {
+    const isSelected = index === selectedIndex;
+    const prefix = isSelected ? '{bold}{cyan-bg}' : '';
+    const suffix = isSelected ? '{/bold}{/cyan-bg}' : '';
+    lines.push(`${prefix}${formatMarketRow(entry)}${suffix}`);
   });
 
   appendCoalitionEconomyInfo(lines, state.coalitionEconomy);
+
+  lines.push('');
+  lines.push('{gray-fg}Controls: ↑↓ select commodity, M: detail view{/gray-fg}');
+
   return lines.join('\n');
 }
 
@@ -1180,12 +1280,13 @@ function renderStockpilesView(state) {
    return lines.join('\n');
 }
 
-function renderProcurementView(state) {
+function renderProcurementView(state, ui) {
   if (!state.coalitionEconomy) {
     return '{center}{yellow-fg}Coalition procurement not initialized{/yellow-fg}{/center}';
   }
 
   const ce = state.coalitionEconomy;
+  const selectedIndex = ui?.combinedInfoBox?.selectedCommodityIndex || 0;
   const lines = ['{bold}Coalition Procurement Status{/bold}'];
 
   // Treasury and spending info
@@ -1208,7 +1309,7 @@ function renderProcurementView(state) {
   const commodityMap = loadCommodityMap(state.market || {});
   const sortedCommodities = sortMarketCommodities(state.market || {}, commodityMap);
 
-  sortedCommodities.forEach(entry => {
+  sortedCommodities.forEach((entry, index) => {
     const { key, commodity, marketState } = entry;
     const stockpile = ce.stockpiles?.get(key) || 0;
     const settings = ce.per_commodity_settings?.get(key) || {};
@@ -1229,8 +1330,16 @@ function renderProcurementView(state) {
     const thresholdStr = threshold.toFixed(2).padStart(9);
     const throttleStr = `${throttle.toFixed(0)}%`.padStart(8);
 
-    lines.push(`${displayName}${namePad} ${stockpileStr}  ${thetaStr}  ${thresholdStr}  ${throttleStr}`);
+    const isSelected = index === selectedIndex;
+    const prefix = isSelected ? '{bold}{cyan-bg}' : '';
+    const suffix = isSelected ? '{/bold}{/cyan-bg}' : '';
+
+    lines.push(`${prefix}${displayName}${namePad} ${stockpileStr}  ${thetaStr}  ${thresholdStr}  ${throttleStr}${suffix}`);
   });
+
+  // Add instructions
+  lines.push('');
+  lines.push('{gray-fg}Controls: ↑↓ select commodity, ←→ adjust theta, -/+ adjust throttle{/gray-fg}');
 
   return lines.join('\n');
 }
@@ -1339,6 +1448,127 @@ function renderEmpireDetailView(state, ui) {
     lines.push(`Research: ${techBar} ${pct}%`);
   }
 
+  // Diplomatic relations
+  const relations = state.diplomacy?.relations?.[empire.id];
+  if (relations && Object.keys(relations).length > 0) {
+    const relationLines = Object.entries(relations)
+      .map(([otherId, relation]) => {
+        const otherEmpire = state.empires.find(e => e.id === otherId);
+        const otherName = otherEmpire?.name || otherId;
+        const sign = relation >= 0 ? '+' : '';
+        const color = relation > 0 ? 'green' : relation < 0 ? 'red' : 'white';
+        return `{${color}-fg}${otherName}: ${sign}${relation}{/${color}-fg}`;
+      });
+    if (relationLines.length > 0) {
+      lines.push('', '{bold}Diplomatic Relations:{/bold}');
+      lines.push(`  ${relationLines.join(', ')}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function renderCommodityDetailView(state, ui) {
+  if (!state.market || Object.keys(state.market).length === 0) {
+    return '{center}{yellow-fg}Market not initialized{/yellow-fg}{/center}';
+  }
+
+  const selectedIndex = ui?.combinedInfoBox?.selectedCommodityIndex || 0;
+  const commodityMap = loadCommodityMap(state.market);
+  const sortedCommodities = sortMarketCommodities(state.market, commodityMap);
+  const entry = sortedCommodities[selectedIndex];
+
+  if (!entry) {
+    return '{center}{yellow-fg}No commodity selected{/yellow-fg}{/center}';
+  }
+
+  const { key, commodity, marketState } = entry;
+  const name = commodity.name || key;
+
+  const lines = [`{bold}${name}{/bold} (${key})`];
+
+  // Price information
+  const price = marketState.price || 0;
+  const lastPrice = marketState.last_price || price;
+  const priceChange = price - lastPrice;
+  const priceChangePct = lastPrice > 0 ? (priceChange / lastPrice) * 100 : 0;
+  const changeStr = priceChange >= 0 ? `+${priceChange.toFixed(2)} (+${priceChangePct.toFixed(1)}%)` : `${priceChange.toFixed(2)} (${priceChangePct.toFixed(1)}%)`;
+  const changeColor = priceChange > 0 ? 'green' : priceChange < 0 ? 'red' : 'cyan';
+
+  lines.push(`Current Price: {cyan-fg}${price.toFixed(2)}{/cyan-fg} credits`);
+  lines.push(`Change: {${changeColor}-fg}${changeStr}{/${changeColor}-fg}`);
+
+  // Market activity
+  const demand = marketState.demand_qty || 0;
+  const supply = marketState.supply_qty || 0;
+  const traded = marketState.traded_qty || 0;
+
+  lines.push(`Demand: {yellow-fg}${formatVolume(demand)}{/yellow-fg}  Supply: {red-fg}${formatVolume(supply)}{/red-fg}  Traded: {magenta-fg}${formatVolume(traded)}{/magenta-fg}`);
+
+  // Empire market orders
+  const buyOrders = [];
+  const sellOrders = [];
+  Object.values(state.market).forEach(ms => {
+    ms.buy_orders?.forEach(order => {
+      if (order.commodity === key) {
+        buyOrders.push(order);
+      }
+    });
+    ms.sell_offers?.forEach(order => {
+      if (order.commodity === key) {
+        sellOrders.push(order);
+      }
+    });
+  });
+
+  if (buyOrders.length > 0) {
+    lines.push('', '{bold}Buy Orders:{/bold}');
+    buyOrders.forEach(order => {
+      const remaining = Math.max(0, order.qty - (order.filled_qty || 0));
+      const price = order.max_price ?? order.ask_price ?? 0;
+      const empire = state.empires.find(e => e.id === order.owner_id);
+      const empireName = empire?.name || order.owner_id;
+      lines.push(`  ${empireName}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`);
+    });
+  }
+
+  if (sellOrders.length > 0) {
+    lines.push('', '{bold}Sell Offers:{/bold}');
+    sellOrders.forEach(order => {
+      const remaining = Math.max(0, order.qty - (order.filled_qty || 0));
+      const price = order.ask_price ?? order.max_price ?? 0;
+      const empire = state.empires.find(e => e.id === order.owner_id);
+      const empireName = empire?.name || order.owner_id;
+      lines.push(`  ${empireName}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`);
+    });
+  }
+
+  // Coalition stockpiles
+  const coalitionStockpile = state.coalitionEconomy?.stockpiles?.get(key) || 0;
+  if (coalitionStockpile > 0) {
+    lines.push('', '{bold}Coalition Stockpile:{/bold}');
+    lines.push(`  ${formatVolume(coalitionStockpile)} units`);
+  }
+
+  // Empire stockpiles
+  const empireStockpiles = [];
+  state.empires?.forEach(empire => {
+    const stockpile = empire.stockpiles?.[key] || 0;
+    if (stockpile > 0) {
+      empireStockpiles.push({ empire: empire.name, stockpile });
+    }
+  });
+
+  if (empireStockpiles.length > 0) {
+    lines.push('', '{bold}Empire Stockpiles:{/bold}');
+    empireStockpiles.slice(0, 10).forEach(({ empire, stockpile }) => {
+      lines.push(`  ${empire}: ${formatVolume(stockpile)}`);
+    });
+    if (empireStockpiles.length > 10) {
+      lines.push(`  ...${empireStockpiles.length - 10} more`);
+    }
+  }
+
   return lines.join('\n');
 }
 
@@ -1417,6 +1647,16 @@ const COMBINED_INFO_VIEWS = {
     label: ' Works (m/a/e/s/w: switch, [/]: cycle) ',
     borderColor: 'blue',
     render: renderImprovementsQueueView
+  },
+  empire_detail: {
+    label: ' Empire Detail (m/a/e/s/w: switch, [/]: cycle) ',
+    borderColor: 'yellow',
+    render: renderEmpireDetailView
+  },
+  commodity_detail: {
+    label: ' Commodity Detail (m/a/e/s/w: switch, [/]: cycle) ',
+    borderColor: 'green',
+    render: renderCommodityDetailView
   }
 };
 
@@ -1753,18 +1993,41 @@ function formatEmpireMarketOrders(state, empire, commodityMap) {
   return orders;
 }
 
-function formatImprovementModifier(key, value) {
-  const sign = value > 0 ? '+' : '';
-  const percentageModifiers = [
-    'research_speed', 'industrial_output', 'supply_efficiency',
-    'market_efficiency', 'population_growth', 'energy_production', 'coalition_construction_mult'
-  ];
-
-  if (percentageModifiers.includes(key)) {
-    return `${sign}${(value * 100).toFixed(0)}% ${key.replace(/_/g, ' ')}`;
+function formatLawEffects(modifiers) {
+  if (!modifiers || Object.keys(modifiers).length === 0) {
+    return '';
   }
-
-  return `${sign}${value} ${key.replace(/_/g, ' ')}`;
+  
+  const effects = [];
+  
+  if (modifiers.industrial_output) {
+    const pct = (modifiers.industrial_output * 100).toFixed(1);
+    effects.push(`+${pct}% Industrial Output`);
+  }
+  
+  if (modifiers.army_maintenance_cost_modifier) {
+    const reduction = ((1 - modifiers.army_maintenance_cost_modifier) * 100).toFixed(0);
+    effects.push(`-${reduction}% Army Maintenance`);
+  }
+  
+  if (modifiers.relations_strength_modifier) {
+    const boost = ((modifiers.relations_strength_modifier - 1) * 100).toFixed(1);
+    effects.push(`+${boost}% Relations Strength`);
+  }
+  
+  if (modifiers.trade_income) {
+    effects.push(`+${modifiers.trade_income} Trade Income`);
+  }
+  
+  if (modifiers.empire_approval) {
+    effects.push(`+${modifiers.empire_approval} Empire Approval`);
+  }
+  
+  if (modifiers.population_growth) {
+    effects.push(`+${modifiers.population_growth} Population Growth`);
+  }
+  
+  return effects.join(', ');
 }
 
 function formatImprovementDetailLine(improvement) {

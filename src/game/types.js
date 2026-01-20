@@ -29,6 +29,7 @@ export const MILLI_PER_UNIT_BY_TIER = {
 };
 
 export const BATCH_SIZE_UNITS = 100;
+export const BATCH_BONUS_MILLI = 0;
 
 
 export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
@@ -273,7 +274,10 @@ export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], s
     modifiers: {
       tick_delay_multiplier: modifiers.tick_delay_multiplier || 1.0, // Multiplier for tick scheduling (< 1.0 = faster, > 1.0 = slower)
       enactment_chance_bonus: modifiers.enactment_chance_bonus || 0, // Bonus to enactment success (0.1 = +10%)
-      progress_per_event: modifiers.progress_per_event || 1.0 // Multiplier for event progress
+      progress_per_event: modifiers.progress_per_event || 1.0, // Multiplier for event progress
+      army_maintenance_cost_modifier: modifiers.army_maintenance_cost_modifier || 1.0, // Multiplier for army maintenance costs (< 1.0 = cheaper)
+      relations_strength_modifier: modifiers.relations_strength_modifier || 1.0, // Multiplier for diplomacy relations improvements
+      ...modifiers // Include any additional modifiers like industrial_output, empire_approval, etc.
     }
   };
 }
@@ -448,15 +452,18 @@ export function createGameState(seed = 0) {
     powerSystemPolicy: null, // Current voting power system
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
     
-    // Coalition coloration - aggregate axis values from enacted laws
-    // Each axis ranges from -1 to 1, used for visual theming
-    coalitionColor: {
-      pacifist_militaristic: 0,        // Peaceful <-> Warlike
-      authoritarian_liberal: 0,         // Control <-> Freedom
-      stoicist_hedonistic: 0,           // Sacrifice <-> Pleasure
-      natural_mechanical: 0,            // Organic <-> Synthetic
-      essentialist_constructivist: 0,   // Fixed identity <-> Malleable identity
-      spiritual_materialistic: 0        // Transcendent <-> Pragmatic
+    // Coalition global modifiers (from laws, improvements, etc.)
+    coalitionModifiers: {
+      industrial_output: 0,
+      research_speed: 0,
+      army_organization: 0,
+      supply_efficiency: 0,
+      empire_approval: 0,
+      population_growth: 0,
+      trade_income: 0,
+      cohesionModifier: 1.0,
+      army_maintenance_cost_modifier: 1.0,
+      relations_strength_modifier: 1.0
     },
     
     // Emergency laws system - timed powerful modifiers with resource costs

@@ -65,7 +65,7 @@ function testScourgeArmyCreation() {
   const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
   // Check Scourge army was created
-  const scourgeArmy = state.armies.find(a => a.id === '_scourge_army');
+  const scourgeArmy = state.armies.find(a => a.id.startsWith('_scourge_army'));
   if (!scourgeArmy) {
     console.log('✗ Scourge army was not created');
     return false;
@@ -80,7 +80,7 @@ function testScourgeArmyCreation() {
   console.log('✓ Scourge army has unitIds:', scourgeArmy.unitIds);
   
   // Check Scourge unit was created
-  const scourgeUnit = state.units.find(u => u.id === '_scourge_unit');
+  const scourgeUnit = state.units.find(u => u.id.startsWith('_scourge_unit'));
   if (!scourgeUnit) {
     console.log('✗ Scourge unit was not created');
     return false;
@@ -119,14 +119,14 @@ function testScourgeStatsScaling() {
   state1.turn = 1;
   const armies1 = state1.armies.filter(a => a.organization > 30);
   startScourgeBattle(state1, armies1, () => 0.5);
-  const scourge1 = state1.armies.find(a => a.id === '_scourge_army');
+  const scourge1 = state1.armies.find(a => a.id.startsWith('_scourge_army'));
   
   // Test at turn 10
   const state2 = createFullTestState();
   state2.turn = 10;
   const armies2 = state2.armies.filter(a => a.organization > 30);
   startScourgeBattle(state2, armies2, () => 0.5);
-  const scourge2 = state2.armies.find(a => a.id === '_scourge_army');
+  const scourge2 = state2.armies.find(a => a.id.startsWith('_scourge_army'));
   
   console.log('Turn 1 - dmgPerUnitMP:', scourge1.dmgPerUnitMP.toFixed(3), 'MP:', scourge1.mp.max);
   console.log('Turn 10 - dmgPerUnitMP:', scourge2.dmgPerUnitMP.toFixed(3), 'MP:', scourge2.mp.max);
@@ -146,7 +146,7 @@ function testScourgeStatsScaling() {
   }
   
   // Check unit also scaled
-  const scourgeUnit2 = state2.units.find(u => u.id === '_scourge_unit');
+  const scourgeUnit2 = state2.units.find(u => u.id.startsWith('_scourge_unit'));
   if (scourgeUnit2.dmgPerUnitMP === scourge2.dmgPerUnitMP) {
     console.log('✓ Scourge unit stats also scaled');
   } else {
@@ -348,7 +348,7 @@ function testScourgeUnitPersistence() {
   // First battle
   const { front: front1 } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
-  const scourgeUnit1 = state.units.find(u => u.id === '_scourge_unit');
+  const scourgeUnit1 = state.units.find(u => u.id.startsWith('_scourge_unit'));
   const initialMP = scourgeUnit1.mp.max;
   console.log('First battle - Scourge unit MP:', initialMP);
   
@@ -366,12 +366,12 @@ function testScourgeUnitPersistence() {
   // Second battle at later turn
   const { front: front2 } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
-  const scourgeUnit2 = state.units.find(u => u.id === '_scourge_unit');
+  const scourgeUnit2 = state.units.find(u => u.id.startsWith('_scourge_unit'));
   const updatedMP = scourgeUnit2.mp.max;
   console.log('Second battle (turn 10) - Scourge unit MP:', updatedMP);
   
   // Only one Scourge unit should exist
-  const scourgeUnits = state.units.filter(u => u.id === '_scourge_unit');
+  const scourgeUnits = state.units.filter(u => u.id.startsWith('_scourge_unit'));
   if (scourgeUnits.length !== 1) {
     console.log('✗ Multiple Scourge units exist:', scourgeUnits.length);
     return false;

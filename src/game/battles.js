@@ -63,27 +63,30 @@ function calculateBattlefieldSize(totalForces, rng = Math.random) {
  * @returns {Object} Scourge army
  */
 
-function getOrCreateScourgeArmy(state) {
-  const scourgeId = '_scourge_army';
-  const scourgeUnitId = '_scourge_unit';
-  let scourgeArmy = state.armies.find(a => a.id === scourgeId);
-  
-  if (!scourgeArmy) {
-    // Create Scourge army based on current fervor
-    // Higher fervor = stronger Scourge
-    const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
-    const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
-    const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
-    const fervorMPBonus = state.scourgeFervor * 50; // +50 MP per fervor point
-    const totalMP = baseMP + fervorMPBonus;
+function removeScourgeForces(state) {
+  if (state.armies) {
+    state.armies = state.armies.filter(army => !(army.empireId === '_scourge' && army.id.startsWith('_scourge_army')));
+  }
+  if (state.units) {
+    state.units = state.units.filter(unit => !(unit.empireId === '_scourge' && unit.id.startsWith('_scourge_unit')));
+  }
+}
 
-    
-    scourgeArmy = {
-      id: scourgeId,
-      empireId: '_scourge',
-      name: 'The Scourge',
-      fervor: state.scourgeFervor,
-      organization: Math.min(100, 50 + state.scourgeFervor * 0.5), // 50-100 org based on fervor
+function createScourgeArmy(state, idSuffix) {
+  const scourgeId = `_scourge_army_${idSuffix}`;
+  const scourgeUnitId = `_scourge_unit_${idSuffix}`;
+  const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
+  const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
+  const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
+  const fervorMPBonus = state.scourgeFervor * 50;
+  const totalMP = baseMP + fervorMPBonus;
+
+  const scourgeArmy = {
+    id: scourgeId,
+    empireId: '_scourge',
+    name: 'The Scourge',
+    fervor: state.scourgeFervor,
+    organization: Math.min(100, 50 + state.scourgeFervor * 0.5),
     supplyNeed: 0,
     aggravation: 0,
     manpower: totalMP,
@@ -91,131 +94,60 @@ function getOrCreateScourgeArmy(state) {
     performance: { base: 1.0, current: 1.0, bonusMultiplier: 1.0 },
     supply_state: { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} },
     demands: { needs: {}, wants: {} },
-      
-      // MP and MO pools
-      mp: {
-        current: totalMP,
-        max: totalMP
-      },
-      mo: {
-        current: 100,
-        max: 100
-      },
-      
-      // Combat stats - Scourge is aggressive but less protected
-      dmgPerUnitMP: 0.95 * powerScale,        // Higher damage output
-      dmgPerTickMO: 2.2 * powerScale,        // Higher morale pressure
-      protection: 0.15,         // Less protection
-      resolve: 0.25,            // Less resolve
-      killRate: 0.09 * powerScale,          // Higher kill rate
-      
-      // Sustain stats
-      recoveryPool: 0,
-      command: 40,              // Lower Command stat than coalition armies
-      recovery: 40,             // Lower Recovery stat than coalition armies
-      reinforcementRate: 80,    // Slower reinforcement
-      
-      // Unit reference
-      unitIds: [scourgeUnitId]
-    };
-
-    // Create default Scourge unit with matching stats
-    const scourgeUnit = createUnit(
-      scourgeUnitId,
-      scourgeId,
-      '_scourge',
-      'Scourge Horde',
-      {
-        mp: { current: totalMP, max: totalMP },
-        mo: { current: 100, max: 100 },
-        dmgPerUnitMP: 0.95 * powerScale,
-        dmgPerTickMO: 2.2 * powerScale,
-        protection: 0.15,
-        resolve: 0.25,
-        killRate: 0.09 * powerScale,
-        command: 40,
-        recovery: 40,
-        reinforcementRate: 80,
-        recoveryPool: 0
-      }
-    );
     
-    // Ensure state.units exists and add the Scourge unit
-    if (!state.units) {
-      state.units = [];
+    mp: {
+      current: totalMP,
+      max: totalMP
+    },
+    mo: {
+      current: 100,
+      max: 100
+    },
+    
+    dmgPerUnitMP: 0.95 * powerScale,
+    dmgPerTickMO: 2.2 * powerScale,
+    protection: 0.15,
+    resolve: 0.25,
+    killRate: 0.09 * powerScale,
+    
+    recoveryPool: 0,
+    command: 40,
+    recovery: 40,
+    reinforcementRate: 80,
+    
+    unitIds: [scourgeUnitId]
+  };
+
+  const scourgeUnit = createUnit(
+    scourgeUnitId,
+    scourgeId,
+    '_scourge',
+    'Scourge Horde',
+    {
+      mp: { current: totalMP, max: totalMP },
+      mo: { current: 100, max: 100 },
+      dmgPerUnitMP: 0.95 * powerScale,
+      dmgPerTickMO: 2.2 * powerScale,
+      protection: 0.15,
+      resolve: 0.25,
+      killRate: 0.09 * powerScale,
+      command: 40,
+      recovery: 40,
+      reinforcementRate: 80,
+      recoveryPool: 0
     }
-    // Remove any existing Scourge unit first (in case of state reset)
-    state.units = state.units.filter(u => u.id !== scourgeUnitId);
-    state.units.push(scourgeUnit);
-    
-    state.armies.push(scourgeArmy);
-  } else {
-    // Update Scourge army stats based on current fervor
-    const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
-    const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
-    const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
-    const fervorMPBonus = state.scourgeFervor * 50;
-    const totalMP = baseMP + fervorMPBonus;
+  );
 
-    
-    // Scale MP proportionally
-    // Guard against division by zero or undefined
-    const currentMax = scourgeArmy.mp?.max || 0;
-    const mpRatio = currentMax > 0 ? (scourgeArmy.mp?.current || 0) / currentMax : 0.5;
-    scourgeArmy.mp = scourgeArmy.mp || { current: 0, max: 0 };
-    scourgeArmy.mp.max = totalMP;
-    scourgeArmy.mp.current = Math.max(0, totalMP * mpRatio);
-    
-    scourgeArmy.fervor = state.scourgeFervor;
-    scourgeArmy.organization = Math.min(100, 50 + state.scourgeFervor * 0.5);
-    scourgeArmy.dmgPerUnitMP = 0.95 * powerScale;
-    scourgeArmy.dmgPerTickMO = 2.2 * powerScale;
-    scourgeArmy.killRate = 0.09 * powerScale;
-    
-    // Ensure unitIds is set
-    if (!scourgeArmy.unitIds || scourgeArmy.unitIds.length === 0) {
-      scourgeArmy.unitIds = [scourgeUnitId];
-    }
-
-    // Update the Scourge unit stats to match
-    if (state.units) {
-      let scourgeUnit = state.units.find(u => u.id === scourgeUnitId);
-      if (!scourgeUnit) {
-        // Create the unit if it doesn't exist
-        scourgeUnit = createUnit(
-          scourgeUnitId,
-          scourgeId,
-          '_scourge',
-          'Scourge Horde',
-          {
-            mp: { current: totalMP * mpRatio, max: totalMP },
-            mo: { current: 100, max: 100 },
-            dmgPerUnitMP: 0.95 * powerScale,
-            dmgPerTickMO: 2.2 * powerScale,
-            protection: 0.15,
-            resolve: 0.25,
-            killRate: 0.09 * powerScale,
-            command: 40,
-            recovery: 40,
-            reinforcementRate: 80,
-            recoveryPool: 0
-          }
-        );
-        state.units.push(scourgeUnit);
-      } else {
-        // Update existing unit stats
-        scourgeUnit.mp.max = totalMP;
-        scourgeUnit.mp.current = Math.max(0, totalMP * mpRatio);
-        scourgeUnit.dmgPerUnitMP = 0.95 * powerScale;
-        scourgeUnit.dmgPerTickMO = 2.2 * powerScale;
-        scourgeUnit.killRate = 0.09 * powerScale;
-      }
-    }
-
+  if (!state.units) {
+    state.units = [];
   }
-  
+
+  state.units.push(scourgeUnit);
+  state.armies.push(scourgeArmy);
+
   return scourgeArmy;
 }
+
 
 /**
  * Create a combined coalition army from multiple participating armies
@@ -351,6 +283,13 @@ function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') 
     _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || []),
     isComposite: true
   };
+
+  Object.defineProperty(combinedArmy, 'isComposite', {
+    value: true,
+    enumerable: false,
+    configurable: true,
+    writable: true
+  });
   
   // Sanitize all numeric values to ensure no NaN
   Object.keys(combinedArmy).forEach(key => {
@@ -395,11 +334,12 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
   logger.debug(`Scourge battle starting: ${participatingArmies.length} armies participating`);
   logger.debug(`Participating armies: ${participatingArmies.map(a => `${a.name} (Power: ${calculateArmyPower(a).toFixed(2)}, Org: ${a.organization.toFixed(1)}, Fervor: ${a.fervor.toFixed(1)})`).join(', ')}`);
   
-  // Create/get Scourge army
-  const scourgeArmy = getOrCreateScourgeArmy(state);
+  removeScourgeForces(state);
+  const scourgeArmy = createScourgeArmy(state, state.turn);
   
   // Create combined coalition army
   const coalitionArmy = createCombinedCoalitionArmy(state, participatingArmies);
+
   
   // Calculate battlefield size based on total forces
   const totalForces = coalitionArmy.mp.current + scourgeArmy.mp.current;
@@ -516,17 +456,11 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     state.armies.splice(combinedIndex, 1);
   }
   
-  // Keep Scourge army for future battles, but reset its MP if needed
-  if (scourgeArmy.mp.current <= 0) {
-    // Scourge was defeated, reset for next battle
-    const baseMP = 12000;
-    const fervorMPBonus = state.scourgeFervor * 50;
-    scourgeArmy.mp.max = baseMP + fervorMPBonus;
-    scourgeArmy.mp.current = scourgeArmy.mp.max * 0.5; // Start at 50% for next battle
-  }
+  removeScourgeForces(state);
   
   return { log };
 }
+
 
 // Legacy function for backwards compatibility (now creates a battle front)
 export function resolveScourgeBattle(state, participatingArmies, rng = Math.random) {

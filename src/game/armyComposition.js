@@ -154,12 +154,6 @@ export function refreshArmyAggregates(state) {
     aggregateArmyDemands(army, units);
     aggregateArmyCombatStats(state, army, units);
   });
-
-  state.armies.forEach(army => {
-    if (army.isComposite) {
-      delete army.isComposite;
-    }
-  });
 }
 
 export function syncUnitsFromArmy(army, units) {

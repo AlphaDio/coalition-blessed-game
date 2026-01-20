@@ -11,7 +11,7 @@ import {
   acceptImprovementRequest,
   processImprovementsTick,
   createImprovementRequest
-} from './src/game/improvements.js';
+} from './src/game/improvements/index.js';
 import {
   IMPROVEMENT_TIER_REQUIREMENTS,
   TIERED_IMPROVEMENT_DEFINITIONS,
@@ -27,7 +27,7 @@ import {
   getEmpiresWithAccess,
   canCoalitionSuggest,
   refreshImprovementSuggestions
-} from './src/game/improvementDefinitions.js';
+} from './src/game/improvements/definitions.js';
 
 // Test counters
 let passed = 0;
@@ -51,8 +51,8 @@ function createTestState() {
   
   // Add two empires
   state.empires = [
-    createEmpire('empire_1', 'First Empire', 50, {}, {}, { stockpiles: { biomass: 100, ice: 100, super_alloys: 100 } }),
-    createEmpire('empire_2', 'Second Empire', 50, {}, {}, { stockpiles: { biomass: 100, ice: 100, super_alloys: 100 } })
+    createEmpire('empire_1', 'First Empire', 50, {}, {}, { stockpiles: { biomass: 100, solid_ice: 100, super_alloys: 100 } }),
+    createEmpire('empire_2', 'Second Empire', 50, {}, {}, { stockpiles: { biomass: 100, solid_ice: 100, super_alloys: 100 } })
   ];
   
   return state;

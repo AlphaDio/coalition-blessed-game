@@ -6,7 +6,7 @@
  */
 
 import { getLogger } from '../modules/logger.js';
-import { THETA_PRESETS, COMMODITY_DEFINITIONS, MILLI_PER_UNIT_BY_TIER, BATCH_SIZE_UNITS } from './types.js';
+import { THETA_PRESETS, COMMODITY_DEFINITIONS, MILLI_PER_UNIT_BY_TIER, BATCH_SIZE_UNITS, BATCH_BONUS_MILLI } from './types.js';
 
 const logger = getLogger();
 
@@ -18,66 +18,54 @@ export const ALLOWANCE_CAP_TICKS = 6;
 export const RESERVE_FLOOR_CREDITS = 1500;
 
 /**
- * Get reference price for a commodity (with fallbacks)
- */
-function getReferencePrice(state, commodityId) {
-  const market = state.market;
-  if (!market) return null;
-
-  // Priority: current price -> last price -> floor price
-  return market.price_by_commodity[commodityId] ||
-         market.last_price_by_commodity[commodityId] ||
-         market.floor_price_by_commodity[commodityId] ||
-         null;
-}
-
-/**
  * Refill coalition allowance credits each tick
+ * @param {Object} coalitionEconomy - The coalition economy state object
  */
-export function refillCoalitionAllowance(state) {
-  const economy = state.coalitionEconomy;
+export function refillCoalitionAllowance(coalitionEconomy) {
   const maxAllowance = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS;
 
-  economy.allowance_credits = Math.min(
-    economy.allowance_credits + ALLOWANCE_PER_TICK,
+  coalitionEconomy.allowance_credits = Math.min(
+    coalitionEconomy.allowance_credits + ALLOWANCE_PER_TICK,
     maxAllowance
   );
 }
 
 /**
  * Calculate spend caps for coalition procurement
+ * @param {Object} coalitionEconomy - The coalition economy state object
  */
-export function calculateSpendCaps(state) {
-  const economy = state.coalitionEconomy;
-
+export function calculateSpendCaps(coalitionEconomy) {
   const spendCap = Math.min(
-    economy.allowance_credits,
-    Math.max(0, economy.treasury_credits - RESERVE_FLOOR_CREDITS)
+    coalitionEconomy.allowance_credits,
+    Math.max(0, coalitionEconomy.treasury_credits - RESERVE_FLOOR_CREDITS)
   );
 
-  const targetSpend = Math.floor(spendCap * economy.procurement.spend_throttle);
+  const targetSpend = Math.floor(spendCap * coalitionEconomy.procurement.spend_throttle);
 
   return { spendCap, targetSpend };
 }
 
 /**
  * Execute coalition procurement from post-clear market surplus
+ * @param {Object} market - The market state object (containing per-commodity market states)
+ * @param {Object} coalitionEconomy - The coalition economy state object
+ * @param {Object} config - Economy configuration
+ * @returns {Array} Array of log entries for purchases made
  */
-export function executeCoalitionProcurement(state) {
-  const economy = state.coalitionEconomy;
-  const { spendCap, targetSpend } = calculateSpendCaps(state);
+export function executeCoalitionProcurement(market, coalitionEconomy, config) {
+  const { spendCap, targetSpend } = calculateSpendCaps(coalitionEconomy);
 
   if (targetSpend <= 0) {
     logger.debug('Coalition procurement: No spending capacity available');
-    return { spent: 0, purchases: [] };
+    return [];
   }
 
-  // Get eligible offers from post-clear surplus
-  const eligibleOffers = getEligibleOffers(state);
+  // Get eligible offers from post-clear surplus (per-commodity market structure)
+  const eligibleOffers = getEligibleOffers(market, coalitionEconomy);
 
   if (eligibleOffers.length === 0) {
     logger.debug('Coalition procurement: No eligible offers available');
-    return { spent: 0, purchases: [] };
+    return [];
   }
 
   // Sort deterministically
@@ -89,7 +77,7 @@ export function executeCoalitionProcurement(state) {
   });
 
   let spent = 0;
-  const purchases = [];
+  const logEntries = [];
   let remainingSpend = targetSpend;
 
   // Purchase loop
@@ -107,62 +95,64 @@ export function executeCoalitionProcurement(state) {
     const cost = buyQty * offer.ask_price;
 
     // Execute purchase
-    economy.stockpile_by_commodity[offer.commodity_id] =
-      (economy.stockpile_by_commodity[offer.commodity_id] || 0) + buyQty;
+    coalitionEconomy.stockpile_by_commodity[offer.commodity_id] =
+      (coalitionEconomy.stockpile_by_commodity[offer.commodity_id] || 0) + buyQty;
 
     offer.qty -= buyQty;
     spent += cost;
     remainingSpend -= cost;
 
-    purchases.push({
-      tick: state.turn,
-      commodity_id: offer.commodity_id,
-      qty: buyQty,
-      unit_price: offer.ask_price,
-      total_cost: cost,
-      seller_id: offer.seller_id,
-      offer_id: offer.offer_id
-    });
-
-    logger.info(`Coalition procured ${buyQty} ${offer.commodity_id} for ${cost} credits`);
+    const logEntry = `Coalition procured ${buyQty} ${offer.commodity_id} for ${cost} credits`;
+    logEntries.push(logEntry);
+    logger.info(logEntry);
   }
 
   // Deduct from treasury and allowance
-  economy.treasury_credits -= spent;
-  economy.allowance_credits -= spent;
+  coalitionEconomy.treasury_credits -= spent;
+  coalitionEconomy.allowance_credits -= spent;
 
   logger.info(`Coalition procurement completed: spent ${spent}/${targetSpend} credits`);
 
-  return { spent, purchases };
+  return logEntries;
 }
 
 /**
  * Get eligible offers for coalition procurement
+ * @param {Object} market - The market state object (containing per-commodity market states)
+ * @param {Object} coalitionEconomy - The coalition economy state object
  */
-function getEligibleOffers(state) {
-  const economy = state.coalitionEconomy;
-  const market = state.market;
-
-  if (!market || !market.remaining_sell_offers_post_clear) {
+function getEligibleOffers(market, coalitionEconomy) {
+  if (!market) {
     return [];
   }
 
   const eligible = [];
 
-  for (const offer of market.remaining_sell_offers_post_clear) {
-    if (offer.qty <= 0) continue;
+  // Iterate over per-commodity market states
+  for (const [commodityId, commodityMarket] of Object.entries(market)) {
+    // Skip non-object entries or metadata
+    if (!commodityMarket || typeof commodityMarket !== 'object') continue;
+    if (!commodityMarket.remaining_sell_offers_post_clear) continue;
 
-    const commodityId = offer.commodity_id;
-    const refPrice = getReferencePrice(state, commodityId);
-
+    const refPrice = commodityMarket.price || commodityMarket.last_price || commodityMarket.floor_price || null;
     if (!refPrice) continue;
 
-    const thetaPreset = economy.procurement.theta_preset_by_commodity[commodityId] || 'Balanced';
-    const theta = THETA_PRESETS[thetaPreset];
-    const threshold = refPrice * theta;
+    for (const offer of commodityMarket.remaining_sell_offers_post_clear) {
+      if (offer.qty <= 0) continue;
 
-    if (offer.ask_price <= threshold) {
-      eligible.push(offer);
+      // Ensure commodity_id is set on the offer
+      const offerId = offer.commodity_id || offer.commodity || commodityId;
+
+      const thetaPreset = coalitionEconomy.procurement.theta_preset_by_commodity[offerId] || 'Balanced';
+      const theta = THETA_PRESETS[thetaPreset];
+      const threshold = refPrice * theta;
+
+      if (offer.ask_price <= threshold) {
+        eligible.push({
+          ...offer,
+          commodity_id: offerId
+        });
+      }
     }
   }
 
@@ -171,12 +161,15 @@ function getEligibleOffers(state) {
 
 /**
  * Execute batch conversion from stockpiles to milli-supplies
+ * @param {Object} coalitionEconomy - The coalition economy state object
+ * @param {Object} config - Economy configuration
+ * @returns {Array} Array of log entries for conversions made
  */
-export function executeSupplyConversion(state) {
-  const economy = state.coalitionEconomy;
-  const conversions = [];
+export function executeSupplyConversion(coalitionEconomy, config) {
+  const logEntries = [];
+  let totalConvertedUnits = 0;
 
-  for (const [commodityId, stockQty] of Object.entries(economy.stockpile_by_commodity)) {
+  for (const [commodityId, stockQty] of Object.entries(coalitionEconomy.stockpile_by_commodity)) {
     if (stockQty < BATCH_SIZE_UNITS) continue;
 
     const commodityDef = COMMODITY_DEFINITIONS[commodityId];
@@ -189,23 +182,25 @@ export function executeSupplyConversion(state) {
     const gainMilli = convertQty * milliPerUnit;
 
     // Execute conversion
-    economy.stockpile_by_commodity[commodityId] -= convertQty;
-    economy.supply_milli += gainMilli;
+    coalitionEconomy.stockpile_by_commodity[commodityId] -= convertQty;
+    coalitionEconomy.supply_milli += gainMilli;
+    totalConvertedUnits += convertQty;
 
-    conversions.push({
-      tick: state.turn,
-      commodity_id: commodityId,
-      convert_qty: convertQty,
-      milli_gained: gainMilli,
-      tier: tier
-    });
-
-    logger.info(`Coalition converted ${convertQty} ${commodityId} to ${gainMilli} milli-supplies`);
+    const logEntry = `Coalition converted ${convertQty} ${commodityId} to ${gainMilli} milli-supplies`;
+    logEntries.push(logEntry);
+    logger.info(logEntry);
   }
 
-  logger.info(`Supply conversion completed: ${conversions.length} batches processed`);
+  // Add batch conversion bonus
+  const batchBonus = Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS) * BATCH_BONUS_MILLI;
+  if (batchBonus > 0) {
+    coalitionEconomy.supply_milli += batchBonus;
+    logger.info(`Coalition gained ${batchBonus} milli-supplies from batch conversion bonus`);
+  }
 
-  return conversions;
+  logger.info(`Supply conversion completed: ${logEntries.length} commodity batches processed, ${Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS)} total batches`);
+
+  return logEntries;
 }
 
 /**
@@ -220,14 +215,24 @@ export function getSuppliesDisplay(economy) {
 
 /**
  * Initialize coalition procurement settings with defaults
+ * @returns {Object} A new coalition economy state object with default values
  */
-export function initializeCoalitionProcurement(state) {
-  const economy = state.coalitionEconomy;
+export function initializeCoalitionProcurement() {
+  const coalitionEconomy = {
+    treasury_credits: 0,
+    allowance_credits: 0,
+    supply_milli: 0,
+    stockpile_by_commodity: {},
+    procurement: {
+      spend_throttle: 0.8,
+      theta_preset_by_commodity: {}
+    }
+  };
 
   // Set default theta presets for all commodities
   for (const commodityId of Object.keys(COMMODITY_DEFINITIONS)) {
-    if (!economy.procurement.theta_preset_by_commodity[commodityId]) {
-      economy.procurement.theta_preset_by_commodity[commodityId] = 'Balanced';
-    }
+    coalitionEconomy.procurement.theta_preset_by_commodity[commodityId] = 'Balanced';
   }
+
+  return coalitionEconomy;
 }

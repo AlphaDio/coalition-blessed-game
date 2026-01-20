@@ -11,7 +11,8 @@ yarn install
 
 2. Run the game:
 ```bash
-yarn start
+yarn start          # Load autosave if exists, otherwise new game
+yarn new             # Start a fresh new game (ignores autosave)
 ```
 
 ## Controls
@@ -36,6 +37,10 @@ The game now features a command input box at the bottom of the screen for text-b
 - `logs` or `log` - Toggle full logs window
 - `quit` or `exit` - Exit the game
 
+**Command Line Options:**
+- `yarn start` - Load autosave if exists, otherwise new game
+- `yarn new` - Start a fresh new game (ignores autosave)
+
 ### Keyboard Shortcuts (Still Available!)
 
 All traditional keyboard shortcuts continue to work alongside the command input:
@@ -48,7 +53,8 @@ All traditional keyboard shortcuts continue to work alongside the command input:
 - **Enter** - Enact selected law / Accept selected request
 - **1/2/3** - Choose event option (when event is active)
 - **L** - Toggle full logs window
-- **M/A/E/R/I** - Switch info panel views (Market/Armies/Empires/Requests/Improvements)
+- **M/A/E/R/I/P** - Switch info panel views (Market/Armies/Empires/Requests/Improvements/Procurement)
+- **M (in Market view)** - Cycle between Market overview and Commodity details
 - **Up/Down** - Navigate lists (laws, requests, improvements)
 - **X** - Cancel selected improvement (no refund)
 
@@ -74,6 +80,34 @@ You manage a coalition of empires fighting against the Scourge in **real-time**.
 - **Laws**: Enact policies to modify empire approval, army effectiveness, and resource generation
 - **Events**: Random events with choices that affect various game metrics
 - **Battles**: External (vs Scourge) and internal (vs Insurrections)
+- **Coalition Procurement**: Automatic purchasing of commodities from post-market-clear surplus to convert into supplies
+
+### Coalition Procurement and Supply Conversion System (NEW!)
+
+The coalition maintains an autonomous economy that purchases commodities from market surplus and converts them into supplies:
+
+- **Treasury**: Starts at 10,000 credits (Baseline B), used for procurement
+- **Allowance**: Refills to 100 credits per tick (up to 600 cap), spent on commodity purchases
+- **Reserve Floor**: 1,500 credits minimum, never spent below this
+- **Procurement**: Buys commodities from post-clear sell offers at or below calculated thresholds
+- **Theta Presets**: Price thresholds relative to market floor prices (Scavenge: 80%, Frugal: 90%, Balanced: 100%, Assertive: 110%, Emergency: 125%)
+- **Spend Throttle**: Per-commodity multiplier (10%-200%) on allowance allocation
+- **Supply Conversion**: Converts stockpiled commodities to supplies in batches of 100 units
+  - T1 commodities (Biomass): 1 milli-supply per unit
+  - T2 commodities (Super Alloys): 2 milli-supplies per unit  
+  - T3 commodities (Quantum Circuits): 5 milli-supplies per unit
+  - T4 commodities (Genomes): 10 milli-supplies per unit
+- **Interactive Controls**: Press 'p' to access procurement panel, use ↑↓ to select commodities, ←→ to cycle theta presets, -/+ to adjust spend throttle
+
+**UI Controls:**
+- **P** - Switch to Coalition Procurement view
+- **↑↓** (in Procurement view) - Select commodity
+- **←→** (in Procurement view) - Cycle theta preset (Scavenge to Emergency)
+- **- / +** (in Procurement view) - Decrease/Increase spend throttle by 5%
+- **M** - Switch to Market view (cycles between overview and commodity details)
+- **↑↓** (in Market view) - Select commodity for details
+
+This system provides ~10 supplies per tick under baseline conditions, ensuring steady supply generation without manual management.
 
 ### Improvements System (NEW!)
 
@@ -123,10 +157,11 @@ src/
     insurrection.js # Insurrection spawning
     laws.js      # Law enactment
     events.js    # Event handling
-    turn.js      # Turn advancement
-    content.js   # Sample game content
-    improvements.js # Improvements system (NEW!)
-    marketEconomy.js # Market-based economy
+     turn.js      # Turn advancement
+     content.js   # Sample game content
+     improvements.js # Improvements system (NEW!)
+     marketEconomy.js # Market-based economy
+     coalitionProcurement.js # Coalition procurement system (NEW!)
   ui/            # Terminal UI (blessed)
     renderer.js  # UI rendering functions
     input.js     # Input handling

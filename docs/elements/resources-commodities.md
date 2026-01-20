@@ -8,7 +8,7 @@ Resources are the tangible commodities that fuel the war effort. They are tiered
 ### Tier 1
 - Super Alloys: floor price 1.0, tags industrial/construction/military
 - Biomass: floor price 0.8, tags civilian/fuel/sustenance
-- Solid Ice: floor price 0.5, tags logistics/coolant/life_support
+- Solid Ice (solid_ice): floor price 0.5, tags logistics/coolant/life_support
 
 ### Tier 2
 - Rare Gases: floor price 5.0, tags industrial/electronics/science

@@ -4,7 +4,7 @@
  */
 
 import { createGameState, createEmpire } from './src/game/types.js';
-import { initializeImprovementsState, getSampleImprovementRequests, acceptImprovementRequest, cancelImprovement, processImprovementsTick } from './src/game/improvements.js';
+import { initializeImprovementsState, getAllImprovementRequests, acceptImprovementRequest, cancelImprovement, processImprovementsTick } from './src/game/improvements/index.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 
 // Initialize logger with minimal output
@@ -23,14 +23,14 @@ console.log('============================================================\n');
 console.log('=== Test 1: System Initialization ===');
 const state = createGameState(12345);
 state.improvements = initializeImprovementsState();
-state.improvements.requests = getSampleImprovementRequests();
+state.improvements.requests = getAllImprovementRequests();
 
 // Add test empires
 state.empires = [
   createEmpire('empire1', 'Test Empire 1', 50, {}, {}, { 
     budget_credits: 50000,
     stability: 60,
-    stockpiles: { biomass: 100, super_alloys: 50, ice: 80 }
+    stockpiles: { biomass: 100, super_alloys: 50, solid_ice: 80 }
   }),
   createEmpire('empire2', 'Test Empire 2', 60, {}, {}, {
     budget_credits: 30000,
@@ -50,7 +50,7 @@ console.log('✓ System initialized successfully\n');
 
 // Test 2: Accept improvement request
 console.log('=== Test 2: Accept Improvement Request ===');
-const request1 = state.improvements.requests[0]; // Basic Factory
+const request1 = state.improvements.requests[0]; // Orbital Foundry Complex
 console.log(`Accepting: ${request1.name}`);
 console.log(`  Cost: ${request1.suppliesCost} Supplies`);
 console.log(`  Build: ${request1.build}`);
@@ -118,9 +118,9 @@ console.log('=== Test 5: Capacity Limits ===');
 console.log('Testing capacity limit...');
 
 // Try to start more builds (limited by building capacity only)
-const request2 = state.improvements.requests[1]; // Ascension Spire (cap 4)
-const request3 = state.improvements.requests[2]; // Grand War Symposium (cap 3)
-const request4 = state.improvements.requests[3]; // Festival of Worlds (cap 4)
+const request2 = state.improvements.requests[7]; // Ascension Spire (cap 4)
+const request3 = state.improvements.requests[9]; // Grand War Symposium (cap 2)
+const request4 = state.improvements.requests[12]; // Festival of Worlds (cap 3)
 
 const result2 = acceptImprovementRequest(state, request2.id, 'empire1');
 const result3 = acceptImprovementRequest(state, request3.id, 'empire2');
@@ -213,7 +213,7 @@ console.log('=== Test 9: Production Outputs ===');
 // Restore stockpiles to ensure an improvement is ACTIVE
 state.empires[0].stockpiles = { 
   biomass: 1000, 
-  ice: 1000, 
+  solid_ice: 1000, 
   super_alloys: 1000,
   rare_gases: 1000,
   genomes: 1000,
@@ -245,10 +245,10 @@ console.log();
 console.log('=== Test 10: Determinism ===');
 const state2 = createGameState();
 state2.improvements = initializeImprovementsState();
-state2.improvements.requests = getSampleImprovementRequests();
+state2.improvements.requests = getAllImprovementRequests();
 state2.empires = [createEmpire('empire1', 'Test Empire', 50, {}, {}, {
   budget_credits: 50000,
-  stockpiles: { biomass: 100, super_alloys: 50, ice: 80 }
+  stockpiles: { biomass: 100, super_alloys: 50, solid_ice: 80 }
 })];
 state2.stockpiles.supplies = 1000;
 

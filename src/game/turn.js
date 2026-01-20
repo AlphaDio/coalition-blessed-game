@@ -11,13 +11,13 @@ import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManag
 import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
-import { processImprovementsTick, applyImprovementModifiers } from './improvements.js';
+import { processImprovementsTick, applyImprovementModifiers } from './improvements/index.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
 
-const BASE_POPULATION_GROWTH_RATE = 0.0005;
+const BASE_POPULATION_GROWTH_RATE = 0.005;
 const MIN_POPULATION = 1;
 
 /**

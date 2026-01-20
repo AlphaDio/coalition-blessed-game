@@ -86,6 +86,9 @@ export function processEconomyTick(state) {
     
     Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
       if (qty > 0) {
+        // Apply industrial_output modifier
+        const modifiedQty = qty * (1 + (state.coalitionModifiers.industrial_output || 0));
+        
         // Create sell offer at market price (or slightly below for competitiveness)
         const marketPrice = state.market[commodity]?.price || 1.0;
         const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT; // Slightly below market
@@ -95,7 +98,7 @@ export function processEconomyTick(state) {
           'empire',
           empire.id,
           commodity,
-          qty,
+          modifiedQty,
           askPrice,
           0
         );
@@ -392,11 +395,69 @@ export function processEconomyTick(state) {
     computeArmyFulfillment(army, config);
   });
   
-  // Replenish coalition treasury
-  state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + 
-    config.coalition.procurement.budget_credits_per_tick;
-  
-  logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
-  
-  return { log, trades: allTrades.length };
+   // Replenish coalition treasury
+   state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + 
+     config.coalition.procurement.budget_credits_per_tick;
+   
+    // Apply coalition modifiers from enacted laws
+    if (state.coalitionModifiers && state.empires) {
+      state.empires.forEach(empire => {
+       // Trade income
+       if (state.coalitionModifiers.trade_income) {
+         empire.budget_credits = (empire.budget_credits || 0) + state.coalitionModifiers.trade_income;
+       }
+       
+       // Empire approval
+       if (state.coalitionModifiers.empire_approval) {
+         empire.approval = Math.min(100, Math.max(0, empire.approval + state.coalitionModifiers.empire_approval));
+       }
+       
+        // Population growth
+        if (state.coalitionModifiers.population_growth) {
+          if (!empire.stats) empire.stats = {};
+          const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
+          empire.stats.population = Math.max(0, Math.floor(currentPopulation * (1 + state.coalitionModifiers.population_growth)));
+        }
+     });
+     
+      // Industrial output is applied during production calculations (handled elsewhere)
+    }
+    
+    // Apply army maintenance cost modifier (placeholder - deduct from empire budgets)
+    // TODO: Implement proper army maintenance system
+    if (state.coalitionModifiers.army_maintenance_cost_modifier && state.coalitionModifiers.army_maintenance_cost_modifier !== 1.0) {
+      state.empires.forEach(empire => {
+        const armies = state.armies.filter(a => a.owner_empire_id === empire.id);
+        // Placeholder: reduce maintenance costs by modifier (assuming some base cost per army)
+        // This is a stub until full army maintenance is implemented
+        const baseMaintenancePerArmy = 10; // placeholder value
+        const totalMaintenance = armies.length * baseMaintenancePerArmy * state.coalitionModifiers.army_maintenance_cost_modifier;
+        if (totalMaintenance > 0) {
+          empire.budget_credits = Math.max(0, (empire.budget_credits || 0) - totalMaintenance);
+        }
+      });
+    }
+    
+     // Apply relations strength modifier (placeholder - boost relations between empires)
+     // TODO: Implement proper diplomacy relations improvement system
+     if (state.coalitionModifiers.relations_strength_modifier && state.coalitionModifiers.relations_strength_modifier !== 1.0) {
+       if (state.diplomacy && state.diplomacy.relations) {
+         Object.keys(state.diplomacy.relations).forEach(empireId => {
+           if (state.diplomacy.relations[empireId]) {
+             Object.keys(state.diplomacy.relations[empireId]).forEach(otherId => {
+            if (empireId !== otherId) {
+               // Placeholder: improve relations by modifier each tick
+               const current = state.diplomacy.relations[empireId][otherId] || 0;
+               const improvement = (state.coalitionModifiers.relations_strength_modifier - 1.0) * 0.1; // Small boost per tick
+               state.diplomacy.relations[empireId][otherId] = Math.min(100, current + improvement);
+             }
+             });
+           }
+         });
+       }
+    }
+    
+    logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
+   
+   return { log, trades: allTrades.length };
 }

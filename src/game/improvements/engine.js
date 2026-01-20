@@ -470,6 +470,19 @@ export function applyImprovementModifiers(state) {
           const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
           empire.stats.population = Math.max(0, Math.floor(currentPopulation * (1 + growthRate)));
         }
+      } else if (stat === 'army_fervor') {
+        // Apply fervor bonus to all armies of this empire (gradual boost per tick)
+        state.armies
+          .filter(a => a.empireId === improvement.empireId)
+          .forEach(army => {
+            army.fervor = Math.min(100, army.fervor + value / MODIFIER_ARMY_ORG_SCALE);
+          });
+      } else if (stat === 'law_progress_speed') {
+        // Store for use in law processing - accumulates to coalitionModifiers
+        if (!state.coalitionModifiers.law_progress_speed) {
+          state.coalitionModifiers.law_progress_speed = 0;
+        }
+        state.coalitionModifiers.law_progress_speed += value;
       }
       // Other modifiers can be stored and applied elsewhere as needed
     }

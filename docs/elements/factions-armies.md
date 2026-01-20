@@ -12,9 +12,9 @@ Industrial powerhouse anchoring heavy manufacturing.
 - Population: 1200, Influence: 65
 - Traits: industrial
 - Tags: Industrial, Federation
-- Production per tick: super_alloys 100, rare_gases 10
-- Needs per pop: biomass 0.1, ice 0.05
-- Wants per pop: nano_machines 0.001, quantum_circuits 0.0005
+- Production per tick: super_alloys 100, rare_gases 20
+- Needs per pop: biomass 0.5, solid_ice 0.1
+- Wants per pop: nano_machines 0.001, quantum_circuits 0.002
 - Values: authoritarian_liberal 0.3, spiritual_materialistic 0.7, natural_mechanical 0.8, pacifist_militaristic 0.1, stoicist_hedonistic -0.3, essentialist_constructivist 0.4
 
 ### Verdant Colonies (empire_2)
@@ -24,9 +24,9 @@ Biosphere engineers and agricultural supply hub.
 - Population: 900, Influence: 55
 - Traits: agricultural
 - Tags: Agricultural, Alliance, Biologic
-- Production per tick: biomass 150, genomes 15
-- Needs per pop: super_alloys 0.05, ice 0.08
-- Wants per pop: psycho_implants 0.0008, ancient_relics 0.0002
+- Production per tick: biomass 15, genomes 15
+- Needs per pop: super_alloys 0.5, solid_ice 0.8
+- Wants per pop: psycho_implants 0.008, ancient_relics 0.002
 - Values: authoritarian_liberal -0.1, spiritual_materialistic -0.4, natural_mechanical -0.7, pacifist_militaristic -0.3, stoicist_hedonistic 0.2, essentialist_constructivist -0.5
 
 ### Nexus Dominion (empire_3)
@@ -36,9 +36,9 @@ Hyperspace crossroads with strategic military reach.
 - Population: 800, Influence: 70
 - Traits: maritime
 - Tags: Maritime, Republic, Militaristic
-- Production per tick: ice 120, psycho_implants 8
-- Needs per pop: biomass 0.12, super_alloys 0.03
-- Wants per pop: rare_gases 0.001, sentient_cores 0.0003
+- Production per tick: solid_ice 12, psycho_implants 16
+- Needs per pop: biomass 1.2, super_alloys 0.3
+- Wants per pop: rare_gases 0.01, sentient_cores 0.003
 - Values: authoritarian_liberal 0.6, spiritual_materialistic 0.2, natural_mechanical 0.1, pacifist_militaristic 0.5, stoicist_hedonistic 0.4, essentialist_constructivist 0.5
 
 ### Quantum Collective (empire_clockwork)
@@ -61,8 +61,8 @@ Hive-mind collective with massive biological throughput.
 - Traits: hive_mind, biologic
 - Tags: Hive-Mind, Biologic
 - Production per tick: genomes 20, ancient_relics 2
-- Needs per pop: biomass 0.15, ice 0.06
-- Wants per pop: psycho_implants 0.001, nano_machines 0.0005
+- Needs per pop: biomass 0.25, solid_ice 0.02
+- Wants per pop: psycho_implants 0.001, nano_machines 0.005
 - Values: authoritarian_liberal -0.9, spiritual_materialistic 0.2, natural_mechanical -0.6, pacifist_militaristic 0.4, stoicist_hedonistic -0.7, essentialist_constructivist -0.8
 
 ## Armies in Play

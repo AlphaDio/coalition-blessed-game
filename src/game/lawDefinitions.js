@@ -49,33 +49,36 @@ export function createTieredLawDefinition(id, name, tier, branch, axis_vector = 
  * Focus: Defense, conscription, warfare capabilities
  */
 const MILITARY_BRANCH = [
-  // T1: Simple defensive measures
+  // T1: Ideology - Pacifist
   createTieredLawDefinition(
-    'law_militia_training',
-    'Militia Training Act',
+    'law_peace_accord_initiative',
+    'Peace Accord Initiative',
     1,
     'military',
     {
-      pacifist_militaristic: 0.3,
-      authoritarian_liberal: -0.1
+      pacifist_militaristic: 0.4
     },
-    ['military', 'defense'],
+    ['peace', 'diplomacy'],
     {
-      population_incentive: -0.1,
-      security_incentive: 0.4,
-      economy_incentive: -0.1
+      population_incentive: 0.1,
+      security_incentive: 0.2,
+      economy_incentive: 0.1
     },
     {
-      DEBATE: ['military', 'security', 'local'],
+      DEBATE: ['peace', 'diplomacy', 'cooperation'],
       FALLOUT: ['social', 'economic'],
-      VOTING: ['security', 'procedural']
+      VOTING: ['diplomacy', 'compromise']
+    },
+    {
+      army_maintenance_cost_modifier: 0.9, // 10% reduction
+      relations_strength_modifier: 1.075 // 7.5% relations boost
     }
   ),
   
   // T2: Professional military expansion
   createTieredLawDefinition(
     'law_professional_army',
-    'Professional Army Standards',
+    'Scourge Defense Readiness Act',
     2,
     'military',
     {
@@ -93,6 +96,10 @@ const MILITARY_BRANCH = [
       DEBATE: ['military', 'security', 'standards'],
       FALLOUT: ['social', 'economic', 'unrest'],
       VOTING: ['security', 'compromise']
+    },
+    {
+      army_maintenance_cost_modifier: 0.95, // 5% reduction
+      relations_strength_modifier: 1.0375 // 3.75% relations boost
     }
   ),
   
@@ -117,6 +124,11 @@ const MILITARY_BRANCH = [
       DEBATE: ['military', 'security', 'emergency'],
       FALLOUT: ['social', 'unrest', 'hardship'],
       VOTING: ['security', 'emergency']
+    },
+    {
+      army_maintenance_cost_modifier: 0.8, // 20% army cost reduction
+      army_organization: 10, // +10 organization to all armies
+      empire_approval: -0.5 // Slight approval drain due to sacrifices
     }
   )
 ];
@@ -126,33 +138,35 @@ const MILITARY_BRANCH = [
  * Focus: Civil liberties, citizenship, personhood
  */
 const RIGHTS_BRANCH = [
-  // T1: Basic recognition
+  // T1: Ideology - Liberal
   createTieredLawDefinition(
-    'law_basic_rights',
-    'Basic Rights Charter',
+    'law_liberty_framework',
+    'Liberty Framework',
     1,
     'rights',
     {
-      authoritarian_liberal: 0.3,
-      essentialist_constructivist: 0.2
+      authoritarian_liberal: 0.4
     },
-    ['rights', 'civil'],
+    ['rights', 'freedom'],
     {
       population_incentive: 0.3,
       security_incentive: -0.1,
       economy_incentive: 0.1
     },
     {
-      DEBATE: ['rights', 'philosophical', 'civil'],
+      DEBATE: ['rights', 'freedom', 'civil'],
       FALLOUT: ['social', 'cultural'],
-      VOTING: ['procedural', 'compromise']
+      VOTING: ['civil', 'compromise']
+    },
+    {
+      empire_approval: 1 // +1 approval per empire
     }
   ),
   
   // T2: AI and synthetic rights
   createTieredLawDefinition(
     'law_ai_citizenship',
-    'AI Citizenship Rights',
+    'Scourge-Era AI Citizenship Accord',
     2,
     'rights',
     {
@@ -170,6 +184,9 @@ const RIGHTS_BRANCH = [
       DEBATE: ['rights', 'mechanical', 'philosophical'],
       FALLOUT: ['social', 'economic', 'unrest'],
       VOTING: ['procedural', 'compromise']
+    },
+    {
+      empire_approval: 0.5 // +0.5 approval per empire
     }
   ),
   
@@ -194,6 +211,11 @@ const RIGHTS_BRANCH = [
       DEBATE: ['rights', 'philosophical', 'transcendence'],
       FALLOUT: ['social', 'cultural', 'paradigm'],
       VOTING: ['consensus', 'historic']
+    },
+    {
+      empire_approval: 2, // +2 approval per tick to all empires
+      cohesionModifier: 1.1, // 10% cohesion recovery bonus
+      relations_strength_modifier: 1.15 // 15% diplomacy bonus
     }
   )
 ];
@@ -203,33 +225,35 @@ const RIGHTS_BRANCH = [
  * Focus: Trade, markets, resource management
  */
 const ECONOMIC_BRANCH = [
-  // T1: Basic trade
+  // T1: Ideology - Materialistic
   createTieredLawDefinition(
-    'law_trade_agreements',
-    'Trade Cooperation Accords',
+    'law_prosperity_doctrine',
+    'Prosperity Doctrine',
     1,
     'economic',
     {
-      spiritual_materialistic: 0.3,
-      stoicist_hedonistic: 0.2
+      spiritual_materialistic: 0.4
     },
-    ['economic', 'trade'],
+    ['economic', 'prosperity'],
     {
       population_incentive: 0.1,
       security_incentive: 0.0,
       economy_incentive: 0.4
     },
     {
-      DEBATE: ['economic', 'trade', 'cooperation'],
-      FALLOUT: ['economic', 'diplomatic'],
-      VOTING: ['procedural', 'economic']
+      DEBATE: ['economic', 'prosperity', 'material'],
+      FALLOUT: ['economic', 'social'],
+      VOTING: ['economic', 'pragmatic']
+    },
+    {
+      trade_income: 150 // +150 income per tick
     }
   ),
   
   // T2: Market integration
   createTieredLawDefinition(
     'law_market_integration',
-    'Market Integration Standards',
+    'Scourge Survival Trade Protocols',
     2,
     'economic',
     {
@@ -247,6 +271,9 @@ const ECONOMIC_BRANCH = [
       DEBATE: ['economic', 'market', 'standards'],
       FALLOUT: ['economic', 'technological'],
       VOTING: ['procedural', 'efficiency']
+    },
+    {
+      trade_income: 75 // +75 income per tick
     }
   ),
   
@@ -271,6 +298,11 @@ const ECONOMIC_BRANCH = [
       DEBATE: ['economic', 'union', 'historic'],
       FALLOUT: ['economic', 'cultural', 'paradigm'],
       VOTING: ['consensus', 'efficiency']
+    },
+    {
+      trade_income: 300, // +300 credits per tick
+      industrial_output: 0.1, // 10% production bonus
+      supply_efficiency: 0.15 // 15% supply efficiency
     }
   )
 ];
@@ -280,33 +312,35 @@ const ECONOMIC_BRANCH = [
  * Focus: Political structure, decision-making, authority
  */
 const GOVERNANCE_BRANCH = [
-  // T1: Basic transparency
+  // T1: Ideology - Stoicist
   createTieredLawDefinition(
-    'law_transparency',
-    'Governance Transparency Act',
+    'law_discipline_directive',
+    'Discipline Directive',
     1,
     'governance',
     {
-      authoritarian_liberal: 0.4,
-      spiritual_materialistic: 0.2
+      stoicist_hedonistic: -0.4
     },
-    ['governance', 'transparency'],
+    ['discipline', 'sacrifice'],
     {
-      population_incentive: 0.3,
-      security_incentive: -0.1,
-      economy_incentive: 0.1
+      population_incentive: -0.1,
+      security_incentive: 0.3,
+      economy_incentive: 0.0
     },
     {
-      DEBATE: ['governance', 'transparency', 'civil'],
-      FALLOUT: ['social', 'political'],
-      VOTING: ['procedural', 'compromise']
+      DEBATE: ['discipline', 'sacrifice', 'unity'],
+      FALLOUT: ['social', 'economic'],
+      VOTING: ['unity', 'sacrifice']
+    },
+    {
+      cohesionModifier: 1.05 // 5% faster cohesion recovery
     }
   ),
   
   // T2: Digital systems
   createTieredLawDefinition(
     'law_digital_governance',
-    'Digital Governance Framework',
+    'Scourge Crisis Command Network',
     2,
     'governance',
     {
@@ -326,7 +360,8 @@ const GOVERNANCE_BRANCH = [
       VOTING: ['procedural', 'efficiency']
     },
     {
-      tick_delay_multiplier: 0.7 // Faster resolution
+      tick_delay_multiplier: 0.7, // Faster resolution
+      cohesionModifier: 1.025 // 2.5% faster cohesion recovery
     }
   ),
   
@@ -351,6 +386,12 @@ const GOVERNANCE_BRANCH = [
       DEBATE: ['governance', 'unity', 'historic'],
       FALLOUT: ['political', 'paradigm'],
       VOTING: ['consensus', 'historic']
+    },
+    {
+      tick_delay_multiplier: 0.5, // 50% faster law resolution
+      cohesionModifier: 1.15, // 15% cohesion recovery
+      relations_strength_modifier: 1.2, // 20% diplomacy bonus
+      empire_approval: 1 // +1 approval per tick
     }
   )
 ];
@@ -360,33 +401,35 @@ const GOVERNANCE_BRANCH = [
  * Focus: Genetic enhancement, hive integration, organic systems
  */
 const BIOLOGIC_BRANCH = [
-  // T1: Research foundations
+  // T1: Ideology - Constructivist
   createTieredLawDefinition(
-    'law_genetic_research',
-    'Genetic Research Authorization',
+    'law_identity_evolution_charter',
+    'Identity Evolution Charter',
     1,
     'biologic',
     {
-      natural_mechanical: -0.2,
-      essentialist_constructivist: 0.3
+      essentialist_constructivist: 0.4
     },
-    ['biologic', 'research', 'scientific'],
+    ['evolution', 'adaptation'],
     {
       population_incentive: 0.2,
       security_incentive: 0.1,
       economy_incentive: 0.1
     },
     {
-      DEBATE: ['scientific', 'biologic', 'ethics'],
-      FALLOUT: ['social', 'ethical'],
-      VOTING: ['procedural', 'scientific']
+      DEBATE: ['evolution', 'adaptation', 'identity'],
+      FALLOUT: ['social', 'cultural'],
+      VOTING: ['progressive', 'adaptive']
+    },
+    {
+      population_growth: 2.5 // +2.5 population growth per tick
     }
   ),
   
   // T2: Enhancement programs
   createTieredLawDefinition(
     'law_genetic_enhancement',
-    'Genetic Enhancement Program',
+    'Scourge Adaptation Genetic Initiative',
     2,
     'biologic',
     {
@@ -404,6 +447,9 @@ const BIOLOGIC_BRANCH = [
       DEBATE: ['scientific', 'biologic', 'philosophical'],
       FALLOUT: ['social', 'ethical', 'cultural'],
       VOTING: ['procedural', 'compromise']
+    },
+    {
+      population_growth: 1.25 // +1.25 population growth per tick
     }
   ),
   
@@ -428,6 +474,10 @@ const BIOLOGIC_BRANCH = [
       DEBATE: ['economic', 'biologic', 'production'],
       FALLOUT: ['economic', 'environmental', 'cultural'],
       VOTING: ['economic', 'compromise']
+    },
+    {
+      population_growth: 5, // +5 population growth per tick
+      industrial_output: 0.05 // 5% production bonus for organic goods
     }
   ),
   
@@ -452,6 +502,12 @@ const BIOLOGIC_BRANCH = [
       DEBATE: ['hive', 'collective', 'philosophical'],
       FALLOUT: ['social', 'unrest', 'cultural'],
       VOTING: ['procedural', 'security']
+    },
+    {
+      cohesionModifier: 1.2, // 20% cohesion recovery (hive unity)
+      army_organization: 15, // +15 army organization (collective coordination)
+      population_growth: 10, // +10 population growth (hive reproduction)
+      empire_approval: -1 // -1 approval (loss of individuality concerns)
     }
   )
 ];
@@ -461,26 +517,28 @@ const BIOLOGIC_BRANCH = [
  * Focus: Crisis response, rationing, emergency powers
  */
 const EMERGENCY_BRANCH = [
-  // T1: Planning
+  // T1: Ideology - Mechanical
   createTieredLawDefinition(
-    'law_emergency_planning',
-    'Emergency Response Planning',
+    'law_synthetic_integration_act',
+    'Synthetic Integration Act',
     1,
     'emergency',
     {
-      stoicist_hedonistic: -0.2,
-      authoritarian_liberal: -0.1
+      natural_mechanical: 0.4
     },
-    ['emergency', 'planning'],
+    ['synthetic', 'technology'],
     {
       population_incentive: 0.1,
-      security_incentive: 0.3,
+      security_incentive: 0.2,
       economy_incentive: 0.2
     },
     {
-      DEBATE: ['emergency', 'security', 'planning'],
-      FALLOUT: ['economic', 'social'],
-      VOTING: ['procedural', 'security']
+      DEBATE: ['technology', 'synthetic', 'progress'],
+      FALLOUT: ['social', 'technological'],
+      VOTING: ['progressive', 'efficiency']
+    },
+    {
+      industrial_output: 0.075 // 7.5% production efficiency
     }
   ),
   
@@ -504,6 +562,11 @@ const EMERGENCY_BRANCH = [
       DEBATE: ['economic', 'emergency', 'security'],
       FALLOUT: ['economic', 'unrest', 'hardship'],
       VOTING: ['emergency', 'compromise']
+    },
+    {
+      supply_efficiency: 0.2, // 20% supply efficiency
+      trade_income: -50, // -50 credits per tick (rationing costs)
+      empire_approval: -0.25 // Slight approval drain
     }
   ),
   
@@ -527,6 +590,14 @@ const EMERGENCY_BRANCH = [
       DEBATE: ['emergency', 'authority', 'security'],
       FALLOUT: ['political', 'unrest', 'hardship'],
       VOTING: ['emergency', 'security']
+    },
+    {
+      tick_delay_multiplier: 0.4, // 60% faster law resolution
+      army_maintenance_cost_modifier: 0.7, // 30% army cost reduction
+      industrial_output: 0.15, // 15% production bonus
+      supply_efficiency: 0.25, // 25% supply efficiency
+      empire_approval: -1, // -1 approval per tick (authoritarian measures)
+      cohesionModifier: 0.95 // 5% cohesion penalty (internal tensions)
     }
   )
 ];

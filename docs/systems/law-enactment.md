@@ -2,281 +2,226 @@
 
 ## Overview
 
-The Law Enactment system is a deterministic, event-driven framework for processing laws through a 3-phase lifecycle: **DEBATE** → **FALLOUT** → **VOTING**. It integrates seamlessly with the existing event system and uses ideological alignment, dynamic meters, and voting mechanics to create emergent gameplay.
+The Law Enactment system is a streamlined framework for enacting laws that provide permanent coalition-wide modifiers. Laws are organized in tiers (T1, T2, T3) within ideological branches, with tier progression requiring enacted laws from previous tiers. Once enacted, laws apply their effects permanently via coalitionModifiers.
 
 ## Architecture
 
 ### Core Principles
 
-1. **Event-Driven**: Laws are not hardcoded outcomes. Instead, they are resolved by browsing eligible events, computing weights, and applying effects.
-2. **Deterministic**: Same seed + same inputs = identical event log and outcomes.
-3. **Modular**: Law definitions and events are content, not code. Easy to add new laws and events.
-4. **Composable**: Meters, triggers, weights, and effects form a flexible modifier stack.
+1. **Immediate Enactment**: Laws are enacted instantly upon selection, applying permanent effects.
+2. **Tiered Progression**: T1 laws always available, T2 requires 2 enacted T1, T3 requires 2 enacted T2.
+3. **Ideological Alignment**: Laws positioned on 6 ideological axes: Pacifist-Militaristic, Authoritarian-Liberal, Stoicist-Hedonistic, Natural-Mechanical, Essentialist-Constructivist, Spiritual-Materialistic.
+4. **Branch Organization**: Laws grouped into 6 branches: Military, Rights, Economic, Governance, Biologic, Emergency.
+5. **Permanent Effects**: All effects are permanent coalitionModifiers (no expiration or trade-offs).
 
 ### Data Models
 
-#### LawDefinition
-Defines a law's ideological position and how it's perceived:
+#### LawDefinition (Tiered)
+Defines a law's properties, requirements, and effects:
 ```javascript
 {
-  id: 'law_ai_citizenship',
-  name: 'AI Citizenship Rights',
+  id: 'law_peace_accord_initiative',
+  name: 'Peace Accord Initiative',
+  tier: 1,
+  branch: 'military',
   axis_vector: {
-    natural_mechanical: 0.9,
-    essentialist_constructivist: 0.6,
-    authoritarian_liberal: 0.3
+    pacifist_militaristic: 0.4
   },
-  law_tags: ['mechanical', 'rights'],
+  law_tags: ['peace', 'diplomacy'],
   support_weights: {
-    population_incentive: 0.3,
-    security_incentive: -0.2,
+    population_incentive: 0.1,
+    security_incentive: 0.2,
     economy_incentive: 0.1
   },
   phase_tags: {
-    DEBATE: ['rights', 'mechanical', 'philosophical'],
-    FALLOUT: ['social', 'economic', 'unrest'],
-    VOTING: ['procedural', 'compromise']
+    DEBATE: ['peace', 'diplomacy', 'cooperation'],
+    FALLOUT: ['social', 'economic'],
+    VOTING: ['diplomacy', 'compromise']
+  },
+  coalitionModifiers: {
+    army_maintenance_cost_modifier: 0.9, // 10% reduction
+    relations_strength_modifier: 1.075   // 7.5% boost
   }
 }
 ```
 
-#### LawProcess
-Runtime state for an in-flight law:
-```javascript
-{
-  lawId: 'law_ai_citizenship',
-  phase: 'DEBATE', // DEBATE | FALLOUT | VOTING | ENACTED | BURIED
-  phaseProgress: 0.5, // 0..1, advances to next phase at 1.0
-  rejects: 1, // 0..4, burial at 4
-  
-  meters: {
-    momentum: 0.7,        // forward drive (0..1)
-    reject_pressure: 0.3, // fragility/heat (0..1)
-    unrest: 0.2,          // populace volatility (0..1)
-    polarization: 0.4,    // extremeness of positions (0..1)
-    legitimacy: 0.8,      // perceived validity (0..1)
-    economy_shock: 0.1    // economic disruption (0..1)
-  },
-  
-  empireStances: {
-    'empire_1': {
-      empireId: 'empire_1',
-      stance_score: 0.65,
-      stance_tier: 'APPROVE',
-      vote_intent: 'support',
-      modifiers: { bribed: 0, threatened: 0, scandalized: 0 }
-    }
-    // ... one per empire
-  },
-  
-  eventLog: [
-    { tick: 1, phase: 'DEBATE', eventId: 'debate_passionate_speech', nature: 'APPROVE' }
-  ]
-}
-```
+#### Coalition Modifiers
+Permanent effects applied to the coalition state:
+- `industrial_output`: Multiplier for industrial production (+7.5% for Mechanical laws)
+- `army_maintenance_cost_modifier`: Multiplier for army maintenance costs (0.9 = -10%)
+- `relations_strength_modifier`: Multiplier for diplomatic relations (1.075 = +7.5%)
+- `trade_income`: Flat income bonus per tick (+150)
+- `empire_approval`: Flat approval bonus per empire (+1)
+- `population_growth`: Flat population growth bonus per tick (+2.5)
 
-#### Event Template (Law-Scoped)
-```javascript
-{
-  id: 'debate_passionate_speech',
-  name: 'Passionate Speech in Council',
-  scope: 'LAW',
-  phase_tags: ['DEBATE'],
-  nature: 'APPROVE', // APPROVE | ADVANCE | REJECT | LAUD | DENOUNCE | NEUTRAL
-  tier: 'MAJOR', // MAJOR | MINOR
-  triggers: [
-    { type: 'meter_above', meter: 'momentum', threshold: 0.4 }
-  ],
-  base_weight: 1.0,
-  effects: {
-    progress: 0.3,
-    meters: {
-      momentum: 0.1,
-      polarization: 0.05
-    }
-  },
-  weight_modifiers: [
-    { type: 'momentum_boost', multiplier: 0.5 }
-  ]
-}
-```
+#### LawProcess (Legacy - Not Used)
+The new system uses immediate enactment, so LawProcess is not applicable.
 
-#### PowerSystemPolicy
-Defines voting rules:
-```javascript
-{
-  id: 'equal_council',
-  name: 'Equal Council Votes',
-  type: 'equal_council', // equal_council | pressure_weighted | hegemonic
-  config: {
-    base_votes_per_empire: 1,
-    quorum_threshold: 0.5,  // 50% of votes must be cast
-    pass_threshold: 0.5     // 50% of votes needed to pass
-  }
-}
-```
+#### Event Template (Law-Scoped) - Legacy
+Not used in the new system.
+
+#### PowerSystemPolicy - Legacy
+Not used in the new system.
 
 ## Resolution Flow
 
-### Per-Law Resolution Cycle
+### Law Enactment Process
 
-1. **Build Context**: Gather law process, definition, empires, and meters.
-2. **Filter Events**: Find events matching `scope=LAW`, current phase tag, and passing triggers.
-3. **Compute Weights**: For each eligible event:
-   - Start with `base_weight`
-   - Apply trigger-based modifiers
-   - Apply context bias (momentum boosts APPROVE, reject_pressure boosts REJECT)
-4. **Pick Events**: 
-   - 1 MAJOR event (weighted random)
-   - 0-3 MINOR events (weighted random, no duplicates)
-5. **Apply Effects**:
-   - Update meters
-   - Update phaseProgress
-   - Track empire relations
-6. **Enforce Rules**:
-   - If event nature == REJECT: increment rejects
-   - If rejects == 4: set BURIED and apply burial consequences
-7. **Check Phase Advancement**:
-   - If phaseProgress >= 1.0 and not final phase: advance to next phase
-8. **Check Completion**:
-   - If VOTING phase completes: tally votes and set ENACTED or BURIED
+1. **Check Requirements**: Verify tier is unlocked (T1 always, T2/T3 require previous tier laws).
+2. **Check Cost**: Player must have 100 influence.
+3. **Deduct Cost**: Remove 100 influence from player.
+4. **Apply Effects**: Immediately apply coalitionModifiers to state.coalitionModifiers.
+5. **Mark Enacted**: Add law ID to state.enactedLaws array.
+6. **Update UI**: Refresh law availability and display active laws.
 
-### Empire Stance Calculation
+### Tier Unlock Requirements
 
-At law start, calculate each empire's stance:
-1. **Base Alignment**: Dot product of empire values and law axis_vector, normalized.
-2. **Support Biases**: Apply population_incentive, security_incentive, economy_incentive based on game state.
-3. **Stance Tier**: Map score to LAUD/APPROVE/NEUTRAL/DISAPPROVE/DENOUNCE.
-4. **Vote Intent**: Derive from stance tier (LAUD/APPROVE → support, DENOUNCE/DISAPPROVE → oppose).
+- **T1**: Always available (6 laws per ideological axis, one per branch).
+- **T2**: Requires 2 enacted T1 laws.
+- **T3**: Requires 2 enacted T2 laws.
 
-### Vote Tallying
+### Ideological Axes
 
-In VOTING phase, when phaseProgress >= 1.0:
-1. Calculate votes per empire using PowerSystemPolicy.
-2. Aggregate votes by vote_intent (support/oppose/abstain).
-3. Check quorum: `(support + oppose) >= totalVotes * quorum_threshold`
-4. Check pass: `support >= totalVotes * pass_threshold`
-5. If both pass: ENACTED, else: BURIED.
+Laws are positioned on 6 axes, each with opposing ideologies:
+- **Pacifist-Militaristic**: Peace vs. War focus
+- **Authoritarian-Liberal**: Control vs. Freedom
+- **Stoicist-Hedonistic**: Discipline vs. Pleasure
+- **Natural-Mechanical**: Organic vs. Synthetic
+- **Essentialist-Constructivist**: Fixed Identity vs. Fluid Change
+- **Spiritual-Materialistic**: Faith vs. Reason
+
+Each T1 law represents one ideology with +0.4 positioning on its axis.
 
 ## Player Influence Economy
 
-- **Generation**: +1 influence per 100 ticks (fractional accumulator).
+- **Generation**: +1 influence per tick (simplified from 100 ticks).
 - **Starting a Law**: Costs 100 influence.
-- **Concurrent Laws**: Multiple laws can be in-flight simultaneously.
+- **Concurrent Laws**: No limit - can enact multiple laws simultaneously.
+- **No Active Law Limit**: Unlike old system, no restriction on concurrent law processes.
 
 ## Law Modifiers
 
-- **tick_delay_multiplier**: Scales how many ticks are needed between law events (lower is faster).
-- **enactment_chance_bonus**: Lowers the pass threshold during vote tallying.
+CoalitionModifiers are applied permanently to the game state:
 
-## Rejection & Burial
+- **industrial_output**: Multiplies industrial production output (e.g., 1.075 = +7.5%)
+- **army_maintenance_cost_modifier**: Multiplies army maintenance costs (e.g., 0.9 = -10%)
+- **relations_strength_modifier**: Multiplies diplomatic relation strength (e.g., 1.075 = +7.5%)
+- **trade_income**: Adds flat income per tick (e.g., +150 credits)
+- **empire_approval**: Adds flat approval per empire per tick (e.g., +1 approval)
+- **population_growth**: Adds flat population growth per empire per tick (e.g., +2.5)
 
-- **Reject Tracking**: Each REJECT-nature major event increments rejects.
-- **Burial Rule**: 4th reject immediately sets phase to BURIED.
-- **Burial Effects**: Supporters lose approval, opponents gain approval.
+Effects are cumulative across all enacted laws.
+
+## Law Branches
+
+Laws are organized into 6 branches, each containing T1-T3 laws:
+
+- **Military**: Defense, conscription, warfare (Pacifist/Militaristic axis)
+- **Rights**: Civil liberties, citizenship, personhood (Authoritarian/Liberal axis)  
+- **Economic**: Trade, markets, resource management (Spiritual/Materialistic axis)
+- **Governance**: Political structure, decision-making (Stoicist/Hedonistic axis)
+- **Biologic**: Genetic enhancement, hive integration (Essentialist/Constructivist axis)
+- **Emergency**: Crisis response, rationing (Natural/Mechanical axis)
+
+Each branch has 1 T1 law representing one ideology, with potential for multiple T2/T3 laws adding complexity.
 
 ## Determinism
 
-- **Seeded RNG**: `DeterministicRNG` ensures same seed → same sequence.
-- **Event Log**: Every event chosen is recorded with its nature and tick.
-- **Testing**: `testDeterminism.js` validates identical outcomes from identical seeds.
+- **Immediate Effects**: Law enactment is deterministic - same law selection always produces same modifier application.
+- **No RNG**: Unlike old event-driven system, no random elements in enactment.
+- **Testing**: Unit tests verify modifier application correctness.
 
 ## Content Creation
 
 ### Adding a New Law Definition
 
-Create a JS object or YAML module:
+Create a tiered law definition in `src/game/lawDefinitions.js`:
 
-```yaml
-module:
-  id: "lawdef_genetic_enhancement"
-  type: "law_definition"
-
-declares:
-  law_definition:
-    id: "law_genetic_enhancement"
-    name: "Genetic Enhancement Program"
-    axis_vector:
-      natural_mechanical: 0.5
-      essentialist_constructivist: 0.7
-    law_tags: ["biologic", "enhancement"]
-    support_weights:
-      population_incentive: 0.4
-      security_incentive: 0.3
-      economy_incentive: -0.2
-    phase_tags:
-      DEBATE: ["scientific", "biologic", "philosophical"]
-      FALLOUT: ["social", "ethical", "cultural"]
-      VOTING: ["procedural", "compromise"]
+```javascript
+createTieredLawDefinition(
+  'law_example',
+  'Example Law Name',
+  1, // tier
+  'military', // branch
+  {
+    pacifist_militaristic: 0.4 // ideological positioning
+  },
+  ['peace', 'diplomacy'], // law tags
+  {
+    population_incentive: 0.1,
+    security_incentive: 0.2,
+    economy_incentive: 0.1
+  },
+  {
+    DEBATE: ['peace', 'diplomacy'],
+    FALLOUT: ['social', 'economic'],
+    VOTING: ['diplomacy', 'compromise']
+  },
+  {
+    industrial_output: 0.075 // 7.5% production boost
+  }
+)
 ```
 
-### Adding a New Law Event
+### Law Effect Types
 
-```yaml
-module:
-  id: "lawevent_protest"
-  type: "law_event"
-
-declares:
-  law_event:
-    id: "fallout_public_protest"
-    name: "Public Protests Erupt"
-    scope: "LAW"
-    phase_tags: ["FALLOUT"]
-    nature: "REJECT"
-    tier: "MAJOR"
-    triggers:
-      - type: "meter_above"
-        meter: "polarization"
-        threshold: 0.5
-    base_weight: 1.0
-    effects:
-      progress: -0.2
-      meters:
-        unrest: 0.2
-        reject_pressure: 0.15
-        momentum: -0.15
-    weight_modifiers:
-      - type: "polarization_boost"
-        multiplier: 1.0
-```
+- **industrial_output**: Production multiplier (0.075 = +7.5%)
+- **army_maintenance_cost_modifier**: Maintenance cost multiplier (0.9 = -10%)
+- **relations_strength_modifier**: Relations multiplier (1.075 = +7.5%)
+- **trade_income**: Flat income bonus (+150)
+- **empire_approval**: Approval per empire (+1)
+- **population_growth**: Population growth bonus (+2.5)
 
 ## Usage
 
-### CLI Runner
+### CLI Testing
 ```bash
-# Run with default seed (42)
-node lawRunner.js
+# Run tests
+npm run test
 
-# Run with custom seed
-node lawRunner.js 999
-
-# Test determinism
-node testDeterminism.js
+# Individual test suites
+npm run test:determinism
+npm run test:gameplay
 ```
 
 ### In Game
-1. Start the game: `node index.js`
-2. Accumulate influence (1 per 100 ticks)
-3. Select a law with arrow keys
-4. Press Enter to start the law process (costs 100 influence)
-5. Watch the law progress through DEBATE → FALLOUT → VOTING
-6. Laws can be ENACTED (passed) or BURIED (rejected or failed)
+1. Start the game: `npm start`
+2. Accumulate influence (+1 per tick)
+3. Navigate to Actions panel (TAB key)
+4. Select "Propose Law" and choose from available T1 laws
+5. Press Enter to enact (costs 100 influence, immediate effect)
+6. Effects are permanent coalition modifiers
+7. Unlock T2 laws after enacting 2 T1 laws, T3 after 2 T2 laws
+
+### UI Features
+- Law selection shows tier, cost, and effect tooltips
+- Active laws display in separate panel
+- Modifier effects visible in stats and tooltips
 
 ## Files
 
 - **src/game/types.js**: Type definitions and constructors
-- **src/game/lawEngine.js**: Core event filtering, weighting, picking, and effect application
-- **src/game/lawProcessManager.js**: Law process lifecycle management
-- **src/game/lawDefinitions.js**: Sample law definitions
-- **src/game/lawEventTemplates.js**: Sample law events
-- **lawRunner.js**: CLI runner for testing
-- **testDeterminism.js**: Determinism validation test
+- **src/game/laws.js**: Law enactment logic and modifier application
+- **src/game/lawDefinitions.js**: Tiered law definitions with effects
+- **src/game/lawProcessManager.js**: Law process management (simplified)
+- **src/ui/renderer.js**: Law display and tooltips
+- **src/ui/input.js**: Law selection input handling
+- **testCoalitionLaws.js**: Law enactment tests
+
+## Current Implementation Status
+
+- ✅ **T1 Laws**: 6 laws implemented, one per ideological axis
+- ✅ **Immediate Enactment**: Laws apply effects instantly
+- ✅ **Tier Progression**: T1 always available, T2/T3 gated by previous tiers
+- ✅ **Permanent Modifiers**: Effects persist indefinitely
+- ✅ **UI Integration**: Law selection with tooltips, active law display
+- ✅ **Testing**: Comprehensive test coverage for enactment logic
 
 ## Future Enhancements
 
-- **AI Machinations**: Empire AI can spend resources to influence votes during VOTING phase
-- **Diminishing Returns**: Repeated machinations on the same empire become less effective
-- **Dynamic Events**: Events with empire-specific targeting
-- **Coalition Effects**: Laws that modify coalition mechanics
-- **Chained Laws**: Laws that unlock follow-up laws
+- **T2/T3 Laws**: Implement complex laws with prerequisites
+- **Law Conflicts**: Mutual exclusion between opposing ideologies
+- **Dynamic Effects**: Modifiers that scale with game state
+- **Law Repeal**: Ability to repeal previously enacted laws
+- **Ideological Drift**: Empire values shift based on enacted laws
+- **Coalition Politics**: Empire approval affects based on ideological alignment

@@ -6,7 +6,7 @@ import { advanceTurn } from './src/game/turn.js';
 import { REALTIME_CONSTANTS, COALITION_ECONOMY } from './src/game/constants.js';
 import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
 import { getAllLawEvents } from './src/game/lawEventTemplates.js';
-import { createPowerSystemPolicy } from './src/game/types.js';
+import { createGameState, createPowerSystemPolicy } from './src/game/types.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from './src/game/marketEconomy.js';
 import { DeterministicRNG } from './src/modules/rng.js';
@@ -19,6 +19,9 @@ import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Check for --new flag to force new game
+const forceNewGame = process.argv.includes('--new');
 
 const AUTOSAVE_DIR = path.join(__dirname, 'saves');
 const AUTOSAVE_FILE = path.join(AUTOSAVE_DIR, 'autosave.json');
@@ -208,13 +211,13 @@ function hydrateLoadedState(snapshot) {
   return hydrated;
 }
 
-const autosaveState = loadGameState();
+const autosaveState = forceNewGame ? null : loadGameState();
 const fallbackSeed = Math.floor(Math.random() * 1_000_000);
 const initialSeed = autosaveState?.rngSeed ?? fallbackSeed;
 const state = createGameState(initialSeed);
 let startupMessage = '';
 
-if (autosaveState) {
+if (autosaveState && !forceNewGame) {
   const hydrated = hydrateLoadedState(autosaveState);
   replaceState(state, hydrated);
   startupMessage = `Autosave loaded (turn ${state.turn}).`;
@@ -222,8 +225,8 @@ if (autosaveState) {
 } else {
   const newState = buildNewGameState(initialSeed);
   replaceState(state, newState);
-  startupMessage = 'New game started.';
-  console.log(`Seed: ${initialSeed}`);
+  startupMessage = forceNewGame ? 'New game started (forced).' : 'New game started.';
+  console.log(`${startupMessage} Seed: ${initialSeed}`);
 }
 
 

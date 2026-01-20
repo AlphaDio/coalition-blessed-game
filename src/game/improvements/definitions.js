@@ -37,6 +37,7 @@ export function createTieredImprovementRequest(id, name, description, tier, bran
 /**
  * INDUSTRIAL BRANCH
  * Focus: Production, manufacturing, resource extraction
+ * Thematic Resource: Super Alloys -> Construction speed and capacity
  */
 const INDUSTRIAL_BRANCH = [
    // T1: Basic industry
@@ -148,6 +149,7 @@ const INDUSTRIAL_BRANCH = [
 /**
  * RESEARCH BRANCH
  * Focus: Technology advancement, knowledge discovery
+ * Thematic Resource: Rare Gases -> Research Speed
  */
 const RESEARCH_BRANCH = [
   // T1: Basic research
@@ -161,7 +163,7 @@ const RESEARCH_BRANCH = [
       suppliesCost: 90,
       build: 220,
       capacity: 2,
-      sustainmentCost: { biomass: 2, solid_ice: 1 },
+      sustainmentCost: { rare_gases: 2, solid_ice: 1 },
       productionOutputs: {},
       modifiers: { research_speed: 0.05 },
       tags: ['research', 'facility']
@@ -179,7 +181,7 @@ const RESEARCH_BRANCH = [
       suppliesCost: 160,
       build: 320,
       capacity: 3,
-      sustainmentCost: { rare_gases: 2, super_alloys: 2 },
+      sustainmentCost: { rare_gases: 4, quantum_circuits: 1 },
       productionOutputs: {},
       modifiers: { research_speed: 0.08 },
       tags: ['research', 'computing', 'neural']
@@ -197,7 +199,7 @@ const RESEARCH_BRANCH = [
       suppliesCost: 300,
       build: 600,
       capacity: 4,
-      sustainmentCost: { super_alloys: 4, rare_gases: 3, quantum_circuits: 1 },
+      sustainmentCost: { rare_gases: 6, quantum_circuits: 2, genomes: 2 },
       productionOutputs: { rare_gases: 3 },
       modifiers: { research_speed: 0.15 },
       tags: ['mega_structure', 'research', 'knowledge', 'transcendent']
@@ -208,20 +210,21 @@ const RESEARCH_BRANCH = [
 /**
  * MILITARY BRANCH
  * Focus: Combat effectiveness, army management
+ * Thematic Resource: Solid Ice -> Supply Efficiency
  */
 const MILITARY_BRANCH = [
   // T1: Basic military
   createTieredImprovementRequest(
     'military_depot',
     'Military Depot',
-    'Logistics hub improving army supply lines',
+    'Logistics hub improving army supply lines with advanced cooling systems',
     1,
     'military',
     {
       suppliesCost: 70,
       build: 180,
       capacity: 2,
-      sustainmentCost: { biomass: 3 },
+      sustainmentCost: { solid_ice: 3, biomass: 1 },
       productionOutputs: {},
       modifiers: { supply_efficiency: 0.05 },
       tags: ['military', 'logistics']
@@ -232,14 +235,14 @@ const MILITARY_BRANCH = [
   createTieredImprovementRequest(
     'grand_symposium',
     'Grand War Symposium',
-    'Galactic convocation coordinating fleets across a thousand battlefronts',
+    'Galactic convocation coordinating fleets across a thousand battlefronts with cryo-preserved logistics',
     2,
     'military',
     {
       suppliesCost: 150,
       build: 300,
       capacity: 2,
-      sustainmentCost: { super_alloys: 4, biomass: 6 },
+      sustainmentCost: { solid_ice: 5, super_alloys: 3 },
       productionOutputs: {},
       modifiers: { army_organization: 5, supply_efficiency: 0.08 },
       tags: ['mega_structure', 'military', 'coordination']
@@ -250,14 +253,14 @@ const MILITARY_BRANCH = [
   createTieredImprovementRequest(
     'imperial_fortress',
     'Imperial Fortress',
-    'Impenetrable citadel commanding the strategic heart of the galaxy',
+    'Impenetrable citadel commanding the strategic heart of the galaxy with ice-core storage vaults',
     3,
     'military',
     {
       suppliesCost: 400,
       build: 700,
       capacity: 4,
-      sustainmentCost: { super_alloys: 6, rare_gases: 4, quantum_circuits: 2 },
+      sustainmentCost: { solid_ice: 8, super_alloys: 4, quantum_circuits: 2 },
       productionOutputs: {},
       modifiers: { army_organization: 8, supply_efficiency: 0.12 },
       tags: ['mega_structure', 'military', 'fortress', 'transcendent']
@@ -268,22 +271,23 @@ const MILITARY_BRANCH = [
 /**
  * CULTURAL BRANCH
  * Focus: Population growth, approval, social cohesion
+ * Thematic Resource: Biomass -> Population growth
  */
 const CULTURAL_BRANCH = [
   // T1: Basic culture
   createTieredImprovementRequest(
     'cultural_center',
     'Cultural Center',
-    'Community hub fostering social bonds and cultural expression',
+    'Community hub fostering social bonds and cultural expression with abundant resources',
     1,
     'cultural',
     {
       suppliesCost: 60,
       build: 160,
       capacity: 2,
-      sustainmentCost: { biomass: 2 },
+      sustainmentCost: { biomass: 3 },
       productionOutputs: {},
-      modifiers: { empire_approval: 2 },
+      modifiers: { empire_approval: 2, population_growth: 1 },
       tags: ['cultural', 'social']
     }
   ),
@@ -292,16 +296,16 @@ const CULTURAL_BRANCH = [
   createTieredImprovementRequest(
     'festival_grounds',
     'Festival of Worlds',
-    'Massive celebration spanning star systems, uniting billions',
+    'Massive celebration spanning star systems, uniting billions with abundant feasts',
     2,
     'cultural',
     {
       suppliesCost: 250,
       build: 480,
       capacity: 3,
-      sustainmentCost: { biomass: 5, genomes: 3, psycho_implants: 1 },
+      sustainmentCost: { biomass: 6, genomes: 2, psycho_implants: 1 },
       productionOutputs: { genomes: 4 },
-      modifiers: { population_growth: 3, empire_approval: 2 },
+      modifiers: { population_growth: 4, empire_approval: 2 },
       tags: ['mega_structure', 'cultural', 'celebration', 'biologic']
     }
   ),
@@ -310,16 +314,16 @@ const CULTURAL_BRANCH = [
   createTieredImprovementRequest(
     'harmony_nexus',
     'Harmony Nexus',
-    'Transcendent unity network connecting all sentient minds across the cosmos',
+    'Transcendent unity network sustaining endless biomass flows to nurture galactic populations',
     3,
     'cultural',
     {
       suppliesCost: 350,
       build: 650,
       capacity: 4,
-      sustainmentCost: { genomes: 5, psycho_implants: 3, quantum_circuits: 2 },
-      productionOutputs: { psycho_implants: 3 },
-      modifiers: { population_growth: 5, empire_approval: 4 },
+      sustainmentCost: { biomass: 8, genomes: 3, psycho_implants: 2 },
+      productionOutputs: { genomes: 5, psycho_implants: 2 },
+      modifiers: { population_growth: 8, empire_approval: 3 },
       tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic']
     }
   )
@@ -386,6 +390,128 @@ const ECONOMIC_BRANCH = [
 ];
 
 /**
+ * SPIRITUAL BRANCH
+ * Focus: Fervor, morale, ideological strength
+ * Thematic Resource: Ancient Relics -> Fervor Contribution to Army Power
+ */
+const SPIRITUAL_BRANCH = [
+  // T1: Basic spiritual
+  createTieredImprovementRequest(
+    'relic_shrine',
+    'Relic Shrine',
+    'Sacred site housing ancient artifacts that inspire warriors with righteous fervor',
+    1,
+    'spiritual',
+    {
+      suppliesCost: 80,
+      build: 200,
+      capacity: 2,
+      sustainmentCost: { ancient_relics: 1, biomass: 2 },
+      productionOutputs: {},
+      modifiers: { army_fervor: 3 },
+      tags: ['spiritual', 'morale', 'relics']
+    }
+  ),
+
+  // T2: Advanced spiritual
+  createTieredImprovementRequest(
+    'monument_of_ages',
+    'Monument of Ages',
+    'Towering edifice displaying relics from countless civilizations, channeling their ancient power into battle fervor',
+    2,
+    'spiritual',
+    {
+      suppliesCost: 180,
+      build: 350,
+      capacity: 3,
+      sustainmentCost: { ancient_relics: 3, psycho_implants: 2 },
+      productionOutputs: { ancient_relics: 1 },
+      modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
+      tags: ['mega_structure', 'spiritual', 'heritage', 'relics']
+    }
+  ),
+
+  // T3: Transcendent spiritual
+  createTieredImprovementRequest(
+    'sanctum_of_eternity',
+    'Sanctum of Eternity',
+    'Transcendent temple where ancient relics resonate with cosmic power, granting armies unshakeable conviction',
+    3,
+    'spiritual',
+    {
+      suppliesCost: 350,
+      build: 650,
+      capacity: 4,
+      sustainmentCost: { ancient_relics: 5, psycho_implants: 3, sentient_cores: 1 },
+      productionOutputs: { ancient_relics: 2 },
+      modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
+      tags: ['mega_structure', 'spiritual', 'transcendent', 'relics']
+    }
+  )
+];
+
+/**
+ * GOVERNANCE BRANCH
+ * Focus: Law progress, political efficiency, coalition management
+ * Thematic Resource: Sentient Cores -> Law Progress
+ */
+const GOVERNANCE_BRANCH = [
+  // T1: Basic governance
+  createTieredImprovementRequest(
+    'administrative_hub',
+    'Administrative Hub',
+    'Centralized bureaucratic center streamlining coalition law processing',
+    1,
+    'governance',
+    {
+      suppliesCost: 75,
+      build: 190,
+      capacity: 2,
+      sustainmentCost: { biomass: 2, solid_ice: 1 },
+      productionOutputs: {},
+      modifiers: { law_progress_speed: 0.05 },
+      tags: ['governance', 'administration']
+    }
+  ),
+
+  // T2: Advanced governance
+  createTieredImprovementRequest(
+    'council_spire',
+    'Council Spire',
+    'Magnificent assembly hall where sentient AI cores analyze and accelerate legislative proceedings',
+    2,
+    'governance',
+    {
+      suppliesCost: 200,
+      build: 380,
+      capacity: 3,
+      sustainmentCost: { sentient_cores: 2, quantum_circuits: 1 },
+      productionOutputs: {},
+      modifiers: { law_progress_speed: 0.10, tick_delay_multiplier: 0.9 },
+      tags: ['mega_structure', 'governance', 'council', 'sentient']
+    }
+  ),
+
+  // T3: Transcendent governance
+  createTieredImprovementRequest(
+    'omniscient_senate',
+    'Omniscient Senate',
+    'Transcendent governing body guided by networked sentient cores processing galactic-scale policy at lightspeed',
+    3,
+    'governance',
+    {
+      suppliesCost: 400,
+      build: 700,
+      capacity: 4,
+      sustainmentCost: { sentient_cores: 4, quantum_circuits: 2, psycho_implants: 2 },
+      productionOutputs: { sentient_cores: 1 },
+      modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
+      tags: ['mega_structure', 'governance', 'transcendent', 'sentient']
+    }
+  )
+];
+
+/**
  * All improvement definitions organized by branch
  */
 export const IMPROVEMENT_BRANCHES = {
@@ -393,7 +519,9 @@ export const IMPROVEMENT_BRANCHES = {
   research: RESEARCH_BRANCH,
   military: MILITARY_BRANCH,
   cultural: CULTURAL_BRANCH,
-  economic: ECONOMIC_BRANCH
+  economic: ECONOMIC_BRANCH,
+  spiritual: SPIRITUAL_BRANCH,
+  governance: GOVERNANCE_BRANCH
 };
 
 /**
@@ -500,8 +628,51 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
 }
 
 /**
+ * Check if a tier is unlocked for an empire
+ * @param {number} tier - The tier to check
+ * @param {Object} state - The game state
+ * @param {string} empireId - The empire ID
+ * @returns {boolean} Whether the tier is unlocked
+ */
+export function isImprovementTierUnlocked(tier, state, empireId) {
+  if (tier === 1) {
+    // T1 is always available
+    return true;
+  }
+
+  // Check if empire exists
+  const empire = state.empires?.find(e => e.id === empireId);
+  if (!empire) {
+    return false;
+  }
+
+  // Check tier requirements
+  const requiredTier = tier - 1;
+  const requiredCount = IMPROVEMENT_TIER_REQUIREMENTS[tier];
+  const completedInTier = state.improvements?.queue
+    .filter(i => i.empireId === empireId && i.state !== 'BUILDING' && i.tier === requiredTier)
+    .length || 0;
+
+  return completedInTier >= requiredCount;
+}
+
+/**
  * Refresh improvement suggestions in state
  */
 export function refreshImprovementSuggestions(state, rng = Math.random) {
   state.improvements.requests = generateImprovementSuggestions(state, rng);
+}
+
+/**
+ * Get improvements available to an empire (filtered by tier unlock status)
+ * @param {Object} state - The game state
+ * @param {string} empireId - The empire ID to check
+ * @returns {Array} Array of improvement requests available to this empire
+ */
+export function getAvailableImprovements(state, empireId) {
+  const allRequests = getAllImprovementRequests();
+
+  return allRequests.filter(request => {
+    return isImprovementTierUnlocked(request.tier, state, empireId);
+  });
 }

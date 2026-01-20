@@ -6,6 +6,7 @@
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
+        "new": "node index.js --new",
         "dev": "nodemon index.js",
     "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js && node testImprovements.js && node testBattleIntegration.js && node testCoalitionProcurement.js",
     "test:determinism": "node testDeterminism.js",

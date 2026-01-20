@@ -41,7 +41,7 @@ declares:
       needs:
         per_pop:
           biomass: 0.5
-          ice: 0.1
+          solid_ice: 0.1
       wants:
         per_pop:
           nano_machines: 0.001

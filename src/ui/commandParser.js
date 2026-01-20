@@ -18,7 +18,8 @@ const COMMAND_ALIASES = new Map([
   ['next', 'next'],
   ['advance', 'next'],
   ['logs', 'logs'],
-  ['log', 'logs']
+  ['log', 'logs'],
+  ['new', 'new']
 ]);
 
 export function parseCommand(commandText, state, ui, gameLoopCallbacks) {
@@ -56,7 +57,12 @@ const COMMAND_HANDLERS = {
     message: 'Quitting game...'
   }),
   next: (_args, state) => handleNextTurnCommand(state),
-  logs: (_args, _state, ui) => handleLogsCommand(ui)
+  logs: (_args, _state, ui) => handleLogsCommand(ui),
+  new: () => ({
+    success: true,
+    action: 'NEW_GAME',
+    message: 'Starting a new game...'
+  })
 };
 
 
@@ -69,6 +75,7 @@ function showHelp() {
     '  resume, unpause      - Resume the game',
     '  speed <value>        - Set game speed (0.5-3.0)',
     '  next, advance        - Advance one turn (when paused)',
+    '  new                  - Start a fresh game',
     '  quit, exit           - Exit the game',
     '',
     '{cyan-fg}Laws:{/cyan-fg}',

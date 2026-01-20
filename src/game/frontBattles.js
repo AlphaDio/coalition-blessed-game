@@ -2,6 +2,7 @@
 import { getLogger } from '../modules/logger.js';
 import { clamp } from '../utils/math.js';
 import { FRONT_BATTLE_MODIFIERS } from './constants.js';
+import { syncUnitsFromArmy } from './armyComposition.js';
 
 /**
  * Calculate MP participation rate based on organization
@@ -258,6 +259,20 @@ export function simulateBattleTick(front, worldState) {
   if (typeof rightArmy.mo.max !== 'number' || isNaN(rightArmy.mo.max) || rightArmy.mo.max <= 0) {
     rightArmy.mo.max = 100;
   }
+
+  const leftUnits = worldState.units
+    ? worldState.units.filter(unit => unit.armyId === leftArmy.id)
+    : [];
+  const rightUnits = worldState.units
+    ? worldState.units.filter(unit => unit.armyId === rightArmy.id)
+    : [];
+
+  if (leftUnits.length > 0) {
+    syncUnitsFromArmy(leftArmy, leftUnits);
+  }
+  if (rightUnits.length > 0) {
+    syncUnitsFromArmy(rightArmy, rightUnits);
+  }
   
   // Process both sides attacking each other
   processSideAttack(front, leftArmy, rightArmy, 'left', 'right', worldState, log);
@@ -285,7 +300,13 @@ export function simulateBattleTick(front, worldState) {
   applyBattleSustainment(leftArmy, front.moraleBroken.left, front, 'left');
   applyBattleSustainment(rightArmy, front.moraleBroken.right, front, 'right');
 
-  
+  if (leftUnits.length > 0) {
+    syncUnitsFromArmy(leftArmy, leftUnits);
+  }
+  if (rightUnits.length > 0) {
+    syncUnitsFromArmy(rightArmy, rightUnits);
+  }
+
   logBattleRound(front, leftArmy, rightArmy, logger);
 
   

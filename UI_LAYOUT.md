@@ -21,7 +21,7 @@
 │                         │                       │   Build: 10 turns    │
 │                         │                       │   Cap: 2 | Pot: 3    │
 │                         │                       │   Sustain: biomass:5 │
-│                         │                       │            ice:3     │
+│                         │                       │        solid_ice:3   │
 │                         │                       │   Produces:          │
 │                         │                       │     super_alloys:+15 │
 │                         │                       │   Bonus:             │
@@ -93,6 +93,8 @@ When an improvement is DEGRADED:
 ### Navigation
 - **R**: Switch to Requests panel
 - **I**: Switch to Improvements panel
+- **W**: Switch to Works/Improvements Queue panel
+- **S**: Switch to Stockpiles panel
 - **M/A/E**: Switch to Market/Armies/Empires panels
 - **[** / **]**: Cycle through all panels
 - **Up/Down**: Navigate lists

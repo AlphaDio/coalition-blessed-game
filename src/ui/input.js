@@ -2,12 +2,13 @@ import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
 import { handleLawEventChoice } from '../game/lawProcessManager.js';
 import { advanceTurn } from '../game/turn.js';
-import { renderAll, renderLaws, renderLogsWindow } from './renderer.js';
+import { renderAll, renderLaws, renderLogsWindow, renderCombinedInfo } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
 import { parseCommand } from './commandParser.js';
-import { acceptImprovementRequest, cancelImprovement } from '../game/improvements.js';
+import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
+import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 
 export function setupInputHandlers(ui, state, { startGameLoop = null, updateGameSpeed = null } = {}) {
   // Constants for focus modes
@@ -223,191 +224,152 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   bindEventKeysToWidget(ui.statsBox);
   bindEventKeysToWidget(ui.combinedInfoBox);
   
-    // Combined Info Box: m/a/e/s/w to switch views, [/] to cycle, Page Up/Down to scroll
-    // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
-    if (ui.combinedInfoBox) {
-      // Helper to check if input box is focused and should capture keys
-      const shouldIgnoreKey = () => {
-        return ui.screen.focused === ui.inputBox && ui.inputBox.value && ui.inputBox.value.length > 0;
-      };
-      
-      // m: Switch to Market view
-      ui.screen.key(['m'], () => {
-        if (shouldIgnoreKey()) return; // Let input box handle it if typing
-        ui.combinedInfoBox.currentView = 'market';
-        ui.combinedInfoBox.scrollOffset = 0;
-        renderAll(ui, state);
-      });
-      
-      // a: Switch to Armies view
-      ui.screen.key(['a'], () => {
-        if (shouldIgnoreKey()) return;
-        ui.combinedInfoBox.currentView = 'armies';
-        ui.combinedInfoBox.scrollOffset = 0;
-        renderAll(ui, state);
-      });
-      
-      // e/E: Cycle empires overview and detail views
-      ui.screen.key(['e', 'E'], () => {
-        if (shouldIgnoreKey()) return;
-        if (!ui.combinedInfoBox) return;
-
-        const hasEmpires = state.empires && state.empires.length > 0;
-        if (!hasEmpires) {
-          ui.combinedInfoBox.currentView = 'empires';
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-          return;
-        }
-
-        const currentView = ui.combinedInfoBox.currentView;
-        if (currentView !== 'empires' && currentView !== 'empire_detail') {
-          ui.combinedInfoBox.currentView = 'empires';
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-          return;
-        }
-
-        if (currentView === 'empires') {
-          ui.combinedInfoBox.currentView = 'empire_detail';
-          ui.combinedInfoBox.selectedEmpireIndex = 0;
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-          return;
-        }
-
-        const nextIndex = (ui.combinedInfoBox.selectedEmpireIndex || 0) + 1;
-        if (nextIndex >= state.empires.length) {
-          ui.combinedInfoBox.currentView = 'empires';
-          ui.combinedInfoBox.scrollOffset = 0;
-        } else {
-          ui.combinedInfoBox.selectedEmpireIndex = nextIndex;
-          ui.combinedInfoBox.scrollOffset = 0;
-        }
-        renderAll(ui, state);
-      });
-
-      // s: Switch to Stockpiles view
-      ui.screen.key(['s'], () => {
-        if (shouldIgnoreKey()) return;
-        ui.combinedInfoBox.currentView = 'stockpiles';
-        ui.combinedInfoBox.scrollOffset = 0;
-        renderAll(ui, state);
-      });
+   // Combined Info Box: m/a/e/s/w to switch views, [/] to cycle, Page Up/Down to scroll
+   // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
+   if (ui.combinedInfoBox) {
+     // View switching keys
+     ui.screen.key(['m', 'M'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'market';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['a', 'A'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'armies';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['e', 'E'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'empires';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['s', 'S'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'stockpiles';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['p', 'P'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'procurement';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['w', 'W'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.currentView = 'queue';
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     // Cycle views with [ and ]
+     ui.screen.key(['['], () => {
+       if (ui.combinedInfoBox) {
+         const views = ['market', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
+         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
+         const nextIndex = currentIndex > 0 ? currentIndex - 1 : views.length - 1;
+         ui.combinedInfoBox.currentView = views[nextIndex];
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key([']'], () => {
+       if (ui.combinedInfoBox) {
+         const views = ['market', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
+         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
+         const nextIndex = currentIndex < views.length - 1 ? currentIndex + 1 : 0;
+         ui.combinedInfoBox.currentView = views[nextIndex];
+         ui.combinedInfoBox.scrollOffset = 0;
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     // Scrolling with Page Up/Down
+     ui.screen.key(['pageup'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.scrollOffset = Math.max(0, ui.combinedInfoBox.scrollOffset - 10);
+         renderCombinedInfo(ui, state);
+       }
+     });
+     
+     ui.screen.key(['pagedown'], () => {
+       if (ui.combinedInfoBox) {
+         ui.combinedInfoBox.scrollOffset += 10;
+         renderCombinedInfo(ui, state);
+       }
+     });
+   }
     
-      // w: Switch to Works view
-      ui.screen.key(['w'], () => {
-        if (shouldIgnoreKey()) return;
-        if (state.focus === FOCUS_MODES.ACTIONS) return;
-        ui.combinedInfoBox.currentView = 'queue';
-        ui.combinedInfoBox.scrollOffset = 0;
-        renderAll(ui, state);
-      });
-
-
-    // ]: Cycle to next view (only if not in input box)
-    ui.screen.key([']'], () => {
-      if (shouldIgnoreKey()) return;
-      if (state.focus === FOCUS_MODES.ACTIONS) return;
-      const views = ['market', 'armies', 'empires', 'stockpiles', 'queue'];
-      const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
-      const nextIndex = (currentIndex + 1) % views.length;
-      ui.combinedInfoBox.currentView = views[nextIndex];
-      ui.combinedInfoBox.scrollOffset = 0;
-      renderAll(ui, state);
-    });
-
-    // [: Cycle to previous view (only if not in input box)
-    ui.screen.key(['['], (ch, key) => {
-      if (shouldIgnoreKey()) return;
-      if (state.focus === FOCUS_MODES.ACTIONS) return;
-      // Only handle for combined info box if input box doesn't have focus
-      if (ui.screen.focused !== ui.inputBox) {
-        const views = ['market', 'armies', 'empires', 'stockpiles', 'queue'];
-        const currentIndex = views.indexOf(ui.combinedInfoBox.currentView || 'market');
-        const prevIndex = (currentIndex - 1 + views.length) % views.length;
-        ui.combinedInfoBox.currentView = views[prevIndex];
-        ui.combinedInfoBox.scrollOffset = 0;
-        renderAll(ui, state);
-      }
-      // Otherwise let speed control handle it
-    });
-    
-    // Page Up: Scroll up
-    ui.screen.key(['pageup'], () => {
-      if (shouldIgnoreKey()) return;
-      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
-      renderAll(ui, state);
-    });
-    
-    // Page Down: Scroll down
-    ui.screen.key(['pagedown'], () => {
-      if (shouldIgnoreKey()) return;
-      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
-      renderAll(ui, state);
-    });
-    
-    // Vim-style scrolling: k for up, j for down (half screen)
-    ui.screen.key(['k'], () => {
-      if (shouldIgnoreKey()) return;
-      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
-      renderAll(ui, state);
-    });
-    
-    ui.screen.key(['j'], () => {
-      if (shouldIgnoreKey()) return;
-      const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
-      renderAll(ui, state);
-    });
-    
-    // Also bind to the box itself for when it has focus
-    ui.combinedInfoBox.key(['up'], () => {
-      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - 1);
-      renderAll(ui, state);
-    });
-    
-    ui.combinedInfoBox.key(['down'], () => {
-      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + 1;
-      renderAll(ui, state);
-    });
-    
-    // Combined info box scrolling (when not in action focus)
-    ui.screen.key(['up'], () => {
-      if (shouldIgnoreKey()) return;
-      if (state.focus === FOCUS_MODES.ACTIONS) return;
-      ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - 1);
-      renderAll(ui, state);
-    });
-
-    ui.screen.key(['down'], () => {
-      if (shouldIgnoreKey()) return;
-      if (state.focus === FOCUS_MODES.ACTIONS) return;
-      ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + 1;
-      renderAll(ui, state);
-    });
-  }
-  
   // Laws box - disable number keys when event is active
   // Note: This is handled by bindEventKeysToWidget above, but we keep this
   // as an extra safeguard to prevent list navigation during events
-  ui.lawsBox.key(['1', '2', '3'], (ch, key) => {
-    if (state.activeEvent) {
-      // Event choice keys are handled above, prevent list from processing them
-      // Try to handle the event choice
-      const keyNum = parseInt(ch);
-      if (keyNum >= 1 && keyNum <= 3) {
-        if (handleEventChoiceAndResume(keyNum - 1)) {
-          return; // Event handled, don't process as list navigation
-        }
-      }
-      return; // Event active, don't allow list navigation
+  // ui.lawsBox.key(['1', '2', '3'], (ch, key) => {
+  //   if (state.activeEvent) {
+  //     // Event choice keys are handled above, prevent list from processing them
+  //     // Try to handle the event choice
+  //     const keyNum = parseInt(ch);
+  //     if (keyNum >= 1 && keyNum <= 3) {
+  //       if (handleEventChoiceAndResume(keyNum - 1)) {
+  //         return; // Event handled, don't process as list navigation
+  //       }
+  //     }
+  //   }
+  // });
+  
+  // Helper functions for procurement adjustments
+  const THETA_PRESETS = ['Scavenge', 'Frugal', 'Balanced', 'Assertive', 'Emergency'];
+  
+  function adjustProcurementTheta(state, commodityIndex, delta) {
+    if (!state.coalitionEconomy?.procurement) return;
+    
+    const commodities = Object.keys(state.market || {});
+    if (commodities.length === 0) return;
+    
+    const commodityId = commodities[commodityIndex];
+    if (!commodityId) return;
+    
+    const currentPreset = state.coalitionEconomy.procurement.theta_preset_by_commodity?.[commodityId] || 'Balanced';
+    const currentIndex = THETA_PRESETS.indexOf(currentPreset);
+    if (currentIndex === -1) return;
+    
+    const newIndex = Math.max(0, Math.min(THETA_PRESETS.length - 1, currentIndex + delta));
+    state.coalitionEconomy.procurement.theta_preset_by_commodity[commodityId] = THETA_PRESETS[newIndex];
+  }
+  
+  function adjustProcurementThrottle(state, commodityIndex, delta) {
+    if (!state.coalitionEconomy?.procurement) return;
+    
+    const commodities = Object.keys(state.market || {});
+    if (commodities.length === 0) return;
+    
+    const commodityId = commodities[commodityIndex];
+    if (!commodityId) return;
+    
+    if (!state.coalitionEconomy.per_commodity_settings) {
+      state.coalitionEconomy.per_commodity_settings = new Map();
     }
-    // Allow normal list behavior when no event is active
-  });
+    
+    const settings = state.coalitionEconomy.per_commodity_settings.get(commodityId) || {};
+    const currentThrottle = settings.spend_throttle || 0.75;
+    const newThrottle = Math.max(0.1, Math.min(2.0, currentThrottle + delta));
+    settings.spend_throttle = newThrottle;
+    state.coalitionEconomy.per_commodity_settings.set(commodityId, settings);
+  }
   
   // Action panel navigation helpers
   const getSelectableItems = () => {
@@ -535,6 +497,20 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
         break;
       }
 
+      case 'ACTIVATE_EMERGENCY': {
+        const lawId = selectedItem.emergencyLawId;
+        if (lawId) {
+          const result = activateEmergencyLaw(lawId, state);
+          if (result.success) {
+            ui.logBox.log(`{green-fg}EMERGENCY POWER ACTIVATED:{/green-fg} ${result.message}`);
+          } else {
+            ui.logBox.log(`{red-fg}Cannot activate:{/red-fg} ${result.message}`);
+          }
+        }
+        renderAll(ui, state);
+        break;
+      }
+
       case 'TOGGLE_PAUSE':
         state.paused = !state.paused;
         ui.logBox.log(state.paused ? 'Game PAUSED' : 'Game RESUMED');
@@ -556,293 +532,60 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
         }
         break;
     }
-  });
-  
-  // ESC to go back in action panel
-  ui.lawsBox.key(['escape'], () => {
-    const panel = ui.lawsBox;
-    if (panel.currentMode !== 'main') {
-      panel.currentMode = 'main';
-      panel.selectedIndex = 0;
-      renderAll(ui, state);
-      return;
-    }
+   });
+   
+   // Toggle logs window (full-screen overlay)
+   ui.screen.key(['l', 'L'], () => {
+     if (ui.logsWindow) {
+       const isCurrentlyVisible = !ui.logsWindow.hidden;
+       if (isCurrentlyVisible) {
+         ui.logsWindow.hide();
+       } else {
+         const logger = getLogger();
+         renderLogsWindow(ui, logger);
+         ui.logsWindow.show();
+         ui.logsWindow.focus();
+       }
+       ui.screen.render();
+     }
+   });
+   
+   // Close logs window with Q when focused
+   if (ui.logsWindow) {
+     ui.logsWindow.key(['q', 'Q'], () => {
+       ui.logsWindow.hide();
+       ui.screen.render();
+       return false; // Prevent event bubbling
+     });
+   }
+   
+   // Input box handlers
+   if (ui.inputBox) {
+     ui.inputBox.key(['enter'], () => {
+       const command = ui.inputBox.getValue();
+       if (command.trim()) {
+         ui.logBox.log(`> ${command}`);
+         try {
+           const result = parseCommand(state, command);
+           if (result.success) {
+             result.log.forEach(line => ui.logBox.log(line));
+           } else {
+             ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+           }
+         } catch (error) {
+           ui.logBox.log(`{red-fg}Command error: ${error.message}{/red-fg}`);
+         }
+       }
+       ui.inputBox.clearValue();
+       ui.inputBox.focus();
+       renderAll(ui, state);
+     });
+     
+     ui.inputBox.key(['escape'], () => {
+       ui.inputBox.clearValue();
+       ui.screen.focusNext();
+       renderAll(ui, state);
+     });
+   }
+ }
 
-    if (state.focus === FOCUS_MODES.ACTIONS) {
-      state.focus = FOCUS_MODES.MAIN;
-      renderAll(ui, state);
-    }
-  });
-  
-  // Toggle logs window (full-screen overlay)
-  ui.screen.key(['l', 'L'], () => {
-    if (ui.logsWindow) {
-      const isCurrentlyVisible = !ui.logsWindow.hidden;
-      
-      if (isCurrentlyVisible) {
-        // Hide logs window
-        ui.logsWindow.hide();
-        // Screen doesn't have focus() method, but keys work at screen level
-      } else {
-        // Show logs window (full screen)
-        const logger = getLogger();
-        renderLogsWindow(ui, logger);
-        ui.logsWindow.show();
-        ui.logsWindow.focus();
-      }
-      
-      ui.screen.render();
-    }
-  });
-  
-  // Close logs window with Q when focused
-  if (ui.logsWindow) {
-    ui.logsWindow.key(['q', 'escape'], () => {
-      ui.logsWindow.hide();
-      // Screen doesn't have focus() method, but keys work at screen level
-      ui.screen.render();
-    });
-    
-    // Refresh logs window
-    ui.logsWindow.key(['r', 'R'], () => {
-      const logger = getLogger();
-      renderLogsWindow(ui, logger);
-      ui.screen.render();
-    });
-    
-    // Allow scrolling in logs window
-    ui.logsWindow.key(['up'], () => {
-      ui.logsWindow.scroll(-1);
-      ui.screen.render();
-    });
-    
-    ui.logsWindow.key(['down'], () => {
-      ui.logsWindow.scroll(1);
-      ui.screen.render();
-    });
-    
-    ui.logsWindow.key(['pageup'], () => {
-      ui.logsWindow.scroll(-10);
-      ui.screen.render();
-    });
-    
-    ui.logsWindow.key(['pagedown'], () => {
-      ui.logsWindow.scroll(10);
-      ui.screen.render();
-    });
-    
-    // Home/End keys
-    ui.logsWindow.key(['home'], () => {
-      ui.logsWindow.setScrollPerc(0);
-      ui.screen.render();
-    });
-    
-    ui.logsWindow.key(['end'], () => {
-      ui.logsWindow.setScrollPerc(100);
-      ui.screen.render();
-    });
-  }
-  
-  // Input box handlers
-  if (ui.inputBox) {
-    // Focus input box when user presses '/'
-    ui.screen.key(['/'], () => {
-      state.focus = FOCUS_MODES.MAIN;
-      ui.inputBox.focus();
-      ui.inputBox.setValue('/');
-      ui.screen.render();
-    });
-
-    // TAB: focus/cycle action panel modes
-    ui.screen.key(['tab'], () => {
-      if (!ui.lawsBox) return;
-
-      state.focus = FOCUS_MODES.ACTIONS;
-      ui.lawsBox.focus();
-
-      const cycleModes = ['laws', 'requests', 'improvements'];
-      const currentMode = ui.lawsBox.currentMode || 'main';
-      const currentIndex = cycleModes.indexOf(currentMode);
-      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % cycleModes.length;
-      ui.lawsBox.currentMode = cycleModes[nextIndex];
-      ui.lawsBox.selectedIndex = 0;
-
-      const items = ui.lawsBox.menuItems || [];
-      for (let i = 0; i < items.length; i++) {
-        if (!items[i].divider && !items[i].info && !items[i].disabled) {
-          ui.lawsBox.selectedIndex = i;
-          break;
-        }
-      }
-
-      renderAll(ui, state);
-    });
-    
-    // Handle command submission
-    ui.inputBox.on('submit', (value) => {
-      const raw = value.trim();
-      const command = raw.startsWith('/') ? raw.slice(1).trim() : raw;
-      
-      if (!command) {
-        ui.inputBox.clearValue();
-        ui.inputBox.focus();
-        ui.screen.render();
-        return;
-      }
-      
-      // Add to command history
-      ui.inputBox.commandHistory.push(command);
-      if (ui.inputBox.commandHistory.length > 50) {
-        ui.inputBox.commandHistory.shift(); // Keep only last 50 commands
-      }
-      ui.inputBox.historyIndex = -1;
-      
-      // Parse and execute command
-      const result = parseCommand(command, state, ui, { startGameLoop, updateGameSpeed });
-      
-      // Handle the result
-      if (result.success) {
-        if (result.message) {
-          ui.logBox.log(result.message);
-        }
-        
-        // Execute specific actions
-        if (result.action === 'ENACT_LAW') {
-          // Trigger law enactment
-          if (state.lawDefinitions && state.lawDefinitions.length > 0) {
-            const lawDef = state.lawDefinitions[result.lawIndex];
-            if (lawDef) {
-              executeLawEnactment(startLawProcess(state, lawDef.id, 100));
-            }
-          } else {
-            const law = state.laws[result.lawIndex];
-            if (law) {
-              executeLawEnactment(enactLaw(state, law.id));
-            }
-          }
-        } else if (result.action === 'CHOOSE_EVENT') {
-          let eventResult;
-          
-          // Check if this is a law event
-          if (state.activeEvent.isLawEvent) {
-            eventResult = handleLawEventChoice(
-              state, 
-              state.activeEvent.lawProcessId, 
-              state.activeEvent.id, 
-              result.choiceIndex
-            );
-          } else {
-            eventResult = handleEventChoice(state, state.activeEvent.id, result.choiceIndex);
-          }
-          
-          if (eventResult.success) {
-            eventResult.log.forEach(line => ui.logBox.log(line));
-            state.paused = false;
-            ui.logBox.log('Game RESUMED');
-          } else if (eventResult.error) {
-            ui.logBox.log(`{red-fg}Error: ${eventResult.error}{/red-fg}`);
-          }
-        } else if (result.action === 'UPDATE_SPEED') {
-          safeCall(updateGameSpeed);
-        } else if (result.action === 'ADVANCE_TURN') {
-          const turnResult = advanceTurn(state);
-          turnResult.log.forEach(line => ui.logBox.log(line));
-        } else if (result.action === 'TOGGLE_LOGS') {
-          const isCurrentlyVisible = !ui.logsWindow.hidden;
-          if (isCurrentlyVisible) {
-            ui.logsWindow.hide();
-          } else {
-            const logger = getLogger();
-            renderLogsWindow(ui, logger);
-            ui.logsWindow.show();
-            ui.logsWindow.focus();
-          }
-        } else if (result.action === 'QUIT_GAME') {
-          // Graceful shutdown
-          process.exit(0);
-        }
-        
-        if (ui.commandHistoryBox) {
-          ui.commandHistoryBox.setContent(`{green-fg}✓{/green-fg} Last: ${command.substring(0, 20)}${command.length > 20 ? '...' : ''}`);
-        }
-      } else {
-        ui.logBox.log(`{red-fg}${result.message}{/red-fg}`);
-        if (ui.commandHistoryBox) {
-          ui.commandHistoryBox.setContent(`{red-fg}✗{/red-fg} Error`);
-        }
-      }
-      
-      // Clear input and refocus
-      ui.inputBox.clearValue();
-      ui.inputBox.focus();
-      renderAll(ui, state);
-    });
-    
-    // Handle ESC to unfocus input box
-    ui.inputBox.key(['escape'], () => {
-      ui.inputBox.clearValue();
-      ui.inputBox.cancel();
-      state.focus = FOCUS_MODES.MAIN;
-      ui.screen.render();
-    });
-    
-    // Prevent input box from capturing m/a/e/j/k when empty - let them go to combined info box
-    ui.inputBox.key(['m', 'a', 'e', 'j', 'k'], (ch, key) => {
-      // If input box is empty, don't process these keys - let screen handlers handle them
-      if (!ui.inputBox.value || ui.inputBox.value.length === 0) {
-        // Trigger the screen-level handlers by calling them directly
-        if (ch === 'm' && ui.combinedInfoBox) {
-          ui.combinedInfoBox.currentView = 'market';
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-        } else if (ch === 'a' && ui.combinedInfoBox) {
-          ui.combinedInfoBox.currentView = 'armies';
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-        } else if (ch === 'e' && ui.combinedInfoBox) {
-          ui.combinedInfoBox.currentView = 'empires';
-          ui.combinedInfoBox.scrollOffset = 0;
-          renderAll(ui, state);
-        } else if (ch === 'j' && ui.combinedInfoBox) {
-          const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-          ui.combinedInfoBox.scrollOffset = (ui.combinedInfoBox.scrollOffset || 0) + scrollAmount;
-          renderAll(ui, state);
-        } else if (ch === 'k' && ui.combinedInfoBox) {
-          const scrollAmount = Math.max(5, Math.floor((ui.combinedInfoBox.height - 2) * 0.5));
-          ui.combinedInfoBox.scrollOffset = Math.max(0, (ui.combinedInfoBox.scrollOffset || 0) - scrollAmount);
-          renderAll(ui, state);
-        }
-        return; // Don't let input box process these keys
-      }
-      // If input box has content, allow normal input processing
-    });
-    
-    // Command history navigation
-    ui.inputBox.key(['up'], () => {
-      if (ui.inputBox.commandHistory.length === 0) return;
-      
-      if (ui.inputBox.historyIndex === -1) {
-        ui.inputBox.historyIndex = ui.inputBox.commandHistory.length - 1;
-      } else if (ui.inputBox.historyIndex > 0) {
-        ui.inputBox.historyIndex--;
-      }
-      
-      ui.inputBox.setValue(ui.inputBox.commandHistory[ui.inputBox.historyIndex]);
-      ui.screen.render();
-    });
-    
-    ui.inputBox.key(['down'], () => {
-      if (ui.inputBox.historyIndex === -1) return;
-      
-      if (ui.inputBox.historyIndex < ui.inputBox.commandHistory.length - 1) {
-        ui.inputBox.historyIndex++;
-        ui.inputBox.setValue(ui.inputBox.commandHistory[ui.inputBox.historyIndex]);
-      } else {
-        ui.inputBox.historyIndex = -1;
-        ui.inputBox.setValue('');
-      }
-      
-      ui.screen.render();
-    });
-  }
-}

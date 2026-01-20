@@ -36,12 +36,12 @@ declares:
       tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
-          biomass: 150
+          biomass: 15
           genomes: 15
       needs:
         per_pop:
           super_alloys: 0.5
-          ice: 0.8
+          solid_ice: 0.8
       wants:
         per_pop:
           psycho_implants: 0.008

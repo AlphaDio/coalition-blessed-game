@@ -39,6 +39,6 @@ declares:
     demands:
       needs:
         super_alloys: 0.02
-        ice: 0.015
+        solid_ice: 0.015
       wants:
         rare_gases: 0.01

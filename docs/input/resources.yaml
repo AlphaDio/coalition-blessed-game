@@ -56,7 +56,7 @@ resources:
       tags: [civilian, fuel, sustenance]
       notes: "Organics for foodstock, biofuels, basic bioprocessing."
 
-    - key: ice
+    - key: solid_ice
       name: "Solid Ice"
       tier: t1
       floor_price: 0.5

@@ -5,7 +5,7 @@
 
 import { createGameState } from './src/game/types.js';
 import { createSampleContent } from './src/game/content.js';
-import { initializeImprovementsState, getSampleImprovementRequests, acceptImprovementRequest, processImprovementsTick, getImprovementStats } from './src/game/improvements.js';
+import { initializeImprovementsState, getSampleImprovementRequests, acceptImprovementRequest, processImprovementsTick, getImprovementStats } from './src/game/improvements/index.js';
 import { advanceTurn } from './src/game/turn.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 import { refreshArmyAggregates } from './src/game/armyComposition.js';
@@ -43,7 +43,7 @@ state.improvements.requests = getSampleImprovementRequests();
 state.empires.forEach(empire => {
   empire.stockpiles = {
     biomass: 500,
-    ice: 500,
+    solid_ice: 500,
     super_alloys: 500,
     rare_gases: 200,
     genomes: 100,
@@ -185,7 +185,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 state.empires.forEach(empire => {
   empire.stockpiles = {
     biomass: 500,
-    ice: 500,
+    solid_ice: 500,
     super_alloys: 500,
     rare_gases: 200,
     genomes: 100,

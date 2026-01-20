@@ -42,7 +42,7 @@ declares:
       needs:
         per_pop:
           biomass: 0.25
-          ice: 0.02
+          solid_ice: 0.02
       wants:
         per_pop:
           psycho_implants: 0.001

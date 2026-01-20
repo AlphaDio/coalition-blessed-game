@@ -86,7 +86,7 @@ Shows complete workflow: accept → build → produce → degrade → restore
 
 1. **Titan Forge Network**
    - Cost: 200 Supplies, Build: 10 turns
-   - Sustains: biomass:5, ice:3
+   - Sustains: biomass:5, solid_ice:3
    - Produces: super_alloys:+15
    - Modifier: industrial_output +5%
    - Description: Galaxy-spanning industrial mega-structure harvesting stellar matter
@@ -113,7 +113,7 @@ Shows complete workflow: accept → build → produce → degrade → restore
 
 5. **Convergence Nexus**
    - Cost: 180 Supplies, Build: 10 turns
-   - Sustains: ice:4, rare_gases:2
+   - Sustains: solid_ice:4, rare_gases:2
    - Modifiers: trade_income +500 credits/tick, market_efficiency +5%
    - Description: Hyperspatial marketplace where civilizations exchange wealth and wonders
 

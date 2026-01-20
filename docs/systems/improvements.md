@@ -30,10 +30,8 @@ Active improvements in various states:
 - **DEGRADED**: Sustainment failed, no production until restored
 
 ### Concurrency System
-Three limits enforce strategic choices:
-- **Max Concurrent Builds**: Limit on simultaneous construction (default: 3)
-- **Max Total Capacity**: Sum of all active improvements' capacity (default: 10)
-- **Max Total Potency**: Sum of all active improvements' potency (default: 20)
+The current implementation enforces a single build-capacity limit:
+- **Max Total Capacity**: Sum of capacity for BUILDING improvements only (default: 5)
 
 ## Game Loop Integration
 
@@ -45,9 +43,11 @@ Three limits enforce strategic choices:
    - Process sustainment
    - Apply production outputs
    - Update modifiers
-4. **Law Cooldowns** (existing)
-5. **Events** (existing)
-6. **Battles** (existing)
+4. **Population Growth** ← NEW
+   - Apply baseline growth (0.5% per turn) + improvement modifiers (per tick)
+5. **Law Cooldowns** (existing)
+6. **Events** (existing)
+7. **Battles** (existing)
 
 ### Sustainment Flow
 Each tick, for each active/degraded improvement:
@@ -90,20 +90,18 @@ tags: {
 ### Requests Panel
 Navigate to Requests view with `R` key:
 - Shows available improvement requests
-- Displays cost, build duration, capacity, potency
+- Displays cost, build duration, capacity
 - Shows sustainment costs and production outputs
 - Lists stat modifiers
 - Navigate with Up/Down arrows
 - Accept with Enter key
 
-### Improvements Panel
-Navigate to Improvements view with `I` key:
-- Shows active improvement queue
-- Displays state: BUILDING (with %), ACTIVE, or DEGRADED
-- Shows empire ownership
-- Tracks build progress and degradation time
-- Navigate with Up/Down arrows
-- Cancel with X key (no refund)
+### Stockpiles Panel
+Navigate to Stockpiles view with `S` key:
+- Shows aggregated commodities from all empires' stockpiles
+- Displays coalition-level stockpiles (supplies)
+- Sorted by commodity tier and name
+- Provides comprehensive view of coalition resources
 
 ### Panel Switching
 - `M`: Market Economy view
@@ -111,6 +109,8 @@ Navigate to Improvements view with `I` key:
 - `E`: Empires view
 - `R`: Requests view ← NEW
 - `I`: Improvements view ← NEW
+- `W`: Works/Improvements Queue view ← NEW
+- `S`: Stockpiles view ← NEW
 - `[` / `]`: Cycle through views
 
 ## Sample Improvements
@@ -121,7 +121,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Cost: 200 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
-- Sustains: biomass:5, ice:3
+- Sustains: biomass:5, solid_ice:3
 - Produces: super_alloys:15
 - Modifier: industrial_output +5%
 - Description: Galaxy-spanning industrial mega-structure harvesting stellar matter
@@ -156,7 +156,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Cost: 180 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
-- Sustains: ice:4, rare_gases:2
+- Sustains: solid_ice:4, rare_gases:2
 - Modifiers: trade_income +500 credits/tick, market_efficiency +5%
 - Description: Hyperspatial marketplace where civilizations exchange wealth and wonders
 
@@ -168,7 +168,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 
 ### Empire Modifiers
 - `empire_approval`: Increases approval rating (applied gradually)
-- `population_growth`: Increases population over time
+- `population_growth`: Increases population over time (baseline 0.5% per turn, modifiers applied per tick)
 - `trade_income`: Generates credits per tick
 - `market_efficiency`: Reduces market costs
 
@@ -182,9 +182,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 
 ### Prerequisites
 1. Sufficient Supplies in coalition stockpile
-2. Not exceeding max concurrent builds
-3. Not exceeding max total capacity (for active improvements)
-4. Not exceeding max total potency (for active improvements)
+2. Not exceeding max total capacity for BUILDING improvements
 
 ### On Acceptance
 - Supplies deducted immediately
@@ -194,7 +192,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 ### On Cancellation
 - Improvement removed from queue
 - No refund of Supplies
-- Capacity/potency freed if was ACTIVE
+- BUILDING capacity limit is recalculated after removal
 
 ## Degradation Mechanics
 
@@ -206,7 +204,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - State changes to DEGRADED
 - Production outputs cease
 - Stat modifiers no longer applied
-- Capacity/potency still count toward limits
+- Build capacity limit only applies while BUILDING
 
 ### Recovery
 - Automatically restores to ACTIVE when sustainment resumes
@@ -244,7 +242,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Build progress tracking
 - Build completion
 - Concurrency limits enforcement
-- Capacity/potency limits
+- Capacity limit enforcement
 - Degradation triggers and recovery
 - Cancellation (no refund)
 - Production outputs

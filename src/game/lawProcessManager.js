@@ -15,9 +15,22 @@ import {
   clampMeter
 } from './lawEngine.js';
 import { canStartLaw } from './lawDefinitions.js';
-import { clamp } from './cohesion.js';
+import { clamp, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { updateCoalitionColor } from './coalitionColor.js';
+import { refreshImprovementSuggestions } from './improvements/definitions.js';
+import { calculateLawReactions } from './reactions.js';
+
+/**
+ * Get the law progress speed multiplier from coalition modifiers
+ * @param {Object} state - Game state
+ * @returns {number} Multiplier for law progress (1.0 = normal, 1.1 = 10% faster, etc.)
+ */
+function getLawProgressSpeedMultiplier(state) {
+  const baseSpeed = 1.0;
+  const modifierBonus = state.coalitionModifiers?.law_progress_speed || 0;
+  return baseSpeed + modifierBonus;
+}
 
 
 const LAW_UI_LOG_KEYWORDS = [
@@ -31,6 +44,132 @@ const LAW_UI_LOG_KEYWORDS = [
 
 function filterLawLogs(logs) {
   return logs.filter(line => LAW_UI_LOG_KEYWORDS.some(keyword => line.includes(keyword)));
+}
+
+/**
+ * Apply law modifiers to the coalition when a law is enacted
+ * @param {Object} lawDef - Law definition
+ * @param {Object} state - Game state
+ * @returns {Array} Log messages
+ */
+function applyLawModifiers(lawDef, state) {
+  const log = [];
+  const modifiers = lawDef.modifiers || {};
+  
+  // Ensure coalitionModifiers exists
+  if (!state.coalitionModifiers) {
+    state.coalitionModifiers = {
+      industrial_output: 0,
+      research_speed: 0,
+      army_organization: 0,
+      supply_efficiency: 0,
+      empire_approval: 0,
+      population_growth: 0,
+      trade_income: 0,
+      cohesionModifier: 1.0,
+      army_maintenance_cost_modifier: 1.0,
+      relations_strength_modifier: 1.0
+    };
+  }
+  
+  // Apply empire approval modifier (applies each tick to all empires)
+  if (modifiers.empire_approval) {
+    state.coalitionModifiers.empire_approval += modifiers.empire_approval;
+    log.push(`Empire approval: +${modifiers.empire_approval} per tick`);
+  }
+  
+  // Apply trade income modifier
+  if (modifiers.trade_income) {
+    state.coalitionModifiers.trade_income += modifiers.trade_income;
+    log.push(`Trade income: +${modifiers.trade_income} credits per tick`);
+  }
+  
+  // Apply population growth modifier
+  if (modifiers.population_growth) {
+    state.coalitionModifiers.population_growth += modifiers.population_growth;
+    log.push(`Population growth: +${modifiers.population_growth} per tick`);
+  }
+  
+  // Apply industrial output modifier (percentage bonus)
+  if (modifiers.industrial_output) {
+    state.coalitionModifiers.industrial_output += modifiers.industrial_output;
+    log.push(`Industrial output: +${(modifiers.industrial_output * 100).toFixed(1)}%`);
+  }
+  
+  // Apply cohesion modifier (multiplier for cohesion recovery)
+  if (modifiers.cohesionModifier) {
+    state.coalitionModifiers.cohesionModifier *= modifiers.cohesionModifier;
+    const bonus = ((modifiers.cohesionModifier - 1) * 100).toFixed(1);
+    log.push(`Cohesion recovery: +${bonus}%`);
+  }
+  
+  // Apply army maintenance cost modifier (multiplier, < 1.0 = cheaper)
+  if (modifiers.army_maintenance_cost_modifier) {
+    state.coalitionModifiers.army_maintenance_cost_modifier *= modifiers.army_maintenance_cost_modifier;
+    const reduction = ((1 - modifiers.army_maintenance_cost_modifier) * 100).toFixed(0);
+    log.push(`Army maintenance: -${reduction}%`);
+  }
+  
+  // Apply relations strength modifier (multiplier for diplomacy improvements)
+  if (modifiers.relations_strength_modifier) {
+    state.coalitionModifiers.relations_strength_modifier *= modifiers.relations_strength_modifier;
+    const bonus = ((modifiers.relations_strength_modifier - 1) * 100).toFixed(1);
+    log.push(`Diplomacy strength: +${bonus}%`);
+  }
+  
+  // Apply research speed modifier
+  if (modifiers.research_speed) {
+    state.coalitionModifiers.research_speed += modifiers.research_speed;
+    log.push(`Research speed: +${(modifiers.research_speed * 100).toFixed(1)}%`);
+  }
+  
+  // Apply supply efficiency modifier
+  if (modifiers.supply_efficiency) {
+    state.coalitionModifiers.supply_efficiency += modifiers.supply_efficiency;
+    log.push(`Supply efficiency: +${(modifiers.supply_efficiency * 100).toFixed(1)}%`);
+  }
+  
+  // Apply army organization modifier (immediate bonus to all armies)
+  if (modifiers.army_organization) {
+    state.coalitionModifiers.army_organization += modifiers.army_organization;
+    log.push(`Army organization: +${modifiers.army_organization}`);
+    
+    // Apply immediate organization bonus to all armies
+    if (state.armies) {
+      state.armies.forEach(army => {
+        if (army.organization !== undefined) {
+          army.organization = Math.min(100, army.organization + modifiers.army_organization);
+        }
+      });
+    }
+  }
+  
+  // Apply immediate empire reactions based on law's axis vector
+  if (lawDef.axis_vector && Object.keys(lawDef.axis_vector).length > 0 && state.empires) {
+    const lawForReaction = {
+      vector: lawDef.axis_vector,
+      weights: {},
+      tag_effects: []
+    };
+    
+    // Fill weights from axis_vector
+    Object.keys(lawDef.axis_vector).forEach(axis => {
+      lawForReaction.weights[axis] = 1.0;
+    });
+    
+    const reactions = calculateLawReactions(state.empires, lawForReaction);
+    
+    Object.entries(reactions).forEach(([empireId, reactionData]) => {
+      const empire = state.empires.find(e => e.id === empireId);
+      if (empire) {
+        empire.approval = clampApproval(empire.approval + reactionData.approvalChange);
+        const sign = reactionData.approvalChange >= 0 ? '+' : '';
+        log.push(`${empire.name}: ${sign}${reactionData.approvalChange} approval`);
+      }
+    });
+  }
+  
+  return log;
 }
 
 /**
@@ -251,7 +390,8 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
   if (eligible.length === 0) {
     log.push('No eligible events, advancing phase progress by default');
-    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + 0.005, 0, MAX_PHASE_PROGRESS);
+    const progressSpeed = getLawProgressSpeedMultiplier(state);
+    lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + 0.005 * progressSpeed, 0, MAX_PHASE_PROGRESS);
   } else {
     // Pick events
     const selected = pickEvents(eligible, context, rng);
@@ -324,7 +464,8 @@ export function resolveLawProcess(lawProcess, state, rng) {
   }
 
     if (lawProcess.stallTicks >= 15) {
-      const push = clamp(0.02 + (lawProcess.stallTicks - 15) * 0.005, 0.02, 0.06);
+      const progressSpeed = getLawProgressSpeedMultiplier(state);
+      const push = clamp((0.02 + (lawProcess.stallTicks - 15) * 0.005) * progressSpeed, 0.02, 0.06);
       const oldProgress = lawProcess.phaseProgress;
       lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + push, 0, MAX_PHASE_PROGRESS);
       log.push(`  Stalemate pressure: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
@@ -334,7 +475,8 @@ export function resolveLawProcess(lawProcess, state, rng) {
     }
 
     if (lawProcess.phaseTicks >= 50 && lawProcess.phaseProgress < 0.4) {
-      const nudge = clamp(0.03 + (lawProcess.phaseTicks - 50) * 0.003, 0.03, 0.08);
+      const progressSpeed = getLawProgressSpeedMultiplier(state);
+      const nudge = clamp((0.03 + (lawProcess.phaseTicks - 50) * 0.003) * progressSpeed, 0.03, 0.08);
       const oldProgress = lawProcess.phaseProgress;
       lawProcess.phaseProgress = clamp(lawProcess.phaseProgress + nudge, 0, MAX_PHASE_PROGRESS);
       log.push(`  Deadlock nudge: ${oldProgress.toFixed(2)} → ${lawProcess.phaseProgress.toFixed(2)}`);
@@ -373,8 +515,19 @@ export function resolveLawProcess(lawProcess, state, rng) {
     }
     state.enactedLaws.push(lawProcess.lawId);
 
+    // Apply law modifiers to coalition
+    const modifierLog = applyLawModifiers(lawDef, state);
+    if (modifierLog.length > 0) {
+      log.push('Law effects applied:');
+      modifierLog.forEach(msg => log.push(`  ${msg}`));
+    }
+
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);
+    const improvementRng = rng && typeof rng.random === 'function'
+      ? () => rng.random()
+      : (typeof rng === 'function' ? rng : Math.random);
+    refreshImprovementSuggestions(state, improvementRng);
 
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');

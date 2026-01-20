@@ -53,11 +53,39 @@ export function enactLaw(state, lawId) {
     });
   }
   
-  if (law.effects.cohesionModifier) {
-    // This is a modifier for future cohesion losses
-    // Store it in active laws
-    state.activeLaws.push({ lawId: law.id, effects: law.effects });
-  }
+   if (law.effects.cohesionModifier) {
+     // This is a modifier for future cohesion losses
+     // Store it in active laws
+     state.activeLaws.push({ lawId: law.id, effects: law.effects });
+   }
+   
+   // Apply permanent coalition modifiers
+   if (law.empire_approval) {
+     state.coalitionModifiers.empire_approval += law.empire_approval;
+     log.push(`Empire approval increased by +${law.empire_approval}`);
+   }
+   if (law.trade_income) {
+     state.coalitionModifiers.trade_income += law.trade_income;
+     log.push(`Trade income increased by +${law.trade_income} per tick`);
+   }
+   if (law.population_growth) {
+     state.coalitionModifiers.population_growth += law.population_growth;
+     log.push(`Population growth increased by +${law.population_growth} per tick`);
+   }
+   if (law.industrial_output) {
+     state.coalitionModifiers.industrial_output += law.industrial_output;
+     log.push(`Industrial output increased by ${(law.industrial_output * 100).toFixed(1)}%`);
+   }
+   
+   const modifiers = law.modifiers || {};
+   if (modifiers.army_maintenance_cost_modifier) {
+     state.coalitionModifiers.army_maintenance_cost_modifier *= modifiers.army_maintenance_cost_modifier;
+     log.push(`Army maintenance costs reduced by ${(1 - modifiers.army_maintenance_cost_modifier) * 100}%`);
+   }
+   if (modifiers.relations_strength_modifier) {
+     state.coalitionModifiers.relations_strength_modifier *= modifiers.relations_strength_modifier;
+     log.push(`Diplomatic relations strengthened by ${(modifiers.relations_strength_modifier - 1) * 100}%`);
+   }
   
   // Set cooldown
   law.currentCooldown = law.cooldown;
