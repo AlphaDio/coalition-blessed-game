@@ -11,7 +11,7 @@ import {
   createBuyOrder,
   createSellOffer,
   updateMarketPrices,
-  executeMarketClearing,
+  clearMarket,
   coalitionProcurement,
   computeArmyFulfillment
 } from './marketEconomy.js';
@@ -316,11 +316,11 @@ export function processEconomyTick(state) {
     const marketState = state.market[commodity.key];
     if (!marketState) return;
     
-    const clearResult = executeMarketClearing(buyOrders, sellOffers, marketState, config);
+    const clearResult = clearMarket(buyOrders, sellOffers, marketState);
     allTrades.push(...clearResult.trades);
     
     // Store post-clear remaining offers for coalition procurement
-    marketState.remaining_sell_offers_post_clear = clearResult.remaining_sell_offers_post_clear;
+    marketState.remaining_sell_offers_post_clear = clearResult.unfilledSells;
     
     // Apply trades to entities
     clearResult.trades.forEach(trade => {
