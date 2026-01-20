@@ -78,7 +78,11 @@ class Logger {
    * Write log to console
    */
   writeToConsole(level, formattedMessage) {
+    // Completely skip console output when disabled to prevent blessed from capturing it
     if (!this.enableConsole) return;
+    
+    // When using blessed UI, avoid console output entirely as it can interfere
+    if (this.enableUI) return;
     
     switch (level) {
       case LogLevel.DEBUG:
