@@ -38,8 +38,9 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   const ensureNoInputMode = () => {
     // DO NOT disable screen.input as it prevents all key events!
     // Only disable input on individual widgets that shouldn't accept text input
+    // NOTE: ui.lawsBox is NOT included here because it needs to receive key events for navigation
     const widgets = [
-      ui.lawsBox, ui.eventBox, ui.logBox, ui.activeFrontsBox,
+      ui.eventBox, ui.logBox, ui.activeFrontsBox,
       ui.activeLawsBox, ui.statsBox, ui.combinedInfoBox, ui.stockpilesBox
     ];
     widgets.forEach(widget => {
