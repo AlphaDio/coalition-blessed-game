@@ -40,8 +40,9 @@ export function createUI() {
   const { inputBox, commandHistoryBox } = createCommandInputs(screen);
   const logsWindow = createLogsWindow(screen);
 
+  // Disable input on widgets that shouldn't accept text input
+  // NOTE: Do NOT disable screen.input as it prevents ALL key events from working!
   disableWidgetInput([eventBox, logBox, activeFrontsBox, activeLawsBox, stockpilesBox, statsBox, combinedInfoBox]);
-  screen.input = false;
 
   return {
     screen,

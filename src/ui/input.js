@@ -33,16 +33,14 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     }
   };
   
-  // Ensure screen doesn't accept text input (redundant but safe)
-  ui.screen.input = false;
-  
-  // Set up a periodic check to ensure input stays disabled
+  // Set up a periodic check to ensure widget input stays disabled (but NOT screen input)
   // This prevents any widget from accidentally enabling input mode
   const ensureNoInputMode = () => {
-    ui.screen.input = false;
+    // DO NOT disable screen.input as it prevents all key events!
+    // Only disable input on individual widgets that shouldn't accept text input
     const widgets = [
       ui.lawsBox, ui.eventBox, ui.logBox, ui.activeFrontsBox,
-      ui.activeLawsBox, ui.statsBox, ui.combinedInfoBox
+      ui.activeLawsBox, ui.statsBox, ui.combinedInfoBox, ui.stockpilesBox
     ];
     widgets.forEach(widget => {
       if (widget && widget.input !== false) {
@@ -132,6 +130,26 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
       ui.logBox.log(`Game speed: ${state.gameSpeed}x`);
       safeCall(updateGameSpeed);
       renderAll(ui, state);
+    }
+  });
+  
+  // TAB key - cycle focus (toggle between actions panel and other areas)
+  ui.screen.key(['tab'], () => {
+    if (!state.focus) {
+      state.focus = FOCUS_MODES.ACTIONS;
+    } else if (state.focus === FOCUS_MODES.ACTIONS) {
+      state.focus = FOCUS_MODES.MAIN;
+    } else {
+      state.focus = FOCUS_MODES.ACTIONS;
+    }
+    renderAll(ui, state);
+  });
+  
+  // Slash key - focus command input box
+  ui.screen.key(['/'], () => {
+    if (ui.inputBox) {
+      ui.inputBox.focus();
+      ui.screen.render();
     }
   });
   
