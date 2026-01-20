@@ -1757,7 +1757,7 @@ function formatImprovementModifier(key, value) {
   const sign = value > 0 ? '+' : '';
   const percentageModifiers = [
     'research_speed', 'industrial_output', 'supply_efficiency',
-    'market_efficiency', 'population_growth', 'energy_production'
+    'market_efficiency', 'population_growth', 'energy_production', 'coalition_construction_mult'
   ];
 
   if (percentageModifiers.includes(key)) {
