@@ -202,8 +202,11 @@ export function executeSupplyConversion(coalitionEconomy, config) {
     coalitionEconomy.supply_milli += batchBonus;
   }
 
-  // Create condensed log entry
-  if (totalConvertedUnits > 0) {
+  // Calculate total milli gained
+  const totalGainMilli = Object.values(conversionsByCommodity).reduce((sum, milli) => sum + milli, 0) + batchBonus;
+
+  // Only log if conversion yields at least 1 full supply unit (>= 1000 milli)
+  if (totalGainMilli >= 1000) {
     const conversionSummary = Object.entries(conversionsByCommodity)
       .map(([commodityId, milli]) => `${Math.floor(milli / MILLI_PER_UNIT_BY_TIER[COMMODITY_DEFINITIONS[commodityId].tier])} ${commodityId}`)
       .join(', ');
@@ -212,7 +215,6 @@ export function executeSupplyConversion(coalitionEconomy, config) {
     return [logEntry];
   }
 
-  logger.debug(`Supply conversion completed: ${logEntries.length} commodity batches processed, ${Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS)} total batches`);
   return [];
 }
 

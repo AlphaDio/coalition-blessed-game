@@ -30,3 +30,5 @@ Make sure the Emergency Laws work and are temporary # REVIEW
 Show the Empire the Improvement belongs to in the Work view
 
 Show the Improvements the Empire has in the Empire details view
+
+Make the resources.yaml follow the ds.yaml format

@@ -118,3 +118,7 @@ logs
 tmp/
 temp/
 verifyActionsPanelFix.js
+
+# Save files
+saves/
+autosave.json

@@ -53,7 +53,7 @@ export function loadYaml(relativePath, defaultValue = null) {
  * @returns {Object} Resources data with tiers and commodities
  */
 export function loadResources() {
-  const doc = loadYaml('docs/input/resources.yaml', { resources: { tiers: {}, commodities: [] } });
+  const doc = loadYaml('modules/resources.yaml', { resources: { tiers: {}, commodities: [] } });
   return doc.resources || { tiers: {}, commodities: [] };
 }
 

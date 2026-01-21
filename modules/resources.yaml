@@ -45,90 +45,90 @@ resources:
     - key: super_alloys
       name: "Super Alloys"
       tier: t1
-      floor_price: 0.01
+      floor_price: 0.1
       tags: [industrial, construction, military]
       notes: "Structural metals, basic parts, hull plating."
 
     - key: biomass
       name: "Biomass"
       tier: t1
-      floor_price: 0.008
+      floor_price: 0.08
       tags: [civilian, fuel, sustenance]
       notes: "Organics for foodstock, biofuels, basic bioprocessing."
 
     - key: solid_ice
       name: "Solid Ice"
       tier: t1
-      floor_price: 0.005
+      floor_price: 0.05
       tags: [logistics, coolant, life_support]
       notes: "Water ice for life support, cooling, and process water."
 
     - key: rare_gases
       name: "Rare Gases"
       tier: t2
-      floor_price: 0.05
+      floor_price: 0.5
       tags: [industrial, electronics, science]
       notes: "Lasers, lithography, plasma processing."
 
     - key: genomes
       name: "Genomes"
       tier: t2
-      floor_price: 0.08
+      floor_price: 0.8
       tags: [medical, agriculture, biotech]
       notes: "Engineered genomes, therapies, bio-IP."
 
     - key: ancient_relics
       name: "Ancient Relics"
       tier: t2
-      floor_price: 0.12
+      floor_price: 1.2
       tags: [science, culture, strategic]
       notes: "Fragments/artifacts leveraged for research, diplomacy, unlocks."
 
     - key: psycho_implants
       name: "Psycho Implants"
       tier: t2
-      floor_price: 0.1
+      floor_price: 1.0
       tags: [medical, psychology, military]
       notes: "Psycho-active implants, neural enhancements, mind-control."
 
     - key: nano_machines
       name: "Nano Machines"
       tier: t3
-      floor_price: 0.5
+      floor_price: 5.0
       tags: [industrial, repair, military]
       notes: "Advanced fabrication and repair swarms; elite sustainment."
 
     - key: quantum_circuits
       name: "Quantum Circuits"
       tier: t3
-      floor_price: 0.75
+      floor_price: 7.5
       tags: [electronics, intel, command]
       notes: "Encryption, prediction, high-end comms and targeting."
 
     - key: sentient_cores
       name: "Sentient Cores"
       tier: t3
-      floor_price: 1.0
+      floor_price: 10.0
       tags: [command, ethics, strategic]
       notes: "Sapient-grade computation; doctrine defining; high political impact."
 
     - key: wormhole_reactors
       name: "Wormhole Reactors"
       tier: t3
-      floor_price: 1.5
+      floor_price: 15.0
       tags: [energy, propulsion, strategic]
       notes: "Exotic power cores used for extreme-range logistics and experimental drives."
 
     - key: dark_matter
       name: "Dark Matter"
       tier: t4
-      floor_price: 10.0
+      floor_price: 100.0
       tags: [legendary, propulsion, megastructure]
       notes: "Ultra-rare; enables economy-warping tech and projects."
 
     - key: anti_grav_modules
       name: "Anti-Grav Modules"
       tier: t4
-      floor_price: 8.0
+      floor_price: 80.0
       tags: [propulsion, megastructure, strategic]
       notes: "Advanced anti-grav systems; enables megastructures and planetary-scale projects."

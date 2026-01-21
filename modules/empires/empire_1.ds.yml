@@ -37,16 +37,16 @@ declares:
       production:
         outputs_per_tick:
           super_alloys: 0.8
-          rare_gases: 0.2
+          rare_gases: 0.1
       needs:
         per_pop:
-          biomass: 0.5
-          solid_ice: 0.1
+          biomass: 0.05
+          solid_ice: 0.01
       wants:
         per_pop:
           nano_machines: 0.001
           quantum_circuits: 0.002
-          genomes: 0.3
+          genomes: 0.15
     tags: ["Industrial", "Federation"]
     modifiers:
       intensity: 1.0

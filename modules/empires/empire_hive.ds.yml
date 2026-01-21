@@ -37,11 +37,11 @@ declares:
       tech_rate_bonus: 0.01
       production:
         outputs_per_tick:
-          genomes: 0.08
+          genomes: 0.125
           ancient_relics: 0.1
       needs:
         per_pop:
-          biomass: 0.25
+          biomass: 0.025
           solid_ice: 0.02
       wants:
         per_pop:

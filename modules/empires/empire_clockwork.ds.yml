@@ -37,11 +37,11 @@ declares:
       tech_rate_bonus: 0.20
       production:
         outputs_per_tick:
-          quantum_circuits: 0.1
-          nano_machines: 1
+          quantum_circuits: 0.005
+          nano_machines: 0.01
       needs:
         per_pop:
-          rare_gases: 1.5
+          rare_gases: 0.75
           super_alloys: 0.8
       wants:
         per_pop:

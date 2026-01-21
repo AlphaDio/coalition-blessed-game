@@ -83,7 +83,7 @@ function ensureDiplomacy(state) {
 function initializeEconomyState(state) {
   try {
     loadEconomyConfig();
-    const resourcesPath = path.join(__dirname, 'docs', 'input', 'resources.yaml');
+    const resourcesPath = path.join(__dirname, 'modules', 'resources.yaml');
     const resourcesContent = fs.readFileSync(resourcesPath, 'utf8');
     const resourcesDoc = yaml.load(resourcesContent);
     const commodities = resourcesDoc.resources?.commodities || [];

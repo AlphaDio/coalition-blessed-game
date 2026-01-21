@@ -38,7 +38,7 @@ function loadResources() {
   if (RESOURCES_DATA) return RESOURCES_DATA;
   
   try {
-    const resourcesPath = path.join(__dirname, '..', '..', 'docs', 'input', 'resources.yaml');
+    const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
     const content = fs.readFileSync(resourcesPath, 'utf8');
     const doc = yaml.load(content);
     RESOURCES_DATA = doc.resources;

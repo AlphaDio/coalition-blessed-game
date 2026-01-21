@@ -36,17 +36,17 @@ declares:
       tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
-          biomass: 1
-          genomes: 0.6
+          biomass: 0.15
+          genomes: 0.025
       needs:
         per_pop:
-          super_alloys: 0.5
-          solid_ice: 0.8
+          super_alloys: 0.05
+          solid_ice: 0.08
       wants:
         per_pop:
           psycho_implants: 0.05
           ancient_relics: 0.2
-          genomes: 0.1
+          genomes: 0.025
     tags: ["Agricultural", "Alliance", "Biologic"]
     modifiers:
       intensity: 1.1

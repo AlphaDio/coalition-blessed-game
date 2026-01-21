@@ -324,72 +324,75 @@ export function processImprovementSustainment(state, improvement) {
   let allSatisfied = true;
   const shortages = [];
 
-   for (const [commodity, qtyNeeded] of Object.entries(sustainmentNeeds)) {
-      if (qtyNeeded <= 0) continue;
+  const population = empire.stats?.population || 1;
 
-      let stockpile = empire.stockpiles[commodity] || 0;
+  for (const [commodity, qtyNeeded] of Object.entries(sustainmentNeeds)) {
+    const scaledQty = Math.ceil(qtyNeeded * population);
+    if (scaledQty <= 0) continue;
+
+    let stockpile = empire.stockpiles[commodity] || 0;
+    if (commodity === 'supplies') {
+      stockpile = empire.budget_credits || 0;
+    }
+
+    if (stockpile >= scaledQty) {
+      // Use empire resources
       if (commodity === 'supplies') {
-        stockpile = empire.budget_credits || 0;
+        empire.budget_credits = (empire.budget_credits || 0) - scaledQty;
+      } else {
+        empire.stockpiles[commodity] -= scaledQty;
+      }
+    } else {
+      // Insufficient stockpile, try to buy from market
+      const remaining = scaledQty - stockpile;
+
+      if (stockpile > 0) {
+        if (commodity === 'supplies') {
+          empire.budget_credits = 0;
+        } else {
+          empire.stockpiles[commodity] = 0;
+        }
       }
 
-      if (stockpile >= qtyNeeded) {
-        // Use empire resources
-        if (commodity === 'supplies') {
-          empire.budget_credits = (empire.budget_credits || 0) - qtyNeeded;
-        } else {
-          empire.stockpiles[commodity] -= qtyNeeded;
+      // Create market buy order if market exists
+      if (state.market && state.market[commodity]) {
+        const marketState = state.market[commodity];
+        const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+
+        // Create buy order with proper tagging
+        const buyOrder = {
+          id: `sustain_${orderIdCounter++}`,
+          owner_type: 'empire',
+          owner_id: empire.id,
+          commodity,
+          qty: remaining,
+          max_price: maxPrice,
+          priority: 800, // High priority for sustainment
+          filled_qty: 0,
+          fee: 1,
+          tags: {
+            originator: improvement.id,
+            payer: empire.id,
+            beneficiary: improvement.id,
+            purpose: 'sustainment'
+          }
+        };
+
+        // Add to market (will be processed during economy tick)
+        if (!state.marketOrders) {
+          state.marketOrders = { buyOrders: [], sellOffers: [] };
         }
+        state.marketOrders.buyOrders.push(buyOrder);
+
+        // For now, assume order fails (will be processed in economy tick)
+        allSatisfied = false;
+        shortages.push(commodity);
       } else {
-        // Insufficient stockpile, try to buy from market
-        const remaining = qtyNeeded - stockpile;
-
-        if (stockpile > 0) {
-          if (commodity === 'supplies') {
-            empire.budget_credits = 0;
-          } else {
-            empire.stockpiles[commodity] = 0;
-          }
-        }
-
-        // Create market buy order if market exists
-        if (state.market && state.market[commodity]) {
-          const marketState = state.market[commodity];
-          const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
-
-          // Create buy order with proper tagging
-          const buyOrder = {
-            id: `sustain_${orderIdCounter++}`,
-            owner_type: 'empire',
-            owner_id: empire.id,
-            commodity,
-            qty: remaining,
-            max_price: maxPrice,
-            priority: 800, // High priority for sustainment
-            filled_qty: 0,
-            fee: 1,
-            tags: {
-              originator: improvement.id,
-              payer: empire.id,
-              beneficiary: improvement.id,
-              purpose: 'sustainment'
-            }
-          };
-
-          // Add to market (will be processed during economy tick)
-          if (!state.marketOrders) {
-            state.marketOrders = { buyOrders: [], sellOffers: [] };
-          }
-          state.marketOrders.buyOrders.push(buyOrder);
-
-          // For now, assume order fails (will be processed in economy tick)
-          allSatisfied = false;
-          shortages.push(commodity);
-        } else {
-          allSatisfied = false;
-          shortages.push(commodity);
-        }
+        allSatisfied = false;
+        shortages.push(commodity);
       }
     }
+  }
 
   // Update improvement state based on sustainment success
   improvement.ticksSinceSustained++;
@@ -426,16 +429,19 @@ export function processImprovementProduction(state, improvement) {
 
   if (!empire) return { log };
 
-   // Process production outputs
-    for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
-      if (qty <= 0) continue;
+  const population = empire.stats?.population || 1;
 
-      // All production goes to empire stockpile
-      if (!empire.stockpiles[commodity]) {
-        empire.stockpiles[commodity] = 0;
-      }
-      empire.stockpiles[commodity] += qty;
-    }
+   // Process production outputs
+   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
+     const scaledQty = Math.floor(qty * population);
+     if (scaledQty <= 0) continue;
+
+     // All production goes to empire stockpile
+     if (!empire.stockpiles[commodity]) {
+       empire.stockpiles[commodity] = 0;
+     }
+     empire.stockpiles[commodity] += scaledQty;
+   }
 
    return { log };
 }

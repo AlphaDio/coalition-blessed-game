@@ -1538,21 +1538,10 @@ function renderCommodityDetailView(state, ui) {
 
   lines.push(`Demand: {yellow-fg}${formatVolume(demand)}{/yellow-fg}  Supply: {red-fg}${formatVolume(supply)}{/red-fg}  Traded: {magenta-fg}${formatVolume(traded)}{/magenta-fg}`);
 
-  // Empire market orders
-  const buyOrders = [];
-  const sellOrders = [];
-  Object.values(state.market).forEach(ms => {
-    ms.buy_orders?.forEach(order => {
-      if (order.commodity === key) {
-        buyOrders.push(order);
-      }
-    });
-    ms.sell_offers?.forEach(order => {
-      if (order.commodity === key) {
-        sellOrders.push(order);
-      }
-    });
-  });
+  // Market orders from state.marketOrders
+  const marketOrders = state.marketOrders || {};
+  const buyOrders = (marketOrders.buyOrders || []).filter(o => o.commodity === key && (o.filled_qty || 0) < o.qty);
+  const sellOrders = (marketOrders.sellOffers || []).filter(o => o.commodity === key && (o.filled_qty || 0) < o.qty);
 
   if (buyOrders.length > 0) {
     lines.push('', '{bold}Buy Orders:{/bold}');
@@ -1734,7 +1723,7 @@ export function loadCommodityMap(market) {
   // Load resources to get commodity names
   let commodities = [];
   try {
-    const resourcesPath = path.join(__dirname, '..', '..', 'docs', 'input', 'resources.yaml');
+    const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
     const content = fs.readFileSync(resourcesPath, 'utf8');
     const doc = yaml.load(content);
     commodities = doc.resources?.commodities || [];
