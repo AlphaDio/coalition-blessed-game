@@ -77,7 +77,7 @@ export function executeCoalitionProcurement(market, coalitionEconomy, config) {
   });
 
   let spent = 0;
-  const logEntries = [];
+  const purchasesByCommodity = {};
   let remainingSpend = targetSpend;
 
   // Purchase loop
@@ -102,18 +102,25 @@ export function executeCoalitionProcurement(market, coalitionEconomy, config) {
     spent += cost;
     remainingSpend -= cost;
 
-    const logEntry = `Coalition procured ${buyQty} ${offer.commodity_id} for ${cost} credits`;
-    logEntries.push(logEntry);
-    logger.debug(logEntry);
+    purchasesByCommodity[offer.commodity_id] = (purchasesByCommodity[offer.commodity_id] || 0) + buyQty;
   }
 
   // Deduct from treasury and allowance
   coalitionEconomy.treasury_credits -= spent;
   coalitionEconomy.allowance_credits -= spent;
 
-  logger.debug(`Coalition procurement completed: spent ${spent}/${targetSpend} credits`);
+  // Create condensed log entry
+  if (spent > 0) {
+    const commoditySummary = Object.entries(purchasesByCommodity)
+      .map(([commodityId, qty]) => `${qty} ${commodityId}`)
+      .join(', ');
+    const logEntry = `Coalition procurement: ${spent} credits spent -> ${commoditySummary}`;
+    logger.debug(logEntry);
+    return [logEntry];
+  }
 
-  return logEntries;
+  logger.debug(`Coalition procurement completed: spent ${spent}/${targetSpend} credits`);
+  return [];
 }
 
 /**
@@ -166,8 +173,8 @@ function getEligibleOffers(market, coalitionEconomy) {
  * @returns {Array} Array of log entries for conversions made
  */
 export function executeSupplyConversion(coalitionEconomy, config) {
-  const logEntries = [];
   let totalConvertedUnits = 0;
+  const conversionsByCommodity = {};
 
   for (const [commodityId, stockQty] of Object.entries(coalitionEconomy.stockpile_by_commodity)) {
     if (stockQty < BATCH_SIZE_UNITS) continue;
@@ -186,21 +193,27 @@ export function executeSupplyConversion(coalitionEconomy, config) {
     coalitionEconomy.supply_milli += gainMilli;
     totalConvertedUnits += convertQty;
 
-    const logEntry = `Coalition converted ${convertQty} ${commodityId} to ${gainMilli} milli-supplies`;
-    logEntries.push(logEntry);
-    logger.debug(logEntry);
+    conversionsByCommodity[commodityId] = (conversionsByCommodity[commodityId] || 0) + gainMilli;
   }
 
   // Add batch conversion bonus
   const batchBonus = Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS) * BATCH_BONUS_MILLI;
   if (batchBonus > 0) {
     coalitionEconomy.supply_milli += batchBonus;
-    logger.debug(`Coalition gained ${batchBonus} milli-supplies from batch conversion bonus`);
+  }
+
+  // Create condensed log entry
+  if (totalConvertedUnits > 0) {
+    const conversionSummary = Object.entries(conversionsByCommodity)
+      .map(([commodityId, milli]) => `${Math.floor(milli / MILLI_PER_UNIT_BY_TIER[COMMODITY_DEFINITIONS[commodityId].tier])} ${commodityId}`)
+      .join(', ');
+    const logEntry = `Coalition conversion: ${totalConvertedUnits} units -> ${coalitionEconomy.supply_milli} milli-supplies${batchBonus > 0 ? ` (+${batchBonus} bonus)` : ''}`;
+    logger.debug(logEntry);
+    return [logEntry];
   }
 
   logger.debug(`Supply conversion completed: ${logEntries.length} commodity batches processed, ${Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS)} total batches`);
-
-  return logEntries;
+  return [];
 }
 
 /**
