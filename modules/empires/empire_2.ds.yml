@@ -31,22 +31,24 @@ declares:
       stoicist_hedonistic: 0.2
       essentialist_constructivist: -0.5
     stats:
-      population: 900
+      population: 450
       influence: 55
       tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
-          biomass: 15
-          genomes: 15
+          biomass: 1
+          genomes: 0.6
       needs:
         per_pop:
           super_alloys: 0.5
           solid_ice: 0.8
       wants:
         per_pop:
-          psycho_implants: 0.008
-          ancient_relics: 0.002
+          psycho_implants: 0.05
+          ancient_relics: 0.2
+          genomes: 0.1
     tags: ["Agricultural", "Alliance", "Biologic"]
     modifiers:
       intensity: 1.1
+      multiplication: 1.0
       axis_gates: {}

@@ -583,10 +583,23 @@ export function canStartImprovement(improvementId, state, empireId) {
  * Returns a list of available improvement requests based on empire tier access
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
+   const MAX_SUGGESTIONS_PER_EMPIRE = 3;
    const suggestions = [];
+
+  // Track how many suggestions each empire already has
+   const currentCounts = {};
+   state.empires.forEach(e => currentCounts[e.id] = 0);
+   state.improvements.requests.forEach(r => {
+     if (r.empireId && currentCounts[r.empireId] !== undefined) {
+       currentCounts[r.empireId]++;
+     }
+   });
 
   // Get all empires
   state.empires.forEach(empire => {
+    const currentCount = currentCounts[empire.id] || 0;
+    if (currentCount >= MAX_SUGGESTIONS_PER_EMPIRE) return;
+
     // Determine available tiers for this empire
     const availableTiers = [1]; // T1 always available
 
@@ -608,29 +621,42 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
 
     // Get available requests for this empire's tiers
     const tieredRequests = getTieredImprovementRequests();
+    const empireSuggestions = [];
     availableTiers.forEach(tier => {
       const tierRequests = tieredRequests[tier] || [];
       tierRequests.forEach(req => {
-        // Create a copy with empireId set
-        suggestions.push({
-          ...req,
-          empireId: empire.id
-        });
+        // Check if this definition is already requested or active for any empire
+        const existingRequest = state.improvements.requests.find(r => r.definitionId === req.id);
+        const active = state.improvements.queue.find(q => q.definitionId === req.id);
+        if (!existingRequest && !active) {
+          empireSuggestions.push(req);
+        }
+      });
+    });
+
+    // Shuffle empire suggestions
+    for (let i = empireSuggestions.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [empireSuggestions[i], empireSuggestions[j]] = [empireSuggestions[j], empireSuggestions[i]];
+    }
+
+    // Add up to remaining slots
+    const slotsRemaining = MAX_SUGGESTIONS_PER_EMPIRE - currentCount;
+    empireSuggestions.slice(0, slotsRemaining).forEach(req => {
+      suggestions.push({
+        ...req,
+        empireId: empire.id
       });
     });
   });
 
-  // Remove duplicates and randomize order
-  const uniqueSuggestions = [...new Set(suggestions.map(s => s.id))]
-    .map(id => suggestions.find(s => s.id === id));
-
-  // Shuffle the suggestions
-  for (let i = uniqueSuggestions.length - 1; i > 0; i--) {
+  // Shuffle all suggestions
+  for (let i = suggestions.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
-    [uniqueSuggestions[i], uniqueSuggestions[j]] = [uniqueSuggestions[j], uniqueSuggestions[i]];
+    [suggestions[i], suggestions[j]] = [suggestions[j], suggestions[i]];
   }
 
-  return uniqueSuggestions;
+  return suggestions;
 }
 
 /**

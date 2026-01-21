@@ -31,13 +31,13 @@ declares:
       stoicist_hedonistic: 0.4
       essentialist_constructivist: 0.5
     stats:
-      population: 800
+      population: 400
       influence: 70
       tech_rate_bonus: 0.15
       production:
         outputs_per_tick:
-          solid_ice: 12
-          psycho_implants: 16
+          solid_ice: 1
+          psycho_implants: 0.1
       needs:
         per_pop:
           biomass: 1.2
@@ -49,4 +49,5 @@ declares:
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:
       intensity: 0.95
+      multiplication: 1.0
       axis_gates: {}

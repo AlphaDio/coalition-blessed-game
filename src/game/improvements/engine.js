@@ -158,11 +158,17 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     }
   }
 
-  // Check supplies cost
-  if (state.stockpiles.supplies < request.suppliesCost) {
+  // Check supplies cost from empire's budget
+  const empire = state.empires.find(e => e.id === empireId);
+  if (!empire) {
+    return { success: false, error: 'Empire not found', log: [] };
+  }
+
+  if (!empire.budget_credits) empire.budget_credits = 0;
+  if (request.suppliesCost > 0 && empire.budget_credits < request.suppliesCost) {
     return {
       success: false,
-      error: `Insufficient Supplies (need ${request.suppliesCost}, have ${state.stockpiles.supplies})`,
+      error: `Insufficient Empire Budget (need ${request.suppliesCost}, have ${empire.budget_credits})`,
       log: []
     };
   }
@@ -181,20 +187,28 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
 
-  // Deduct supplies (no refunds on cancellation)
-  state.stockpiles.supplies -= request.suppliesCost;
+  // Deduct supplies from empire budget (no refunds on cancellation)
+  if (request.suppliesCost > 0) {
+    empire.budget_credits -= request.suppliesCost;
+  }
 
   // Create improvement instance
-  const improvement = createImprovement(requestId, empireId, state.turn, request);
-  improvements.queue.push(improvement);
+   const improvement = createImprovement(requestId, empireId, state.turn, request);
+   improvements.queue.push(improvement);
 
-  logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} Supplies, Tier: ${improvement.tier})`);
+   // Remove the request from the list
+   const requestIdx = state.improvements.requests.findIndex(r => r.id === requestId);
+   if (requestIdx !== -1) {
+     state.improvements.requests.splice(requestIdx, 1);
+   }
 
-  return {
-    success: true,
-    improvement,
-    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (build cost: ${request.build}, T${improvement.tier})`]
-  };
+    logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} credits, Tier: ${improvement.tier})`);
+
+   return {
+     success: true,
+     improvement,
+     log: [`{green-fg}Started:{/green-fg} ${improvement.name} (cost: ${request.suppliesCost} cr, T${improvement.tier})`]
+   };
 }
 
 /**
@@ -254,19 +268,21 @@ export function processImprovementsTick(state) {
   effectiveConstruction = (effectiveConstruction + addModifier) * multModifier;
   const constructionValue = Math.max(0, effectiveConstruction);
 
-  improvements.queue.forEach(improvement => {
-    if (improvement.state === 'BUILDING') {
-      // Advance build progress by construction value
-      improvement.buildProgress += constructionValue;
+   improvements.queue.forEach(improvement => {
+     if (improvement.state === 'BUILDING') {
+       // Advance build progress by construction value
+       improvement.buildProgress += constructionValue;
 
-      // Check if build is complete
-      if (improvement.buildProgress >= improvement.build) {
-        improvement.state = 'ACTIVE';
-        logger.info(`Improvement built: ${improvement.name}`);
-        log.push(`{green-fg}Completed:{/green-fg} ${improvement.name} is now ACTIVE`);
-        const grantLog = grantImprovementUnits(state, improvement);
-        log.push(...grantLog);
-      }
+       // Check if build is complete
+       if (improvement.buildProgress >= improvement.build) {
+         improvement.state = 'ACTIVE';
+         const empire = state.empires.find(e => e.id === improvement.empireId);
+         const empireName = empire ? empire.name : 'Unknown Empire';
+         logger.info(`Improvement built: ${improvement.name} (${empireName})`);
+         log.push(`{green-fg}Completed:{/green-fg} ${improvement.name} (${empireName}) is now ACTIVE`);
+         const grantLog = grantImprovementUnits(state, improvement);
+         log.push(...grantLog);
+       }
     }
 
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
@@ -309,73 +325,71 @@ export function processImprovementSustainment(state, improvement) {
   const shortages = [];
 
    for (const [commodity, qtyNeeded] of Object.entries(sustainmentNeeds)) {
-     if (qtyNeeded <= 0) continue;
+      if (qtyNeeded <= 0) continue;
 
-     let stockpile;
-     if (commodity === 'supplies') {
-       stockpile = state.stockpiles.supplies || 0;
-     } else {
-       stockpile = empire.stockpiles[commodity] || 0;
-     }
+      let stockpile = empire.stockpiles[commodity] || 0;
+      if (commodity === 'supplies') {
+        stockpile = empire.budget_credits || 0;
+      }
 
-     if (stockpile >= qtyNeeded) {
-       // Use stockpile
-       if (commodity === 'supplies') {
-         state.stockpiles.supplies -= qtyNeeded;
-       } else {
-         empire.stockpiles[commodity] -= qtyNeeded;
-       }
-     } else {
-       // Insufficient stockpile, try to buy from market
-       const remaining = qtyNeeded - stockpile;
+      if (stockpile >= qtyNeeded) {
+        // Use empire resources
+        if (commodity === 'supplies') {
+          empire.budget_credits = (empire.budget_credits || 0) - qtyNeeded;
+        } else {
+          empire.stockpiles[commodity] -= qtyNeeded;
+        }
+      } else {
+        // Insufficient stockpile, try to buy from market
+        const remaining = qtyNeeded - stockpile;
 
-       if (stockpile > 0) {
-         if (commodity === 'supplies') {
-           state.stockpiles.supplies = 0; // Use what we have
-         } else {
-           empire.stockpiles[commodity] = 0; // Use what we have
-         }
-       }
+        if (stockpile > 0) {
+          if (commodity === 'supplies') {
+            empire.budget_credits = 0;
+          } else {
+            empire.stockpiles[commodity] = 0;
+          }
+        }
 
-       // Create market buy order if market exists
-       if (state.market && state.market[commodity]) {
-         const marketState = state.market[commodity];
-         const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+        // Create market buy order if market exists
+        if (state.market && state.market[commodity]) {
+          const marketState = state.market[commodity];
+          const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
 
-         // Create buy order with proper tagging
-         const buyOrder = {
-           id: `sustain_${orderIdCounter++}`,
-           owner_type: 'empire',
-           owner_id: empire.id,
-           commodity,
-           qty: remaining,
-           max_price: maxPrice,
-           priority: 800, // High priority for sustainment
-           filled_qty: 0,
-           fee: 1,
-           tags: {
-             originator: improvement.id,
-             payer: empire.id,
-             beneficiary: improvement.id,
-             purpose: 'sustainment'
-           }
-         };
+          // Create buy order with proper tagging
+          const buyOrder = {
+            id: `sustain_${orderIdCounter++}`,
+            owner_type: 'empire',
+            owner_id: empire.id,
+            commodity,
+            qty: remaining,
+            max_price: maxPrice,
+            priority: 800, // High priority for sustainment
+            filled_qty: 0,
+            fee: 1,
+            tags: {
+              originator: improvement.id,
+              payer: empire.id,
+              beneficiary: improvement.id,
+              purpose: 'sustainment'
+            }
+          };
 
-         // Add to market (will be processed during economy tick)
-         if (!state.marketOrders) {
-           state.marketOrders = { buyOrders: [], sellOffers: [] };
-         }
-         state.marketOrders.buyOrders.push(buyOrder);
+          // Add to market (will be processed during economy tick)
+          if (!state.marketOrders) {
+            state.marketOrders = { buyOrders: [], sellOffers: [] };
+          }
+          state.marketOrders.buyOrders.push(buyOrder);
 
-         // For now, assume order fails (will be processed in economy tick)
-         allSatisfied = false;
-         shortages.push(commodity);
-       } else {
-         allSatisfied = false;
-         shortages.push(commodity);
-       }
-     }
-   }
+          // For now, assume order fails (will be processed in economy tick)
+          allSatisfied = false;
+          shortages.push(commodity);
+        } else {
+          allSatisfied = false;
+          shortages.push(commodity);
+        }
+      }
+    }
 
   // Update improvement state based on sustainment success
   improvement.ticksSinceSustained++;
@@ -413,22 +427,17 @@ export function processImprovementProduction(state, improvement) {
   if (!empire) return { log };
 
    // Process production outputs
-   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
-     if (qty <= 0) continue;
+    for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
+      if (qty <= 0) continue;
 
-     if (commodity === 'supplies') {
-       // Add to coalition supplies
-       state.stockpiles.supplies = (state.stockpiles.supplies || 0) + qty;
-     } else {
-       // Inject into empire stockpile
-       if (!empire.stockpiles[commodity]) {
-         empire.stockpiles[commodity] = 0;
-       }
-       empire.stockpiles[commodity] += qty;
-     }
-   }
+      // All production goes to empire stockpile
+      if (!empire.stockpiles[commodity]) {
+        empire.stockpiles[commodity] = 0;
+      }
+      empire.stockpiles[commodity] += qty;
+    }
 
-  return { log };
+   return { log };
 }
 
 /**

@@ -82,12 +82,16 @@ export function enactLaw(state, lawId) {
      state.coalitionModifiers.army_maintenance_cost_modifier *= modifiers.army_maintenance_cost_modifier;
      log.push(`Army maintenance costs reduced by ${(1 - modifiers.army_maintenance_cost_modifier) * 100}%`);
    }
-   if (modifiers.relations_strength_modifier) {
-     state.coalitionModifiers.relations_strength_modifier *= modifiers.relations_strength_modifier;
-     log.push(`Diplomatic relations strengthened by ${(modifiers.relations_strength_modifier - 1) * 100}%`);
-   }
-  
-  // Set cooldown
+    if (modifiers.relations_strength_modifier) {
+      state.coalitionModifiers.relations_strength_modifier *= modifiers.relations_strength_modifier;
+      log.push(`Diplomatic relations strengthened by ${(modifiers.relations_strength_modifier - 1) * 100}%`);
+    }
+    if (modifiers.empire_production_multiplier) {
+      state.coalitionModifiers.empire_production_multiplier += modifiers.empire_production_multiplier;
+      log.push(`Empire production multiplier increased by +${(modifiers.empire_production_multiplier * 100).toFixed(0)}%`);
+    }
+
+   // Set cooldown
   law.currentCooldown = law.cooldown;
   
   return { success: true, log };

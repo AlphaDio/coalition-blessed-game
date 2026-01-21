@@ -461,6 +461,7 @@ export function createGameState(seed = 0) {
       empire_approval: 0,
       population_growth: 0,
       trade_income: 0,
+      empire_production_multiplier: 0,
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0

@@ -81,32 +81,36 @@ export function processEconomyTick(state) {
   let orderIdCounter = 0;
   
   // Step 1: Compute empire production
-  state.empires.forEach(empire => {
-    if (!empire.production || !empire.production.outputs_per_tick) return;
-    
-    Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
-      if (qty > 0) {
-        // Apply industrial_output modifier
-        const modifiedQty = qty * (1 + (state.coalitionModifiers.industrial_output || 0));
-        
-        // Create sell offer at market price (or slightly below for competitiveness)
-        const marketPrice = state.market[commodity]?.price || 1.0;
-        const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT; // Slightly below market
-        
-        const sellOffer = createSellOffer(
-          `sell_${orderIdCounter++}`,
-          'empire',
-          empire.id,
-          commodity,
-          modifiedQty,
-          askPrice,
-          0
-        );
-        sellOffer.fee = 1;
-        sellOffers.push(sellOffer);
-      }
-    });
-  });
+   state.empires.forEach(empire => {
+     if (!empire.production || !empire.production.outputs_per_tick) return;
+
+     const population = empire.stats?.population || 1;
+     const empireMultiplier = empire.modifiers?.multiplication || 1.0;
+     const productionMultiplier = (1 + (state.coalitionModifiers.empire_production_multiplier || 0)) * empireMultiplier;
+
+     Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
+       if (qty > 0) {
+         // Apply population, empire multiplication and industrial_output modifier
+         const modifiedQty = qty * population * productionMultiplier * (1 + (state.coalitionModifiers.industrial_output || 0));
+
+         // Create sell offer at market price (or slightly below for competitiveness)
+         const marketPrice = state.market[commodity]?.price || 1.0;
+         const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT; // Slightly below market
+
+         const sellOffer = createSellOffer(
+           `sell_${orderIdCounter++}`,
+           'empire',
+           empire.id,
+           commodity,
+           modifiedQty,
+           askPrice,
+           0
+         );
+         sellOffer.fee = 1;
+         sellOffers.push(sellOffer);
+       }
+     });
+   });
   
   // Step 2: Emit buy orders for empire needs
   state.empires.forEach(empire => {

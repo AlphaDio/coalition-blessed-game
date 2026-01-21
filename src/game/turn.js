@@ -546,10 +546,16 @@ export function advanceTurn(state, rng = Math.random) {
      applyImprovementModifiers(state);
    }
 
-   // 3.1. Empire improvement suggestions
-   if (state.empires && state.improvements) {
-     state.empires.forEach(empire => {
-       if (rngFn() < 0.1) { // 10% chance per turn per empire
+    // 3.1. Empire improvement suggestions
+    // Only suggest when an empire has started/completed an improvement
+    if (state.empires && state.improvements) {
+      const activeImprovements = state.improvements.queue.filter(i => i.state === 'BUILDING');
+      const activeEmpireIds = new Set(activeImprovements.map(i => i.empireId));
+
+      state.empires.forEach(empire => {
+        // Only suggest if this empire has an active improvement
+        if (!activeEmpireIds.has(empire.id)) return;
+        if (rngFn() < 0.3) { // 30% chance if empire has active improvement
          const availableDefinitions = getAllImprovementRequests().filter(def => {
            // Check requirements
            if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;

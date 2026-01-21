@@ -32,13 +32,13 @@ declares:
       stoicist_hedonistic: -0.2
       essentialist_constructivist: 0.7
     stats:
-      population: 300
+      population: 150
       influence: 80
       tech_rate_bonus: 0.20
       production:
         outputs_per_tick:
-          quantum_circuits: 5
-          nano_machines: 3
+          quantum_circuits: 0.1
+          nano_machines: 1
       needs:
         per_pop:
           rare_gases: 1.5
@@ -50,4 +50,5 @@ declares:
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0
+      multiplication: 1.5
       axis_gates: {}

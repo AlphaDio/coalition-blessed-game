@@ -32,23 +32,24 @@ declares:
       stoicist_hedonistic: -0.7
       essentialist_constructivist: -0.8
     stats:
-      population: 900
+      population: 450
       influence: 55
       tech_rate_bonus: 0.01
       production:
         outputs_per_tick:
-          genomes: 20
-          ancient_relics: 2
+          genomes: 0.08
+          ancient_relics: 0.1
       needs:
         per_pop:
           biomass: 0.25
           solid_ice: 0.02
       wants:
         per_pop:
-          psycho_implants: 0.001
-          nano_machines: 0.005
+          psycho_implants: 0.01
+          nano_machines: 0.05
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15
+      multiplication: 1.2
       axis_gates:
         authoritarian_liberal: 0.6

@@ -739,34 +739,38 @@ function buildImprovementMenuItems(state) {
     return items;
   }
 
-  filteredRequests.forEach((request) => {
-    const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
-    const tierLabel = request.tier ? `T${request.tier}` : 'T1';
-    const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
+   filteredRequests.forEach((request) => {
+     const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
+     const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+     const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
 
-    const capacityNeeded = buildingCapacity + request.capacity;
-    const capacityOk = capacityNeeded <= state.improvements.maxTotalCapacity;
-    const suppliesOk = state.stockpiles.supplies >= request.suppliesCost;
-    const disabled = !capacityOk || !suppliesOk;
+     const capacityNeeded = buildingCapacity + request.capacity;
+     const capacityOk = capacityNeeded <= state.improvements.maxTotalCapacity;
 
-    let hint = `${tierLabel} • ${request.suppliesCost} sup`;
-    if (!capacityOk) {
-      hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
-    } else if (!suppliesOk) {
-      hint = `{red-fg}need ${request.suppliesCost} sup{/red-fg}`;
-    }
+     // Check empire budget for supplies cost
+     const empire = state.empires?.find(e => e.id === request.empireId);
+     const empireBudget = empire?.budget_credits || 0;
+     const budgetOk = empireBudget >= request.suppliesCost;
+     const disabled = !capacityOk || !budgetOk;
 
-    items.push({
-      id: `request_${request.id}`,
-      label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: hint,
-      detailLine: formatImprovementDetailLine(request),
-      action: 'ACCEPT_REQUEST',
-      requestIndex: originalIndex,
-      requestId: request.id,
-      disabled
-    });
-  });
+     let hint = `${tierLabel} • ${request.suppliesCost} cr`;
+     if (!capacityOk) {
+       hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
+     } else if (!budgetOk) {
+       hint = `{red-fg}need ${request.suppliesCost} cr (have ${empireBudget}){/red-fg}`;
+     }
+
+     items.push({
+       id: `request_${request.id}`,
+       label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
+       hint: hint,
+       detailLine: formatImprovementDetailLine(request),
+       action: 'ACCEPT_REQUEST',
+       requestIndex: originalIndex,
+       requestId: request.id,
+       disabled
+     });
+   });
 
   return items;
 }
@@ -1188,9 +1192,9 @@ function renderMarketView(state, ui) {
   const commodityMap = loadCommodityMap(state.market);
   const sortedCommodities = sortMarketCommodities(state.market, commodityMap);
 
-  const lines = [
-    '{bold}{green-fg}Commodity{/green-fg}  {cyan-fg}Price{/cyan-fg}  {yellow-fg}Buy{/yellow-fg}  {red-fg}Sell{/red-fg}  {magenta-fg}Vol{/magenta-fg}{/bold}',
-    '─'.repeat(45)
+   const lines = [
+    '{bold}{green-fg}Commodity{/green-fg}     {cyan-fg}Price{/cyan-fg}     {yellow-fg}Buy{/yellow-fg}   {red-fg}Sell{/red-fg}   {magenta-fg}Vol{/magenta-fg}{/bold}',
+    '─'.repeat(60)
   ];
 
   sortedCommodities.forEach((entry, index) => {
@@ -1346,8 +1350,8 @@ function renderProcurementView(state, ui) {
     const threshold = refPrice * thetaMultiplier;
 
     const name = commodity.name || key;
-    const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
-    const namePad = ' '.repeat(Math.max(0, 12 - displayName.length));
+   const displayName = name.length > 14 ? name.substring(0, 12) + '..' : name;
+   const namePad = ' '.repeat(Math.max(0, 14 - displayName.length));
 
     const stockpileStr = formatVolume(stockpile).padStart(8);
     const thetaStr = theta.substring(0, 4).padStart(7);
@@ -1396,17 +1400,22 @@ function renderEmpireDetailView(state, ui) {
 
   lines.push(`Approval: ${approval}  Stability: ${stabilityDisplay}`);
 
-  if (empire.stats) {
-    const statParts = [];
-    statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
-    statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
-    if (empire.stats.tech_rate_bonus) {
-      statParts.push(`Tech Bonus: +${formatNumber(empire.stats.tech_rate_bonus * 100, 0)}%`);
-    }
-    lines.push(statParts.join('  '));
-  }
+   if (empire.stats) {
+     const statParts = [];
+     statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
+     statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
+     if (empire.stats.tech_rate_bonus) {
+       statParts.push(`Tech Bonus: +${formatNumber(empire.stats.tech_rate_bonus * 100, 0)}%`);
+     }
+     lines.push(statParts.join('  '));
+   }
 
-  if (empire.budget_credits !== undefined) {
+   const multiplier = empire.modifiers?.multiplication || 1.0;
+   if (multiplier !== 1.0) {
+     lines.push(`Production Multiplier: {green-fg}${multiplier.toFixed(1)}x{/green-fg}`);
+   }
+
+   if (empire.budget_credits !== undefined) {
     lines.push(`Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg} credits`);
   }
 
@@ -1766,17 +1775,17 @@ function formatMarketRow({ key, commodity, marketState }) {
   const displayName = name.length > 12 ? name.substring(0, 10) + '..' : name;
   const namePad = ' '.repeat(Math.max(0, 12 - displayName.length));
 
-  const priceStr = price.toFixed(2).padStart(6);
-  const demandStr = formatVolume(demand).padStart(6);
-  const supplyStr = formatVolume(supply).padStart(6);
-  const tradedStr = formatVolume(traded).padStart(6);
+   const priceStr = price.toFixed(3).padStart(9);
+   const demandStr = formatVolume(demand).padStart(7);
+   const supplyStr = formatVolume(supply).padStart(7);
+   const tradedStr = formatVolume(traded).padStart(7);
 
   const priceColor = getPriceColor(marketState, price);
   const { demandColor, supplyColor } = getSupplyDemandColors(demand, supply);
 
-  return `${displayName}${namePad} {${priceColor}-fg}${priceStr}{/${priceColor}-fg}  ` +
-    `{${demandColor}-fg}${demandStr}{/${demandColor}-fg}  ` +
-    `{${supplyColor}-fg}${supplyStr}{/${supplyColor}-fg}  ` +
+   return `${displayName}${namePad}  {${priceColor}-fg}${priceStr}{/${priceColor}-fg}   ` +
+    `{${demandColor}-fg}${demandStr}{/${demandColor}-fg}   ` +
+    `{${supplyColor}-fg}${supplyStr}{/${supplyColor}-fg}   ` +
     `{magenta-fg}${tradedStr}{/magenta-fg}`;
 }
 
@@ -1880,13 +1889,19 @@ function formatEmpireBlock(empire, regularArmies, state) {
   if (empire.budget_credits !== undefined) {
     statParts.push(`Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg}`);
   }
-  const empireArmies = regularArmies.filter(army => army.empireId === empire.id);
-  statParts.push(`Armies: ${empireArmies.length}`);
-  if (statParts.length > 0) {
-    lines.push(`  ${statParts.join('  ')}`);
-  }
+   const empireArmies = regularArmies.filter(army => army.empireId === empire.id);
+   statParts.push(`Armies: ${empireArmies.length}`);
 
-  // Technology progress
+   const multiplier = empire.modifiers?.multiplication || 1.0;
+   if (multiplier !== 1.0) {
+     statParts.push(`Prod: {green-fg}${multiplier.toFixed(1)}x{/green-fg}`);
+   }
+
+   if (statParts.length > 0) {
+     lines.push(`  ${statParts.join('  ')}`);
+   }
+
+   // Technology progress
   if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
     const progress = Math.min(1, empire.techPoints / empire.techThreshold);
     const barWidth = 12;

@@ -56,7 +56,7 @@ function applyLawModifiers(lawDef, state) {
   const log = [];
   const modifiers = lawDef.modifiers || {};
   
-  // Ensure coalitionModifiers exists
+   // Ensure coalitionModifiers exists
   if (!state.coalitionModifiers) {
     state.coalitionModifiers = {
       industrial_output: 0,
@@ -66,6 +66,7 @@ function applyLawModifiers(lawDef, state) {
       empire_approval: 0,
       population_growth: 0,
       trade_income: 0,
+      empire_production_multiplier: 0,
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0
@@ -142,9 +143,15 @@ function applyLawModifiers(lawDef, state) {
         }
       });
     }
-  }
-  
-  // Apply immediate empire reactions based on law's axis vector
+   }
+
+   // Apply empire production multiplier modifier (multiplies all empire production)
+   if (modifiers.empire_production_multiplier) {
+     state.coalitionModifiers.empire_production_multiplier += modifiers.empire_production_multiplier;
+     log.push(`Empire production multiplier: +${(modifiers.empire_production_multiplier * 100).toFixed(0)}%`);
+   }
+
+   // Apply immediate empire reactions based on law's axis vector
   if (lawDef.axis_vector && Object.keys(lawDef.axis_vector).length > 0 && state.empires) {
     const lawForReaction = {
       vector: lawDef.axis_vector,
