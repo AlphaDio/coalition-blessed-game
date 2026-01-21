@@ -12,6 +12,8 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers } from './improvements/index.js';
+import { getAllImprovementRequests } from './improvements/definitions.js';
+import { createImprovementRequest } from './improvements/engine.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
@@ -533,16 +535,50 @@ export function advanceTurn(state, rng = Math.random) {
   // 2.5. Refresh army stats from units after economy
   refreshArmyAggregates(state);
 
-  // 3. Process improvements tick
-  if (state.improvements) {
-    const improvementResult = processImprovementsTick(state);
-    if (improvementResult.log && improvementResult.log.length > 0) {
-      log.push(...improvementResult.log);
-    }
-    
-    // Apply improvement modifiers
-    applyImprovementModifiers(state);
-  }
+   // 3. Process improvements tick
+   if (state.improvements) {
+     const improvementResult = processImprovementsTick(state);
+     if (improvementResult.log && improvementResult.log.length > 0) {
+       log.push(...improvementResult.log);
+     }
+
+     // Apply improvement modifiers
+     applyImprovementModifiers(state);
+   }
+
+   // 3.1. Empire improvement suggestions
+   if (state.empires && state.improvements) {
+     state.empires.forEach(empire => {
+       if (rngFn() < 0.1) { // 10% chance per turn per empire
+         const availableDefinitions = getAllImprovementRequests().filter(def => {
+           // Check requirements
+           if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;
+           if (def.requirements?.supplies && state.supplies < def.requirements.supplies) return false;
+           // Check if already requested or active
+           const existingRequest = state.improvements.requests.find(r => r.definitionId === def.id);
+           if (existingRequest) return false;
+           const active = state.improvements.queue.find(q => q.definitionId === def.id);
+           if (active) return false;
+           return true;
+         });
+         if (availableDefinitions.length > 0) {
+           const randomDef = availableDefinitions[Math.floor(rngFn() * availableDefinitions.length)];
+           const req = createImprovementRequest(randomDef.id, randomDef.name, randomDef.description, {
+             suppliesCost: randomDef.suppliesCost,
+             build: randomDef.build,
+             tier: randomDef.tier,
+             branch: randomDef.branch,
+             requirements: randomDef.requirements
+           });
+           req.empireId = empire.id;
+           req.requestedAt = state.turn;
+           state.improvements.requests.push(req);
+           log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
+           logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);
+         }
+       }
+     });
+   }
 
   // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
   const emergencyResult = tickEmergencyLaws(state);

@@ -410,17 +410,23 @@ export function renderActionPanel(ui, state) {
       label = ' Works (TAB: cycle, ESC: back) ';
       items = buildImprovementMenuItems(state);
       break;
-    case 'info_select':
-      label = ' Select Info Panel (ESC: back) ';
-      items = buildInfoSelectItems();
-      break;
-    default:
-      label = ' Actions ';
-      items = buildMainMenuItems(state);
-  }
+     case 'procurement_view':
+       label = ' Procurement (↑↓: select, ←→: theta, -/+: throttle, TAB: back) ';
+       content = renderProcurementView(state, panel);
+       break;
+     case 'info_select':
+       label = ' Select Info Panel (ESC: back) ';
+       items = buildInfoSelectItems();
+       break;
+     default:
+       label = ' Actions ';
+       items = buildMainMenuItems(state);
+   }
 
-  panel.menuItems = items;
-  content = formatMenuItems(items, selectedIndex);
+   if (mode !== 'procurement_view') {
+     panel.menuItems = items;
+     content = formatMenuItems(items, selectedIndex);
+   }
 
   panel.setLabel(label);
   panel.setContent(content);
@@ -453,7 +459,7 @@ function buildMainMenuItems(state) {
     { id: 'view_market', label: 'View Market', hint: '[M]', action: 'SET_VIEW', view: 'market' },
     { id: 'view_armies', label: 'View Armies', hint: '[A]', action: 'SET_VIEW', view: 'armies' },
     { id: 'view_empires', label: 'View Empires', hint: '[E]', action: 'SET_VIEW', view: 'empires' },
-    { id: 'view_procurement', label: 'View Procurement', hint: '[P]', action: 'SET_VIEW', view: 'procurement' },
+    { id: 'view_procurement', label: 'View Procurement', hint: '[P]', action: 'SWITCH_MODE', mode: 'procurement_view' },
     { id: 'view_queue', label: 'View Works', hint: '[W]', action: 'SET_VIEW', view: 'queue' },
     { id: 'divider2', label: '─────────────────', divider: true },
     { id: 'toggle_pause', label: state.paused ? 'Resume Game' : 'Pause Game', hint: '[SPACE]', action: 'TOGGLE_PAUSE' },
@@ -623,10 +629,10 @@ function buildRequestMenuItems(state) {
 
   // Filter requests to only show those that meet tier requirements
   const filteredRequests = state.improvements.requests.filter(request => {
-    if (!request.suggestedBy) {
+    if (!request.empireId) {
       return false;
     }
-    return isImprovementTierUnlocked(request.tier || 1, state, request.suggestedBy);
+    return isImprovementTierUnlocked(request.tier || 1, state, request.empireId);
   });
 
 
@@ -636,7 +642,7 @@ function buildRequestMenuItems(state) {
   }
 
   filteredRequests.forEach((request) => {
-    const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
+    const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
     const tierLabel = request.tier ? `T${request.tier}` : 'T1';
 
     const benefitParts = [];
@@ -697,7 +703,7 @@ function buildImprovementMenuItems(state) {
         ? Math.min(1, improvement.buildProgress / improvement.build)
         : 0;
       const bar = formatProgressBar(progress, 12);
-      const { label, colorTag } = formatSuggestionLabel(improvement.suggestedBy, state);
+      const { label, colorTag } = formatSuggestionLabel(improvement.empireId, state);
       items.push({
         id: `improvement_${improvement.id}`,
         label: `${improvement.name} ${bar} [${stateLabel}] {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
@@ -722,10 +728,10 @@ function buildImprovementMenuItems(state) {
     .reduce((sum, i) => sum + i.capacity, 0);
 
   const filteredRequests = state.improvements.requests.filter(request => {
-    if (!request.suggestedBy) {
+    if (!request.empireId) {
       return false;
     }
-    return isImprovementTierUnlocked(request.tier || 1, state, request.suggestedBy);
+    return isImprovementTierUnlocked(request.tier || 1, state, request.empireId);
   });
 
   if (filteredRequests.length === 0) {
@@ -734,7 +740,7 @@ function buildImprovementMenuItems(state) {
   }
 
   filteredRequests.forEach((request) => {
-    const { label, colorTag } = formatSuggestionLabel(request.suggestedBy, state);
+    const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
     const tierLabel = request.tier ? `T${request.tier}` : 'T1';
     const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
 
@@ -782,6 +788,22 @@ function formatSuggestionLabel(suggestedBy, state) {
   const label = empire?.name || suggestedBy;
   const colorTag = empire?.color || 'yellow';
   return { label, colorTag };
+}
+
+function formatImprovementModifier(key, value) {
+  const sign = value > 0 ? '+' : '';
+  
+  const percentageModifiers = [
+    'research_speed', 'industrial_output', 'supply_efficiency',
+    'market_efficiency', 'population_growth', 'energy_production',
+    'combat_strength', 'defense_bonus', 'speed_bonus'
+  ];
+  
+  if (percentageModifiers.includes(key)) {
+    return `${sign}${(value * 100).toFixed(0)}% ${key.replace(/_/g, ' ')}`;
+  }
+  
+  return `${sign}${value} ${key.replace(/_/g, ' ')}`;
 }
 
 function buildInfoSelectItems() {
@@ -1282,13 +1304,14 @@ function renderStockpilesView(state) {
 }
 
 function renderProcurementView(state, ui) {
+  if (!ui) return '{center}{yellow-fg}UI not provided{/yellow-fg}{/center}';
   if (!state.coalitionEconomy) {
     return '{center}{yellow-fg}Coalition procurement not initialized{/yellow-fg}{/center}';
   }
 
-  const ce = state.coalitionEconomy;
-  const selectedIndex = ui?.combinedInfoBox?.selectedCommodityIndex || 0;
-  const lines = ['{bold}Coalition Procurement Status{/bold}'];
+   const ce = state.coalitionEconomy;
+   const selectedIndex = ui?.selectedCommodityIndex ?? ui?.combinedInfoBox?.selectedCommodityIndex ?? 0;
+   const lines = ['{bold}Coalition Procurement Status{/bold}'];
 
   // Treasury and spending info
   const treasury = ce.treasury_credits || 0;
@@ -1310,12 +1333,12 @@ function renderProcurementView(state, ui) {
   const commodityMap = loadCommodityMap(state.market || {});
   const sortedCommodities = sortMarketCommodities(state.market || {}, commodityMap);
 
-  sortedCommodities.forEach((entry, index) => {
-    const { key, commodity, marketState } = entry;
-    const stockpile = ce.stockpiles?.get(key) || 0;
-    const settings = ce.per_commodity_settings?.get(key) || {};
-    const theta = settings.theta_preset || 'Balanced';
-    const throttle = (settings.spend_throttle || 0.75) * 100;
+   sortedCommodities.forEach((entry, index) => {
+     const { key, commodity, marketState } = entry;
+     const stockpile = ce.stockpiles?.get(key) || 0;
+     const settings = ce.per_commodity_settings?.get(key) || {};
+     const theta = ce.procurement?.theta_preset_by_commodity?.[key] || settings.theta_preset || 'Balanced';
+     const throttle = (settings.spend_throttle || 0.75) * 100;
 
     // Calculate threshold price
     const refPrice = marketState.floor_price || marketState.last_price || marketState.price || 1.0;
@@ -1698,7 +1721,7 @@ function formatStats(state) {
   return lines.join('\n');
 }
 
-function loadCommodityMap(market) {
+export function loadCommodityMap(market) {
   // Load resources to get commodity names
   let commodities = [];
   try {
@@ -1714,7 +1737,7 @@ function loadCommodityMap(market) {
   return new Map(commodities.map(c => [c.key, c]));
 }
 
-function sortMarketCommodities(market, commodityMap) {
+export function sortMarketCommodities(market, commodityMap) {
   const tierOrder = { t1: 1, t2: 2, t3: 3, t4: 4 };
   
   // Filter out metadata keys that are not actual commodities

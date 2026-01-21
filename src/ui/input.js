@@ -2,7 +2,7 @@ import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
 import { handleLawEventChoice } from '../game/lawProcessManager.js';
 import { advanceTurn } from '../game/turn.js';
-import { renderAll, renderLaws, renderLogsWindow, renderCombinedInfo } from './renderer.js';
+import { renderAll, renderLaws, renderLogsWindow, renderCombinedInfo, renderActionPanel, loadCommodityMap, sortMarketCommodities } from './renderer.js';
 import { REALTIME_CONSTANTS } from '../game/constants.js';
 import { startLawProcess } from '../game/lawProcessManager.js';
 import { getLogger } from '../modules/logger.js';
@@ -135,16 +135,21 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   });
   
   // TAB key - cycle focus (toggle between actions panel and other areas)
-  ui.screen.key(['tab'], () => {
-    if (!state.focus) {
-      state.focus = FOCUS_MODES.ACTIONS;
-    } else if (state.focus === FOCUS_MODES.ACTIONS) {
-      state.focus = FOCUS_MODES.MAIN;
-    } else {
-      state.focus = FOCUS_MODES.ACTIONS;
-    }
-    renderAll(ui, state);
-  });
+   ui.screen.key(['tab'], () => {
+     if (ui.lawsBox.currentMode === 'procurement_view') {
+       ui.lawsBox.currentMode = 'main';
+       renderAll(ui, state);
+       return;
+     }
+     if (!state.focus) {
+       state.focus = FOCUS_MODES.ACTIONS;
+     } else if (state.focus === FOCUS_MODES.ACTIONS) {
+       state.focus = FOCUS_MODES.MAIN;
+     } else {
+       state.focus = FOCUS_MODES.ACTIONS;
+     }
+     renderAll(ui, state);
+   });
   
   // Slash key - focus command input box
   ui.screen.key(['/'], () => {
@@ -247,35 +252,58 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
    // Bind at screen level so they work even when input box has focus (unless input box is actively typing)
    if (ui.combinedInfoBox) {
      // View switching keys
-     ui.screen.key(['m', 'M'], () => {
-       if (ui.combinedInfoBox) {
-         ui.combinedInfoBox.currentView = 'market';
-         ui.combinedInfoBox.scrollOffset = 0;
-         renderCombinedInfo(ui, state);
-       }
-     });
+      ui.screen.key(['m', 'M'], () => {
+        if (ui.combinedInfoBox) {
+          if (ui.combinedInfoBox.currentView === 'market' || ui.combinedInfoBox.currentView === 'commodity_detail') {
+            // Cycle to next commodity detail
+            const commodities = sortMarketCommodities(state.market || {}, loadCommodityMap(state.market || {})).map(e => e.key);
+            const currentIndex = ui.combinedInfoBox.selectedCommodityIndex || 0;
+            const nextIndex = commodities.length > 0 ? (currentIndex + 1) % commodities.length : 0;
+            ui.combinedInfoBox.selectedCommodityIndex = nextIndex;
+            ui.combinedInfoBox.currentView = 'commodity_detail';
+          } else {
+            ui.combinedInfoBox.currentView = 'market';
+            ui.combinedInfoBox.selectedCommodityIndex = 0;
+          }
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderCombinedInfo(ui, state);
+          ui.screen.render();
+        }
+      });
      
      ui.screen.key(['a', 'A'], () => {
        if (ui.combinedInfoBox) {
          ui.combinedInfoBox.currentView = 'armies';
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
-     ui.screen.key(['e', 'E'], () => {
-       if (ui.combinedInfoBox) {
-         ui.combinedInfoBox.currentView = 'empires';
-         ui.combinedInfoBox.scrollOffset = 0;
-         renderCombinedInfo(ui, state);
-       }
-     });
+      ui.screen.key(['e', 'E'], () => {
+        if (ui.combinedInfoBox) {
+          if (ui.combinedInfoBox.currentView === 'empires' || ui.combinedInfoBox.currentView === 'empire_detail') {
+            // Cycle to next empire detail
+            const currentIndex = ui.combinedInfoBox.selectedEmpireIndex || 0;
+            const nextIndex = state.empires ? (currentIndex + 1) % state.empires.length : 0;
+            ui.combinedInfoBox.selectedEmpireIndex = nextIndex;
+            ui.combinedInfoBox.currentView = 'empire_detail';
+          } else {
+            ui.combinedInfoBox.currentView = 'empires';
+            ui.combinedInfoBox.selectedEmpireIndex = 0;
+          }
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderCombinedInfo(ui, state);
+          ui.screen.render();
+        }
+      });
      
      ui.screen.key(['s', 'S'], () => {
        if (ui.combinedInfoBox) {
          ui.combinedInfoBox.currentView = 'stockpiles';
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -284,6 +312,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
          ui.combinedInfoBox.currentView = 'procurement';
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -292,6 +321,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
          ui.combinedInfoBox.currentView = 'queue';
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -304,6 +334,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
          ui.combinedInfoBox.currentView = views[nextIndex];
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -315,6 +346,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
          ui.combinedInfoBox.currentView = views[nextIndex];
          ui.combinedInfoBox.scrollOffset = 0;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -323,6 +355,7 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
        if (ui.combinedInfoBox) {
          ui.combinedInfoBox.scrollOffset = Math.max(0, ui.combinedInfoBox.scrollOffset - 10);
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
      });
      
@@ -330,11 +363,71 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
        if (ui.combinedInfoBox) {
          ui.combinedInfoBox.scrollOffset += 10;
          renderCombinedInfo(ui, state);
+         ui.screen.render();
        }
-     });
-   }
-    
-  // Laws box - disable number keys when event is active
+      });
+    }
+
+    // Procurement adjustment keys (for both combinedInfoBox and lawsBox procurement view)
+    ui.screen.key(['up'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const commodities = sortMarketCommodities(state.market || {}, loadCommodityMap(state.market || {})).map(e => e.key);
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        const newIndex = Math.max(0, selectedIndex - 1);
+        target.selectedCommodityIndex = newIndex;
+        renderAll(ui, state);
+      }
+    });
+
+    ui.screen.key(['down'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const commodities = sortMarketCommodities(state.market || {}, loadCommodityMap(state.market || {})).map(e => e.key);
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        const newIndex = Math.min(commodities.length - 1, selectedIndex + 1);
+        target.selectedCommodityIndex = newIndex;
+        renderAll(ui, state);
+      }
+    });
+
+    ui.screen.key(['left'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        adjustProcurementTheta(state, selectedIndex, -1);
+        renderAll(ui, state);
+      }
+    });
+
+    ui.screen.key(['right'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        adjustProcurementTheta(state, selectedIndex, 1);
+        renderAll(ui, state);
+      }
+    });
+
+    ui.screen.key(['-'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        adjustProcurementThrottle(state, selectedIndex, -0.05);
+        renderAll(ui, state);
+      }
+    });
+
+    ui.screen.key(['+'], () => {
+      if ((ui.combinedInfoBox && ui.combinedInfoBox.currentView === 'procurement') || (ui.lawsBox && ui.lawsBox.currentMode === 'procurement_view')) {
+        const target = ui.combinedInfoBox?.currentView === 'procurement' ? ui.combinedInfoBox : ui.lawsBox;
+        const selectedIndex = target.selectedCommodityIndex || 0;
+        adjustProcurementThrottle(state, selectedIndex, 0.05);
+        renderAll(ui, state);
+      }
+    });
+
+   // Laws box - disable number keys when event is active
   // Note: This is handled by bindEventKeysToWidget above, but we keep this
   // as an extra safeguard to prevent list navigation during events
   // ui.lawsBox.key(['1', '2', '3'], (ch, key) => {
@@ -353,42 +446,35 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
   // Helper functions for procurement adjustments
   const THETA_PRESETS = ['Scavenge', 'Frugal', 'Balanced', 'Assertive', 'Emergency'];
   
-  function adjustProcurementTheta(state, commodityIndex, delta) {
-    if (!state.coalitionEconomy?.procurement) return;
-    
-    const commodities = Object.keys(state.market || {});
-    if (commodities.length === 0) return;
-    
-    const commodityId = commodities[commodityIndex];
-    if (!commodityId) return;
-    
-    const currentPreset = state.coalitionEconomy.procurement.theta_preset_by_commodity?.[commodityId] || 'Balanced';
-    const currentIndex = THETA_PRESETS.indexOf(currentPreset);
-    if (currentIndex === -1) return;
-    
-    const newIndex = Math.max(0, Math.min(THETA_PRESETS.length - 1, currentIndex + delta));
-    state.coalitionEconomy.procurement.theta_preset_by_commodity[commodityId] = THETA_PRESETS[newIndex];
+function adjustProcurementTheta(state, commodityIndex, delta) {
+  if (!state.coalitionEconomy?.procurement) return;
+  if (!state.coalitionEconomy.procurement.theta_preset_by_commodity) {
+    state.coalitionEconomy.procurement.theta_preset_by_commodity = {};
   }
+  const commodities = sortMarketCommodities(state.market || {}, loadCommodityMap(state.market || {})).map(e => e.key);
+  const commodityId = commodities[commodityIndex];
+  if (!commodityId) return;
+  const currentPreset = state.coalitionEconomy.procurement.theta_preset_by_commodity?.[commodityId] || 'Balanced';
+  const currentIndex = THETA_PRESETS.indexOf(currentPreset);
+  if (currentIndex === -1) return;
+  const newIndex = Math.max(0, Math.min(THETA_PRESETS.length - 1, currentIndex + delta));
+  state.coalitionEconomy.procurement.theta_preset_by_commodity[commodityId] = THETA_PRESETS[newIndex];
+}
   
-  function adjustProcurementThrottle(state, commodityIndex, delta) {
-    if (!state.coalitionEconomy?.procurement) return;
-    
-    const commodities = Object.keys(state.market || {});
-    if (commodities.length === 0) return;
-    
-    const commodityId = commodities[commodityIndex];
-    if (!commodityId) return;
-    
-    if (!state.coalitionEconomy.per_commodity_settings) {
-      state.coalitionEconomy.per_commodity_settings = new Map();
-    }
-    
-    const settings = state.coalitionEconomy.per_commodity_settings.get(commodityId) || {};
-    const currentThrottle = settings.spend_throttle || 0.75;
-    const newThrottle = Math.max(0.1, Math.min(2.0, currentThrottle + delta));
-    settings.spend_throttle = newThrottle;
-    state.coalitionEconomy.per_commodity_settings.set(commodityId, settings);
-  }
+ function adjustProcurementThrottle(state, commodityIndex, delta) {
+   if (!state.coalitionEconomy?.procurement) return;
+   const commodities = sortMarketCommodities(state.market || {}, loadCommodityMap(state.market || {})).map(e => e.key);
+   const commodityId = commodities[commodityIndex];
+   if (!commodityId) return;
+   if (!state.coalitionEconomy.per_commodity_settings) {
+     state.coalitionEconomy.per_commodity_settings = new Map();
+   }
+   const settings = state.coalitionEconomy.per_commodity_settings.get(commodityId) || {};
+   const currentThrottle = settings.spend_throttle || 0.75;
+   const newThrottle = Math.max(0.1, Math.min(2.0, currentThrottle + delta));
+   settings.spend_throttle = newThrottle;
+   state.coalitionEconomy.per_commodity_settings.set(commodityId, settings);
+ }
   
   // Action panel navigation helpers
   const getSelectableItems = () => {
@@ -410,148 +496,152 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
     return currentIdx; // Stay at current if no valid item found
   };
   
-  ui.lawsBox.key(['up'], () => {
-    if (state.focus !== FOCUS_MODES.ACTIONS) return;
-    const panel = ui.lawsBox;
-    const currentIdx = panel.selectedIndex || 0;
-    const newIdx = findNextSelectableIndex(currentIdx, -1);
+    ui.screen.key(['up'], () => {
+     if (state.focus !== FOCUS_MODES.ACTIONS) return;
+     if (ui.lawsBox.currentMode === 'procurement_view') return;
+     const panel = ui.lawsBox;
+     const currentIdx = panel.selectedIndex || 0;
+     const newIdx = findNextSelectableIndex(currentIdx, -1);
 
-    if (newIdx !== currentIdx) {
-      panel.selectedIndex = newIdx;
-      renderAll(ui, state);
-    }
-  });
-
-  ui.lawsBox.key(['down'], () => {
-    if (state.focus !== FOCUS_MODES.ACTIONS) return;
-    const panel = ui.lawsBox;
-    const items = panel.menuItems || [];
-    const currentIdx = panel.selectedIndex || 0;
-    const newIdx = findNextSelectableIndex(currentIdx, 1);
-
-    if (newIdx !== currentIdx && newIdx < items.length) {
-      panel.selectedIndex = newIdx;
-      renderAll(ui, state);
-    }
-  });
-
-  ui.lawsBox.key(['enter'], () => {
-    if (state.focus !== FOCUS_MODES.ACTIONS) return;
-    const panel = ui.lawsBox;
-    const items = panel.menuItems || [];
-    const selectedItem = items[panel.selectedIndex || 0];
-
-    if (!selectedItem || selectedItem.divider || selectedItem.info || selectedItem.disabled) {
-      return;
-    }
-
-    // Handle action
-    switch (selectedItem.action) {
-      case 'SWITCH_MODE':
-        panel.currentMode = selectedItem.mode;
-        panel.selectedIndex = 0;
-        // Find first selectable item
-        const newItems = panel.menuItems || [];
-        for (let i = 0; i < newItems.length; i++) {
-          if (!newItems[i].divider && !newItems[i].info) {
-            panel.selectedIndex = i;
-            break;
-          }
-        }
-        renderAll(ui, state);
-        break;
-
-      case 'SET_VIEW':
-        if (ui.combinedInfoBox) {
-          ui.combinedInfoBox.currentView = selectedItem.view;
-          ui.combinedInfoBox.scrollOffset = 0;
-        }
-        renderAll(ui, state);
-        break;
-
-      case 'ENACT_LAW':
-        if (state.lawDefinitions && state.lawDefinitions.length > 0) {
-          const lawDef = state.lawDefinitions[selectedItem.lawIndex];
-          if (lawDef) {
-            executeLawEnactment(startLawProcess(state, lawDef.id, 100));
-          }
-        } else {
-          const law = state.laws[selectedItem.lawIndex];
-          if (law) {
-            executeLawEnactment(enactLaw(state, law.id));
-          }
-        }
-        // Return to main menu after enacting
-        panel.currentMode = 'main';
-        panel.selectedIndex = 0;
-        renderAll(ui, state);
-        break;
-
-      case 'ACCEPT_REQUEST': {
-        const request = state.improvements?.requests?.[selectedItem.requestIndex];
-        if (request) {
-          const empireId = state.empires[0]?.id || 'empire1';
-          const result = acceptImprovementRequest(state, request.id, empireId);
-          if (result.success) {
-            result.log.forEach(line => ui.logBox.log(line));
-          } else {
-            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
-          }
-        }
-        renderAll(ui, state);
-        break;
-      }
-
-      case 'CANCEL_IMPROVEMENT': {
-        const improvement = state.improvements?.queue?.[selectedItem.improvementIndex];
-        if (improvement) {
-          const result = cancelImprovement(state, improvement.id);
-          if (result.success) {
-            result.log.forEach(line => ui.logBox.log(line));
-          } else {
-            ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
-          }
-        }
-        renderAll(ui, state);
-        break;
-      }
-
-      case 'ACTIVATE_EMERGENCY': {
-        const lawId = selectedItem.emergencyLawId;
-        if (lawId) {
-          const result = activateEmergencyLaw(lawId, state);
-          if (result.success) {
-            ui.logBox.log(`{green-fg}EMERGENCY POWER ACTIVATED:{/green-fg} ${result.message}`);
-          } else {
-            ui.logBox.log(`{red-fg}Cannot activate:{/red-fg} ${result.message}`);
-          }
-        }
-        renderAll(ui, state);
-        break;
-      }
-
-      case 'TOGGLE_PAUSE':
-        state.paused = !state.paused;
-        ui.logBox.log(state.paused ? 'Game PAUSED' : 'Game RESUMED');
-        renderAll(ui, state);
-        break;
-
-      case 'TOGGLE_LOGS':
-        if (ui.logsWindow) {
-          const isCurrentlyVisible = !ui.logsWindow.hidden;
-          if (isCurrentlyVisible) {
-            ui.logsWindow.hide();
-          } else {
-            const logger = getLogger();
-            renderLogsWindow(ui, logger);
-            ui.logsWindow.show();
-            ui.logsWindow.focus();
-          }
-          ui.screen.render();
-        }
-        break;
-    }
+     if (newIdx !== currentIdx) {
+       panel.selectedIndex = newIdx;
+       renderAll(ui, state);
+     }
    });
+
+    ui.screen.key(['down'], () => {
+     if (state.focus !== FOCUS_MODES.ACTIONS) return;
+     if (ui.lawsBox.currentMode === 'procurement_view') return;
+     const panel = ui.lawsBox;
+     const items = panel.menuItems || [];
+     const currentIdx = panel.selectedIndex || 0;
+     const newIdx = findNextSelectableIndex(currentIdx, 1);
+
+     if (newIdx !== currentIdx && newIdx < items.length) {
+       panel.selectedIndex = newIdx;
+       renderAll(ui, state);
+     }
+   });
+
+   ui.screen.key(['enter'], () => {
+     if (state.focus !== FOCUS_MODES.ACTIONS) return;
+     if (ui.lawsBox.currentMode === 'procurement_view') return;
+     const panel = ui.lawsBox;
+     const items = panel.menuItems || [];
+     const selectedItem = items[panel.selectedIndex || 0];
+
+     if (!selectedItem || selectedItem.divider || selectedItem.info || selectedItem.disabled) {
+       return;
+     }
+
+     // Handle action
+     switch (selectedItem.action) {
+       case 'SWITCH_MODE':
+         panel.currentMode = selectedItem.mode;
+         panel.selectedIndex = 0;
+         // Find first selectable item
+         const newItems = panel.menuItems || [];
+         for (let i = 0; i < newItems.length; i++) {
+           if (!newItems[i].divider && !newItems[i].info) {
+             panel.selectedIndex = i;
+             break;
+           }
+         }
+         renderActionPanel(ui, state);
+         break;
+
+        case 'SET_VIEW':
+          if (ui.combinedInfoBox) {
+            ui.combinedInfoBox.currentView = selectedItem.view;
+            ui.combinedInfoBox.scrollOffset = 0;
+          }
+          renderActionPanel(ui, state);
+          renderAll(ui, state);
+          break;
+
+       case 'ENACT_LAW':
+         if (state.lawDefinitions && state.lawDefinitions.length > 0) {
+           const lawDef = state.lawDefinitions[selectedItem.lawIndex];
+           if (lawDef) {
+             executeLawEnactment(startLawProcess(state, lawDef.id, 100));
+           }
+         } else {
+           const law = state.laws[selectedItem.lawIndex];
+           if (law) {
+             executeLawEnactment(enactLaw(state, law.id));
+           }
+         }
+         // Return to main menu after enacting
+         panel.currentMode = 'main';
+         panel.selectedIndex = 0;
+         renderActionPanel(ui, state);
+         break;
+
+       case 'ACCEPT_REQUEST': {
+         const request = state.improvements?.requests?.[selectedItem.requestIndex];
+         if (request) {
+           const empireId = state.empires[0]?.id || 'empire1';
+           const result = acceptImprovementRequest(state, request.id, empireId);
+           if (result.success) {
+             result.log.forEach(line => ui.logBox.log(line));
+           } else {
+             ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+           }
+         }
+         renderActionPanel(ui, state);
+         break;
+       }
+
+       case 'CANCEL_IMPROVEMENT': {
+         const improvement = state.improvements?.queue?.[selectedItem.improvementIndex];
+         if (improvement) {
+           const result = cancelImprovement(state, improvement.id);
+           if (result.success) {
+             result.log.forEach(line => ui.logBox.log(line));
+           } else {
+             ui.logBox.log(`{red-fg}Error: ${result.error}{/red-fg}`);
+           }
+         }
+         renderActionPanel(ui, state);
+         break;
+       }
+
+       case 'ACTIVATE_EMERGENCY': {
+         const lawId = selectedItem.emergencyLawId;
+         if (lawId) {
+           const result = activateEmergencyLaw(lawId, state);
+           if (result.success) {
+             ui.logBox.log(`{green-fg}EMERGENCY POWER ACTIVATED:{/green-fg} ${result.message}`);
+           } else {
+             ui.logBox.log(`{red-fg}Cannot activate:{/red-fg} ${result.message}`);
+           }
+         }
+         renderActionPanel(ui, state);
+         break;
+       }
+
+       case 'TOGGLE_PAUSE':
+         state.paused = !state.paused;
+         ui.logBox.log(state.paused ? 'Game PAUSED' : 'Game RESUMED');
+         renderActionPanel(ui, state);
+         break;
+
+       case 'TOGGLE_LOGS':
+         if (ui.logsWindow) {
+           const isCurrentlyVisible = !ui.logsWindow.hidden;
+           if (isCurrentlyVisible) {
+             ui.logsWindow.hide();
+           } else {
+             const logger = getLogger();
+             renderLogsWindow(ui, logger);
+             ui.logsWindow.show();
+             ui.logsWindow.focus();
+           }
+           ui.screen.render();
+         }
+         break;
+     }
+    });
    
    // Toggle logs window (full-screen overlay)
    ui.screen.key(['l', 'L'], () => {

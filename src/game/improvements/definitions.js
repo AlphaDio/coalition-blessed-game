@@ -583,7 +583,7 @@ export function canStartImprovement(improvementId, state, empireId) {
  * Returns a list of available improvement requests based on empire tier access
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
-  const suggestions = [];
+   const suggestions = [];
 
   // Get all empires
   state.empires.forEach(empire => {
@@ -610,7 +610,13 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
     const tieredRequests = getTieredImprovementRequests();
     availableTiers.forEach(tier => {
       const tierRequests = tieredRequests[tier] || [];
-      suggestions.push(...tierRequests);
+      tierRequests.forEach(req => {
+        // Create a copy with empireId set
+        suggestions.push({
+          ...req,
+          empireId: empire.id
+        });
+      });
     });
   });
 
