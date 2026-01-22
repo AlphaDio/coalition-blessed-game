@@ -13,13 +13,15 @@ import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers } from './improvements/index.js';
 import { getAllImprovementRequests } from './improvements/definitions.js';
+import { refreshImprovementSuggestions } from './improvements/definitions.js';
 import { createImprovementRequest } from './improvements/engine.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
+import { MARKET_CONSTANTS } from './constants.js';
 
-const BASE_POPULATION_GROWTH_RATE = 0.005;
+const BASE_POPULATION_GROWTH_RATE = 0.001;
 const MIN_POPULATION = 1;
 
 /**
@@ -100,10 +102,26 @@ function applyBasePopulationGrowth(state) {
       empire.stats.population = MIN_POPULATION;
       return;
     }
-    empire.stats.population = Math.max(
-      MIN_POPULATION,
-      Math.floor(currentPopulation * (1 + BASE_POPULATION_GROWTH_RATE))
-    );
+
+    // Initialize growth bank if needed
+    if (!empire.stats.population_growth_bank) {
+      empire.stats.population_growth_bank = 0;
+    }
+
+    // Calculate growth for this tick
+    const growthAmount = currentPopulation * BASE_POPULATION_GROWTH_RATE;
+    empire.stats.population_growth_bank += growthAmount;
+
+    // Apply growth only when bank reaches threshold
+    if (empire.stats.population_growth_bank >= MARKET_CONSTANTS.POPULATION_GROWTH_BANK_THRESHOLD) {
+      const bankedGrowth = Math.floor(empire.stats.population_growth_bank);
+      empire.stats.population = Math.max(
+        MIN_POPULATION,
+        currentPopulation + bankedGrowth
+      );
+      // Keep remainder in bank
+      empire.stats.population_growth_bank -= bankedGrowth;
+    }
   });
 }
 
@@ -582,11 +600,17 @@ export function advanceTurn(state, rng = Math.random) {
            log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
            logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);
          }
-       }
-     });
-   }
+        }
+      });
+    }
 
-  // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
+    // 3.2. Periodic refresh of all improvement suggestions (every 20 ticks)
+    if (state.turn % 20 === 0 && state.improvements) {
+      refreshImprovementSuggestions(state, rngFn);
+      logger.debug('Refreshed all improvement suggestions');
+    }
+
+   // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
   const emergencyResult = tickEmergencyLaws(state);
   if (emergencyResult.log && emergencyResult.log.length > 0) {
     log.push(...emergencyResult.log);
