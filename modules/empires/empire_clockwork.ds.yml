@@ -37,16 +37,16 @@ declares:
       tech_rate_bonus: 0.20
       production:
         outputs_per_tick:
-          quantum_circuits: 0.00025
-          nano_machines: 0.0005
+          quantum_circuits: 0.000025
+          nano_machines: 0.00005
       needs:
         per_pop:
-          rare_gases: 0.75
-          super_alloys: 0.8
+          rare_gases: 0.075
+          super_alloys: 0.08
       wants:
         per_pop:
-          sentient_cores: 0.02
-          wormhole_reactors: 0.001
+          sentient_cores: 0.002
+          wormhole_reactors: 0.0001
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0

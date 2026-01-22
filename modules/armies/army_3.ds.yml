@@ -32,7 +32,9 @@ declares:
     killRate: 0.10
     demands:
       needs:
-        biomass: 0.025
-        genomes: 0.01
+        biomass: 0.0025
+        genomes: 0.001
       wants:
-        rare_gases: 0.005
+        rare_gases: 0.0005
+    signatureCommodity: biomass
+    signatureThreshold: 10000

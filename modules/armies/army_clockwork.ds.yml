@@ -32,8 +32,10 @@ declares:
     killRate: 0.12
     demands:
       needs:
-        quantum_circuits: 0.015
-        nano_machines: 0.01
+        quantum_circuits: 0.0015
+        nano_machines: 0.001
       wants:
-        sentient_cores: 0.005
-        wormhole_reactors: 0.002
+        sentient_cores: 0.0005
+        wormhole_reactors: 0.0002
+    signatureCommodity: quantum_circuits
+    signatureThreshold: 5000

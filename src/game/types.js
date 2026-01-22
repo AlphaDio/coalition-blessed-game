@@ -125,7 +125,11 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     recoveryPool: 0,
     command: initialCommand,
     recovery: initialRecovery,
-    reinforcementRate: 100
+    reinforcementRate: 100,
+    
+    // Signature commodity for reinforcement (consumed from empire stockpile)
+    signatureCommodity: null,
+    signatureThreshold: 0
   };
 }
 

@@ -321,7 +321,7 @@ export function processEconomyTick(state) {
      order.duration = (order.duration || 0) + 1;
      
      // Adaptive pricing: increase max_price slightly each tick (buy orders willing to pay more over time)
-     const PRICE_ADAPTATION_RATE = 0.04; // 4% per tick
+      const PRICE_ADAPTATION_RATE = 0.005; // 0.5% per tick
      order.max_price = (order.max_price || 1) * (1 + PRICE_ADAPTATION_RATE);
      
      if (order.duration >= order.max_duration) {
@@ -339,7 +339,7 @@ export function processEconomyTick(state) {
      order.duration = (order.duration || 0) + 1;
      
      // Adaptive pricing: decrease ask_price slightly each tick (sell orders willing to accept less over time)
-     const PRICE_ADAPTATION_RATE = 0.04; // 4% per tick
+      const PRICE_ADAPTATION_RATE = 0.005; // 0.5% per tick
      order.ask_price = (order.ask_price || 1) * (1 - PRICE_ADAPTATION_RATE);
      
      if (order.duration >= order.max_duration) {

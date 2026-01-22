@@ -32,7 +32,9 @@ declares:
     killRate: 0.12
     demands:
       needs:
-        super_alloys: 0.018
-        rare_gases: 0.012
+        super_alloys: 0.0018
+        rare_gases: 0.0012
       wants:
-        quantum_circuits: 0.006
+        quantum_circuits: 0.0006
+    signatureCommodity: rare_gases
+    signatureThreshold: 10000

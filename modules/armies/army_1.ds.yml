@@ -32,7 +32,9 @@ declares:
     killRate: 0.11
     demands:
       needs:
-        super_alloys: 0.02
-        solid_ice: 0.015
+        super_alloys: 0.002
+        solid_ice: 0.0015
       wants:
-        rare_gases: 0.01
+        rare_gases: 0.001
+    signatureCommodity: super_alloys
+    signatureThreshold: 10000

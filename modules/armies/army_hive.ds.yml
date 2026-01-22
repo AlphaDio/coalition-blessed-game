@@ -32,8 +32,10 @@ declares:
     killRate: 0.15
     demands:
       needs:
-        psycho_implants: 0.008
-        dark_matter: 0.005
+        psycho_implants: 0.0008
+        dark_matter: 0.0005
       wants:
-        ancient_relics: 0.003
-        anti_grav_modules: 0.002
+        ancient_relics: 0.0003
+        anti_grav_modules: 0.0002
+    signatureCommodity: genomes
+    signatureThreshold: 10000

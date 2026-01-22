@@ -120,6 +120,11 @@ export function createSampleContent(seed = 0) {
     if (data.demands) {
       army.demands = data.demands;
     }
+    // Apply signature commodity for reinforcement
+    if (data.signatureCommodity) {
+      army.signatureCommodity = data.signatureCommodity;
+      army.signatureThreshold = data.signatureThreshold || 100;
+    }
     return army;
   });
 

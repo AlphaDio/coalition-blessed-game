@@ -41,7 +41,7 @@ function getDefaultEconomyConfig() {
       params: {
         min_price: 0.01,
         max_price: 1000000,
-        smoothing_k: 0.25,
+        smoothing_k: 0.03,
         shortage_panic_cap: 4.0
       },
       tier_elasticity: {

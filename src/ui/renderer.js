@@ -1312,8 +1312,9 @@ function renderArmiesView(state) {
   const regularArmies = filterRegularArmies(state.armies);
 
   regularArmies.forEach(army => {
-    const empireName = empireMap.get(army.empireId)?.name || 'Unknown';
-    lines.push('', formatArmyBlock(army, empireName));
+    const empire = empireMap.get(army.empireId);
+    const empireName = empire?.name || 'Unknown';
+    lines.push('', formatArmyBlock(army, empireName, empire));
   });
 
   appendInsurrectionInfo(lines, state.insurrections);
@@ -1952,7 +1953,7 @@ function filterRegularArmies(armies) {
   );
 }
 
-function formatArmyBlock(army, empireName) {
+function formatArmyBlock(army, empireName, empire = null) {
   const lines = [`{bold}${army.name}{/bold} (${empireName})`];
   lines.push(`  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}`);
   lines.push(`  Aggravation: ${formatNumber(army.aggravation)}, Command: ${formatNumber(army.command || 50)}`);
@@ -1962,6 +1963,16 @@ function formatArmyBlock(army, empireName) {
     const moPct = army.mo.max > 0 ? ((army.mo.current / army.mo.max) * 100).toFixed(0) : '0';
     lines.push(`  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%)`);
     lines.push(`  Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)`);
+  }
+
+  if (army.signatureCommodity && army.signatureThreshold > 0 && empire) {
+    const stockpile = empire.stockpiles || {};
+    const available = stockpile[army.signatureCommodity] || 0;
+    const threshold = army.signatureThreshold;
+    const pct = threshold > 0 ? ((available / threshold) * 100).toFixed(1) : '0';
+    const color = available >= threshold ? '{green-fg}' : '';
+    const reset = available >= threshold ? '{/green-fg}' : '';
+    lines.push(`  ${army.signatureCommodity}: ${formatNumber(available)}/${formatNumber(threshold)} (${color}${pct}%${reset})`);
   }
 
   return lines.join('\n');

@@ -191,9 +191,9 @@ function collectRebelliousArmyIds(insurrections) {
 }
 
 function getBattleChance(cohesionTierName) {
-  if (cohesionTierName === 'Strained') return 0.02;
-  if (cohesionTierName === 'Desperate') return 0.03;
-  return 0.01;
+  if (cohesionTierName === 'Strained') return 0.04;
+  if (cohesionTierName === 'Desperate') return 0.06;
+  return 0.02;
 }
 
 function partitionInsurrectionArmies(armies, rebelliousArmyIds) {
@@ -495,6 +495,22 @@ function replenishArmyManpower(state, activeBattles) {
     // Debug logging for significant replenishment
     if (replenished > 50) {
       logger.debug(`Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP (fervor: ${army.fervor.toFixed(0)}, pop: ${population.toFixed(0)}, rate: ${effectiveRate.toFixed(0)})`);
+    }
+    
+    // Check signature commodity for bonus manpower
+    if (army.signatureCommodity && army.signatureThreshold > 0) {
+      const stockpile = empire.stockpiles || {};
+      const available = stockpile[army.signatureCommodity] || 0;
+      
+      if (available >= army.signatureThreshold) {
+        // Consume the commodity and add 100 manpower
+        stockpile[army.signatureCommodity] = available - army.signatureThreshold;
+        army.manpower += 100;
+        army.mp.max = army.manpower;
+        army.mp.current = Math.min(army.mp.current + 100, army.mp.max);
+        
+        logger.debug(`Signature commodity trigger: ${army.name} consumed ${army.signatureThreshold} ${army.signatureCommodity} for +100 manpower`);
+      }
     }
   });
 }
