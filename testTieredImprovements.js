@@ -47,7 +47,7 @@ function createTestState() {
   const state = createGameState(12345);
   state.improvements = initializeImprovementsState();
   state.improvements.requests = getTieredImprovementRequests();
-  state.stockpiles.supplies = 5000; // Plenty of supplies for testing
+  state.coalitionEconomy.requisition = 5000; // Plenty of requisition for testing
   
   // Add two empires
   state.empires = [

@@ -325,30 +325,30 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
        }
      });
      
-     // Cycle views with [ and ]
-     ui.screen.key(['['], () => {
-       if (ui.combinedInfoBox) {
-         const views = ['market', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
-         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
-         const nextIndex = currentIndex > 0 ? currentIndex - 1 : views.length - 1;
-         ui.combinedInfoBox.currentView = views[nextIndex];
-         ui.combinedInfoBox.scrollOffset = 0;
-         renderCombinedInfo(ui, state);
-         ui.screen.render();
-       }
-     });
-     
-     ui.screen.key([']'], () => {
-       if (ui.combinedInfoBox) {
-         const views = ['market', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
-         const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
-         const nextIndex = currentIndex < views.length - 1 ? currentIndex + 1 : 0;
-         ui.combinedInfoBox.currentView = views[nextIndex];
-         ui.combinedInfoBox.scrollOffset = 0;
-         renderCombinedInfo(ui, state);
-         ui.screen.render();
-       }
-     });
+      // Cycle views with [ and ]
+      ui.screen.key(['['], () => {
+        if (ui.combinedInfoBox) {
+          const views = ['market', 'market_orders', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
+          const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
+          const nextIndex = currentIndex > 0 ? currentIndex - 1 : views.length - 1;
+          ui.combinedInfoBox.currentView = views[nextIndex];
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderCombinedInfo(ui, state);
+          ui.screen.render();
+        }
+      });
+      
+      ui.screen.key([']'], () => {
+        if (ui.combinedInfoBox) {
+          const views = ['market', 'market_orders', 'armies', 'empires', 'stockpiles', 'procurement', 'queue'];
+          const currentIndex = views.indexOf(ui.combinedInfoBox.currentView);
+          const nextIndex = currentIndex < views.length - 1 ? currentIndex + 1 : 0;
+          ui.combinedInfoBox.currentView = views[nextIndex];
+          ui.combinedInfoBox.scrollOffset = 0;
+          renderCombinedInfo(ui, state);
+          ui.screen.render();
+        }
+      });
      
      // Scrolling with Page Up/Down
      ui.screen.key(['pageup'], () => {
@@ -577,11 +577,11 @@ function adjustProcurementTheta(state, commodityIndex, delta) {
          renderActionPanel(ui, state);
          break;
 
-       case 'ACCEPT_REQUEST': {
-         const request = state.improvements?.requests?.[selectedItem.requestIndex];
-         if (request) {
-           const empireId = state.empires[0]?.id || 'empire1';
-           const result = acceptImprovementRequest(state, request.id, empireId);
+        case 'ACCEPT_REQUEST': {
+          const request = state.improvements?.requests?.[selectedItem.requestIndex];
+          if (request) {
+            const empireId = request.empireId;
+            const result = acceptImprovementRequest(state, request.id, empireId);
            if (result.success) {
              result.log.forEach(line => ui.logBox.log(line));
            } else {

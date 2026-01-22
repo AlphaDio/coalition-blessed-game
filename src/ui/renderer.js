@@ -11,6 +11,7 @@ import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/imp
 import { EMERGENCY_LAW_DEFINITIONS, getActiveEmergencyLaws, getEmergencyLawCooldown, canActivateEmergencyLaw } from '../game/emergencyLaws.js';
 import { calculateTechPointsPerTick } from '../game/technology.js';
 import { MARKET_CONSTANTS } from '../game/constants.js';
+import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -122,7 +123,7 @@ function createStockpilesBox(grid) {
 function createLawsBox(grid) {
   // SECONDARY PANELS (rows 3-7)
   // Left column: Action Panel (row 4-10) - below stockpiles box
-  const actionPanel = grid.set(4, 0, 5, 3, blessed.box, {
+  const actionPanel = grid.set(4, 0, 7, 3, blessed.box, {
     label: ' Actions (TAB: cycle panels, ENTER: select) ', 
     scrollable: true,
     alwaysScroll: true,
@@ -287,9 +288,9 @@ function createCombinedInfoBox(grid) {
 }
 
 function createCommandInputs(screen) {
-  // Input box at the bottom (rows 10-11 out of 12 total rows)
-  // Position: 10/12 = 83.33% from top
-  const INPUT_BOX_TOP_PERCENT = '83.33%';
+  // Input box at the bottom (rows 11-12 out of 12 total rows)
+  // Position: 11/12 = 91.67% from top
+  const INPUT_BOX_TOP_PERCENT = '91.67%';
   const INPUT_BOX_WIDTH_PERCENT = '33%';
 
   const inputBox = blessed.textbox({
@@ -1213,6 +1214,90 @@ function renderMarketView(state, ui) {
 }
 
 /**
+ * Render market orders view - shows all active buy and sell orders
+ */
+function renderMarketOrdersView(state) {
+  if (!state.marketOrders) {
+    return '{center}{yellow-fg}No market orders{/yellow-fg}{/center}';
+  }
+
+  const buyOrders = state.marketOrders.buyOrders || [];
+  const sellOffers = state.marketOrders.sellOffers || [];
+
+  // Filter to unfilled orders
+  const activeBuys = buyOrders.filter(o => (o.filled_qty || 0) < o.qty);
+  const activeSells = sellOffers.filter(o => (o.filled_qty || 0) < o.qty);
+
+  if (activeBuys.length === 0 && activeSells.length === 0) {
+    return '{center}{yellow-fg}No active market orders{/yellow-fg}{/center}';
+  }
+
+  const lines = ['{bold}Active Market Orders:{/bold}', ''];
+
+  // Group buy orders by commodity
+  const buysByCommodity = {};
+  activeBuys.forEach(order => {
+    if (!buysByCommodity[order.commodity]) {
+      buysByCommodity[order.commodity] = [];
+    }
+    buysByCommodity[order.commodity].push(order);
+  });
+
+  // Group sell orders by commodity
+  const sellsByCommodity = {};
+  activeSells.forEach(order => {
+    if (!sellsByCommodity[order.commodity]) {
+      sellsByCommodity[order.commodity] = [];
+    }
+    sellsByCommodity[order.commodity].push(order);
+  });
+
+   // Show buy orders by commodity
+  if (activeBuys.length > 0) {
+    lines.push('{yellow-fg}Buy Orders:{/yellow-fg}');
+    Object.entries(buysByCommodity).forEach(([commodity, orders]) => {
+      const totalQty = orders.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
+      const impOrders = orders.filter(o => o.tags?.originator);
+      const impCount = impOrders.length;
+      const impLabel = impCount > 0 ? ` (${impCount} from improvements)` : '';
+      lines.push(`  {cyan-fg}${commodity}{/cyan-fg}: ${formatVolume(totalQty)} total (${orders.length} orders)${impLabel}`);
+    });
+    lines.push('');
+  }
+
+  // Show sell orders by commodity
+  if (activeSells.length > 0) {
+    lines.push('{green-fg}Sell Offers:{/green-fg}');
+    Object.entries(sellsByCommodity).forEach(([commodity, orders]) => {
+      const totalQty = orders.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
+      const impOrders = orders.filter(o => o.tags?.originator);
+      const impCount = impOrders.length;
+      const impLabel = impCount > 0 ? ` (${impCount} from improvements)` : '';
+      lines.push(`  {cyan-fg}${commodity}{/cyan-fg}: ${formatVolume(totalQty)} total (${orders.length} orders)${impLabel}`);
+    });
+    lines.push('');
+  }
+
+  // Show improvement orders detail if any
+  const impSellOrders = activeSells.filter(o => o.tags?.originator);
+  if (impSellOrders.length > 0) {
+    lines.push('{blue-fg}Improvement Production:{/blue-fg}');
+    impSellOrders.forEach(order => {
+      const originator = order.tags?.originator || 'unknown';
+      const remaining = order.qty - (order.filled_qty || 0);
+      lines.push(`  {cyan-fg}${order.commodity}{/cyan-fg}: ${formatVolume(remaining)} @ ${order.ask_price?.toFixed(2)} (${originator})`);
+    });
+    lines.push('');
+  }
+
+  // Summary
+  lines.push(`{gray-fg}Total: ${activeBuys.length} buy orders, ${activeSells.length} sell offers${impSellOrders.length > 0 ? ' (' + impSellOrders.length + ' from improvements)' : ''}{/gray-fg}`);
+  lines.push(`{gray-fg}Controls: M: market view, C: commodity detail{/gray-fg}`);
+
+  return lines.join('\n');
+}
+
+/**
  * Render armies view
  */
 function renderArmiesView(state) {
@@ -1318,16 +1403,22 @@ function renderProcurementView(state, ui) {
    const lines = ['{bold}Coalition Procurement Status{/bold}'];
 
   // Treasury and spending info
-  const treasury = ce.treasury_credits || 0;
-  const allowance = ce.allowance_credits || 0;
-  const reserve = ce.reserve_floor_credits || 0;
-  const supplyMilli = ce.supply_milli || 0;
-  const supplies = Math.floor(supplyMilli / 1000);
+   const treasury = ce.treasury_credits || 0;
+   const allowance = ce.allowance_credits || 0;
+   const reserve = ce.reserve_floor_credits || 0;
+   const requisition = ce.requisition || 0;
 
-  lines.push(`Treasury: {green-fg}${formatNumber(treasury, 0)}{/green-fg} credits`);
-  lines.push(`Allowance: {cyan-fg}${formatNumber(allowance, 0)}{/cyan-fg} credits`);
-  lines.push(`Reserve Floor: {yellow-fg}${formatNumber(reserve, 0)}{/yellow-fg} credits`);
-  lines.push(`Supplies: {magenta-fg}${formatNumber(supplies, 0)}{/magenta-fg} (${formatNumber(supplyMilli, 0)} milli)`);
+   lines.push(`Treasury: {green-fg}${formatNumber(treasury, 0)}{/green-fg} credits`);
+   lines.push(`Allowance: {cyan-fg}${formatNumber(allowance, 0)}{/cyan-fg} credits`);
+   lines.push(`Reserve Floor: {yellow-fg}${formatNumber(reserve, 0)}{/yellow-fg} credits`);
+   lines.push(`Requisition: {magenta-fg}${formatNumber(requisition, 0)}{/magenta-fg}`);
+
+  // Bank state - show total progress percentage
+  const bank = ce.stockpile_bank || {};
+  const bankTotal = Object.values(bank).reduce((sum, qty) => sum + qty, 0);
+  const bankPercent = BANK_THRESHOLD > 0 ? Math.min(100, Math.floor((bankTotal / BANK_THRESHOLD) * 100)) : 0;
+  lines.push(`Bank: {yellow-fg}${bankPercent}%{/yellow-fg}`);
+
   lines.push('');
 
   // Commodity table header
@@ -1471,17 +1562,39 @@ function renderEmpireDetailView(state, ui) {
     lines.push('', '{bold}Market Orders:{/bold}', ...marketOrders);
   }
 
-  if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
-    const progress = Math.min(1, empire.techPoints / empire.techThreshold);
-    const barWidth = 14;
-    const filledWidth = Math.floor(progress * barWidth);
-    const emptyWidth = barWidth - filledWidth;
-    const techBar = `{blue-fg}[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}]{/blue-fg}`;
-    const pct = (progress * 100).toFixed(0);
-    lines.push(`Research: ${techBar} ${pct}%`);
-  }
+   if (empire.techPoints !== undefined && empire.techThreshold !== undefined) {
+     const progress = Math.min(1, empire.techPoints / empire.techThreshold);
+     const barWidth = 14;
+     const filledWidth = Math.floor(progress * barWidth);
+     const emptyWidth = barWidth - filledWidth;
+     const techBar = `{blue-fg}[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}]{/blue-fg}`;
+     const pct = (progress * 100).toFixed(0);
+     lines.push(`Research: ${techBar} ${pct}%`);
+   }
 
-  // Diplomatic relations
+   // Show technologies for this empire
+   if (empire.technologies && empire.technologies.length > 0) {
+     lines.push('', '{bold}Technologies:{/bold}');
+     empire.technologies.forEach(tech => {
+       const techDef = state.techDefinitions?.find(t => t.id === tech.id) || tech;
+       const name = techDef.name || tech.id;
+       lines.push(`  ${name}`);
+     });
+   }
+
+   // Show active improvements for this empire
+   if (state.improvements?.queue) {
+     const empireImprovements = state.improvements.queue.filter(i => i.empireId === empire.id && (i.state === 'ACTIVE' || i.state === 'DEGRADED'));
+     if (empireImprovements.length > 0) {
+       lines.push('', '{bold}Improvements:{/bold}');
+       empireImprovements.forEach(imp => {
+         const stateIcon = imp.state === 'DEGRADED' ? '{yellow-fg}[D]{/yellow-fg}' : '';
+         lines.push(`  ${imp.name}${stateIcon}`);
+       });
+     }
+   }
+
+   // Diplomatic relations
   const relations = state.diplomacy?.relations?.[empire.id];
   if (relations && Object.keys(relations).length > 0) {
     const relationLines = Object.entries(relations)
@@ -1565,11 +1678,14 @@ function renderCommodityDetailView(state, ui) {
     });
   }
 
-  // Coalition stockpiles
-  const coalitionStockpile = state.coalitionEconomy?.stockpiles?.get(key) || 0;
-  if (coalitionStockpile > 0) {
-    lines.push('', '{bold}Coalition Stockpile:{/bold}');
-    lines.push(`  ${formatVolume(coalitionStockpile)} units`);
+  // Coalition stockpiles (bank)
+  const bankQty = state.coalitionEconomy?.stockpile_bank?.[key] || 0;
+  const readyQty = state.coalitionEconomy?.stockpile_ready?.[key] || 0;
+  const totalStockpile = bankQty + readyQty;
+  if (totalStockpile > 0) {
+    const status = readyQty > 0 ? '{green-fg}[READY]{/green-fg}' : `{yellow-fg}[${bankQty}/${BANK_THRESHOLD}]{/yellow-fg}`;
+    lines.push('', `{bold}Coalition Stockpile:{/bold} ${status}`);
+    lines.push(`  ${formatVolume(totalStockpile)} units`);
   }
 
   // Empire stockpiles
@@ -1645,6 +1761,11 @@ const COMBINED_INFO_VIEWS = {
     borderColor: 'green',
     render: renderMarketView
   },
+  market_orders: {
+    label: ' Market Orders (m/a/e/s/w: switch, [/]: cycle) ',
+    borderColor: 'cyan',
+    render: renderMarketOrdersView
+  },
   armies: {
     label: ' Armies (m/a/e/s/w: switch, [/]: cycle) ',
     borderColor: 'cyan',
@@ -1698,8 +1819,8 @@ function formatStats(state) {
   if (targetEmpire) {
     lines.push(`{bold}Scourge Target:{/bold} ${targetEmpire.name}`);
   }
-  lines.push('', '{bold}Stockpiles:{/bold}');
-  lines.push(`  ${formatResource('Supplies', state.stockpiles.supplies)}`, '');
+   lines.push('', '{bold}Stockpiles:{/bold}');
+   lines.push(`  ${formatResource('Requisition', state.coalitionEconomy?.requisition || 0)}`, '');
 
   if (state.playerInfluence !== undefined) {
     lines.push(`{bold}Player Influence:{/bold} ${state.playerInfluence}`);
@@ -1815,9 +1936,11 @@ function appendCoalitionEconomyInfo(lines, coalitionEconomy) {
   lines.push('', '{bold}Coalition:{/bold}');
   lines.push(`Budget: {green-fg}${formatNumber(coalitionEconomy.budget_credits || 0, 0)}{/green-fg} credits`);
 
-  const stockpileCount = Object.keys(coalitionEconomy.stockpiles || {}).length;
-  if (stockpileCount > 0) {
-    lines.push(`Stockpiles: {cyan-fg}${stockpileCount}{/cyan-fg} commodities`);
+  const bankKeys = Object.keys(coalitionEconomy.stockpile_bank || {}).filter(k => (coalitionEconomy.stockpile_bank[k] || 0) > 0);
+  const readyKeys = Object.keys(coalitionEconomy.stockpile_ready || {}).filter(k => (coalitionEconomy.stockpile_ready[k] || 0) > 0);
+  const totalKeys = new Set([...bankKeys, ...readyKeys]);
+  if (totalKeys.size > 0) {
+    lines.push(`Stockpiles: {cyan-fg}${totalKeys.size}{/cyan-fg} commodities`);
   }
 }
 
@@ -1973,26 +2096,21 @@ function formatEmpireMarketOrders(state, empire, commodityMap) {
 
   const buyOrders = [];
   const sellOrders = [];
-  Object.values(state.market).forEach(marketState => {
-    marketState.buy_orders?.forEach(order => {
-      if (order.owner_type === 'empire' && order.owner_id === empire.id) {
-        buyOrders.push(order);
-      }
-    });
-    marketState.sell_offers?.forEach(order => {
-      if (order.owner_type === 'empire' && order.owner_id === empire.id) {
-        sellOrders.push(order);
-      }
-    });
-  });
 
-  const stateBuyOrders = state.marketOrders?.buyOrders || [];
-  stateBuyOrders.forEach(order => {
+  // Read from state.marketOrders (current orders)
+  const marketOrders = state.marketOrders || {};
+  (marketOrders.buyOrders || []).forEach(order => {
     if (order.owner_type === 'empire' && order.owner_id === empire.id) {
       buyOrders.push(order);
     }
   });
+  (marketOrders.sellOffers || []).forEach(order => {
+    if (order.owner_type === 'empire' && order.owner_id === empire.id) {
+      sellOrders.push(order);
+    }
+  });
 
+  // Show buy orders
   if (buyOrders.length > 0) {
     const orderLines = buyOrders.slice(0, 6).map(order => {
       const commodity = commodityMap.get(order.commodity);
@@ -2001,13 +2119,14 @@ function formatEmpireMarketOrders(state, empire, commodityMap) {
       const price = order.max_price ?? order.ask_price ?? 0;
       return `  Buy ${name}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`;
     });
-    orders.push('{yellow-fg}Buy{/yellow-fg}');
+    orders.push('{yellow-fg}Buy Orders:{/yellow-fg}');
     orders.push(...orderLines);
     if (buyOrders.length > 6) {
       orders.push(`  ...${buyOrders.length - 6} more`);
     }
   }
 
+  // Show sell orders
   if (sellOrders.length > 0) {
     const orderLines = sellOrders.slice(0, 6).map(order => {
       const commodity = commodityMap.get(order.commodity);
@@ -2016,7 +2135,7 @@ function formatEmpireMarketOrders(state, empire, commodityMap) {
       const price = order.ask_price ?? order.max_price ?? 0;
       return `  Sell ${name}: ${formatVolume(remaining)} @ ${price.toFixed(2)}`;
     });
-    orders.push('{green-fg}Sell{/green-fg}');
+    orders.push('{green-fg}Sell Offers:{/green-fg}');
     orders.push(...orderLines);
     if (sellOrders.length > 6) {
       orders.push(`  ...${sellOrders.length - 6} more`);
@@ -2106,11 +2225,11 @@ function renderRequestsView(state) {
   const improvements = state.improvements;
   const requests = improvements.requests;
 
-  lines.push('{bold}Improvement Limits:{/bold}');
-  lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
-  lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
-  lines.push(`  Supplies: {green-fg}${state.stockpiles.supplies || 0}{/green-fg}`);
-  lines.push('');
+   lines.push('{bold}Improvement Limits:{/bold}');
+   lines.push(`  Capacity: ${improvements.currentCapacity || 0}/${improvements.maxTotalCapacity}`);
+   lines.push(`  Construction: {cyan-fg}${state.coalitionConstruction || 1}{/cyan-fg}/tick`);
+   lines.push(`  Requisition: {green-fg}${state.coalitionEconomy?.requisition || 0}{/green-fg}`);
+   lines.push('');
 
   if (requests.length === 0) {
     lines.push('{yellow-fg}No improvement requests available{/yellow-fg}');
@@ -2120,10 +2239,13 @@ function renderRequestsView(state) {
   lines.push('{bold}Available Requests:{/bold}');
   lines.push('');
 
-  requests.forEach((request) => {
-    lines.push(`{bold}${request.name}{/bold}`);
-    lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.build}{/yellow-fg}`);
-    lines.push(`  Capacity: ${request.capacity}`);
+   requests.forEach((request) => {
+     lines.push(`{bold}${request.name}{/bold}`);
+     if (request.description) {
+       lines.push(`  {white-fg}${request.description}{/white-fg}`);
+     }
+     lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.build}{/yellow-fg}`);
+     lines.push(`  Capacity: ${request.capacity}`);
 
     const sustainKeys = Object.keys(request.sustainmentCost);
     if (sustainKeys.length > 0) {
@@ -2177,9 +2299,13 @@ function renderImprovementsQueueView(state) {
   lines.push('{bold}Improvements Queue:{/bold}');
   lines.push('');
 
-  queue.forEach((improvement) => {
-    lines.push(`{bold}${improvement.name}{/bold} [${improvement.state}]`);
-    lines.push(`  Progress: ${improvement.buildProgress}/${improvement.build}  Capacity: ${improvement.capacity}`);
+   queue.forEach((improvement) => {
+     const { label, colorTag } = formatSuggestionLabel(improvement.empireId, state);
+     lines.push(`{bold}${improvement.name}{/bold} [${improvement.state}] {${colorTag}-fg}[${label}]{/${colorTag}-fg}`);
+     if (improvement.description) {
+       lines.push(`  {white-fg}${improvement.description}{/white-fg}`);
+     }
+     lines.push(`  Progress: ${improvement.buildProgress}/${improvement.build}  Capacity: ${improvement.capacity}`);
 
     const benefitParts = [];
 

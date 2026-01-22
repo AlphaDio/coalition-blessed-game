@@ -3,12 +3,12 @@ import { clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
 /**
- * Consumes supplies based on army needs
- * Applies penalties if supplies are insufficient
+ * Consumes requisition based on army needs
+ * Applies penalties if requisition is insufficient
  * @param {Object} state - The game state
  * @returns {Object} { log: string[] } - Log messages
  */
-export function consumeSupplies(state) {
+export function consumeRequisition(state) {
   const logger = getLogger();
   const log = [];
   let totalNeeded = 0;
@@ -17,16 +17,17 @@ export function consumeSupplies(state) {
     totalNeeded += army.supplyNeed || 0;
   });
   
-  logger.debug(`Supply consumption: needed=${totalNeeded.toFixed(1)}, available=${state.stockpiles.supplies}`);
+  const requisition = state.coalitionEconomy?.requisition || 0;
+  logger.debug(`Requisition consumption: needed=${totalNeeded.toFixed(1)}, available=${requisition}`);
   
-  if (state.stockpiles.supplies >= totalNeeded) {
-    state.stockpiles.supplies -= totalNeeded;
-    logger.debug(`Supplies consumed: ${totalNeeded.toFixed(1)}, remaining=${state.stockpiles.supplies.toFixed(1)}`);
+  if (requisition >= totalNeeded) {
+    state.coalitionEconomy.requisition = requisition - totalNeeded;
+    logger.debug(`Requisition consumed: ${totalNeeded.toFixed(1)}, remaining=${state.coalitionEconomy.requisition.toFixed(1)}`);
   } else {
     // Shortage
-    const hadSupplies = state.stockpiles.supplies;
-    const shortage = totalNeeded - hadSupplies;
-    state.stockpiles.supplies = 0;
+    const hadRequisition = requisition;
+    const shortage = totalNeeded - hadRequisition;
+    state.coalitionEconomy.requisition = 0;
     
     state.armies.forEach(army => {
       if (army.supplyNeed > 0) {
@@ -36,8 +37,8 @@ export function consumeSupplies(state) {
       }
     });
     
-    logger.warn(`Supply shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadSupplies.toFixed(1)}, shortage=${shortage.toFixed(1)}`);
-    log.push(`Supply shortage! Organizations and Aggravation affected.`);
+    logger.warn(`Requisition shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadRequisition.toFixed(1)}, shortage=${shortage.toFixed(1)}`);
+    log.push(`Requisition shortage! Organizations and Aggravation affected.`);
   }
   
   return { log };

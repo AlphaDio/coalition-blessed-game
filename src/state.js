@@ -9,7 +9,6 @@ export function initialState() {
     scourgeCohesion: 80,
     scourgeFervor: 10,
     stockpiles: {
-      supplies: 1000
     },
     empires: [],
     armies: [],

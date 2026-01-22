@@ -39,13 +39,13 @@ state.empires = [
   })
 ];
 
-// Set initial supplies
-state.stockpiles.supplies = 1000;
+// Set initial requisition
+state.coalitionEconomy.requisition = 1000;
 
 console.log(`Requests available: ${state.improvements.requests.length}`);
 console.log(`Max capacity: ${state.improvements.maxTotalCapacity}`);
 console.log(`Construction: ${state.coalitionConstruction}/tick`);
-console.log(`Initial supplies: ${state.stockpiles.supplies}`);
+console.log(`Initial requisition: ${state.coalitionEconomy.requisition}`);
 console.log('✓ System initialized successfully\n');
 
 // Test 2: Accept improvement request
@@ -58,7 +58,7 @@ console.log(`  Build: ${request1.build}`);
 const result1 = acceptImprovementRequest(state, request1.id, 'empire1');
 if (result1.success) {
   console.log(`✓ Request accepted successfully`);
-  console.log(`  Supplies remaining: ${state.stockpiles.supplies}`);
+  console.log(`  Requisition remaining: ${state.coalitionEconomy.requisition}`);
   console.log(`  Queue length: ${state.improvements.queue.length}`);
 } else {
   console.log(`✗ Failed: ${result1.error}`);
@@ -249,8 +249,8 @@ state2.improvements.requests = getAllImprovementRequests();
 state2.empires = [createEmpire('empire1', 'Test Empire', 50, {}, {}, {
   budget_credits: 50000,
   stockpiles: { biomass: 100, super_alloys: 50, solid_ice: 80 }
-})];
-state2.stockpiles.supplies = 1000;
+ })];
+state2.coalitionEconomy.requisition = 1000;
 
 
 // Run same sequence

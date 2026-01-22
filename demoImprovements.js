@@ -29,7 +29,7 @@ const content = createSampleContent(12345);
 state.empires = content.empires;
 state.armies = content.armies;
 state.units = content.units || [];
-state.stockpiles.supplies = 2000;
+state.coalitionEconomy.requisition = 2000;
 state.heroes = [];
 state.diplomacy = content.diplomacy || { relations: {} };
 refreshArmyAggregates(state);
@@ -56,7 +56,7 @@ state.empires.forEach(empire => {
 
 console.log('📋 INITIAL STATE');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-console.log(`Coalition Supplies: ${state.stockpiles.supplies}`);
+console.log(`Coalition Requisition: ${state.stockpiles.requisition}`);
 console.log(`Available Requests: ${state.improvements.requests.length}`);
 console.log(`Empires: ${state.empires.length}\n`);
 
@@ -89,7 +89,7 @@ for (let i = 0; i < 3; i++) {
   console.log(`Accepting: ${request.name} (Empire: ${state.empires[i % state.empires.length].name})`);
   const result = acceptImprovementRequest(state, request.id, state.empires[i % state.empires.length].id);
   if (result.success) {
-    console.log(`✓ Accepted! Supplies: ${state.stockpiles.supplies}\n`);
+    console.log(`✓ Accepted! Requisition: ${state.coalitionEconomy.requisition}\n`);
   } else {
     console.log(`✗ Failed: ${result.error}\n`);
   }
@@ -218,7 +218,7 @@ console.log(`Active: ${finalStats.active}`);
 console.log(`Degraded: ${finalStats.degraded}`);
 console.log(`Capacity Usage: ${finalStats.capacity}/${finalStats.maxCapacity}`);
 console.log(`Construction: ${finalStats.construction}/tick`);
-console.log(`Supplies Remaining: ${state.stockpiles.supplies}`);
+console.log(`Requisition Remaining: ${state.coalitionEconomy.requisition}`);
 console.log(`Turns Simulated: ${state.turn}\n`);
 
 console.log('\n╔════════════════════════════════════════════════════════════╗');

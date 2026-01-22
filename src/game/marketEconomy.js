@@ -104,7 +104,7 @@ export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice =
 /**
  * Create buy order
  */
-export function createBuyOrder(id, ownerType, ownerId, commodity, qty, maxPrice, priority = 0) {
+export function createBuyOrder(id, ownerType, ownerId, commodity, qty, maxPrice, priority = 0, maxDuration = 3) {
   return {
     id,
     owner_type: ownerType, // 'coalition', 'empire', 'army'
@@ -113,14 +113,16 @@ export function createBuyOrder(id, ownerType, ownerId, commodity, qty, maxPrice,
     qty,
     max_price: maxPrice,
     priority,
-    filled_qty: 0
+    filled_qty: 0,
+    duration: 0,
+    max_duration: maxDuration
   };
 }
 
 /**
  * Create sell offer
  */
-export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice, priority = 0) {
+export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice, priority = 0, maxDuration = 3) {
   return {
     id,
     owner_type: ownerType, // 'empire', 'coalition'
@@ -129,7 +131,9 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
     qty,
     ask_price: askPrice,
     priority,
-    filled_qty: 0
+    filled_qty: 0,
+    duration: 0,
+    max_duration: maxDuration
   };
 }
 
@@ -244,16 +248,19 @@ export function updateMarketPrices(market, commodities, config) {
 
 /**
  * Clear market: match buy orders with sell offers
+ * Uses order-level price matching: trades clear when buy.max_price >= sell.ask_price
+ * Trades clear at the seller's ask_price (the lower price)
  */
 export function clearMarket(buyOrders, sellOffers, marketState) {
   const commodity = marketState.commodity;
-  const clearingPrice = marketState.price;
   
   // Filter orders for this commodity
   const relevantBuys = buyOrders.filter(o => o.commodity === commodity && o.filled_qty < o.qty);
   const relevantSells = sellOffers.filter(o => o.commodity === commodity && o.filled_qty < o.qty);
   
   // Sort by priority (higher first), then by price
+  // Buys: highest max_price first (most willing to pay)
+  // Sells: lowest ask_price first (cheapest first)
   relevantBuys.sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return b.max_price - a.max_price;
@@ -279,95 +286,61 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
   const unfilledBuys = [];
   const unfilledSells = [];
   
-  if (totalSupply >= totalDemand) {
-    // Surplus: fill all buys, remainder to sellers
-    let remainingSupply = totalSupply;
+  // Create a map of sell offers with remaining quantity
+  const sellRemaining = new Map();
+  for (const sell of relevantSells) {
+    sellRemaining.set(sell.id, sell.qty - (sell.filled_qty || 0));
+  }
+  
+  // Match buys with sells where buy.max_price >= sell.ask_price
+  for (const buy of relevantBuys) {
+    const buyRemaining = buy.qty - (buy.filled_qty || 0);
+    if (buyRemaining <= 0) continue;
     
-    for (const buy of relevantBuys) {
-      const needed = buy.qty - buy.filled_qty;
-      const fillQty = Math.min(needed, remainingSupply);
-      
-      if (fillQty > 0 && buy.max_price >= clearingPrice) {
-        buy.filled_qty += fillQty;
-        remainingSupply -= fillQty;
-        
-        // Allocate fill across sellers pro-rata
-        let remainingToAllocate = fillQty;
-        for (const sell of relevantSells) {
-          if (remainingToAllocate <= 0) break;
-          if (sell.ask_price > clearingPrice) continue;
-          
-          const sellAvailable = sell.qty - sell.filled_qty;
-          const sellRatio = sellAvailable / totalSupply;
-          const sellFill = Math.min(remainingToAllocate, sellAvailable, sellRatio * fillQty);
-          
-          if (sellFill > 0) {
-            sell.filled_qty += sellFill;
-            remainingToAllocate -= sellFill;
-            
-            trades.push({
-              buy_order_id: buy.id,
-              sell_offer_id: sell.id,
-              commodity,
-              qty: sellFill,
-              price: clearingPrice
-            });
-          }
-        }
-      } else {
-        unfilledBuys.push(buy);
-      }
-    }
+    let matched = false;
     
-    // Remaining supply goes to seller stockpiles
+    // Find matching sells (where sell.ask_price <= buy.max_price)
     for (const sell of relevantSells) {
-      const remaining = sell.qty - sell.filled_qty;
-      if (remaining > 0) {
-        unfilledSells.push({ ...sell, remaining });
+      const sellQty = sellRemaining.get(sell.id) || 0;
+      if (sellQty <= 0) continue;
+      
+      // Check if prices are compatible: buyer's max >= seller's ask
+      if (buy.max_price >= sell.ask_price) {
+        const tradeQty = Math.min(buyRemaining, sellQty);
+        
+        // Update remaining quantities
+        sellRemaining.set(sell.id, sellQty - tradeQty);
+        
+        // Record trade at seller's ask_price (the lower price)
+        trades.push({
+          buy_order_id: buy.id,
+          sell_offer_id: sell.id,
+          commodity,
+          qty: tradeQty,
+          price: sell.ask_price
+        });
+        
+        matched = true;
+        
+        // Update buy's filled_qty
+        buy.filled_qty = (buy.filled_qty || 0) + tradeQty;
+        
+        // Stop if buy is fully filled
+        if (buy.filled_qty >= buy.qty) break;
       }
     }
-  } else {
-    // Shortage: pro-rata allocation to buyers
-    const shortageRatio = totalSupply / totalDemand;
     
-    for (const buy of relevantBuys) {
-      if (buy.max_price < clearingPrice) {
-        unfilledBuys.push(buy);
-        continue;
-      }
-      
-      const needed = buy.qty - buy.filled_qty;
-      const allocatedQty = needed * shortageRatio;
-      
-      if (allocatedQty > 0) {
-        buy.filled_qty += allocatedQty;
-        
-        // Allocate across sellers pro-rata
-        let remainingToAllocate = allocatedQty;
-        for (const sell of relevantSells) {
-          if (remainingToAllocate <= 0) break;
-          if (sell.ask_price > clearingPrice) continue;
-          
-          const sellAvailable = sell.qty - sell.filled_qty;
-          const sellRatio = sellAvailable / totalSupply;
-          const sellFill = Math.min(remainingToAllocate, sellAvailable, sellRatio * allocatedQty);
-          
-          if (sellFill > 0) {
-            sell.filled_qty += sellFill;
-            remainingToAllocate -= sellFill;
-            
-            trades.push({
-              buy_order_id: buy.id,
-              sell_offer_id: sell.id,
-              commodity,
-              qty: sellFill,
-              price: clearingPrice
-            });
-          }
-        }
-      } else {
-        unfilledBuys.push(buy);
-      }
+    // If buy wasn't fully filled, add to unfilled
+    if (buy.filled_qty < buy.qty) {
+      unfilledBuys.push(buy);
+    }
+  }
+  
+  // Collect remaining sells
+  for (const sell of relevantSells) {
+    const sellQty = sellRemaining.get(sell.id) || 0;
+    if (sellQty > 0) {
+      unfilledSells.push({ ...sell, remaining: sellQty });
     }
   }
   

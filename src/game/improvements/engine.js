@@ -27,6 +27,8 @@ import {
 
 let orderIdCounter = 0;
 
+export const SUGGESTION_MAX_DURATION = 15; // ticks before a suggestion expires
+
 /**
  * Create an improvement request (available to accept)
  */
@@ -62,8 +64,27 @@ export function createImprovementRequest(id, name, description, {
     requiredLaws,
     unitGrant,
     tier,
-    branch
+    branch,
+    requestedAt: null
   };
+}
+
+/**
+ * Remove expired improvement suggestions (older than SUGGESTION_MAX_DURATION ticks)
+ * @param {Object} state - Game state
+ * @returns {number} Number of expired requests removed
+ */
+export function removeExpiredSuggestions(state) {
+  if (!state.improvements?.requests || !state.turn) return 0;
+
+  const expiredRequests = state.improvements.requests.filter(r =>
+    r.requestedAt && (state.turn - r.requestedAt) > SUGGESTION_MAX_DURATION
+  );
+
+  const expiredIds = new Set(expiredRequests.map(r => r.id));
+  state.improvements.requests = state.improvements.requests.filter(r => !expiredIds.has(r.id));
+
+  return expiredRequests.length;
 }
 
 /**
@@ -172,17 +193,15 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     }
   }
 
-  // Check supplies cost from empire's budget
-  const empire = state.empires.find(e => e.id === empireId);
-  if (!empire) {
-    return { success: false, error: 'Empire not found', log: [] };
+  // Check requisition from coalition economy
+  if (!state.coalitionEconomy) {
+    return { success: false, error: 'Coalition economy not initialized', log: [] };
   }
-
-  if (!empire.budget_credits) empire.budget_credits = 0;
-  if (request.suppliesCost > 0 && empire.budget_credits < request.suppliesCost) {
+  if (!state.coalitionEconomy.requisition) state.coalitionEconomy.requisition = 0;
+  if (request.suppliesCost > 0 && state.coalitionEconomy.requisition < request.suppliesCost) {
     return {
       success: false,
-      error: `Insufficient Empire Budget (need ${request.suppliesCost}, have ${empire.budget_credits})`,
+      error: `Insufficient Requisition (need ${request.suppliesCost}, have ${state.coalitionEconomy.requisition})`,
       log: []
     };
   }
@@ -201,9 +220,9 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     };
   }
 
-  // Deduct supplies from empire budget (no refunds on cancellation)
+  // Deduct requisition from coalition economy (no refunds on cancellation)
   if (request.suppliesCost > 0) {
-    empire.budget_credits -= request.suppliesCost;
+    state.coalitionEconomy.requisition -= request.suppliesCost;
   }
 
   // Create improvement instance
@@ -216,12 +235,12 @@ export function acceptImprovementRequest(state, requestId, empireId) {
      state.improvements.requests.splice(requestIdx, 1);
    }
 
-    logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Cost: ${request.suppliesCost} credits, Tier: ${improvement.tier})`);
+    logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Requisition: ${request.suppliesCost}, Tier: ${improvement.tier})`);
 
    return {
      success: true,
      improvement,
-     log: [`{green-fg}Started:{/green-fg} ${improvement.name} (cost: ${request.suppliesCost} cr, T${improvement.tier})`]
+     log: [`{green-fg}Started:{/green-fg} ${improvement.name} (requisition: ${request.suppliesCost}, T${improvement.tier})`]
    };
 }
 
@@ -367,16 +386,16 @@ export function processImprovementSustainment(state, improvement) {
     } else {
       // Not enough in stockpile, need to get from empire
       const stockpileShortfall = scaledQty - currentStockpile;
-      let empireStockpile = empire.stockpiles[commodity] || 0;
-      if (commodity === 'supplies') {
-        empireStockpile = empire.budget_credits || 0;
-      }
+       let empireStockpile = empire.stockpiles[commodity] || 0;
+       if (commodity === 'requisition') {
+         empireStockpile = empire.budget_credits || 0;
+       }
 
-      if (empireStockpile >= stockpileShortfall) {
-        // Empire has enough - consume what we need
-        if (commodity === 'supplies') {
-          empire.budget_credits -= stockpileShortfall;
-        } else {
+       if (empireStockpile >= stockpileShortfall) {
+         // Empire has enough - consume what we need
+         if (commodity === 'requisition') {
+           empire.budget_credits -= stockpileShortfall;
+         } else {
           empire.stockpiles[commodity] -= stockpileShortfall;
         }
         // Set stockpile to 0 (we used it all plus fresh resources)
@@ -388,21 +407,21 @@ export function processImprovementSustainment(state, improvement) {
         if (excessAvailable >= scaledQty * 2 && currentStockpile < maxStockpile) {
           const amountToAdd = Math.min(maxStockpile - currentStockpile, excessAvailable - scaledQty);
           if (amountToAdd > 0) {
-            // Transfer to improvement stockpile
-            if (commodity === 'supplies') {
-              empire.budget_credits -= amountToAdd;
-            } else {
+             // Transfer to improvement stockpile
+             if (commodity === 'requisition') {
+               empire.budget_credits -= amountToAdd;
+             } else {
               empire.stockpiles[commodity] -= amountToAdd;
             }
             improvement.stockpile[commodity] += amountToAdd;
           }
         }
       } else {
-        // Empire doesn't have enough - use what they have and fail the rest
-        if (empireStockpile > 0) {
-          if (commodity === 'supplies') {
-            empire.budget_credits = 0;
-          } else {
+         // Empire doesn't have enough - use what they have and fail the rest
+         if (empireStockpile > 0) {
+           if (commodity === 'requisition') {
+             empire.budget_credits = 0;
+           } else {
             empire.stockpiles[commodity] = 0;
           }
           // Partial consumption from stockpile

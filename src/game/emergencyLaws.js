@@ -1,13 +1,13 @@
-/**
- * Emergency Laws System
- * 
- * Emergency laws provide powerful temporary modifiers but at significant resource costs.
- * Once enacted, they activate immediately and run for a set duration, consuming
- * supplies and commodities each tick. When the duration expires or resources run out,
- * the law expires and its modifiers are removed.
- * 
- * Emergency laws can be re-enacted after a cooldown period.
- */
+ /**
+  * Emergency Laws System
+  * 
+  * Emergency laws provide powerful temporary modifiers but at significant resource costs.
+  * Once enacted, they activate immediately and run for a set duration, consuming
+  * requisition and commodities each tick. When the duration expires or resources run out,
+  * the law expires and its modifiers are removed.
+  * 
+  * Emergency laws can be re-enacted after a cooldown period.
+  */
 
 import { getLogger } from '../modules/logger.js';
 
@@ -19,7 +19,7 @@ import { getLogger } from '../modules/logger.js';
  * - description: What it does
  * - duration: Number of ticks the law remains active
  * - cooldown: Ticks before the law can be re-enacted after expiring
- * - costs_per_tick: Resources consumed each tick { supplies, commodities: { key: qty } }
+ * - costs_per_tick: Resources consumed each tick { requisition, commodities: { key: qty } }
  * - modifiers: Powerful effects applied while active
  * - axis_vector: Ideological shift (affects coalition color)
  */
@@ -32,7 +32,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 50,
     cooldown: 100,
     costs_per_tick: {
-      supplies: 25,
+      requisition: 25,
       commodities: {
         super_alloys: 5,
         biomass: 3
@@ -61,7 +61,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 60,
     cooldown: 120,
     costs_per_tick: {
-      supplies: 30,
+      requisition: 30,
       commodities: {
         biomass: 5,
         rare_gases: 2,
@@ -90,7 +90,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 30,
     cooldown: 90,
     costs_per_tick: {
-      supplies: 40,
+      requisition: 40,
       commodities: {
         rare_gases: 4,
         genomes: 3,
@@ -120,7 +120,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 45,
     cooldown: 90,
     costs_per_tick: {
-      supplies: 20,
+      requisition: 20,
       commodities: {
         biomass: 4,
         psycho_implants: 2
@@ -149,7 +149,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 20,
     cooldown: 150,
     costs_per_tick: {
-      supplies: 50,
+      requisition: 50,
       commodities: {
         wormhole_reactors: 2,
         dark_matter: 1,
@@ -235,13 +235,13 @@ export function canActivateEmergencyLaw(lawId, state) {
     return { canActivate: false, reason: `On cooldown (${remaining} ticks remaining)` };
   }
   
-  // Check if we have enough resources for at least one tick
-  const costs = def.costs_per_tick;
-  
-  // Check supplies
-  if ((state.stockpiles?.supplies || 0) < costs.supplies) {
-    return { canActivate: false, reason: `Insufficient supplies (need ${costs.supplies}/tick)` };
-  }
+   // Check if we have enough resources for at least one tick
+   const costs = def.costs_per_tick;
+   
+    // Check requisition
+    if ((state.coalitionEconomy?.requisition || 0) < costs.requisition) {
+      return { canActivate: false, reason: `Insufficient requisition (need ${costs.requisition}/tick)` };
+    }
   
   // Check commodities (from coalition economy stockpiles)
   const coalitionStockpiles = state.coalitionEconomy?.stockpiles || {};
@@ -314,11 +314,11 @@ export function tickEmergencyLaws(state) {
     let canAfford = true;
     let shortageReason = '';
     
-    // Check supplies
-    const currentSupplies = state.stockpiles?.supplies || 0;
-    if (currentSupplies < costs.supplies) {
+     // Check requisition
+    const currentRequisition = state.coalitionEconomy?.requisition || 0;
+    if (currentRequisition < costs.requisition) {
       canAfford = false;
-      shortageReason = `supplies shortage (need ${costs.supplies}, have ${currentSupplies})`;
+      shortageReason = `requisition shortage (need ${costs.requisition}, have ${currentRequisition})`;
     }
     
     // Check commodities
@@ -351,9 +351,9 @@ export function tickEmergencyLaws(state) {
       continue;
     }
     
-    // Consume resources
-    state.stockpiles.supplies -= costs.supplies;
-    activeLaw.resourcesConsumed.supplies += costs.supplies;
+     // Consume resources
+     state.coalitionEconomy.requisition -= costs.requisition;
+     activeLaw.resourcesConsumed.requisition += costs.requisition;
     
     for (const [commodity, qty] of Object.entries(costs.commodities || {})) {
       coalitionStockpiles[commodity] -= qty;

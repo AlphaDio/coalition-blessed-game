@@ -11,7 +11,6 @@ export const INITIAL_STATE = {
   scourgeCohesion: 80,
   scourgeFervor: 10,
   stockpiles: {
-    supplies: 1000
   },
   turn: 1
 };
@@ -29,7 +28,8 @@ export const MARKET_CONSTANTS = {
   ARMY_WANTS_PREMIUM: 1.15,       // Armies pay 15% above market for wants
   SURPLUS_RATIO_THRESHOLD: 0.35,  // When stockpiles exceed this ratio, sell surplus
   SURPLUS_TARGET_RATIO: 0.7,      // Target stockpile ratio after selling
-  SURPLUS_KEEP_RATIO: 0.5         // Keep at least this much when selling
+  SURPLUS_KEEP_RATIO: 0.5,        // Keep at least this much when selling
+  POPULATION_GROWTH_BANK_THRESHOLD: 10 // Population growth accumulates to this threshold before applying
 };
 
 export const FRONT_BATTLE_MODIFIERS = {

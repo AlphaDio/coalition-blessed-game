@@ -87,30 +87,36 @@ function testSupplyConversion() {
 
   const state = createGameState();
   const coalitionEconomy = state.coalitionEconomy;
-  coalitionEconomy.supply_milli = 500; // 0.5 supplies
+  coalitionEconomy.requisition = 500;
 
-  // Add stockpiles
-  coalitionEconomy.stockpile_by_commodity.biomass = 150; // T1, 1 milli per unit
-  coalitionEconomy.stockpile_by_commodity.super_alloys = 50;  // T2, 2 milli per unit
+  // Add to bank (must reach BANK_THRESHOLD=1000 to move to ready)
+  coalitionEconomy.stockpile_bank.biomass = 1500; // T1, 10 requisition per unit
+  coalitionEconomy.stockpile_bank.super_alloys = 500;  // T2, 20 requisition per unit
 
   state.turn = 1;
   const config = loadEconomyConfig();
 
-  // Execute conversion with new signature
+  // Execute conversion
   const logEntries = executeSupplyConversion(coalitionEconomy, config);
 
   console.log('Conversion log entries:', logEntries);
 
    // Check results
-   // biomass: 150 >= 100, convert 100, gain 100*1 = 100
-   // super_alloys: 50 < 100, no convert
-   // total converted units = 100, batchBonus = floor(100/100)*0 = 0
-   const expectedMilli = 500 + 100 + 0;
-  if (coalitionEconomy.supply_milli !== expectedMilli) {
-    throw new Error(`Expected ${expectedMilli} milli, got ${coalitionEconomy.supply_milli}`);
-  }
+   // biomass: 1500 >= BANK_THRESHOLD(1000), move to ready
+   // super_alloys: 500 < BANK_THRESHOLD(1000), stays in bank
+   // From ready: convert 1500 biomass (15 batches of 100), gain 1500 * 10 = 15000 bank
+   // Initial bank was 0, total = 15000 bank (requisition stays at 500)
+   const expectedBank = 15000;
+   if (coalitionEconomy.bank !== expectedBank) {
+     throw new Error(`Expected ${expectedBank} bank, got ${coalitionEconomy.bank}`);
+   }
 
-  console.log('✓ Supply conversion test passed');
+   // Requisition should be unchanged (no rollover yet - need 1,000,000 bank)
+   if (coalitionEconomy.requisition !== 500) {
+     throw new Error(`Expected 500 requisition, got ${coalitionEconomy.requisition}`);
+   }
+
+   console.log('✓ Requisition conversion test passed');
 }
 
 function testIntegrationWithMarket() {
@@ -157,7 +163,7 @@ function testProcurementRateOver100Ticks() {
   const coalitionEconomy = gameState.coalitionEconomy;
   coalitionEconomy.treasury_credits = 10000;
   coalitionEconomy.allowance_credits = 100;
-  coalitionEconomy.supply_milli = 0;
+  coalitionEconomy.bank = 0;
 
    // Set default settings
    coalitionEconomy.procurement.theta_preset_by_commodity.biomass = 'Balanced';
@@ -166,7 +172,7 @@ function testProcurementRateOver100Ticks() {
    coalitionEconomy.procurement.theta_preset_by_commodity.genomes = 'Balanced';
   coalitionEconomy.procurement.spend_throttle = 0.75;
 
-  let initialSupplyMilli = coalitionEconomy.supply_milli;
+   let initialBank = coalitionEconomy.bank;
 
   // Simulate 100 ticks
   for (let tick = 0; tick < 100; tick++) {
@@ -212,16 +218,16 @@ function testProcurementRateOver100Ticks() {
     executeSupplyConversion(coalitionEconomy, config);
   }
 
-  const finalSupplyMilli = coalitionEconomy.supply_milli;
-  const totalSupplyGained = finalSupplyMilli - initialSupplyMilli;
-  const supplyPerTick = totalSupplyGained / 100;
+  const finalBank = coalitionEconomy.bank;
+  const totalBankGained = finalBank - initialBank;
+  const bankPerTick = totalBankGained / 100;
 
-  console.log(`Total supply milli gained: ${totalSupplyGained} over 100 ticks`);
-  console.log(`Average supply milli per tick: ${supplyPerTick}`);
+  console.log(`Total bank milli gained: ${totalBankGained} over 100 ticks`);
+  console.log(`Average bank milli per tick: ${bankPerTick}`);
 
-   // Check if supply is being generated (allowing wide variance due to market conditions)
-   if (totalSupplyGained < 0) {
-     throw new Error(`Expected positive supply generation, got ${totalSupplyGained}`);
+   // Check if bank is being generated (allowing wide variance due to market conditions)
+   if (totalBankGained < 0) {
+     throw new Error(`Expected positive bank generation, got ${totalBankGained}`);
    }
 
   console.log('✓ Procurement rate test passed - achieving expected supply generation');

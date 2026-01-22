@@ -1,6 +1,6 @@
 import { ECONOMY_CONSTANTS, BATTLE_CONSTANTS } from './constants.js';
 import { clampCohesion, clampStat, clampApproval } from './cohesion.js';
-import { consumeSupplies } from './economy.js';
+import { consumeRequisition } from './economy.js';
 import { processEconomyTick } from './economyTick.js';
 import { checkInsurrections } from './insurrection.js';
 import { updateLawCooldowns } from './laws.js';
@@ -11,9 +11,8 @@ import { resolveAllLawProcesses, updatePlayerInfluence } from './lawProcessManag
 import { DeterministicRNG } from '../modules/rng.js';
 import { simulateBattleTick, getActiveBattles } from './frontBattles.js';
 import { getLogger } from '../modules/logger.js';
-import { processImprovementsTick, applyImprovementModifiers } from './improvements/index.js';
+import { processImprovementsTick, applyImprovementModifiers, removeExpiredSuggestions } from './improvements/index.js';
 import { getAllImprovementRequests } from './improvements/definitions.js';
-import { refreshImprovementSuggestions } from './improvements/definitions.js';
 import { createImprovementRequest } from './improvements/engine.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
@@ -243,7 +242,7 @@ function handleEconomyTick(state, log, logger) {
     logger.debug(`Economy tick: ${economyResult.trades} trades executed`);
   } catch (error) {
     logger.error(`Economy tick failed: ${error.message}`, { error });
-    const supplyLog = consumeSupplies(state);
+    const supplyLog = consumeRequisition(state);
     log.push(...supplyLog.log);
   }
 
@@ -560,57 +559,72 @@ export function advanceTurn(state, rng = Math.random) {
        log.push(...improvementResult.log);
      }
 
-     // Apply improvement modifiers
-     applyImprovementModifiers(state);
-   }
-
-    // 3.1. Empire improvement suggestions
-    // Only suggest when an empire has started/completed an improvement
-    if (state.empires && state.improvements) {
-      const activeImprovements = state.improvements.queue.filter(i => i.state === 'BUILDING');
-      const activeEmpireIds = new Set(activeImprovements.map(i => i.empireId));
-
-      state.empires.forEach(empire => {
-        // Only suggest if this empire has an active improvement
-        if (!activeEmpireIds.has(empire.id)) return;
-        if (rngFn() < 0.3) { // 30% chance if empire has active improvement
-         const availableDefinitions = getAllImprovementRequests().filter(def => {
-           // Check requirements
-           if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;
-           if (def.requirements?.supplies && state.supplies < def.requirements.supplies) return false;
-           // Check if already requested or active
-           const existingRequest = state.improvements.requests.find(r => r.definitionId === def.id);
-           if (existingRequest) return false;
-           const active = state.improvements.queue.find(q => q.definitionId === def.id);
-           if (active) return false;
-           return true;
-         });
-         if (availableDefinitions.length > 0) {
-           const randomDef = availableDefinitions[Math.floor(rngFn() * availableDefinitions.length)];
-           const req = createImprovementRequest(randomDef.id, randomDef.name, randomDef.description, {
-             suppliesCost: randomDef.suppliesCost,
-             build: randomDef.build,
-             tier: randomDef.tier,
-             branch: randomDef.branch,
-             requirements: randomDef.requirements
-           });
-           req.empireId = empire.id;
-           req.requestedAt = state.turn;
-           state.improvements.requests.push(req);
-           log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
-           logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);
-         }
-        }
-      });
+      // Apply improvement modifiers
+      applyImprovementModifiers(state);
     }
 
-    // 3.2. Periodic refresh of all improvement suggestions (every 20 ticks)
-    if (state.turn % 20 === 0 && state.improvements) {
-      refreshImprovementSuggestions(state, rngFn);
-      logger.debug('Refreshed all improvement suggestions');
+    // Remove expired improvement suggestions (older than 15 ticks)
+    const expiredCount = removeExpiredSuggestions(state);
+    if (expiredCount > 0) {
+      logger.debug(`Removed ${expiredCount} expired improvement suggestions`);
     }
 
-   // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
+      // 3.1. Empire improvement suggestions
+      // Suggest when an empire has started/completed an improvement, or randomly for empires with no activity
+      if (state.empires && state.improvements) {
+        const activeImprovements = state.improvements.queue.filter(i => i.state === 'BUILDING' || i.state === 'ACTIVE');
+        const activeEmpireIds = new Set(activeImprovements.map(i => i.empireId));
+
+        // Count existing requests per empire (limit to 3)
+        const empireRequestCounts = {};
+        state.improvements.requests.forEach(r => {
+          if (r.empireId) {
+            empireRequestCounts[r.empireId] = (empireRequestCounts[r.empireId] || 0) + 1;
+          }
+        });
+
+        state.empires.forEach(empire => {
+          // Check if this empire has active improvements
+          const hasActiveImprovement = activeEmpireIds.has(empire.id);
+          
+          // 60% chance if empire has active improvement, 20% otherwise (to bootstrap)
+          const suggestionChance = hasActiveImprovement ? 0.6 : 0.2;
+          
+          // Limit to 3 suggestions per empire
+          if ((empireRequestCounts[empire.id] || 0) >= 3) return;
+          
+          if (rngFn() < suggestionChance) {
+           const availableDefinitions = getAllImprovementRequests().filter(def => {
+            // Check requirements
+            if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;
+             if (def.requirements?.supplies && (state.coalitionEconomy?.requisition || 0) < def.requirements.supplies) return false;
+            // Check if already requested or active
+            const existingRequest = state.improvements.requests.find(r => r.definitionId === def.id);
+            if (existingRequest) return false;
+            const active = state.improvements.queue.find(q => q.definitionId === def.id);
+            if (active) return false;
+            return true;
+          });
+          if (availableDefinitions.length > 0) {
+            const randomDef = availableDefinitions[Math.floor(rngFn() * availableDefinitions.length)];
+            const req = createImprovementRequest(randomDef.id, randomDef.name, randomDef.description, {
+              suppliesCost: randomDef.suppliesCost,
+              build: randomDef.build,
+              tier: randomDef.tier,
+              branch: randomDef.branch,
+              requirements: randomDef.requirements
+            });
+            req.empireId = empire.id;
+            req.requestedAt = state.turn;
+            state.improvements.requests.push(req);
+             log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
+             logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);
+           }
+          }
+        });
+      }
+
+    // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
   const emergencyResult = tickEmergencyLaws(state);
   if (emergencyResult.log && emergencyResult.log.length > 0) {
     log.push(...emergencyResult.log);

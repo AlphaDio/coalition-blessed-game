@@ -37,16 +37,16 @@ declares:
       tech_rate_bonus: 0.01
       production:
         outputs_per_tick:
-          genomes: 0.125
-          ancient_relics: 0.1
+          genomes: 0.025
+          ancient_relics: 0.005
       needs:
         per_pop:
-          biomass: 0.025
-          solid_ice: 0.02
+          biomass: 0.25
+          solid_ice: 0.2
       wants:
         per_pop:
           psycho_implants: 0.01
-          nano_machines: 0.05
+          nano_machines: 0.005
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15

@@ -75,41 +75,159 @@ export function processEconomyTick(state) {
     logger.info('Coalition procurement initialized');
   }
   
-  // Reset order books
+   // Reset order books - start empty for new orders
   const buyOrders = [];
   const sellOffers = [];
   let orderIdCounter = 0;
   
-  // Step 1: Compute empire production
+   // Track which orders should persist (from aggregation with existing or new creation)
+  const ordersToSave = new Set();
+  
+  // Load existing orders for aggregation (but don't add to arrays yet)
+  const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+  const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+  
+  /**
+   * Find existing sell offer for owner+commodity and aggregate qty
+   * Returns updated offer with recalculated price and reset duration
+   */
+  function aggregateSellOffer(ownerType, ownerId, commodity, newQty, newPrice, priority) {
+    // First check new orders created this tick
+    let existing = sellOffers.find(o => 
+      o.owner_type === ownerType && 
+      o.owner_id === ownerId && 
+      o.commodity === commodity &&
+      (o.filled_qty || 0) < o.qty
+    );
+    
+    // Then check existing orders from previous ticks
+    if (!existing) {
+      existing = existingSellOffers.find(o => 
+        o.owner_type === ownerType && 
+        o.owner_id === ownerId && 
+        o.commodity === commodity &&
+        (o.filled_qty || 0) < o.qty
+      );
+    }
+    
+  if (!existing) {
+      const offer = {
+        id: `sell_${orderIdCounter++}`,
+        owner_type: ownerType,
+        owner_id: ownerId,
+        commodity,
+        qty: newQty,
+        ask_price: newPrice,
+        priority,
+        filled_qty: 0,
+        fee: 0
+      };
+      sellOffers.push(offer);
+      ordersToSave.add(offer);
+      return offer;
+    }
+    
+    // Calculate weighted average price
+    const existingRemaining = existing.qty - (existing.filled_qty || 0);
+    const existingValue = existingRemaining * existing.ask_price;
+    const newValue = newQty * newPrice;
+    const totalValue = existingValue + newValue;
+    const totalQty = existingRemaining + newQty;
+    
+    existing.ask_price = totalQty > 0 ? totalValue / totalQty : newPrice;
+    existing.qty = totalQty;
+    existing.duration = 0;
+    
+    // If from existing orders, move to sellOffers for this tick
+    if (!sellOffers.includes(existing)) {
+      sellOffers.push(existing);
+    }
+    ordersToSave.add(existing);
+    
+    return existing;
+  }
+  
+  /**
+   * Find existing buy order for owner+commodity+category and aggregate qty
+   * Returns updated order with recalculated price and reset duration
+   */
+  function aggregateBuyOrder(ownerType, ownerId, commodity, newQty, newPrice, category, priority) {
+    // First check new orders created this tick
+    let existing = buyOrders.find(o => 
+      o.owner_type === ownerType && 
+      o.owner_id === ownerId && 
+      o.commodity === commodity &&
+      o.category === category &&
+      (o.filled_qty || 0) < o.qty
+    );
+    
+    // Then check existing orders from previous ticks
+    if (!existing) {
+      existing = existingBuyOrders.find(o => 
+        o.owner_type === ownerType && 
+        o.owner_id === ownerId && 
+        o.commodity === commodity &&
+        o.category === category &&
+        (o.filled_qty || 0) < o.qty
+      );
+    }
+    
+    if (!existing) {
+      const order = createBuyOrder(
+        `buy_${orderIdCounter++}`,
+        ownerType,
+        ownerId,
+        commodity,
+        newQty,
+        newPrice,
+        priority,
+        100
+      );
+      order.category = category;
+      order.fee = 1;
+      order.filled_qty = 0;
+      buyOrders.push(order);
+      ordersToSave.add(order);
+      return order;
+    }
+    
+    // Calculate weighted average max_price
+    const existingRemaining = existing.qty - (existing.filled_qty || 0);
+    const existingValue = existingRemaining * existing.price;
+    const newValue = newQty * newPrice;
+    const totalValue = existingValue + newValue;
+    const totalQty = existingRemaining + newQty;
+    
+    existing.price = totalQty > 0 ? totalValue / totalQty : newPrice;
+    existing.qty = totalQty;
+    existing.duration = 0;
+    
+    // If from existing orders, move to buyOrders for this tick
+    if (!buyOrders.includes(existing)) {
+      buyOrders.push(existing);
+    }
+    ordersToSave.add(existing);
+    
+    return existing;
+  }
+   
+   // Step 1: Compute empire production
    state.empires.forEach(empire => {
-     if (!empire.production || !empire.production.outputs_per_tick) return;
+    if (!empire.production || !empire.production.outputs_per_tick) return;
 
-     const population = empire.stats?.population || 1;
-     const empireMultiplier = empire.modifiers?.multiplication || 1.0;
-     const productionMultiplier = (1 + (state.coalitionModifiers.empire_production_multiplier || 0)) * empireMultiplier;
+    const population = empire.stats?.population || 1;
+    const empireMultiplier = empire.modifiers?.multiplication || 1.0;
+    const productionMultiplier = (1 + (state.coalitionModifiers.empire_production_multiplier || 0)) * empireMultiplier;
 
      Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
        if (qty > 0) {
-         // Apply population, empire multiplication and industrial_output modifier
          const modifiedQty = qty * population * productionMultiplier * (1 + (state.coalitionModifiers.industrial_output || 0));
-
-         // Create sell offer at market price (or slightly below for competitiveness)
          const marketPrice = state.market[commodity]?.price || 1.0;
-         const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT; // Slightly below market
-
-         const sellOffer = createSellOffer(
-           `sell_${orderIdCounter++}`,
-           'empire',
-           empire.id,
-           commodity,
-           modifiedQty,
-           askPrice,
-           0
-         );
-         sellOffer.fee = 1;
-         sellOffers.push(sellOffer);
-       }
-     });
+         const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT;
+         
+         const sellOffer = aggregateSellOffer('empire', empire.id, commodity, modifiedQty, askPrice, 0);
+        }
+      });
    });
   
   // Step 2: Emit buy orders for empire needs
@@ -117,72 +235,36 @@ export function processEconomyTick(state) {
     if (!empire.needs || !empire.needs.per_pop) return;
     const population = empire.stats?.population || 0;
 
-    // Ensure stockpiles is initialized
-    if (!empire.stockpiles) empire.stockpiles = {};
     if (!empire.economy_spend) {
       empire.economy_spend = { needs: 0, wants: 0, order_fees: 0 };
     }
 
-    Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const totalNeeded = qtyPerPop * population;
-      if (totalNeeded > 0) {
-        // Check stockpile first
-        const stockpiled = empire.stockpiles[commodity] || 0;
-        const neededFromMarket = Math.max(0, totalNeeded - stockpiled);
-
-        if (neededFromMarket > 0) {
+     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
+        const totalNeeded = qtyPerPop * population;
+        if (totalNeeded > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
-          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM; // Pay premium for needs
-
-          const buyOrder = createBuyOrder(
-            `buy_empire_${orderIdCounter++}`,
-            'empire',
-            empire.id,
-            commodity,
-            neededFromMarket,
-            maxPrice,
-            1 // Higher priority for needs
-          );
-          buyOrder.category = 'needs';
-          buyOrder.fee = 1;
-          buyOrders.push(buyOrder);
-        }
-
-        // Consume from stockpile
-        if (stockpiled > 0) {
-          const consumed = Math.min(stockpiled, totalNeeded);
-          empire.stockpiles[commodity] = stockpiled - consumed;
-        }
-      }
+          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM;
+          
+           const buyOrder = aggregateBuyOrder('empire', empire.id, commodity, totalNeeded, maxPrice, 'needs', 1);
+         }
+       });
     });
-  });
-  
-  // Step 2b: Emit buy orders for empire wants
+
+   // Step 2b: Emit buy orders for empire wants
   state.empires.forEach(empire => {
     if (!empire.wants || !empire.wants.per_pop) return;
     const population = empire.stats?.population || 0;
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const totalWanted = qtyPerPop * population;
-      if (totalWanted > 0) {
-        const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM; // Lower premium for wants
-
-        const buyOrder = createBuyOrder(
-          `buy_empire_want_${orderIdCounter++}`,
-          'empire',
-          empire.id,
-          commodity,
-          totalWanted,
-          maxPrice,
-          0 // Normal priority for wants (lower than needs)
-        );
-        buyOrder.category = 'wants';
-        buyOrder.fee = 1;
-        buyOrders.push(buyOrder);
-      }
-    });
-  });
+        const totalWanted = qtyPerPop * population;
+        if (totalWanted > 0) {
+          const marketPrice = state.market[commodity]?.price || 1.0;
+          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM;
+          
+            const buyOrder = aggregateBuyOrder('empire', empire.id, commodity, totalWanted, maxPrice, 'wants', 0);
+         }
+       });
+   });
   
   // Step 3: Emit buy orders for army needs/wants
   state.armies.forEach(army => {
@@ -197,86 +279,30 @@ export function processEconomyTick(state) {
     // Reset received commodities for this tick
     army.supply_state.received = {};
     
-    // Check if empire can fulfill from stockpile first
-    const empire = state.empires.find(e => e.id === army.owner_empire_id);
-    if (empire && empire.stockpiles) {
-      // Distribute empire surplus to armies
-      const baseSurplusRatio = empire.allocation?.surplus_to_armies_ratio || 0.35;
-      const stability = Number.isFinite(empire.stability) ? empire.stability : 60;
-      const stabilityFactor = Math.max(0.5, Math.min(1.2, 0.7 + (stability / 100) * 0.5));
-      const surplusRatio = baseSurplusRatio * stabilityFactor;
-      
-      Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
-        const totalNeeded = qtyPerManpower * manpower;
-        const stockpiled = empire.stockpiles[commodity] || 0;
-        const availableForArmies = stockpiled * surplusRatio;
-        
-        if (availableForArmies > 0 && totalNeeded > 0) {
-          const distributed = Math.min(availableForArmies, totalNeeded);
-          empire.stockpiles[commodity] = stockpiled - distributed;
-          army.supply_state.received[commodity] = (army.supply_state.received[commodity] || 0) + distributed;
-        }
-      });
-      
-      Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-        const totalWanted = qtyPerManpower * manpower;
-        const stockpiled = empire.stockpiles[commodity] || 0;
-        const availableForArmies = stockpiled * surplusRatio;
-        
-        if (availableForArmies > 0 && totalWanted > 0) {
-          const distributed = Math.min(availableForArmies, totalWanted);
-          empire.stockpiles[commodity] = stockpiled - distributed;
-          army.supply_state.received[commodity] = (army.supply_state.received[commodity] || 0) + distributed;
-        }
-      });
-    }
-    
-    // Create buy orders for unmet needs
-    Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalNeeded = qtyPerManpower * manpower;
-      const received = army.supply_state.received[commodity] || 0;
-      const unmet = Math.max(0, totalNeeded - received);
-      
-      if (unmet > 0) {
-        const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_NEEDS_PREMIUM; // Armies pay premium
-        
-        const buyOrder = createBuyOrder(
-          `buy_army_${orderIdCounter++}`,
-          'army',
-          army.id,
-          commodity,
-          unmet,
-          maxPrice,
-          0
-        );
-        buyOrders.push(buyOrder);
-      }
-    });
-    
-    // Create buy orders for unmet wants
-    Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalWanted = qtyPerManpower * manpower;
-      const received = army.supply_state.received[commodity] || 0;
-      const unmet = Math.max(0, totalWanted - received);
-      
-      if (unmet > 0) {
-        const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_WANTS_PREMIUM; // Lower priority than needs
-        
-        const buyOrder = createBuyOrder(
-          `buy_army_want_${orderIdCounter++}`,
-          'army',
-          army.id,
-          commodity,
-          unmet,
-          maxPrice,
-          -1 // Lower priority
-        );
-        buyOrders.push(buyOrder);
-      }
-    });
-  });
+       // Create buy orders for all army needs (no direct stockpile consumption)
+       Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
+         const totalNeeded = qtyPerManpower * manpower;
+         
+         if (totalNeeded > 0) {
+           const marketPrice = state.market[commodity]?.price || 1.0;
+           const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_NEEDS_PREMIUM;
+           
+            const buyOrder = aggregateBuyOrder('army', army.id, commodity, totalNeeded, maxPrice, 'needs', 0);
+         }
+       });
+       
+       // Create buy orders for all army wants (no direct stockpile consumption)
+       Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
+         const totalWanted = qtyPerManpower * manpower;
+         
+         if (totalWanted > 0) {
+           const marketPrice = state.market[commodity]?.price || 1.0;
+           const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_WANTS_PREMIUM;
+           
+            const buyOrder = aggregateBuyOrder('army', army.id, commodity, totalWanted, maxPrice, 'wants', -1);
+         }
+       });
+   });
   
   // Step 4: Compute market target prices
   updateMarketPrices(state.market, commodities, config);
@@ -284,10 +310,65 @@ export function processEconomyTick(state) {
 
 
   // Apply empire order posting fees
-  const allBuyOrders = buyOrders.concat(state.marketOrders?.buyOrders || []);
-  const allSellOffers = sellOffers.concat(state.marketOrders?.sellOffers || []);
+  let allBuyOrders = buyOrders.concat(state.marketOrders?.buyOrders || []);
+  let allSellOffers = sellOffers.concat(state.marketOrders?.sellOffers || []);
 
-  allBuyOrders.forEach(order => {
+  // Increment duration on all buy orders and separate expired ones
+  const validBuyOrders = [];
+  const expiredBuyOrders = [];
+
+   allBuyOrders.forEach(order => {
+     order.duration = (order.duration || 0) + 1;
+     
+     // Adaptive pricing: increase max_price slightly each tick (buy orders willing to pay more over time)
+     const PRICE_ADAPTATION_RATE = 0.04; // 4% per tick
+     order.max_price = (order.max_price || 1) * (1 + PRICE_ADAPTATION_RATE);
+     
+     if (order.duration >= order.max_duration) {
+       expiredBuyOrders.push(order);
+     } else {
+       validBuyOrders.push(order);
+     }
+   });
+
+  // Increment duration on all sell offers and separate expired ones
+  const validSellOffers = [];
+  const expiredSellOffers = [];
+
+   allSellOffers.forEach(order => {
+     order.duration = (order.duration || 0) + 1;
+     
+     // Adaptive pricing: decrease ask_price slightly each tick (sell orders willing to accept less over time)
+     const PRICE_ADAPTATION_RATE = 0.04; // 4% per tick
+     order.ask_price = (order.ask_price || 1) * (1 - PRICE_ADAPTATION_RATE);
+     
+     if (order.duration >= order.max_duration) {
+       expiredSellOffers.push(order);
+     } else {
+       validSellOffers.push(order);
+     }
+   });
+
+  // Move expired sell offers directly to stockpiles
+  expiredSellOffers.forEach(order => {
+    const remaining = order.qty - (order.filled_qty || 0);
+    if (remaining <= 0) return;
+
+    if (order.owner_type === 'empire') {
+      const empire = state.empires.find(e => e.id === order.owner_id);
+      if (empire) {
+        if (!empire.stockpiles) empire.stockpiles = {};
+        empire.stockpiles[order.commodity] = (empire.stockpiles[order.commodity] || 0) + remaining;
+      }
+    } else if (order.owner_type === 'coalition') {
+      // Add to coalition bank if it's a coalition improvement
+      const coalition = state.coalitionEconomy;
+      if (!coalition.stockpile_bank) coalition.stockpile_bank = {};
+      coalition.stockpile_bank[order.commodity] = (coalition.stockpile_bank[order.commodity] || 0) + remaining;
+    }
+  });
+
+  validBuyOrders.forEach(order => {
     if (order.owner_type !== 'empire') return;
     const empire = state.empires.find(e => e.id === order.owner_id);
     if (!empire) return;
@@ -314,23 +395,23 @@ export function processEconomyTick(state) {
     empire.economy_spend.wants = 0;
   });
   
-  // Step 6: Market clearing
+   // Step 6: Market clearing
   const allTrades = [];
   commodities.forEach(commodity => {
     const marketState = state.market[commodity.key];
     if (!marketState) return;
-    
-    const clearResult = clearMarket(buyOrders, sellOffers, marketState);
+
+    const clearResult = clearMarket(validBuyOrders, validSellOffers, marketState);
     allTrades.push(...clearResult.trades);
     
     // Store post-clear remaining offers for coalition procurement
     marketState.remaining_sell_offers_post_clear = clearResult.unfilledSells;
     
-    // Apply trades to entities
-    clearResult.trades.forEach(trade => {
-      // Find buyer and seller
-      const buyOrder = buyOrders.find(b => b.id === trade.buy_order_id);
-      const sellOffer = sellOffers.find(s => s.id === trade.sell_offer_id);
+     // Apply trades to entities
+     clearResult.trades.forEach(trade => {
+       // Find buyer and seller from the valid orders (not local buyOrders/sellOffers)
+       const buyOrder = validBuyOrders.find(b => b.id === trade.buy_order_id);
+       const sellOffer = validSellOffers.find(s => s.id === trade.sell_offer_id);
       
       if (buyOrder && sellOffer) {
         // Distribute to buyer
@@ -375,10 +456,29 @@ export function processEconomyTick(state) {
           }
         }
       }
+     });
     });
-   });
-   
-   // Step 7: Coalition procurement after market clear
+
+     // Step 6b: Save remaining valid orders to state.marketOrders
+    // Only save orders that were created or aggregated this tick (tracked in ordersToSave)
+    const savedBuyOrders = [...ordersToSave].filter(o => o.owner_type === 'empire' || o.owner_type === 'army');
+    const buyOrdersToSave = savedBuyOrders.filter(o => (o.filled_qty || 0) < o.qty && buyOrders.includes(o));
+    const sellOffersToSave = savedBuyOrders.filter(o => (o.filled_qty || 0) < o.qty && sellOffers.includes(o));
+    
+    // Also include orders from validBuyOrders/validSellOffers that are in ordersToSave
+    const allValidBuyOrders = [...validBuyOrders, ...buyOrders].filter(o => ordersToSave.has(o) && (o.filled_qty || 0) < o.qty);
+    const allValidSellOffers = [...validSellOffers, ...sellOffers].filter(o => ordersToSave.has(o) && (o.filled_qty || 0) < o.qty);
+    
+    // Remove duplicates by ID
+    const uniqueBuyOrders = Array.from(new Map(allValidBuyOrders.map(o => [o.id, o])).values());
+    const uniqueSellOffers = Array.from(new Map(allValidSellOffers.map(o => [o.id, o])).values());
+    
+    state.marketOrders = {
+      buyOrders: uniqueBuyOrders,
+      sellOffers: uniqueSellOffers
+    };
+    
+    // Step 7: Coalition procurement after market clear
    // Refill allowance
    refillCoalitionAllowance(state.coalitionEconomy);
    
@@ -388,7 +488,7 @@ export function processEconomyTick(state) {
      log.push(...procurementLog);
    }
    
-   // Convert stockpiles to supplies
+    // Convert stockpiles to requisition
    const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
    if (conversionLog.length > 0) {
      log.push(...conversionLog);
@@ -416,11 +516,27 @@ export function processEconomyTick(state) {
          empire.approval = Math.min(100, Math.max(0, empire.approval + state.coalitionModifiers.empire_approval));
        }
        
-        // Population growth
+        // Population growth (from coalition modifiers - percentage based)
         if (state.coalitionModifiers.population_growth) {
           if (!empire.stats) empire.stats = {};
           const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
-          empire.stats.population = Math.max(0, Math.floor(currentPopulation * (1 + state.coalitionModifiers.population_growth)));
+          if (currentPopulation <= 0) return;
+
+          // Initialize growth bank if needed
+          if (!empire.stats.population_growth_bank) {
+            empire.stats.population_growth_bank = 0;
+          }
+
+          // Calculate growth for this tick
+          const growthAmount = currentPopulation * state.coalitionModifiers.population_growth;
+          empire.stats.population_growth_bank += growthAmount;
+
+          // Apply growth only when bank reaches threshold
+          if (empire.stats.population_growth_bank >= MARKET_CONSTANTS.POPULATION_GROWTH_BANK_THRESHOLD) {
+            const bankedGrowth = Math.floor(empire.stats.population_growth_bank);
+            empire.stats.population = Math.max(0, currentPopulation + bankedGrowth);
+            empire.stats.population_growth_bank -= bankedGrowth;
+          }
         }
      });
      

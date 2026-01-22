@@ -36,15 +36,15 @@ declares:
       tech_rate_bonus: 0.15
       production:
         outputs_per_tick:
-          solid_ice: 0.25
-          psycho_implants: 0.01
+          solid_ice: 0.625
+          psycho_implants: 0.005
       needs:
         per_pop:
           biomass: 0.12
-          super_alloys: 0.03
+          super_alloys: 0.3
       wants:
         per_pop:
-          rare_gases: 0.005
+          rare_gases: 0.02
           sentient_cores: 0.003
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:

@@ -36,17 +36,17 @@ declares:
       tech_rate_bonus: 0.10
       production:
         outputs_per_tick:
-          super_alloys: 0.8
-          rare_gases: 0.1
+          super_alloys: 0.5
+          rare_gases: 0.05
       needs:
         per_pop:
-          biomass: 0.05
-          solid_ice: 0.01
+          biomass: 0.5
+          solid_ice: 0.3
       wants:
         per_pop:
-          nano_machines: 0.001
-          quantum_circuits: 0.002
-          genomes: 0.15
+          nano_machines: 0.005
+          quantum_circuits: 0.003
+          genomes: 0.01
     tags: ["Industrial", "Federation"]
     modifiers:
       intensity: 1.0

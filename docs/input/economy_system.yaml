@@ -77,14 +77,14 @@ economy_system:
       # (implementation detail left to code; these are tuning knobs)
       min_price: 0.01
       max_price: 1000000
-      smoothing_k: 0.25           # lerp(last_price, target_price, k)
-      shortage_panic_cap: 4.0     # clamps extreme ratios per tick
+      smoothing_k: 0.5           # lerp(last_price, target_price, k) - higher = faster adjustment
+      shortage_panic_cap: 6.0    # clamps extreme ratios per tick - higher = sharper spikes
     tier_elasticity:
       # higher elasticity => price moves more for the same imbalance
-      t1: 0.6
-      t2: 1.0
-      t3: 1.6
-      t4: 2.4
+      t1: 1.0
+      t2: 1.2
+      t3: 2.0
+      t4: 3.0
 
   coalition:
     procurement:

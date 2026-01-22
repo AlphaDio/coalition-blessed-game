@@ -22,10 +22,10 @@ export const COMMODITY_DEFINITIONS = {
 };
 
 export const MILLI_PER_UNIT_BY_TIER = {
-  T1: 1,
-  T2: 2,
-  T3: 5,
-  T4: 10
+  T1: 10,
+  T2: 20,
+  T3: 50,
+  T4: 100
 };
 
 export const BATCH_SIZE_UNITS = 100;
@@ -421,7 +421,6 @@ export function createGameState(seed = 0) {
     scourgeCohesion: 80,
     scourgeFervor: 10,
     stockpiles: {
-      supplies: 1000
     },
     empires: [],
     armies: [],
@@ -476,8 +475,10 @@ export function createGameState(seed = 0) {
       treasury_credits: 10000, // Baseline B starting treasury
       allowance_credits: 0, // Refilled each tick
       reserve_floor_credits: 1500, // Baseline B reserve floor
-      supply_milli: 1000000, // Start with 1000 supplies (1M milli)
-      stockpile_by_commodity: {}, // Map<commodityId, int>
+      bank: 0, // Coalition bank (accumulates resources)
+      requisition: 100, // Starting requisition for purchasing improvements
+      stockpile_bank: {},     // Map<commodityId, int> - accumulates purchased commodities
+      stockpile_ready: {},    // Map<commodityId, int> - ready for conversion (reached threshold)
       procurement: {
         spend_throttle: 0.75, // Baseline B default
         theta_preset_by_commodity: {} // Map<commodityId, ThetaPresetId>
@@ -489,7 +490,7 @@ export function createGameState(seed = 0) {
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
     
     // Improvements system
-    coalitionConstruction: 4, // Build progress added to ALL building improvements per tick
+    coalitionConstruction: 40, // Build progress added to ALL building improvements per tick (×10 for testing)
     improvements: null // Improvements queue and requests (initialized in index.js)
   };
 }
