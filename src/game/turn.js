@@ -15,7 +15,7 @@ import { processImprovementsTick, applyImprovementModifiers, removeExpiredSugges
 import { getAllImprovementRequests } from './improvements/definitions.js';
 import { createImprovementRequest } from './improvements/engine.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
-import { refreshArmyAggregates, syncUnitsFromArmy } from './armyComposition.js';
+import { refreshArmyAggregates } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
 import { MARKET_CONSTANTS } from './constants.js';
@@ -290,30 +290,18 @@ function handleBattlePhase(state, rng, log, logger) {
     const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
     const winnerSide = getBattleWinner(leftArmy, rightArmy);
 
-    if (winnerSide) {
-      if (front.isScourgeBattle) {
-        const result = handleScourgeBattleEnd(state, front, winnerSide);
-        log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
-        if (result.log) log.push(...result.log);
-        if (leftArmy) {
-          const units = state.units.filter(unit => unit.armyId === leftArmy.id);
-          syncUnitsFromArmy(leftArmy, units);
-        }
-      } else if (front.isInsurrectionBattle) {
-        const result = handleInsurrectionBattleEnd(state, front, winnerSide);
-        log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
-        if (result.log) log.push(...result.log);
-        if (leftArmy) {
-          const units = state.units.filter(unit => unit.armyId === leftArmy.id);
-          syncUnitsFromArmy(leftArmy, units);
-        }
-        if (rightArmy) {
-          const units = state.units.filter(unit => unit.armyId === rightArmy.id);
-          syncUnitsFromArmy(rightArmy, units);
+      if (winnerSide) {
+        if (front.isScourgeBattle) {
+          const result = handleScourgeBattleEnd(state, front, winnerSide);
+          log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
+          if (result.log) log.push(...result.log);
+        } else if (front.isInsurrectionBattle) {
+          const result = handleInsurrectionBattleEnd(state, front, winnerSide);
+          log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
+          if (result.log) log.push(...result.log);
         }
       }
-    }
-  });
+    });
 
   triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logger);
   triggerInsurrectionBattles(state, rng, activeBattles, log, logger);
@@ -473,9 +461,6 @@ function replenishArmyManpower(state, activeBattles) {
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
   
   regularArmies.forEach(army => {
-    const units = state.units.filter(unit => unit.armyId === army.id);
-    if (units.length === 0) return;
-
     // Skip if already at max
     if (army.mp.current >= army.mp.max) return;
     
@@ -506,8 +491,6 @@ function replenishArmyManpower(state, activeBattles) {
     const spaceAvailable = army.mp.max - army.mp.current;
     const replenished = Math.min(effectiveRate, spaceAvailable);
     army.mp.current += replenished;
-
-    syncUnitsFromArmy(army, units);
     
     // Debug logging for significant replenishment
     if (replenished > 50) {

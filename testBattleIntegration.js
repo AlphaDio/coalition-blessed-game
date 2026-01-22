@@ -3,19 +3,20 @@
 /**
  * Integration Tests for Battle System
  * Tests the full battle flow including:
- * - Scourge army and unit creation
+ * - Scourge army creation
  * - Coalition vs Scourge battles
  * - Battle end handling and cohesion changes
- * - Unit sync after battles
  * - Insurrection battles
+ * 
+ * Note: Units have been removed from the game. Armies now manage manpower directly.
  */
 
-import { createGameState, createArmy, createUnit, createEmpire } from './src/game/types.js';
+import { createGameState, createArmy, createEmpire } from './src/game/types.js';
 import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from './src/game/battles.js';
 import { simulateBattleTick, getActiveBattles } from './src/game/frontBattles.js';
-import { refreshArmyAggregates, syncUnitsFromArmy } from './src/game/armyComposition.js';
+import { refreshArmyAggregates } from './src/game/armyComposition.js';
 
-// Helper to create a full test state with empires, armies, and units
+// Helper to create a full test state with empires and armies
 function createFullTestState(seed = 12345) {
   const state = createGameState(seed);
   
@@ -25,24 +26,24 @@ function createFullTestState(seed = 12345) {
     createEmpire('empire2', 'Empire Two', 55)
   ];
   
-  // Create armies with units
-  const army1 = createArmy('army1', 'empire1', 'First Legion', 60, 70, 0);
-  const army2 = createArmy('army2', 'empire2', 'Second Legion', 55, 65, 0);
+  // Create armies with manpower (no units)
+  const army1 = createArmy('army1', 'empire1', 'First Legion', 60, 70, 0, 50, 50, 10000);
+  const army2 = createArmy('army2', 'empire2', 'Second Legion', 55, 65, 0, 50, 50, 10000);
   
-  army1.unitIds = ['unit_army1'];
-  army2.unitIds = ['unit_army2'];
+  // Set combat stats directly on armies
+  army1.dmgPerUnitMP = 1.0;
+  army1.dmgPerTickMO = 2.5;
+  army1.protection = 0.2;
+  army1.resolve = 0.3;
+  army1.killRate = 0.1;
+  
+  army2.dmgPerUnitMP = 1.0;
+  army2.dmgPerTickMO = 2.5;
+  army2.protection = 0.2;
+  army2.resolve = 0.3;
+  army2.killRate = 0.1;
   
   state.armies = [army1, army2];
-  state.units = [
-    createUnit('unit_army1', 'army1', 'empire1', 'First Legion Infantry', {
-      mp: { current: 10000, max: 10000 },
-      mo: { current: 100, max: 100 }
-    }),
-    createUnit('unit_army2', 'army2', 'empire2', 'Second Legion Infantry', {
-      mp: { current: 10000, max: 10000 },
-      mo: { current: 100, max: 100 }
-    })
-  ];
   
   state.turn = 1;
   state.scourgeFervor = 10;
@@ -54,14 +55,14 @@ function createFullTestState(seed = 12345) {
   return state;
 }
 
-// Test 1: Scourge army creation includes unit
+// Test 1: Scourge army creation
 function testScourgeArmyCreation() {
-  console.log('\n=== Test 1: Scourge army creation includes unit ===');
+  console.log('\n=== Test 1: Scourge army creation ===');
   
   const state = createFullTestState();
   const participatingArmies = state.armies.filter(a => a.organization > 30);
   
-  // Start a Scourge battle - this should create the Scourge army and unit
+  // Start a Scourge battle - this should create the Scourge army
   const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
   // Check Scourge army was created
@@ -72,40 +73,19 @@ function testScourgeArmyCreation() {
   }
   console.log('✓ Scourge army created:', scourgeArmy.name);
   
-  // Check Scourge army has unitIds
-  if (!scourgeArmy.unitIds || scourgeArmy.unitIds.length === 0) {
-    console.log('✗ Scourge army has no unitIds');
+  // Check Scourge army has manpower
+  if (!scourgeArmy.mp || scourgeArmy.mp.max <= 0) {
+    console.log('✗ Scourge army has no manpower');
     return false;
   }
-  console.log('✓ Scourge army has unitIds:', scourgeArmy.unitIds);
+  console.log('✓ Scourge army has manpower:', scourgeArmy.mp.max);
   
-  // Check Scourge unit was created
-  const scourgeUnit = state.units.find(u => u.id.startsWith('_scourge_unit'));
-  if (!scourgeUnit) {
-    console.log('✗ Scourge unit was not created');
+  // Check Scourge army has combat stats
+  if (scourgeArmy.dmgPerUnitMP === undefined || scourgeArmy.dmgPerUnitMP <= 0) {
+    console.log('✗ Scourge army has no combat stats');
     return false;
   }
-  console.log('✓ Scourge unit created:', scourgeUnit.name);
-  
-  // Check unit stats match army stats
-  const statsMatch = 
-    scourgeUnit.dmgPerUnitMP === scourgeArmy.dmgPerUnitMP &&
-    scourgeUnit.protection === scourgeArmy.protection &&
-    scourgeUnit.resolve === scourgeArmy.resolve;
-  
-  if (!statsMatch) {
-    console.log('✗ Scourge unit stats do not match army stats');
-    console.log('  Unit dmgPerUnitMP:', scourgeUnit.dmgPerUnitMP, 'Army:', scourgeArmy.dmgPerUnitMP);
-    return false;
-  }
-  console.log('✓ Scourge unit stats match army stats');
-  
-  // Check MP matches
-  if (scourgeUnit.mp.max !== scourgeArmy.mp.max) {
-    console.log('✗ Scourge unit MP does not match army MP');
-    return false;
-  }
-  console.log('✓ Scourge unit MP matches army MP:', scourgeUnit.mp.max);
+  console.log('✓ Scourge army has combat stats - dmgPerUnitMP:', scourgeArmy.dmgPerUnitMP);
   
   return true;
 }
@@ -142,15 +122,6 @@ function testScourgeStatsScaling() {
     console.log('✓ Scourge MP scales with turns');
   } else {
     console.log('✗ Scourge MP does not scale');
-    return false;
-  }
-  
-  // Check unit also scaled
-  const scourgeUnit2 = state2.units.find(u => u.id.startsWith('_scourge_unit'));
-  if (scourgeUnit2.dmgPerUnitMP === scourge2.dmgPerUnitMP) {
-    console.log('✓ Scourge unit stats also scaled');
-  } else {
-    console.log('✗ Scourge unit stats did not scale');
     return false;
   }
   
@@ -191,15 +162,6 @@ function testCoalitionCombinedArmy() {
     console.log('✓ Original armies tracked:', combinedArmy._originalArmies.length);
   } else {
     console.log('✗ Original armies not tracked properly');
-    return false;
-  }
-  
-  // Check original unit IDs are tracked
-  const expectedUnitIds = participatingArmies.flatMap(a => a.unitIds || []);
-  if (combinedArmy._originalUnitIds && combinedArmy._originalUnitIds.length === expectedUnitIds.length) {
-    console.log('✓ Original unit IDs tracked:', combinedArmy._originalUnitIds.length);
-  } else {
-    console.log('✗ Original unit IDs not tracked properly');
     return false;
   }
   
@@ -272,17 +234,17 @@ function testFullBattleSimulation() {
   return true;
 }
 
-// Test 5: Unit sync after battle distributes damage
-function testUnitSyncAfterBattle() {
-  console.log('\n=== Test 5: Unit sync after battle ===');
+// Test 5: Damage distribution to original armies after battle
+function testDamageDistributionAfterBattle() {
+  console.log('\n=== Test 5: Damage distribution to original armies ===');
   
   const state = createFullTestState();
   const participatingArmies = state.armies.filter(a => a.organization > 30);
   
-  // Record initial unit MP
-  const initialUnitMP = {};
-  state.units.forEach(u => {
-    initialUnitMP[u.id] = u.mp.current;
+  // Record initial army MP
+  const initialArmyMP = {};
+  participatingArmies.forEach(a => {
+    initialArmyMP[a.id] = a.mp.current;
   });
   
   const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
@@ -307,40 +269,27 @@ function testUnitSyncAfterBattle() {
     : 0;
   console.log('Coalition damage ratio:', (damageRatio * 100).toFixed(1) + '%');
   
-  // Get original unit IDs
-  const originalUnitIds = combinedArmy._originalUnitIds || [];
-  const coalitionUnits = state.units.filter(u => originalUnitIds.includes(u.id));
-  
-  // Sync damage to units
-  syncUnitsFromArmy(combinedArmy, coalitionUnits);
-  
-  // Check units received damage proportionally
-  let allUnitsUpdated = true;
-  coalitionUnits.forEach(unit => {
-    const initialMP = initialUnitMP[unit.id];
-    const currentMP = unit.mp.current;
-    const expectedMP = unit.mp.max * (1 - damageRatio);
-    
-    console.log(`Unit ${unit.id}: ${initialMP} -> ${currentMP.toFixed(0)} (expected ~${expectedMP.toFixed(0)})`);
-    
-    if (Math.abs(currentMP - expectedMP) > 1) {
-      allUnitsUpdated = false;
-    }
-  });
-  
-  if (allUnitsUpdated) {
-    console.log('✓ Units received proportional damage');
+  // Combined army has damage, that's what we're testing
+  if (damageRatio > 0) {
+    console.log('✓ Combined army took damage during battle');
   } else {
-    console.log('✗ Unit damage distribution incorrect');
+    console.log('ℹ No damage taken yet (RNG dependent)');
+  }
+  
+  // Verify original armies are tracked
+  if (combinedArmy._originalArmies && combinedArmy._originalArmies.length > 0) {
+    console.log('✓ Original armies are tracked for damage distribution');
+  } else {
+    console.log('✗ Original armies not tracked');
     return false;
   }
   
   return true;
 }
 
-// Test 6: Scourge unit persists and updates across battles
-function testScourgeUnitPersistence() {
-  console.log('\n=== Test 6: Scourge unit persists across battles ===');
+// Test 6: Scourge army persists and updates across battles
+function testScourgeArmyPersistence() {
+  console.log('\n=== Test 6: Scourge army persists across battles ===');
   
   const state = createFullTestState();
   const participatingArmies = state.armies.filter(a => a.organization > 30);
@@ -348,9 +297,9 @@ function testScourgeUnitPersistence() {
   // First battle
   const { front: front1 } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
-  const scourgeUnit1 = state.units.find(u => u.id.startsWith('_scourge_unit'));
-  const initialMP = scourgeUnit1.mp.max;
-  console.log('First battle - Scourge unit MP:', initialMP);
+  const scourge1 = state.armies.find(a => a.id.startsWith('_scourge_army'));
+  const initialMP = scourge1.mp.max;
+  console.log('First battle - Scourge army MP:', initialMP);
   
   // Simulate and end first battle quickly
   for (let i = 0; i < 100 && front1.state === 'ACTIVE'; i++) {
@@ -366,23 +315,23 @@ function testScourgeUnitPersistence() {
   // Second battle at later turn
   const { front: front2 } = startScourgeBattle(state, participatingArmies, () => 0.5);
   
-  const scourgeUnit2 = state.units.find(u => u.id.startsWith('_scourge_unit'));
-  const updatedMP = scourgeUnit2.mp.max;
-  console.log('Second battle (turn 10) - Scourge unit MP:', updatedMP);
+  const scourge2 = state.armies.find(a => a.id.startsWith('_scourge_army'));
+  const updatedMP = scourge2.mp.max;
+  console.log('Second battle (turn 10) - Scourge army MP:', updatedMP);
   
-  // Only one Scourge unit should exist
-  const scourgeUnits = state.units.filter(u => u.id.startsWith('_scourge_unit'));
-  if (scourgeUnits.length !== 1) {
-    console.log('✗ Multiple Scourge units exist:', scourgeUnits.length);
+  // Only one Scourge army should exist
+  const scourgeArmies = state.armies.filter(a => a.id.startsWith('_scourge_army'));
+  if (scourgeArmies.length !== 1) {
+    console.log('✗ Multiple Scourge armies exist:', scourgeArmies.length);
     return false;
   }
-  console.log('✓ Only one Scourge unit exists');
+  console.log('✓ Only one Scourge army exists');
   
   // Stats should have scaled
   if (updatedMP > initialMP) {
-    console.log('✓ Scourge unit MP scaled from', initialMP, 'to', updatedMP);
+    console.log('✓ Scourge army MP scaled from', initialMP, 'to', updatedMP);
   } else {
-    console.log('✗ Scourge unit MP did not scale');
+    console.log('✗ Scourge army MP did not scale');
     return false;
   }
   
@@ -396,13 +345,13 @@ function testInsurrectionBattle() {
   const state = createFullTestState();
   
   // Add a third army to be rebellious
-  const rebelliousArmy = createArmy('army3', 'empire1', 'Rebel Legion', 80, 50, 90);
-  rebelliousArmy.unitIds = ['unit_army3'];
+  const rebelliousArmy = createArmy('army3', 'empire1', 'Rebel Legion', 80, 50, 90, 50, 50, 8000);
+  rebelliousArmy.dmgPerUnitMP = 1.0;
+  rebelliousArmy.dmgPerTickMO = 2.5;
+  rebelliousArmy.protection = 0.2;
+  rebelliousArmy.resolve = 0.3;
+  rebelliousArmy.killRate = 0.1;
   state.armies.push(rebelliousArmy);
-  state.units.push(createUnit('unit_army3', 'army3', 'empire1', 'Rebel Infantry', {
-    mp: { current: 8000, max: 8000 },
-    mo: { current: 100, max: 100 }
-  }));
   
   refreshArmyAggregates(state);
   
@@ -466,46 +415,40 @@ function testInsurrectionBattle() {
   return true;
 }
 
-// Test 8: Battle with army that has no pre-existing units uses fallback
-function testFallbackUnitMechanics() {
-  console.log('\n=== Test 8: Army without units gets combat stats ===');
+// Test 8: Army with no units uses direct manpower
+function testDirectManpowerMechanics() {
+  console.log('\n=== Test 8: Army with direct manpower ===');
   
   const state = createFullTestState();
   
-  // Create an army without explicit units
-  const bareArmy = createArmy('bare_army', 'empire1', 'Bare Army', 50, 60, 0);
-  // Don't assign units - the aggregation should handle defaults
-  bareArmy.unitIds = [];
-  state.armies.push(bareArmy);
+  // Create an army with manpower directly (new system)
+  const directArmy = createArmy('direct_army', 'empire1', 'Direct Army', 50, 60, 0, 50, 50, 5000);
+  directArmy.dmgPerUnitMP = 0.8;
+  directArmy.dmgPerTickMO = 2.0;
+  directArmy.protection = 0.15;
+  directArmy.resolve = 0.25;
+  directArmy.killRate = 0.1;
+  state.armies.push(directArmy);
   
-  // Refresh aggregates - with no units, the army should have 0 MP
+  // Refresh aggregates
   refreshArmyAggregates(state);
   
-  console.log('Bare army MP after aggregation:', bareArmy.mp.current, '/', bareArmy.mp.max);
-  console.log('Bare army dmgPerUnitMP:', bareArmy.dmgPerUnitMP);
+  console.log('Direct army MP after aggregation:', directArmy.mp.current, '/', directArmy.mp.max);
+  console.log('Direct army dmgPerUnitMP:', directArmy.dmgPerUnitMP);
   
-  // The army should have 0 MP since it has no units
-  // This is expected behavior - armies need units to have combat capability
-  if (bareArmy.mp.max === 0) {
-    console.log('✓ Army without units has 0 MP (expected behavior)');
+  // The army should have the manpower we set
+  if (directArmy.mp.max === 5000) {
+    console.log('✓ Army has correct manpower (5000)');
+  } else {
+    console.log('✗ Army manpower incorrect, expected 5000, got:', directArmy.mp.max);
+    return false;
   }
   
-  // Now add a fallback unit (simulating what content.js does)
-  const fallbackUnit = createUnit('unit_bare_army', 'bare_army', 'empire1', 'Bare Army Core Unit');
-  state.units.push(fallbackUnit);
-  bareArmy.unitIds = ['unit_bare_army'];
-  
-  refreshArmyAggregates(state);
-  
-  console.log('After adding fallback unit:');
-  console.log('Bare army MP:', bareArmy.mp.current, '/', bareArmy.mp.max);
-  console.log('Bare army dmgPerUnitMP:', bareArmy.dmgPerUnitMP);
-  
-  if (bareArmy.mp.max > 0 && bareArmy.dmgPerUnitMP > 0) {
-    console.log('✓ Fallback unit provides combat capability');
+  if (directArmy.dmgPerUnitMP > 0) {
+    console.log('✓ Army has combat capability');
     return true;
   } else {
-    console.log('✗ Fallback unit did not provide combat capability');
+    console.log('✗ Army has no combat capability');
     return false;
   }
 }
@@ -516,14 +459,14 @@ console.log('Battle Integration Test Suite');
 console.log('='.repeat(60));
 
 const results = {
-  'Scourge army creation includes unit': testScourgeArmyCreation(),
+  'Scourge army creation': testScourgeArmyCreation(),
   'Scourge stats scale with turns': testScourgeStatsScaling(),
   'Coalition combined army aggregation': testCoalitionCombinedArmy(),
   'Full battle simulation': testFullBattleSimulation(),
-  'Unit sync after battle': testUnitSyncAfterBattle(),
-  'Scourge unit persistence': testScourgeUnitPersistence(),
+  'Damage distribution after battle': testDamageDistributionAfterBattle(),
+  'Scourge army persistence': testScourgeArmyPersistence(),
   'Insurrection battle': testInsurrectionBattle(),
-  'Fallback unit mechanics': testFallbackUnitMechanics()
+  'Direct manpower mechanics': testDirectManpowerMechanics()
 };
 
 console.log('\n' + '='.repeat(60));

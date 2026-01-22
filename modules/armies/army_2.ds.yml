@@ -22,4 +22,17 @@ declares:
     organization: 65
     fervor: 55
     aggravation: 50
+    command: 52
     recovery: 52
+    manpower: 8000
+    dmgPerUnitMP: 1.0
+    dmgPerTickMO: 2.4
+    protection: 0.25
+    resolve: 0.28
+    killRate: 0.09
+    demands:
+      needs:
+        super_alloys: 0.015
+        solid_ice: 0.02
+      wants:
+        rare_gases: 0.008

@@ -22,4 +22,17 @@ declares:
     organization: 60
     fervor: 50
     aggravation: 55
+    command: 48
     recovery: 48
+    manpower: 12000
+    dmgPerUnitMP: 0.95
+    dmgPerTickMO: 2.3
+    protection: 0.18
+    resolve: 0.35
+    killRate: 0.10
+    demands:
+      needs:
+        biomass: 0.025
+        genomes: 0.01
+      wants:
+        rare_gases: 0.005

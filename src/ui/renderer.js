@@ -1955,7 +1955,7 @@ function filterRegularArmies(armies) {
 function formatArmyBlock(army, empireName) {
   const lines = [`{bold}${army.name}{/bold} (${empireName})`];
   lines.push(`  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}`);
-  lines.push(`  Units: ${army.unitIds?.length || 0}, Aggravation: ${formatNumber(army.aggravation)}`);
+  lines.push(`  Aggravation: ${formatNumber(army.aggravation)}, Command: ${formatNumber(army.command || 50)}`);
 
   if (army.mp && army.mo) {
     const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';

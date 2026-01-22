@@ -1,4 +1,4 @@
-import { createEmpire, createArmy, createLaw, createEvent, createUnit } from './types.js';
+import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
 
@@ -97,7 +97,9 @@ export function createSampleContent(seed = 0) {
   const armies = armyModules.map(entry => {
     const moduleDoc = registry.modules[entry.id];
     const data = moduleDoc.declares.army_data;
-    return createArmy(
+    // Create army with manpower from module or default
+    const manpower = data.manpower || 10000;
+    const army = createArmy(
       data.id,
       data.empireId,
       data.name,
@@ -105,43 +107,23 @@ export function createSampleContent(seed = 0) {
       data.organization,
       data.aggravation,
       data.command || 50,
-      data.recovery || 50
+      data.recovery || 50,
+      manpower
     );
+    // Apply any additional combat stats from module
+    if (data.dmgPerUnitMP) army.dmgPerUnitMP = data.dmgPerUnitMP;
+    if (data.dmgPerTickMO) army.dmgPerTickMO = data.dmgPerTickMO;
+    if (data.protection) army.protection = data.protection;
+    if (data.resolve) army.resolve = data.resolve;
+    if (data.killRate) army.killRate = data.killRate;
+    // Apply demands from module
+    if (data.demands) {
+      army.demands = data.demands;
+    }
+    return army;
   });
 
-  // Extract units from modules
-  const unitModules = getModulesByType(registry, 'unit');
-  const units = unitModules.map(entry => {
-    const moduleDoc = registry.modules[entry.id];
-    const data = moduleDoc.declares.unit_data;
-    return createUnit(
-      data.id,
-      data.armyId,
-      data.empireId,
-      data.name,
-      data.stats || {},
-      data.demands || {}
-    );
-  });
-
-  armies.forEach(army => {
-    const attachedUnits = units.filter(unit => unit.armyId === army.id);
-    army.unitIds = attachedUnits.map(unit => unit.id);
-  });
-
-  // Fallback: ensure every army has at least one unit
-  armies.forEach(army => {
-    if (army.unitIds.length > 0) return;
-    const fallbackId = `unit_${army.id}`;
-    const fallbackUnit = createUnit(
-      fallbackId,
-      army.id,
-      army.empireId,
-      `${army.name} Core Unit`
-    );
-    units.push(fallbackUnit);
-    army.unitIds = [fallbackId];
-  });
+  // Units have been removed - armies now manage manpower directly
 
   // Extract laws from modules
   const lawModules = getModulesByType(registry, 'law');
@@ -200,5 +182,5 @@ export function createSampleContent(seed = 0) {
 
   const relations = buildEmpireRelations(empires);
   
-  return { empires, armies, units, laws, events, diplomacy: { relations } };
+  return { empires, armies, laws, events, diplomacy: { relations } };
 }

@@ -2,8 +2,7 @@ import { BATTLE_CONSTANTS } from './constants.js';
 import { clampStat, clampCohesion, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { startBattle } from './frontBattles.js';
-import { syncUnitsFromArmy } from './armyComposition.js';
-import { createUnit } from './types.js';
+import { createArmy } from './types.js';
 
 export function calculateArmyPower(army) {
   if (!army) {
@@ -67,14 +66,10 @@ function removeScourgeForces(state) {
   if (state.armies) {
     state.armies = state.armies.filter(army => !(army.empireId === '_scourge' && army.id.startsWith('_scourge_army')));
   }
-  if (state.units) {
-    state.units = state.units.filter(unit => !(unit.empireId === '_scourge' && unit.id.startsWith('_scourge_unit')));
-  }
 }
 
 function createScourgeArmy(state, idSuffix) {
   const scourgeId = `_scourge_army_${idSuffix}`;
-  const scourgeUnitId = `_scourge_unit_${idSuffix}`;
   const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
   const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
   const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
@@ -113,36 +108,9 @@ function createScourgeArmy(state, idSuffix) {
     recoveryPool: 0,
     command: 40,
     recovery: 40,
-    reinforcementRate: 80,
-    
-    unitIds: [scourgeUnitId]
+    reinforcementRate: 80
   };
 
-  const scourgeUnit = createUnit(
-    scourgeUnitId,
-    scourgeId,
-    '_scourge',
-    'Scourge Horde',
-    {
-      mp: { current: totalMP, max: totalMP },
-      mo: { current: 100, max: 100 },
-      dmgPerUnitMP: 0.95 * powerScale,
-      dmgPerTickMO: 2.2 * powerScale,
-      protection: 0.15,
-      resolve: 0.25,
-      killRate: 0.09 * powerScale,
-      command: 40,
-      recovery: 40,
-      reinforcementRate: 80,
-      recoveryPool: 0
-    }
-  );
-
-  if (!state.units) {
-    state.units = [];
-  }
-
-  state.units.push(scourgeUnit);
   state.armies.push(scourgeArmy);
 
   return scourgeArmy;
@@ -280,7 +248,6 @@ function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') 
       originalMP: (a.mp && typeof a.mp.current === 'number' && !isNaN(a.mp.current)) ? a.mp.current : 0,
       originalMaxMP: (a.mp && typeof a.mp.max === 'number' && !isNaN(a.mp.max)) ? a.mp.max : 1
     })),
-    _originalUnitIds: participatingArmies.flatMap(a => a.unitIds || []),
     isComposite: true
   };
 
@@ -394,7 +361,6 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   // Get original army data from the combined army
   const originalArmyData = coalitionArmy._originalArmies || [];
   const coalitionWon = winnerSide === 'left';
-  const coalitionUnitIds = coalitionArmy._originalUnitIds || [];
   
   // Calculate MP loss ratio for distributing damage
   const coalitionMPLoss = coalitionArmy.mp.max - coalitionArmy.mp.current;
@@ -417,11 +383,6 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
       army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.LOSS_FERVOR_LOSS);
     }
   });
-
-  if (coalitionUnitIds.length > 0 && state.units) {
-    const coalitionUnits = state.units.filter(unit => coalitionUnitIds.includes(unit.id));
-    syncUnitsFromArmy(coalitionArmy, coalitionUnits);
-  }
   
   // Apply cohesion and approval changes
   if (coalitionWon) {
@@ -562,15 +523,6 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   // Get original army data
   const loyalArmyData = loyalArmy._originalArmies || [];
   const rebelliousArmyData = rebelliousArmy._originalArmies || [];
-  const loyalUnitIds = loyalArmy._originalUnitIds || [];
-  const rebelliousUnitIds = rebelliousArmy._originalUnitIds || [];
-
-  const loyalUnits = loyalUnitIds.length > 0
-    ? state.units.filter(unit => loyalUnitIds.includes(unit.id))
-    : [];
-  const rebelliousUnits = rebelliousUnitIds.length > 0
-    ? state.units.filter(unit => rebelliousUnitIds.includes(unit.id))
-    : [];
   
   const loyalWon = winnerSide === 'left';
   
@@ -605,13 +557,6 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
       // Insurrection spreads - no changes to rebellious armies, but approval shock
     }
   });
-  
-  if (loyalUnits.length > 0) {
-    syncUnitsFromArmy(loyalArmy, loyalUnits);
-  }
-  if (rebelliousUnits.length > 0) {
-    syncUnitsFromArmy(rebelliousArmy, rebelliousUnits);
-  }
   
   // Apply cohesion and approval changes
   if (loyalWon) {

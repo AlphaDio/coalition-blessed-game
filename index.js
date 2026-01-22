@@ -163,7 +163,6 @@ function buildNewGameState(seed) {
 
   state.empires = content.empires;
   state.armies = content.armies;
-  state.units = content.units || [];
   state.laws = content.laws;
   state.events = content.events;
   state.diplomacy = content.diplomacy || { relations: {} };
@@ -192,7 +191,6 @@ function hydrateLoadedState(snapshot) {
   hydrated.heroes = hydrated.heroes || [];
   hydrated.insurrections = hydrated.insurrections || [];
   hydrated.battleFronts = hydrated.battleFronts || [];
-  hydrated.units = hydrated.units || [];
   hydrated.armies = hydrated.armies || [];
   hydrated.empires = hydrated.empires || [];
 

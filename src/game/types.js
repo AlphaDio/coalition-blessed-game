@@ -75,7 +75,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
   };
 }
 
-export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, initialAggravation = 0, initialCommand = 50, initialRecovery = 50) {
+export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 60, initialAggravation = 0, initialCommand = 50, initialRecovery = 50, initialManpower = 10000) {
   return {
     id,
     empireId,
@@ -84,10 +84,9 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
-    unitIds: [],
     
-    // Economy fields (derived from units)
-    manpower: 0,
+    // Manpower and economy fields (no longer derived from units)
+    manpower: initialManpower,
     owner_empire_id: empireId,
     performance: {
       base: 1.0,
@@ -105,24 +104,24 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
       wants: {} // commodity_key -> qty_per_manpower_per_tick
     },
     
-    // MP and MO pools for Front Battles (derived from units)
+    // MP and MO pools for Front Battles
     mp: {
-      current: 0,
-      max: 0
+      current: initialManpower,
+      max: initialManpower
     },
     mo: {
-      current: 0,
-      max: 0
+      current: 100,
+      max: 100
     },
     
-    // Combat stats (derived from units)
+    // Combat stats
     dmgPerUnitMP: 1.0,
     dmgPerTickMO: 2.5,
     protection: 0.2,
     resolve: 0.3,
     killRate: 0.1,
     
-    // Sustain stats (derived from units)
+    // Sustain stats
     recoveryPool: 0,
     command: initialCommand,
     recovery: initialRecovery,
@@ -130,44 +129,12 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
   };
 }
 
+// createUnit is DEPRECATED - units have been removed from the game
+// Armies now directly manage manpower without separate unit entities
+// This function is kept for backwards compatibility during migration
 export function createUnit(id, armyId, empireId, name, stats = {}, demands = {}) {
-  return {
-    id,
-    armyId,
-    empireId,
-    name,
-    mp: {
-      current: stats.mp?.current ?? 10000,
-      max: stats.mp?.max ?? 10000
-    },
-    mo: {
-      current: stats.mo?.current ?? 100,
-      max: stats.mo?.max ?? 100
-    },
-    dmgPerUnitMP: stats.dmgPerUnitMP ?? 1.0,
-    dmgPerTickMO: stats.dmgPerTickMO ?? 2.5,
-    protection: stats.protection ?? 0.2,
-    resolve: stats.resolve ?? 0.3,
-    killRate: stats.killRate ?? 0.1,
-    recoveryPool: stats.recoveryPool ?? 0,
-    command: stats.command ?? 50,
-    recovery: stats.recovery ?? 50,
-    reinforcementRate: stats.reinforcementRate ?? 100,
-    performance: {
-      base: 1.0,
-      current: 1.0
-    },
-    supply_state: {
-      needs_fulfillment: {},
-      wants_fulfillment: {},
-      shortages: {},
-      received: {}
-    },
-    demands: {
-      needs: demands.needs || {},
-      wants: demands.wants || {}
-    }
-  };
+  console.warn('createUnit is deprecated - units have been removed from the game');
+  return null;
 }
 
 export function createHero(id, empireId, name, modifiers = {}) {
@@ -424,7 +391,6 @@ export function createGameState(seed = 0) {
     },
     empires: [],
     armies: [],
-    units: [],
     heroes: [],
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
@@ -476,7 +442,7 @@ export function createGameState(seed = 0) {
       allowance_credits: 0, // Refilled each tick
       reserve_floor_credits: 1500, // Baseline B reserve floor
       bank: 0, // Coalition bank (accumulates resources)
-      requisition: 100, // Starting requisition for purchasing improvements
+      requisition: 500, // Starting requisition for purchasing improvements
       stockpile_bank: {},     // Map<commodityId, int> - accumulates purchased commodities
       stockpile_ready: {},    // Map<commodityId, int> - ready for conversion (reached threshold)
       procurement: {

@@ -1,0 +1,39 @@
+module:
+  id: "army_hive"
+  name: "Synaptic Swarm Host"
+  description: "Bio-engineered warriors of the Synaptic Swarm"
+  version: "1.0.0"
+  type: "army"
+  category: "military"
+  dependencies: ["empire_hive"]
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hive", "biologic", "swarm"]
+  created_at: "2026-01-22T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  army_data:
+    id: "army_hive"
+    empireId: "empire_hive"
+    name: "Synaptic Swarm Host"
+    organization: 55
+    fervor: 75
+    aggravation: 70
+    command: 45
+    recovery: 65
+    manpower: 15000
+    dmgPerUnitMP: 0.9
+    dmgPerTickMO: 2.0
+    protection: 0.15
+    resolve: 0.4
+    killRate: 0.15
+    demands:
+      needs:
+        psycho_implants: 0.008
+        dark_matter: 0.005
+      wants:
+        ancient_relics: 0.003
+        anti_grav_modules: 0.002

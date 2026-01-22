@@ -9,7 +9,7 @@
  */
 
 import { getLogger } from '../../modules/logger.js';
-import { createArmy, createUnit } from '../types.js';
+import { createArmy } from '../types.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
 import { getTieredImprovementRequests, generateImprovementSuggestions, canStartImprovement } from './definitions.js';
@@ -43,7 +43,9 @@ export function createImprovementRequest(id, name, description, {
   suggestedBy = null,
   requiredLawId = null,
   requiredLaws = null,
-  unitGrant = null,
+  armyGrant = null,        // { manpower: number } - creates army or adds to existing
+  manpowerGrant = null,    // number - adds manpower to empire's army
+  requiresNoArmy = false,  // If true, improvement only available to empires without an army
 
   tier = 1,
   branch = 'general'
@@ -62,7 +64,9 @@ export function createImprovementRequest(id, name, description, {
     suggestedBy,
     requiredLawId,
     requiredLaws,
-    unitGrant,
+    armyGrant,
+    manpowerGrant,
+    requiresNoArmy,
     tier,
     branch,
     requestedAt: null
@@ -119,7 +123,8 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     modifiers: { ...request.modifiers },
     requiredLawId: request.requiredLawId || null,
     requiredLaws: request.requiredLaws || null,
-    unitGrant: request.unitGrant || null,
+    armyGrant: request.armyGrant || null,
+    manpowerGrant: request.manpowerGrant || null,
 
     // Stockpile for sustainment buffer (10 ticks worth)
     stockpile: {},
@@ -614,7 +619,9 @@ export function applyImprovementModifiers(state) {
 }
 
 /**
- * Grant units from improvement completion
+ * Grant army/manpower from improvement completion
+ * armyGrant creates a new army with specified manpower (if empire has no army)
+ * manpowerGrant adds manpower to existing army
  */
 function grantImprovementUnits(state, improvement) {
   const log = [];
@@ -630,91 +637,71 @@ function grantImprovementUnits(state, improvement) {
     }
 
     const armyId = `army_${empire.id}`;
-    const existingArmy = state.armies.find(a => a.id === armyId);
+    const existingArmy = state.armies.find(a => a.empireId === empire.id && !a.id.startsWith('_'));
 
     if (!existingArmy) {
+      // Create new army with specified manpower
       const newArmy = createArmy(
         armyId,
         empire.id,
         `${empire.name} Expeditionary Force`,
-        55,
-        60,
-        0,
-        50,
-        50
+        55,  // fervor
+        60,  // organization
+        0,   // aggravation
+        50,  // command
+        50,  // recovery
+        improvement.armyGrant.manpower
       );
-
-      // Set initial manpower
-      newArmy.manpower = improvement.armyGrant.manpower;
-      newArmy.mp = {
-        current: improvement.armyGrant.manpower,
-        max: improvement.armyGrant.manpower
-      };
 
       state.armies.push(newArmy);
       log.push(`{green-fg}Army raised:{/green-fg} ${newArmy.name} with ${improvement.armyGrant.manpower} manpower`);
+    } else {
+      // Empire already has an army - add manpower to it instead
+      const manpowerToAdd = improvement.armyGrant.manpower;
+      existingArmy.manpower += manpowerToAdd;
+      existingArmy.mp.max += manpowerToAdd;
+      existingArmy.mp.current += manpowerToAdd;
+      log.push(`{green-fg}Reinforced:{/green-fg} ${existingArmy.name} +${manpowerToAdd} manpower`);
     }
 
     return log;
   }
 
-  if (!improvement.unitGrant || improvement.unitGrant.quantity <= 0) {
-    return log;
-  }
+  // Handle manpowerGrant - adds manpower to existing army
+  if (improvement.manpowerGrant && improvement.manpowerGrant > 0) {
+    if (!state.armies) {
+      state.armies = [];
+    }
 
-  const template = improvement.unitGrant.template || {};
-  const quantity = improvement.unitGrant.quantity || 1;
-  const unitName = improvement.unitGrant.name || `${improvement.name} Unit`;
-  const targetArmyId = improvement.unitGrant.armyId || null;
+    // Find the empire's army
+    let targetArmy = state.armies.find(a => a.empireId === empire.id && !a.id.startsWith('_'));
 
-  if (!state.armies) {
-    state.armies = [];
-  }
-  if (!state.units) {
-    state.units = [];
-  }
-
-  let targetArmy = null;
-  if (targetArmyId) {
-    targetArmy = state.armies.find(a => a.id === targetArmyId && a.empireId === empire.id);
-  }
-
-  if (!targetArmy) {
-    const fallbackArmyId = `army_${empire.id}`;
-    targetArmy = state.armies.find(a => a.id === fallbackArmyId);
     if (!targetArmy) {
+      // Create a new army for this empire
+      const armyId = `army_${empire.id}`;
       targetArmy = createArmy(
-        fallbackArmyId,
+        armyId,
         empire.id,
-        `${empire.name} Expeditionary Forces`,
-        55,
-        60,
-        0,
-        50,
-        50
+        `${empire.name} Expeditionary Force`,
+        55,  // fervor
+        60,  // organization
+        0,   // aggravation
+        50,  // command
+        50,  // recovery
+        improvement.manpowerGrant
       );
       state.armies.push(targetArmy);
+      log.push(`{green-fg}Army raised:{/green-fg} ${targetArmy.name} with ${improvement.manpowerGrant} manpower`);
+    } else {
+      // Add manpower to existing army
+      targetArmy.manpower += improvement.manpowerGrant;
+      targetArmy.mp.max += improvement.manpowerGrant;
+      targetArmy.mp.current += improvement.manpowerGrant;
+      log.push(`{green-fg}Reinforced:{/green-fg} ${targetArmy.name} +${improvement.manpowerGrant} manpower`);
     }
+
+    return log;
   }
 
-  for (let i = 0; i < quantity; i += 1) {
-    const unitId = `${improvement.id}_unit_${state.turn}_${i}`;
-    const unitStats = template.stats || {};
-    const unitDemands = template.demands || {};
-    const unit = createUnit(
-      unitId,
-      targetArmy.id,
-      empire.id,
-      unitName,
-      unitStats,
-      unitDemands
-    );
-    state.units.push(unit);
-    targetArmy.unitIds = targetArmy.unitIds || [];
-    targetArmy.unitIds.push(unitId);
-  }
-
-  refreshArmyAggregates(state);
-  log.push(`{green-fg}Force raised:{/green-fg} ${unitName} x${quantity} for ${empire.name}`);
   return log;
 }

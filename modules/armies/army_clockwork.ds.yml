@@ -1,0 +1,39 @@
+module:
+  id: "army_clockwork"
+  name: "Quantum Legion"
+  description: "Synthetic war machines of the Quantum Collective"
+  version: "1.0.0"
+  type: "army"
+  category: "military"
+  dependencies: ["empire_clockwork"]
+
+metadata:
+  author: "Coalition Team"
+  tags: ["quantum", "mechanical", "synthetic"]
+  created_at: "2026-01-22T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  army_data:
+    id: "army_clockwork"
+    empireId: "empire_clockwork"
+    name: "Quantum Legion"
+    organization: 80
+    fervor: 40
+    aggravation: 30
+    command: 70
+    recovery: 60
+    manpower: 8000
+    dmgPerUnitMP: 1.2
+    dmgPerTickMO: 2.8
+    protection: 0.25
+    resolve: 0.35
+    killRate: 0.12
+    demands:
+      needs:
+        quantum_circuits: 0.015
+        nano_machines: 0.01
+      wants:
+        sentient_cores: 0.005
+        wormhole_reactors: 0.002
