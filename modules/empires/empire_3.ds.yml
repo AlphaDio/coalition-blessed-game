@@ -46,6 +46,32 @@ declares:
         per_pop:
           rare_gases: 0.002
           sentient_cores: 0.0003
+      consumption:
+        biomass:
+          threshold: 100000
+          effect:
+            type: population_percent
+            amount: 1
+        ancient_relics:
+          threshold: 1000
+          effect:
+            type: army_fervor_bonus
+            amount: 10
+        super_alloys:
+          threshold: 10000
+          effect:
+            type: army_protection_bonus
+            amount: 0.1
+        psycho_implants:
+          threshold: 1000
+          effect:
+            type: army_resolve_bonus
+            amount: 0.1
+        sentient_cores:
+          threshold: 1000
+          effect:
+            type: law_progress_bonus
+            amount: 0.1
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:
       intensity: 0.95

@@ -178,8 +178,8 @@ function applyModifiers(baseDamage, army) {
     return 0;
   }
   
-  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
-  const organization = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
+   const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+   const organization = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
   
   // Fervor modifier: FERVOR_MIN to (FERVOR_MIN + FERVOR_RANGE)
   const fervorMod = FRONT_BATTLE_MODIFIERS.FERVOR_MIN + (fervor / 100) * FRONT_BATTLE_MODIFIERS.FERVOR_RANGE;
@@ -338,10 +338,11 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
   // Apply protection (damage reduction)
-  const protection = typeof defendingArmy.protection === 'number' && !isNaN(defendingArmy.protection) 
-    ? defendingArmy.protection 
+  const baseProtection = typeof defendingArmy.protection === 'number' && !isNaN(defendingArmy.protection)
+    ? defendingArmy.protection
     : 0;
-  const finalMPDmg = modifiedMPDmg * (1 - protection);
+  const effectiveProtection = Math.min(1, baseProtection + (defendingArmy.protectionBonus || 0));
+  const finalMPDmg = modifiedMPDmg * (1 - effectiveProtection);
   
   // Split into permanent and temporary
   const effectiveKillRate = getEffectiveKillRate(attackingArmy);
@@ -370,14 +371,14 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   }
   front.roundDamage[attackingSide] = (front.roundDamage[attackingSide] || 0) + finalMPDmg;
   
-  // Log damage at INFO level so it appears in file logs
-  const logger = getLogger();
-  logger.info(`Battle ${front.id} damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
-    damage: `${finalMPDmg.toFixed(1)} MP (${permanentDmg.toFixed(1)} permanent, ${temporaryDmg.toFixed(1)} temporary)`,
-    engagedUnits: engagedUnits.toFixed(0),
-    mpBefore: prevMP.toFixed(0),
-    mpAfter: defendingArmy.mp.current.toFixed(0)
-  });
+   // Log damage at DEBUG level to reduce verbosity
+   const logger = getLogger();
+   logger.debug(`Battle ${front.id} damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
+     damage: `${finalMPDmg.toFixed(1)} MP (${permanentDmg.toFixed(1)} permanent, ${temporaryDmg.toFixed(1)} temporary)`,
+     engagedUnits: engagedUnits.toFixed(0),
+     mpBefore: prevMP.toFixed(0),
+     mpAfter: defendingArmy.mp.current.toFixed(0)
+   });
   
   // Detailed DEBUG logging for additional context
   logger.debug(`Battle ${front.id} attack details: ${attackingArmy.name} → ${defendingArmy.name}`, {
@@ -400,10 +401,11 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const modifiedMODmg = applyModifiers(rawMODmg, attackingArmy);
   
   // Apply resolve (morale resistance)
-  const resolve = typeof defendingArmy.resolve === 'number' && !isNaN(defendingArmy.resolve) 
-    ? defendingArmy.resolve 
+  const baseResolve = typeof defendingArmy.resolve === 'number' && !isNaN(defendingArmy.resolve)
+    ? defendingArmy.resolve
     : 0;
-  const finalMODmg = modifiedMODmg * (1 - resolve);
+  const effectiveResolve = Math.min(1, baseResolve + (defendingArmy.resolveBonus || 0));
+  const finalMODmg = modifiedMODmg * (1 - effectiveResolve);
   
   // Apply morale damage
   const previousMO = defendingArmy.mo.current || 0;

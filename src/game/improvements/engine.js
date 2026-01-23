@@ -607,7 +607,7 @@ export function applyImprovementModifiers(state) {
       } else if (stat === 'improvement_queue_capacity') {
         // Increase coalition improvement queue capacity
         if (!state.improvements.maxTotalCapacity) {
-          state.improvements.maxTotalCapacity = 5;
+          state.improvements.maxTotalCapacity = 6;
         }
         state.improvements.maxTotalCapacity += value;
       }

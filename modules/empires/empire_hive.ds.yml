@@ -47,6 +47,33 @@ declares:
         per_pop:
           psycho_implants: 0.001
           nano_machines: 0.0005
+      consumption:
+        # Synaptic Swarm has a strong bonus to biomass consumption
+        biomass:
+          threshold: 10000
+          effect:
+            type: population_percent
+            amount: 1
+        ancient_relics:
+          threshold: 1000
+          effect:
+            type: army_fervor_bonus
+            amount: 10
+        super_alloys:
+          threshold: 10000
+          effect:
+            type: army_protection_bonus
+            amount: 0.1
+        psycho_implants:
+          threshold: 1000
+          effect:
+            type: army_resolve_bonus
+            amount: 0.1
+        sentient_cores:
+          threshold: 1000
+          effect:
+            type: law_progress_bonus
+            amount: 0.1
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15

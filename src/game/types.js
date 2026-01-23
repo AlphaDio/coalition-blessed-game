@@ -31,6 +31,13 @@ export const MILLI_PER_UNIT_BY_TIER = {
 export const BATCH_SIZE_UNITS = 100;
 export const BATCH_BONUS_MILLI = 0;
 
+function parseConsumptionRules(consumption) {
+  if (!consumption) return [];
+  return Object.entries(consumption).map(([commodity, rule]) => ({
+    commodity,
+    ...rule
+  }));
+}
 
 export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
   return {
@@ -67,6 +74,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
       military_procurement_bias: stats.allocation?.military_procurement_bias || 0.15
     },
     stockpiles: stats.stockpiles || {},
+    consumptionRules: parseConsumptionRules(stats.consumption),
     // Technology fields
     techPoints: 0,
     techThreshold: TECH_CONSTANTS.INITIAL_THRESHOLD,  // Points needed for next tech event
@@ -81,6 +89,9 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     empireId,
     name,
     fervor: initialFervor,
+    fervorBonus: 0,
+    protectionBonus: 0,
+    resolveBonus: 0,
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -433,7 +444,8 @@ export function createGameState(seed = 0) {
       empire_production_multiplier: 0,
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
-      relations_strength_modifier: 1.0
+      relations_strength_modifier: 1.0,
+      lawProgressBonus: 0
     },
     
     // Emergency laws system - timed powerful modifiers with resource costs

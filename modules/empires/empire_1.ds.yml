@@ -47,6 +47,32 @@ declares:
           nano_machines: 0.0005
           quantum_circuits: 0.0003
           genomes: 0.001
+      consumption:
+        biomass:
+          threshold: 100000
+          effect:
+            type: population_percent
+            amount: 1
+        ancient_relics:
+          threshold: 1000
+          effect:
+            type: army_fervor_bonus
+            amount: 10
+        super_alloys:
+          threshold: 10000
+          effect:
+            type: army_protection_bonus
+            amount: 0.1
+        psycho_implants:
+          threshold: 1000
+          effect:
+            type: army_resolve_bonus
+            amount: 0.1
+        sentient_cores:
+          threshold: 1000
+          effect:
+            type: law_progress_bonus
+            amount: 0.1
     tags: ["Industrial", "Federation"]
     modifiers:
       intensity: 1.0

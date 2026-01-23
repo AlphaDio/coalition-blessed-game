@@ -34,7 +34,7 @@ export const MARKET_CONSTANTS = {
 
 export const FRONT_BATTLE_MODIFIERS = {
   FERVOR_MIN: 0.8,                // 0 fervor = 0.8x damage
-  FERVOR_RANGE: 0.4,              // 100 fervor = 0.8 + 0.4 = 1.2x damage
+  FERVOR_RANGE: 1.0,              // 100 fervor = 0.8 + 1.0 = 1.8x damage
   ORG_MIN: 0.9,                   // 0 organization = 0.9x damage
   ORG_RANGE: 0.2                  // 100 organization = 0.9 + 0.2 = 1.1x damage
 };

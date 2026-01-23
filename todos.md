@@ -21,14 +21,14 @@ Extract improvements into modules # DONE
 
 Do a pass of the Economy Laws, Military Laws, and Stability Laws, Ethics Laws and Diplomacy Laws # DONE
 
-Do a pass of all T1 Improvements # PARTIAL
+Do a pass of all T1 Improvements # DONE
 
-Add a modifier that can be used as a lever to commodities-to-supplies conversion
+Add a modifier that can be used as a lever to commodities-to-supplies conversion # REVIEW
 
 Make sure the Emergency Laws work and are temporary # REVIEW
 
-Show the Empire the Improvement belongs to in the Work view
+Show the Empire the Improvement belongs to in the Work view # DONE
 
-Show the Improvements the Empire has in the Empire details view
+Show the Improvements the Empire has in the Empire details view # DONE
 
 Make the resources.yaml follow the ds.yaml format

@@ -29,7 +29,8 @@ import { calculateLawReactions } from './reactions.js';
 function getLawProgressSpeedMultiplier(state) {
   const baseSpeed = 1.0;
   const modifierBonus = state.coalitionModifiers?.law_progress_speed || 0;
-  return baseSpeed + modifierBonus;
+  const tempBonus = state.coalitionModifiers?.lawProgressBonus || 0;
+  return baseSpeed + modifierBonus + tempBonus;
 }
 
 
@@ -515,6 +516,11 @@ export function resolveLawProcess(lawProcess, state, rng) {
     log.push('\n>>> VOTING phase complete, enacting law...');
 
     lawProcess.phase = 'ENACTED';
+
+    // Reset temporary law progress bonus
+    if (state.coalitionModifiers) {
+      state.coalitionModifiers.lawProgressBonus = 0;
+    }
 
     // Add to enacted laws (removes from available options, unlocks higher tiers)
     if (!state.enactedLaws) {

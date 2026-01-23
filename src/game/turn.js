@@ -321,13 +321,6 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
     return;
   }
 
-  const rebelliousArmyIds = collectRebelliousArmyIds(state.insurrections);
-  const participatingArmies = state.armies.filter(army =>
-    army.organization > 30 &&
-    isRegularArmy(army) &&
-    !rebelliousArmyIds.has(army.id)
-  );
-
   if (state.empires.length > 0) {
     const targetIndex = Math.floor(rng() * state.empires.length);
     const targetEmpire = state.empires[targetIndex];
@@ -335,15 +328,29 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       state.scourgeTargetEmpireId = targetEmpire.id;
       log.push(`Scourge targeting ${targetEmpire.name}`);
       logger.info(`Scourge targeting ${targetEmpire.name}`);
-    }
-  }
 
-  logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
-  logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
-  if (participatingArmies.length > 0) {
-    const battleResult = startScourgeBattle(state, participatingArmies, rng);
-    log.push(...battleResult.log);
-    return;
+      const rebelliousArmyIds = collectRebelliousArmyIds(state.insurrections);
+      const participatingArmies = state.armies.filter(army =>
+        army.organization > 30 &&
+        isRegularArmy(army) &&
+        !rebelliousArmyIds.has(army.id) &&
+        army.empireId === targetEmpire.id
+      );
+
+      logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
+      logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
+      if (participatingArmies.length > 0) {
+        const battleResult = startScourgeBattle(state, participatingArmies, rng);
+        log.push(...battleResult.log);
+        // Reset fervor, protection, and resolve bonuses after scourge battle
+        for (const army of state.armies) {
+          army.fervorBonus = 0;
+          army.protectionBonus = 0;
+          army.resolveBonus = 0;
+        }
+        return;
+      }
+    }
   }
 
   // No armies can fight - Scourge wins by default
@@ -357,8 +364,14 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
     empire.approval = clampApproval(empire.approval - approvalLoss);
   });
 
-  log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-  logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+   log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+   logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+   // Reset fervor, protection, and resolve bonuses after scourge battle
+   for (const army of state.armies) {
+     army.fervorBonus = 0;
+     army.protectionBonus = 0;
+     army.resolveBonus = 0;
+   }
 }
 
 function triggerInsurrectionBattles(state, rng, activeBattles, log, logger) {
@@ -475,7 +488,8 @@ function replenishArmyManpower(state, activeBattles) {
     
     // Fervor modifier: 0.5x at 0 fervor, 1.5x at 100 fervor
     // Linear interpolation: 0.5 + (fervor / 100) * 1.0
-    const fervorModifier = 0.5 + (army.fervor / 100) * 1.0;
+    const effectiveFervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+    const fervorModifier = 0.5 + (effectiveFervor / 100) * 1.0;
     
     // Empire size modifier based on population
     // Normalize population: log10 scale, then scale to 0.5x - 2.0x range
@@ -516,6 +530,52 @@ function replenishArmyManpower(state, activeBattles) {
       }
     }
   });
+}
+
+/**
+ * Processes stockpile consumption for empires, consuming commodities above thresholds
+ * to apply effects like population growth.
+ * @param {Object} state - The game state
+ * @param {Function} log - Logging function
+ */
+function processEmpireStockpileConsumption(state, log) {
+  for (const empire of state.empires) {
+    for (const rule of empire.consumptionRules) {
+      const { commodity, threshold, effect } = rule;
+      const available = empire.stockpiles[commodity] || 0;
+      if (available >= threshold) {
+        const consumed = available;
+        empire.stockpiles[commodity] = 0;
+        if (effect.type === 'population_percent') {
+          const increments = Math.floor(consumed / 100000);
+          const populationIncrease = Math.floor(empire.stats.population * (effect.amount / 100) * increments);
+          empire.stats.population += populationIncrease;
+          log(`${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * effect.amount}%)`);
+        } else if (effect.type === 'army_fervor_bonus') {
+          const armies = state.armies.filter(a => a.empireId === empire.id);
+          armies.forEach(army => {
+            army.fervorBonus = (army.fervorBonus || 0) + effect.amount;
+          });
+          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} fervor bonus to ${armies.length} armies (until next scourge battle)`);
+        } else if (effect.type === 'army_protection_bonus') {
+          const armies = state.armies.filter(a => a.empireId === empire.id);
+          armies.forEach(army => {
+            army.protectionBonus = (army.protectionBonus || 0) + effect.amount;
+          });
+          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} protection bonus to ${armies.length} armies (until next scourge battle)`);
+        } else if (effect.type === 'army_resolve_bonus') {
+          const armies = state.armies.filter(a => a.empireId === empire.id);
+          armies.forEach(army => {
+            army.resolveBonus = (army.resolveBonus || 0) + effect.amount;
+          });
+          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} resolve bonus to ${armies.length} armies (until next scourge battle)`);
+        } else if (effect.type === 'law_progress_bonus') {
+          state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + effect.amount;
+          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -653,10 +713,13 @@ export function advanceTurn(state, rng = Math.random) {
     }
   }
 
-  // 3.5. Apply baseline population growth
-  applyBasePopulationGrowth(state);
-  
-  // 4. Update law cooldowns
+   // 3.5. Apply baseline population growth
+   applyBasePopulationGrowth(state);
+
+   // 3.6. Process empire stockpile consumption
+   processEmpireStockpileConsumption(state, log);
+
+   // 4. Update law cooldowns
   
   updateLawCooldowns(state);
   

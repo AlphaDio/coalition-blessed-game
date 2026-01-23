@@ -9,7 +9,7 @@ export function calculateArmyPower(army) {
     return 0;
   }
   const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
-  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
   const power = (
     BATTLE_CONSTANTS.ARMY_POWER_ORG_WEIGHT * org +
     BATTLE_CONSTANTS.ARMY_POWER_FERVOR_WEIGHT * fervor
@@ -160,7 +160,7 @@ function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') 
     const mpCurrent = typeof army.mp.current === 'number' && !isNaN(army.mp.current) ? army.mp.current : 0;
     const mpMax = typeof army.mp.max === 'number' && !isNaN(army.mp.max) ? army.mp.max : 0;
     const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
-    const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
+    const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
     const dmgPerUnitMP = typeof army.dmgPerUnitMP === 'number' && !isNaN(army.dmgPerUnitMP) ? army.dmgPerUnitMP : 1.0;
     const dmgPerTickMO = typeof army.dmgPerTickMO === 'number' && !isNaN(army.dmgPerTickMO) ? army.dmgPerTickMO : 2.5;
     const protection = typeof army.protection === 'number' && !isNaN(army.protection) ? army.protection : 0;
@@ -395,12 +395,26 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
     const prevCoalitionCohesion = state.coalitionCohesion;
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
-    
+
     const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
     state.empires.forEach(empire => {
       empire.approval = clampApproval(empire.approval - approvalLoss);
     });
-    logger.info(`Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+
+    // Apply population reduction to target empire
+    const targetEmpire = state.empires.find(e => e.id === state.scourgeTargetEmpireId);
+    if (targetEmpire) {
+      const prevPop = targetEmpire.stats.population;
+      targetEmpire.stats.population = Math.floor(targetEmpire.stats.population * 0.9);
+      const popLoss = prevPop - targetEmpire.stats.population;
+      logger.debug(`Scourge battle: ${targetEmpire.name} population ${prevPop} -> ${targetEmpire.stats.population} (-${popLoss})`);
+    }
+
+    // Grant requisition based on Scourge destroyed
+    const requisitionGain = scourgeDestroyed * 0.001;
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + requisitionGain;
+
+    logger.info(`Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}, ${scourgeDestroyed} Scourge destroyed (+${requisitionGain.toFixed(3)} req)`);
   }
   
   // Emit battle summary

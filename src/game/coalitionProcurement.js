@@ -19,10 +19,11 @@ export const ALLOWANCE_CAP_TICKS = 6;
 export const RESERVE_FLOOR_CREDITS = 1500;
 export const BANK_THRESHOLD = 1000; // Units needed in bank before conversion triggers
 export const BANK_ROLLOVER_THRESHOLD = 50000; // When bank reaches this, convert to requisition
+export const ROLLOVER_REQUISITION_MULTIPLIER = 10; // Requisition gained per rollover
 
 /**
  * Process bank rollover: when bank >= BANK_ROLLOVER_THRESHOLD,
- * reset bank and add 1 requisition
+ * reset bank and add ROLLOVER_REQUISITION_MULTIPLIER requisition
  * @param {Object} coalitionEconomy - The coalition economy state object
  * @returns {number} Number of requisition added (0 or 1)
  */
@@ -33,8 +34,8 @@ export function processBankRollover(coalitionEconomy) {
   let requisitionAdded = 0;
   while (coalitionEconomy.bank >= BANK_ROLLOVER_THRESHOLD) {
     coalitionEconomy.bank -= BANK_ROLLOVER_THRESHOLD;
-    coalitionEconomy.requisition += 1;
-    requisitionAdded += 1;
+    coalitionEconomy.requisition += ROLLOVER_REQUISITION_MULTIPLIER;
+    requisitionAdded += ROLLOVER_REQUISITION_MULTIPLIER;
   }
 
   if (requisitionAdded > 0) {
