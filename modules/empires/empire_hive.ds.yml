@@ -74,8 +74,9 @@ declares:
           effect:
             type: law_progress_bonus
             amount: 0.1
-        quantum_circuits:
-          threshold: 1000
+        # unique bonus to research speed through genomes consumption
+        genomes:
+          threshold: 10000
           effect:
             type: research_speed_bonus
             amount: 0.1

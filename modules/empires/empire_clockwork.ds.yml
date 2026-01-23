@@ -53,6 +53,12 @@ declares:
           effect:
             type: law_progress_bonus
             amount: 0.1
+        # Quantum Collective has a strong bonus to research speed through Quantum Circuits
+        quantum_circuits:
+          threshold: 100
+          effect:
+            type: research_speed_bonus
+            amount: 0.1
         # Quantum Collective has a strong bonus to defense through super alloys 
         super_alloys:
           threshold: 1000
