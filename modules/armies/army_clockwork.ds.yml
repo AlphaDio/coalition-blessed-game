@@ -38,4 +38,4 @@ declares:
         sentient_cores: 0.0005
         wormhole_reactors: 0.0002
     signatureCommodity: quantum_circuits
-    signatureThreshold: 5000
+    signatureThreshold: 50

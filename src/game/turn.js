@@ -503,13 +503,16 @@ function replenishArmyManpower(state, activeBattles) {
       const available = stockpile[army.signatureCommodity] || 0;
       
       if (available >= army.signatureThreshold) {
-        // Consume the commodity and add 100 manpower
-        stockpile[army.signatureCommodity] = available - army.signatureThreshold;
-        army.manpower += 100;
+        // Consume ALL of the signature commodity and convert to manpower
+        // Conversion rate: 100 manpower per threshold amount
+        const conversionRate = 100;
+        const manpowerGained = Math.floor(available / army.signatureThreshold) * conversionRate;
+        stockpile[army.signatureCommodity] = 0;
+        army.manpower += manpowerGained;
         army.mp.max = army.manpower;
-        army.mp.current = Math.min(army.mp.current + 100, army.mp.max);
+        army.mp.current = Math.min(army.mp.current + manpowerGained, army.mp.max);
         
-        logger.debug(`Signature commodity trigger: ${army.name} consumed ${army.signatureThreshold} ${army.signatureCommodity} for +100 manpower`);
+        logger.debug(`Signature commodity trigger: ${army.name} consumed ${available} ${army.signatureCommodity} for +${manpowerGained} manpower`);
       }
     }
   });
