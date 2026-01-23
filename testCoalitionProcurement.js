@@ -9,7 +9,7 @@ console.log('Starting test file...');
 
 import { createGameState } from './src/game/types.js';
 import { loadEconomyConfig } from './src/game/marketEconomy.js';
-import { initializeCoalitionProcurement, refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from './src/game/coalitionProcurement.js';
+import { initializeCoalitionProcurement, refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, processBankRollover, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from './src/game/coalitionProcurement.js';
 import { DeterministicRNG } from './src/modules/rng.js';
 
 function testProcurementAlgorithm() {
@@ -116,7 +116,38 @@ function testSupplyConversion() {
      throw new Error(`Expected 500 requisition, got ${coalitionEconomy.requisition}`);
    }
 
-   console.log('✓ Requisition conversion test passed');
+    console.log('✓ Requisition conversion test passed');
+}
+
+function testBankRollover() {
+    console.log('Testing bank rollover to requisition...');
+
+    const state = createGameState();
+    const coalitionEconomy = state.coalitionEconomy;
+    coalitionEconomy.requisition = 500;
+
+    // Add enough bank to trigger rollover (BANK_ROLLOVER_THRESHOLD = 50000)
+    coalitionEconomy.bank = 60000; // Should trigger 1 rollover
+
+    const config = loadEconomyConfig();
+
+    // Execute rollover
+    const added = processBankRollover(coalitionEconomy);
+
+    // Should have added 10 requisition (ROLLOVER_REQUISITION_MULTIPLIER = 10)
+    if (added !== 10) {
+        throw new Error(`Expected 10 requisition added, got ${added}`);
+    }
+
+    if (coalitionEconomy.requisition !== 510) {
+        throw new Error(`Expected 510 requisition, got ${coalitionEconomy.requisition}`);
+    }
+
+    if (coalitionEconomy.bank !== 10000) { // 60000 - 50000
+        throw new Error(`Expected 10000 bank remaining, got ${coalitionEconomy.bank}`);
+    }
+
+    console.log('✓ Bank rollover test passed');
 }
 
 function testIntegrationWithMarket() {
@@ -238,6 +269,7 @@ function runTests() {
     testProcurementAlgorithm();
     testAllowanceMechanics();
     testSupplyConversion();
+    testBankRollover();
     testIntegrationWithMarket();
     testProcurementRateOver100Ticks();
 

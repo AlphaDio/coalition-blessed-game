@@ -55,7 +55,8 @@ function getEffectiveKillRate(army) {
   const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
   const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
   const fervorBonus = (fervor / 100) * 0.05; // Up to +5% at max fervor
-  return Math.min(1, killRate + fervorBonus);
+  const bonus = army.killRateBonus || 0;
+  return Math.min(1, killRate + fervorBonus + bonus);
 }
 
 /**

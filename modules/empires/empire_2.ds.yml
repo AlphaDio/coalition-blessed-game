@@ -59,7 +59,7 @@ declares:
             type: army_fervor_bonus
             amount: 10
         super_alloys:
-          threshold: 10000
+          threshold: 100000
           effect:
             type: army_protection_bonus
             amount: 0.1
@@ -73,6 +73,16 @@ declares:
           effect:
             type: law_progress_bonus
             amount: 0.1
+        wormhole_reactors:
+          threshold: 500
+          effect:
+            type: army_kill_rate_bonus
+            amount: 0.05
+        plasma_fuel:
+          threshold: 1000
+          effect:
+            type: industrial_output_bonus
+            amount: 0.05
         quantum_circuits:
           threshold: 1000
           effect:

@@ -342,12 +342,13 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       if (participatingArmies.length > 0) {
         const battleResult = startScourgeBattle(state, participatingArmies, rng);
         log.push(...battleResult.log);
-        // Reset fervor, protection, and resolve bonuses after scourge battle
-        for (const army of state.armies) {
-          army.fervorBonus = 0;
-          army.protectionBonus = 0;
-          army.resolveBonus = 0;
-        }
+    // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
+    for (const army of state.armies) {
+      army.fervorBonus = 0;
+      army.protectionBonus = 0;
+      army.resolveBonus = 0;
+      army.killRateBonus = 0;
+    }
         return;
       }
     }
@@ -366,12 +367,13 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
 
    log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
    logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-   // Reset fervor, protection, and resolve bonuses after scourge battle
-   for (const army of state.armies) {
-     army.fervorBonus = 0;
-     army.protectionBonus = 0;
-     army.resolveBonus = 0;
-   }
+    // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
+    for (const army of state.armies) {
+      army.fervorBonus = 0;
+      army.protectionBonus = 0;
+      army.resolveBonus = 0;
+      army.killRateBonus = 0;
+    }
 }
 
 function triggerInsurrectionBattles(state, rng, activeBattles, log, logger) {
@@ -575,6 +577,15 @@ function processEmpireStockpileConsumption(state, log) {
         } else if (effect.type === 'research_speed_bonus') {
           empire.stats.researchSpeedBonus = (empire.stats.researchSpeedBonus || 0) + effect.amount;
           log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} research speed bonus (permanent)`);
+        } else if (effect.type === 'industrial_output_bonus') {
+          state.coalitionModifiers.industrialOutputBonus = (state.coalitionModifiers.industrialOutputBonus || 0) + effect.amount;
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} industrial output bonus (permanent)`);
+        } else if (effect.type === 'army_kill_rate_bonus') {
+          const armies = state.armies.filter(a => a.empireId === empire.id);
+          armies.forEach(army => {
+            army.killRateBonus = (army.killRateBonus || 0) + effect.amount;
+          });
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} kill rate bonus to ${armies.length} armies (until next scourge battle)`);
         }
       }
     }

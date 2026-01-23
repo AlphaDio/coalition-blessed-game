@@ -221,7 +221,7 @@ export function processEconomyTick(state) {
 
      Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
        if (qty > 0) {
-         const modifiedQty = qty * population * productionMultiplier * (1 + (state.coalitionModifiers.industrial_output || 0));
+          const modifiedQty = qty * population * productionMultiplier * (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
          const marketPrice = state.market[commodity]?.price || 1.0;
          const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT;
          

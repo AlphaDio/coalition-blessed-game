@@ -1961,7 +1961,10 @@ function formatArmyBlock(army, empireName, empire = null) {
     `Fervor: ${formatNumber(army.fervor)}`,
     `Org: ${formatNumber(army.organization)}`,
     `Agg: ${formatNumber(army.aggravation)}`,
-    `Cmd: ${formatNumber(army.command || 50)}`
+    `Cmd: ${formatNumber(army.command || 50)}`,
+    `Prot: ${formatNumber(army.protection || 0)}`,
+    `Res: ${formatNumber(army.resolve || 0)}`,
+    `Kill: ${formatNumber((army.killRate || 0.1) * 100, 1)}%`
   ];
   parts.push(`  ${stats.join(', ')}`);
 

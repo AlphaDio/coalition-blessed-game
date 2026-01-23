@@ -34,3 +34,6 @@ Show the Improvements the Empire has in the Empire details view # DONE
 Make the resources.yaml follow the ds.yaml format
 
 Extract log making
+
+Increase to 100000 the super alloys consumption threshold
+Make Rare Gases consumption effect to increasing Approval by 1 for 100000

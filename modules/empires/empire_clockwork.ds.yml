@@ -53,18 +53,28 @@ declares:
           effect:
             type: law_progress_bonus
             amount: 0.1
-        # Quantum Collective has a strong bonus to research speed through Quantum Circuits
-        quantum_circuits:
-          threshold: 100
+        wormhole_reactors:
+          threshold: 500
           effect:
-            type: research_speed_bonus
-            amount: 0.1
-        # Quantum Collective has a strong bonus to defense through super alloys 
-        super_alloys:
+            type: army_kill_rate_bonus
+            amount: 0.05
+        plasma_fuel:
           threshold: 1000
           effect:
+            type: industrial_output_bonus
+            amount: 0.05
+        # Quantum Collective has a strong bonus to research speed through Quantum Circuits
+        quantum_circuits:
+          threshold: 1000
+          effect:
+            type: research_speed_bonus
+            amount: 0.2
+        # Quantum Collective has a strong bonus to defense through super alloys 
+        super_alloys:
+          threshold: 100000
+          effect:
             type: army_protection_bonus
-            amount: 0.1
+            amount: 0.2
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0

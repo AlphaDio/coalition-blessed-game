@@ -12,7 +12,7 @@ export const THETA_PRESETS = {
 
 export const COMMODITY_DEFINITIONS = {
   biomass: { tier: 'T1' },
-  solid_ice: { tier: 'T1' },
+  plasma_fuel: { tier: 'T1' },
   super_alloys: { tier: 'T2' },
   rare_gases: { tier: 'T2' },
   quantum_circuits: { tier: 'T3' },
@@ -52,7 +52,8 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
       population: stats.population || 1000,
       influence: stats.influence || 50,
       tech_rate_bonus: stats.tech_rate_bonus || 0,
-      researchSpeedBonus: 0
+      researchSpeedBonus: 0,
+      approvalBonus: 0
     },
     tags: tags,
     modifiers: {
@@ -93,6 +94,7 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     fervorBonus: 0,
     protectionBonus: 0,
     resolveBonus: 0,
+    killRateBonus: 0,
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -446,7 +448,8 @@ export function createGameState(seed = 0) {
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0,
-      lawProgressBonus: 0
+      lawProgressBonus: 0,
+      industrialOutputBonus: 0
     },
     
     // Emergency laws system - timed powerful modifiers with resource costs

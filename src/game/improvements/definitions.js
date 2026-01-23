@@ -51,7 +51,7 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 100,
         build: 240,
         capacity: 2,
-        sustainmentCost: { biomass: 0.3, solid_ice: 0.2 },
+        sustainmentCost: { biomass: 0.3, plasma_fuel: 0.2 },
          productionOutputs: { super_alloys: 0.008 },
         modifiers: { industrial_output: 0.02 },
         tags: ['industrial', 'production', 'orbital']
@@ -69,7 +69,7 @@ const INDUSTRIAL_BRANCH = [
         build: 200,
         capacity: 2,
         sustainmentCost: { biomass: 0.5 },
-         productionOutputs: { solid_ice: 1, requisition: 1 },
+          productionOutputs: { plasma_fuel: 1, requisition: 1 },
          modifiers: {},
          tags: ['industrial', 'requisition', 'conversion']
       }
@@ -85,8 +85,8 @@ const INDUSTRIAL_BRANCH = [
        suppliesCost: 80,
        build: 200,
        capacity: 2,
-       sustainmentCost: { solid_ice: 0.1 },
-        productionOutputs: { rare_gases: 0.05, solid_ice: 0.03 },
+       sustainmentCost: { plasma_fuel: 0.1 },
+        productionOutputs: { rare_gases: 0.05, plasma_fuel: 0.03 },
        modifiers: {},
        tags: ['industrial', 'mining', 'automated']
      }
@@ -103,7 +103,7 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 200,
         build: 400,
         capacity: 3,
-        sustainmentCost: { biomass: 0.5, solid_ice: 0.3 },
+        sustainmentCost: { biomass: 0.5, plasma_fuel: 0.3 },
          productionOutputs: { super_alloys: 0.015 },
          modifiers: { industrial_output: 0.05, coalition_construction_add: 1 },
         tags: ['mega_structure', 'industrial', 'production']
@@ -163,7 +163,7 @@ const RESEARCH_BRANCH = [
        suppliesCost: 90,
        build: 220,
        capacity: 2,
-       sustainmentCost: { rare_gases: 0.2, solid_ice: 0.1 },
+       sustainmentCost: { rare_gases: 0.2, plasma_fuel: 0.1 },
        productionOutputs: {},
        modifiers: { research_speed: 0.15 },
        tags: ['research', 'facility']
@@ -396,7 +396,7 @@ const ECONOMIC_BRANCH = [
       suppliesCost: 85,
       build: 210,
       capacity: 2,
-      sustainmentCost: { solid_ice: 0.2 },
+      sustainmentCost: { plasma_fuel: 0.2 },
       productionOutputs: {},
       modifiers: { trade_income: 20 },
       tags: ['economic', 'trade']
@@ -414,7 +414,7 @@ const ECONOMIC_BRANCH = [
       suppliesCost: 180,
       build: 360,
       capacity: 2,
-      sustainmentCost: { solid_ice: 0.4, rare_gases: 0.2 },
+      sustainmentCost: { plasma_fuel: 0.4, rare_gases: 0.2 },
       productionOutputs: {},
       modifiers: { trade_income: 50, market_efficiency: 0.05 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace']
@@ -518,7 +518,7 @@ const GOVERNANCE_BRANCH = [
        suppliesCost: 75,
        build: 190,
        capacity: 2,
-       sustainmentCost: { biomass: 0.2, solid_ice: 0.1 },
+       sustainmentCost: { biomass: 0.2, plasma_fuel: 0.1 },
        productionOutputs: {},
        modifiers: { law_progress_speed: 0.05, improvement_queue_capacity: 1 },
        tags: ['governance', 'administration']
@@ -582,7 +582,7 @@ const GOVERNANCE_BRANCH = [
        build: 50,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { solid_ice: 0.25 },
+       productionOutputs: { plasma_fuel: 0.25 },
        modifiers: {},
        tags: ['resource', 'passive', 'extraction']
      }
