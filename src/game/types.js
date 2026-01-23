@@ -455,7 +455,7 @@ export function createGameState(seed = 0) {
     // Coalition procurement and supply conversion system
     coalitionEconomy: {
       treasury_credits: 10000, // Baseline B starting treasury
-      allowance_credits: 0, // Refilled each tick
+      allowance_credits: 500, // Refilled each tick
       reserve_floor_credits: 1500, // Baseline B reserve floor
       bank: 0, // Coalition bank (accumulates resources)
       requisition: 500, // Starting requisition for purchasing improvements

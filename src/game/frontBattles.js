@@ -384,7 +384,7 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   logger.debug(`Battle ${front.id} attack details: ${attackingArmy.name} → ${defendingArmy.name}`, {
     rawDamage: rawMPDmg.toFixed(1),
     modifiedDamage: modifiedMPDmg.toFixed(1),
-    protection: `${(protection * 100).toFixed(1)}%`,
+    protection: `${(effectiveProtection * 100).toFixed(1)}%`,
     recoveryPool: defendingArmy.recoveryPool.toFixed(0)
   });
   

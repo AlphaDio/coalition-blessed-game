@@ -1954,17 +1954,25 @@ function filterRegularArmies(armies) {
 }
 
 function formatArmyBlock(army, empireName, empire = null) {
-  const lines = [`{bold}${army.name}{/bold} (${empireName})`];
-  lines.push(`  Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}`);
-  lines.push(`  Aggravation: ${formatNumber(army.aggravation)}, Command: ${formatNumber(army.command || 50)}`);
+  const parts = [`{bold}${army.name}{/bold} (${empireName})`];
 
+  // Stats line
+  const stats = [
+    `Fervor: ${formatNumber(army.fervor)}`,
+    `Org: ${formatNumber(army.organization)}`,
+    `Agg: ${formatNumber(army.aggravation)}`,
+    `Cmd: ${formatNumber(army.command || 50)}`
+  ];
+  parts.push(`  ${stats.join(', ')}`);
+
+  // MP/Morale line
   if (army.mp && army.mo) {
     const mpPct = army.mp.max > 0 ? ((army.mp.current / army.mp.max) * 100).toFixed(0) : '0';
     const moPct = army.mo.max > 0 ? ((army.mo.current / army.mo.max) * 100).toFixed(0) : '0';
-    lines.push(`  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%)`);
-    lines.push(`  Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)`);
+    parts.push(`  MP: ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (${mpPct}%), Morale: ${Math.floor(army.mo.current)}/${Math.floor(army.mo.max)} (${moPct}%)`);
   }
 
+  // Signature commodity line
   if (army.signatureCommodity && army.signatureThreshold > 0 && empire) {
     const stockpile = empire.stockpiles || {};
     const available = stockpile[army.signatureCommodity] || 0;
@@ -1972,10 +1980,10 @@ function formatArmyBlock(army, empireName, empire = null) {
     const pct = threshold > 0 ? ((available / threshold) * 100).toFixed(1) : '0';
     const color = available >= threshold ? '{green-fg}' : '';
     const reset = available >= threshold ? '{/green-fg}' : '';
-    lines.push(`  ${army.signatureCommodity}: ${formatNumber(available)}/${formatNumber(threshold)} (${color}${pct}%${reset})`);
+    parts.push(`  ${army.signatureCommodity}: ${formatNumber(available)}/${formatNumber(threshold)} (${color}${pct}%${reset})`);
   }
 
-  return lines.join('\n');
+  return parts.join('\n');
 }
 
 function appendInsurrectionInfo(lines, insurrections) {

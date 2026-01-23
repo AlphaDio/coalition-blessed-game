@@ -32,3 +32,5 @@ Show the Empire the Improvement belongs to in the Work view # DONE
 Show the Improvements the Empire has in the Empire details view # DONE
 
 Make the resources.yaml follow the ds.yaml format
+
+Extract log making

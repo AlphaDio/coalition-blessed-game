@@ -27,7 +27,7 @@ import {
 
 let orderIdCounter = 0;
 
-export const SUGGESTION_MAX_DURATION = 15; // ticks before a suggestion expires
+export const SUGGESTION_MAX_DURATION = 45; // ticks before a suggestion expires
 
 /**
  * Create an improvement request (available to accept)

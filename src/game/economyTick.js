@@ -482,17 +482,19 @@ export function processEconomyTick(state) {
    // Refill allowance
    refillCoalitionAllowance(state.coalitionEconomy);
    
-   // Procure from post-clear surplus
-   const procurementLog = executeCoalitionProcurement(state.market, state.coalitionEconomy, config);
-   if (procurementLog.length > 0) {
-     log.push(...procurementLog);
-   }
-   
-    // Convert stockpiles to requisition
-   const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
-   if (conversionLog.length > 0) {
-     log.push(...conversionLog);
-   }
+    // Procure from post-clear surplus
+    const procurementLog = executeCoalitionProcurement(state.market, state.coalitionEconomy, config);
+
+     // Convert stockpiles to requisition
+    const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
+
+    // Compress logs: combine procurement and conversion into one line if both occurred
+    if (procurementLog.length > 0 && conversionLog.length > 0) {
+      log.push(`Coalition economy: ${procurementLog[0]}; ${conversionLog[0]}`);
+    } else {
+      if (procurementLog.length > 0) log.push(...procurementLog);
+      if (conversionLog.length > 0) log.push(...conversionLog);
+    }
    
    // Step 8: Compute army fulfillment and performance
   state.armies.forEach(army => {

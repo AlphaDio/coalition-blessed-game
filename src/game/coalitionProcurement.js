@@ -141,10 +141,8 @@ export function executeCoalitionProcurement(market, coalitionEconomy, config) {
 
   // Create condensed log entry
   if (spent > 0) {
-    const commoditySummary = Object.entries(purchasesByCommodity)
-      .map(([commodityId, qty]) => `${qty} ${commodityId}`)
-      .join(', ');
-    const logEntry = `Coalition procurement: ${spent} credits spent -> ${commoditySummary}`;
+    const totalUnits = Object.values(purchasesByCommodity).reduce((sum, qty) => sum + qty, 0);
+    const logEntry = `Coalition procurement: ${spent} credits -> ${totalUnits} units`;
     logger.debug(logEntry);
     return [logEntry];
   }

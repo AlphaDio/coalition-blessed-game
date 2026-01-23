@@ -22,7 +22,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { credits: 100 },
-    { industrial_output: 0.05, supply_efficiency: 0.02 }
+    { industrial_output: 0.10, supply_efficiency: 0.04 }
   ),
   
   createTechnology(
@@ -32,7 +32,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { stability: 3 },
-    { supply_efficiency: 0.05, trade_income: 50 }
+    { supply_efficiency: 0.10, trade_income: 100 }
   ),
   
   createTechnology(
@@ -42,7 +42,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { cohesion: 2 },
-    { research_speed: 0.03, market_efficiency: 0.02 }
+    { research_speed: 0.06, market_efficiency: 0.04 }
   ),
   
   createTechnology(
@@ -52,7 +52,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { approval: 5 },
-    { army_organization: 2, supply_efficiency: 0.02 }
+    { army_organization: 4, supply_efficiency: 0.04 }
   ),
   
   createTechnology(
@@ -62,7 +62,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { credits: 150 },
-    { trade_income: 100, research_speed: 0.02 }
+    { trade_income: 200, research_speed: 0.04 }
   ),
   
   createTechnology(
@@ -72,7 +72,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { stability: 2 },
-    { industrial_output: 0.04, market_efficiency: 0.03 }
+    { industrial_output: 0.08, market_efficiency: 0.06 }
   )
 ];
 
@@ -89,7 +89,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
     { credits: 200 },
-    { industrial_output: 0.08, population_growth: -0.005 }
+    { industrial_output: 0.16, population_growth: -0.010 }
   ),
   
   createTechnology(
@@ -99,7 +99,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
     { approval: 8 },
-    { research_speed: 0.06, army_organization: 3 }
+    { research_speed: 0.12, army_organization: 6 }
   ),
   
   // Natural-aligned (natural_mechanical < -0.3)
@@ -110,7 +110,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
     { stability: 5 },
-    { population_growth: 0.015, empire_approval: 2 }
+    { population_growth: 0.030, empire_approval: 4 }
   ),
   
   createTechnology(
@@ -120,7 +120,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
     { approval: 5 },
-    { empire_approval: 2, supply_efficiency: 0.04 }
+    { empire_approval: 4, supply_efficiency: 0.08 }
   ),
   
   // Militaristic-aligned (pacifist_militaristic > 0.3)
@@ -131,7 +131,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
     { approval: 5 },
-    { army_organization: 5, supply_efficiency: 0.03 }
+    { army_organization: 10, supply_efficiency: 0.06 }
   ),
   
   createTechnology(
@@ -141,7 +141,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
     { cohesion: -3 },
-    { army_organization: 8 }
+    { army_organization: 16 }
   ),
   
   // Pacifist-aligned (pacifist_militaristic < -0.3)
@@ -152,7 +152,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
     { cohesion: 5 },
-    { empire_approval: 3, trade_income: 100 }
+    { empire_approval: 6, trade_income: 200 }
   ),
   
   createTechnology(
@@ -162,7 +162,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
     { approval: 10, stability: 3 },
-    { empire_approval: 2, population_growth: 0.01 }
+    { empire_approval: 4, population_growth: 0.02 }
   ),
   
   // Authoritarian-aligned (authoritarian_liberal > 0.3)
@@ -173,7 +173,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: 1, threshold: 0.3 } },
     { stability: 5 },
-    { army_organization: 4, industrial_output: 0.04 }
+    { army_organization: 8, industrial_output: 0.08 }
   ),
   
   // Liberal-aligned (authoritarian_liberal < -0.3)
@@ -184,7 +184,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: -1, threshold: 0.3 } },
     { approval: 8 },
-    { research_speed: 0.08, market_efficiency: 0.04 }
+    { research_speed: 0.16, market_efficiency: 0.08 }
   ),
   
   // Spiritual-aligned (spiritual_materialistic > 0.3)
@@ -195,7 +195,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'spiritual_materialistic', direction: 1, threshold: 0.3 } },
     { stability: 8 },
-    { empire_approval: 3, population_growth: 0.005 }
+    { empire_approval: 6, population_growth: 0.010 }
   ),
   
   // Materialistic-aligned (spiritual_materialistic < -0.3)
@@ -206,7 +206,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'spiritual_materialistic', direction: -1, threshold: 0.3 } },
     { credits: 250 },
-    { industrial_output: 0.06, trade_income: 100, market_efficiency: 0.03 }
+    { industrial_output: 0.12, trade_income: 200, market_efficiency: 0.06 }
   )
 ];
 
@@ -223,7 +223,7 @@ export const UNIQUE_TECHS = [
     'unique',
     { tags: ['hive'] },
     { cohesion: 5 },
-    { army_organization: 6, research_speed: 0.05 }
+    { army_organization: 12, research_speed: 0.10 }
   ),
   
   // Mechanical-tagged empires
@@ -234,7 +234,7 @@ export const UNIQUE_TECHS = [
     'unique',
     { tags: ['mechanical'] },
     { credits: 300 },
-    { industrial_output: 0.12, population_growth: 0.02 }
+    { industrial_output: 0.24, population_growth: 0.04 }
   ),
   
   // Warped-tagged empires (touched by the Scourge)
@@ -245,7 +245,7 @@ export const UNIQUE_TECHS = [
     'unique',
     { tags: ['warped'] },
     { stability: -5, cohesion: -3 },
-    { research_speed: 0.10, energy_production: 0.15 }
+    { research_speed: 0.20, energy_production: 0.30 }
   ),
   
   // Biologic-tagged empires
@@ -256,7 +256,7 @@ export const UNIQUE_TECHS = [
     'unique',
     { tags: ['biologic'] },
     { approval: 5 },
-    { population_growth: 0.025, empire_approval: 2 }
+    { population_growth: 0.050, empire_approval: 4 }
   )
 ];
 

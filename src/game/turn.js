@@ -550,28 +550,28 @@ function processEmpireStockpileConsumption(state, log) {
           const increments = Math.floor(consumed / 100000);
           const populationIncrease = Math.floor(empire.stats.population * (effect.amount / 100) * increments);
           empire.stats.population += populationIncrease;
-          log(`${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * effect.amount}%)`);
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * effect.amount}%)`);
         } else if (effect.type === 'army_fervor_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.fervorBonus = (army.fervorBonus || 0) + effect.amount;
           });
-          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} fervor bonus to ${armies.length} armies (until next scourge battle)`);
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} fervor bonus to ${armies.length} armies (until next scourge battle)`);
         } else if (effect.type === 'army_protection_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.protectionBonus = (army.protectionBonus || 0) + effect.amount;
           });
-          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} protection bonus to ${armies.length} armies (until next scourge battle)`);
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} protection bonus to ${armies.length} armies (until next scourge battle)`);
         } else if (effect.type === 'army_resolve_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.resolveBonus = (army.resolveBonus || 0) + effect.amount;
           });
-          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} resolve bonus to ${armies.length} armies (until next scourge battle)`);
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} resolve bonus to ${armies.length} armies (until next scourge battle)`);
         } else if (effect.type === 'law_progress_bonus') {
           state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + effect.amount;
-          log(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`);
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`);
         }
       }
     }
@@ -625,7 +625,7 @@ export function advanceTurn(state, rng = Math.random) {
       applyImprovementModifiers(state);
     }
 
-    // Remove expired improvement suggestions (older than 15 ticks)
+    // Remove expired improvement suggestions (older than 45 ticks)
     const expiredCount = removeExpiredSuggestions(state);
     if (expiredCount > 0) {
       logger.debug(`Removed ${expiredCount} expired improvement suggestions`);
