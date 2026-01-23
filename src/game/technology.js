@@ -27,7 +27,12 @@ export function getResearchSpeed(empire, state) {
   if (empire.stats?.tech_rate_bonus) {
     speed += TECH_CONSTANTS.BASE_RESEARCH_SPEED * empire.stats.tech_rate_bonus;
   }
-  
+
+  // Add permanent research speed bonus from consumption
+  if (empire.stats?.researchSpeedBonus) {
+    speed += empire.stats.researchSpeedBonus;
+  }
+
   return Math.max(0.1, speed); // Minimum 10% research speed
 }
 

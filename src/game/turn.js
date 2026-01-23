@@ -572,6 +572,9 @@ function processEmpireStockpileConsumption(state, log) {
         } else if (effect.type === 'law_progress_bonus') {
           state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + effect.amount;
           log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`);
+        } else if (effect.type === 'research_speed_bonus') {
+          empire.stats.researchSpeedBonus = (empire.stats.researchSpeedBonus || 0) + effect.amount;
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} research speed bonus (permanent)`);
         }
       }
     }
