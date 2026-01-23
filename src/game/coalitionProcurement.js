@@ -20,6 +20,7 @@ export const RESERVE_FLOOR_CREDITS = 1500;
 export const BANK_THRESHOLD = 1000; // Units needed in bank before conversion triggers
 export const BANK_ROLLOVER_THRESHOLD = 50000; // When bank reaches this, convert to requisition
 export const ROLLOVER_REQUISITION_MULTIPLIER = 10; // Requisition gained per rollover
+export const STARTING_REQUISITION = 500; // Initial requisition for improvement construction
 
 /**
  * Process bank rollover: when bank >= BANK_ROLLOVER_THRESHOLD,
@@ -299,7 +300,7 @@ export function initializeCoalitionProcurement(existingState = null) {
     treasury_credits: 0,
     allowance_credits: 0,
     bank: 0,
-    requisition: 100,
+    requisition: STARTING_REQUISITION, // Starting requisition for building improvements
     stockpile_bank: {},      // Accumulates purchased commodities
     stockpile_ready: {},     // Ready for conversion (reached threshold)
     procurement: {
