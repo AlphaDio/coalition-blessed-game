@@ -52,7 +52,7 @@ const INDUSTRIAL_BRANCH = [
         build: 240,
         capacity: 2,
         sustainmentCost: { biomass: 0.3, plasma_fuel: 0.2 },
-         productionOutputs: { super_alloys: 0.008 },
+        productionOutputs: { super_alloys: 0.008 },
         modifiers: { industrial_output: 0.02 },
         tags: ['industrial', 'production', 'orbital']
       }
@@ -69,9 +69,9 @@ const INDUSTRIAL_BRANCH = [
         build: 200,
         capacity: 2,
         sustainmentCost: { biomass: 0.5 },
-          productionOutputs: { plasma_fuel: 1, requisition: 1 },
-         modifiers: {},
-         tags: ['industrial', 'requisition', 'conversion']
+        productionOutputs: { plasma_fuel: 1, requisition: 1 },
+        modifiers: {},
+        tags: ['industrial', 'requisition', 'conversion']
       }
     ),
 
@@ -85,30 +85,14 @@ const INDUSTRIAL_BRANCH = [
        suppliesCost: 80,
        build: 200,
        capacity: 2,
-       sustainmentCost: { plasma_fuel: 0.1 },
+        sustainmentCost: { plasma_fuel: 0.1 },
         productionOutputs: { rare_gases: 0.05, plasma_fuel: 0.03 },
-       modifiers: {},
+        modifiers: {},
        tags: ['industrial', 'mining', 'automated']
      }
     ),
 
     // T2: Advanced manufacturing
-    createTieredImprovementRequest(
-      'titan_forge',
-      'Titan Forge Network',
-      'Galaxy-spanning industrial mega-structure harvesting stellar matter to forge alloys of unparalleled strength',
-      2,
-      'industrial',
-      {
-        suppliesCost: 200,
-        build: 400,
-        capacity: 3,
-        sustainmentCost: { biomass: 0.5, plasma_fuel: 0.3 },
-         productionOutputs: { super_alloys: 0.015 },
-         modifiers: { industrial_output: 0.05, coalition_construction_add: 1 },
-        tags: ['mega_structure', 'industrial', 'production']
-      }
-    ),
 
     createTieredImprovementRequest(
       'quantum_fabricator',
@@ -119,9 +103,9 @@ const INDUSTRIAL_BRANCH = [
       {
         suppliesCost: 180,
         build: 360,
-        capacity: 3,
+        capacity: 2,
         sustainmentCost: { super_alloys: 0.3, rare_gases: 0.2 },
-         productionOutputs: { quantum_circuits: 0.04 },
+        productionOutputs: { quantum_circuits: 0.04 },
         modifiers: {},
         tags: ['industrial', 'fabrication', 'quantum']
       }
@@ -139,7 +123,7 @@ const INDUSTRIAL_BRANCH = [
         build: 800,
         capacity: 5,
         sustainmentCost: { quantum_circuits: 0.2, super_alloys: 0.8 },
-         productionOutputs: { super_alloys: 0.03, quantum_circuits: 0.005 },
+        productionOutputs: { dark_matter: 0.001, quantum_circuits: 0.005 },
         modifiers: { industrial_output: 0.1, coalition_construction_mult: 0.2 },
         tags: ['mega_structure', 'industrial', 'energy', 'transcendent']
       }
@@ -163,7 +147,7 @@ const RESEARCH_BRANCH = [
        suppliesCost: 90,
        build: 220,
        capacity: 2,
-       sustainmentCost: { rare_gases: 0.2, plasma_fuel: 0.1 },
+       sustainmentCost: { rare_gases: 0.2 },
        productionOutputs: {},
        modifiers: { research_speed: 0.15 },
        tags: ['research', 'facility']
@@ -199,7 +183,7 @@ const RESEARCH_BRANCH = [
        suppliesCost: 300,
        build: 600,
        capacity: 4,
-       sustainmentCost: { rare_gases: 0.6, quantum_circuits: 0.2, genomes: 0.2 },
+        sustainmentCost: { rare_gases: 0.6, quantum_circuits: 0.2, genomes: 0.2 },
         productionOutputs: { rare_gases: 0.03 },
        modifiers: { research_speed: 0.5 },
        tags: ['mega_structure', 'research', 'knowledge', 'transcendent']
@@ -233,8 +217,8 @@ const MILITARY_BRANCH = [
 
    createTieredImprovementRequest(
      'propaganda_center',
-     'Propaganda Center',
-     'Ideological messaging that boosts army fervor and morale',
+      'Propaganda Center',
+      'Ideological messaging that boosts army fervor and morale',
       1,
       'military',
       {
@@ -309,32 +293,32 @@ const MILITARY_BRANCH = [
  */
 const CULTURAL_BRANCH = [
    // T1: Basic culture
-   createTieredImprovementRequest(
-     'hydroponics_farms',
-     'Hydroponics Farms',
-     'Advanced agricultural complex cultivating organic matter for population sustenance',
-     2,
-     'cultural',
-     {
-       suppliesCost: 50,
-       build: 120,
-       capacity: 2,
-       sustainmentCost: { },
-       productionOutputs: { biomass: 0.05 },
-       modifiers: { population_growth: 0.5 },
+    createTieredImprovementRequest(
+      'hydroponics_farms',
+      'Hydroponics Farms',
+      'Advanced agricultural complex cultivating organic matter for population sustenance',
+      1,
+      'cultural',
+      {
+        suppliesCost: 50,
+        build: 80,
+        capacity: 2,
+        sustainmentCost: { plasma_fuel: 0.01 },
+        productionOutputs: { biomass: 0.05 },
+        modifiers: { population_growth: 0.5 },
        tags: ['cultural', 'agriculture', 'food']
      }
    ),
 
-   createTieredImprovementRequest(
-     'cultural_center',
-    'Cultural Center',
-    'Community hub fostering social bonds and cultural expression with abundant resources',
-    2,
-    'cultural',
+    createTieredImprovementRequest(
+      'cultural_center',
+      'Cultural Center',
+      'Community hub fostering social bonds and cultural expression with abundant resources',
+      1,
+      'cultural',
     {
       suppliesCost: 60,
-      build: 160,
+      build: 120,
       capacity: 2,
       sustainmentCost: { biomass: 0.3 },
       productionOutputs: {},
@@ -352,9 +336,9 @@ const CULTURAL_BRANCH = [
      'cultural',
      {
        suppliesCost: 250,
-       build: 480,
+       build: 160,
        capacity: 3,
-       sustainmentCost: { biomass: 0.6, genomes: 0.2, psycho_implants: 0.1 },
+        sustainmentCost: { genomes: 0.2, psycho_implants: 0.1 },
         productionOutputs: { genomes: 0.004 },
        modifiers: { population_growth: 4, empire_approval: 5 },
        tags: ['mega_structure', 'cultural', 'celebration', 'biologic']
@@ -370,9 +354,9 @@ const CULTURAL_BRANCH = [
      'cultural',
      {
        suppliesCost: 350,
-       build: 650,
+       build: 480,
        capacity: 4,
-       sustainmentCost: { biomass: 0.8, genomes: 0.3, psycho_implants: 0.2 },
+        sustainmentCost: { genomes: 0.3, psycho_implants: 0.2 },
         productionOutputs: { genomes: 0.005, psycho_implants: 0.2 },
        modifiers: { population_growth: 8, empire_approval: 10 },
        tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic']
@@ -385,56 +369,55 @@ const CULTURAL_BRANCH = [
  * Focus: Trade, credits, market efficiency
  */
 const ECONOMIC_BRANCH = [
-  // T1: Basic economy
-  createTieredImprovementRequest(
-    'trade_hub',
-    'Trade Hub',
-    'Commercial nexus facilitating interstellar commerce',
-    2,
-    'economic',
-    {
-      suppliesCost: 85,
-      build: 210,
-      capacity: 2,
-      sustainmentCost: { plasma_fuel: 0.2 },
-      productionOutputs: {},
-      modifiers: { trade_income: 20 },
+    createTieredImprovementRequest(
+      'trade_hub',
+      'Trade Hub',
+      'Commercial nexus facilitating interstellar commerce',
+      1,
+      'economic',
+     {
+       suppliesCost: 85,
+       build: 210,
+       capacity: 2,
+       sustainmentCost: { plasma_fuel: 0.2 },
+       productionOutputs: {},
+       modifiers: { trade_income: 20 },
       tags: ['economic', 'trade']
     }
   ),
 
   // T2: Advanced economy
-  createTieredImprovementRequest(
-    'convergence_nexus',
-    'Convergence Nexus',
-    'Hyperspatial marketplace where civilizations exchange wealth and wonders',
-    2,
-    'economic',
+    createTieredImprovementRequest(
+      'convergence_nexus',
+      'Convergence Nexus',
+      'Hyperspatial marketplace where civilizations exchange wealth and wonders',
+      2,
+      'economic',
     {
       suppliesCost: 180,
       build: 360,
       capacity: 2,
-      sustainmentCost: { plasma_fuel: 0.4, rare_gases: 0.2 },
+      sustainmentCost: { plasma_fuel: 0.4 },
       productionOutputs: {},
-      modifiers: { trade_income: 50, market_efficiency: 0.05 },
+      modifiers: { trade_income: 100, market_efficiency: 0.05 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace']
     }
   ),
 
   // T3: Transcendent economy
-  createTieredImprovementRequest(
-    'wealth_singularity',
-    'Wealth Singularity',
-    'Infinite value creation engine manipulating quantum economics',
-    3,
-    'economic',
+    createTieredImprovementRequest(
+      'wealth_singularity',
+      'Wealth Singularity',
+      'Infinite value creation engine manipulating quantum economics',
+      3,
+      'economic',
     {
       suppliesCost: 450,
       build: 750,
       capacity: 5,
-      sustainmentCost: { quantum_circuits: 0.3, rare_gases: 0.5, super_alloys: 0.4 },
+      sustainmentCost: { quantum_circuits: 0.3, psycho_implants: 0.5, sentient_cores: 0.4 },
       productionOutputs: {},
-      modifiers: { trade_income: 150, market_efficiency: 0.1 },
+       modifiers: { market_efficiency: 0.3 },
        tags: ['mega_structure', 'economic', 'wealth', 'transcendent']
      }
    )
@@ -451,7 +434,7 @@ const SPIRITUAL_BRANCH = [
      'relic_shrine',
      'Relic Shrine',
      'Sacred site housing ancient artifacts that inspire warriors with righteous fervor',
-     2,
+     1,
      'spiritual',
      {
        suppliesCost: 80,
@@ -475,7 +458,7 @@ const SPIRITUAL_BRANCH = [
        suppliesCost: 180,
        build: 350,
        capacity: 3,
-       sustainmentCost: { ancient_relics: 0.3, psycho_implants: 0.2 },
+        sustainmentCost: { ancient_relics: 0.3, psycho_implants: 0.2 },
         productionOutputs: { ancient_relics: 1 },
        modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
        tags: ['mega_structure', 'spiritual', 'heritage', 'relics']
@@ -493,7 +476,7 @@ const SPIRITUAL_BRANCH = [
        suppliesCost: 350,
        build: 650,
        capacity: 4,
-       sustainmentCost: { ancient_relics: 0.5, psycho_implants: 0.3, sentient_cores: 0.1 },
+        sustainmentCost: { ancient_relics: 0.5, psycho_implants: 0.3, sentient_cores: 0.1 },
         productionOutputs: { ancient_relics: 1 },
        modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics']
@@ -512,15 +495,15 @@ const GOVERNANCE_BRANCH = [
      'administrative_hub',
      'Administrative Hub',
      'Centralized bureaucratic center streamlining coalition law processing and expanding improvement queue capacity',
-     2,
+     1,
      'governance',
      {
        suppliesCost: 75,
        build: 190,
        capacity: 2,
-       sustainmentCost: { biomass: 0.2, plasma_fuel: 0.1 },
+       sustainmentCost: { sentient_cores: 0.1 },
        productionOutputs: {},
-       modifiers: { law_progress_speed: 0.05, improvement_queue_capacity: 1 },
+       modifiers: { law_progress_speed: 0.03, improvement_queue_capacity: 1 },
        tags: ['governance', 'administration']
      }
    ),
@@ -554,7 +537,7 @@ const GOVERNANCE_BRANCH = [
        suppliesCost: 400,
        build: 700,
        capacity: 4,
-       sustainmentCost: { sentient_cores: 0.4, quantum_circuits: 0.2, psycho_implants: 0.2 },
+        sustainmentCost: { sentient_cores: 0.4, quantum_circuits: 0.2, psycho_implants: 0.2 },
         productionOutputs: { sentient_cores: 0.001 },
        modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
        tags: ['mega_structure', 'governance', 'transcendent', 'sentient']
@@ -569,12 +552,12 @@ const GOVERNANCE_BRANCH = [
   * T1: Basic extractors and fabricators (can produce T1-T3 commodities)
   * T2: Advanced facilities (higher output, tier-appropriate commodities)
   */
-  const RESOURCE_BRANCH = [
-   // T1: Basic extractors - lower output than T2, but available immediately
+const RESOURCE_BRANCH = [
+    // T1: Basic extractors - lower output than T2, but available immediately
    createTieredImprovementRequest(
-     'ice_extractor',
-     'Ice Extractor',
-     'Simple automated station extracting frozen volatiles from asteroids',
+     'fuel_extractor',
+     'Fuel Extractor',
+     'Simple automated station extracting valuable fuels from asteroids',
      1,
      'resource',
      {
@@ -595,11 +578,11 @@ const GOVERNANCE_BRANCH = [
      1,
      'resource',
      {
-       suppliesCost: 140,
-       build: 170,
+       suppliesCost: 70,
+       build: 85,
        capacity: 2,
-       sustainmentCost: { },
-       productionOutputs: { super_alloys: 0.05 },
+        sustainmentCost: { plasma_fuel: 0.03 },
+        productionOutputs: { super_alloys: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'production']
      }
@@ -614,9 +597,9 @@ const GOVERNANCE_BRANCH = [
      {
        suppliesCost: 45,
        build: 85,
-       capacity: 1,
+       capacity: 2,
        sustainmentCost: { biomass: 0.01 },
-       productionOutputs: { genomes: 0.01 },
+       productionOutputs: { genomes: 0.03 },
        modifiers: {},
        tags: ['resource', 'passive', 'research']
      }
@@ -632,9 +615,9 @@ const GOVERNANCE_BRANCH = [
      {
        suppliesCost: 30,
        build: 60,
-       capacity: 1,
-       sustainmentCost: { },
-       productionOutputs: { biomass: 0.3 },
+       capacity: 2,
+       sustainmentCost: { genomes: 1 },
+       productionOutputs: { genomes: 3 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic']
      }

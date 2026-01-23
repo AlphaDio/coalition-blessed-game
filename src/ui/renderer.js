@@ -798,11 +798,13 @@ function formatSuggestionLabel(suggestedBy, state) {
 function formatImprovementModifier(key, value) {
   const sign = value > 0 ? '+' : '';
   
-  const percentageModifiers = [
-    'research_speed', 'industrial_output', 'supply_efficiency',
-    'market_efficiency', 'population_growth', 'energy_production',
-    'combat_strength', 'defense_bonus', 'speed_bonus'
-  ];
+   const percentageModifiers = [
+     'research_speed', 'industrial_output', 'supply_efficiency',
+     'market_efficiency', 'population_growth', 'energy_production',
+     'combat_strength', 'defense_bonus', 'speed_bonus',
+     'law_progress_speed', 'tick_delay_multiplier', 'coalition_construction_mult',
+     'coalition_construction_add'
+   ];
   
   if (percentageModifiers.includes(key)) {
     return `${sign}${(value * 100).toFixed(0)}% ${key.replace(/_/g, ' ')}`;
@@ -937,7 +939,8 @@ export function renderTables(ui, state) {
   
   content += `{bold}Empires:{/bold}\n`;
   state.empires.forEach(empire => {
-    content += `  ${empire.name}: Approval ${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}\n`;
+    const effectiveApproval = empire.approval + (empire.stats.approvalBonus || 0);
+    content += `  ${empire.name}: Approval ${effectiveApproval >= 0 ? '+' : ''}${effectiveApproval.toFixed(0)}\n`;
 
   });
   
@@ -1479,7 +1482,8 @@ function renderEmpireDetailView(state, ui) {
   const commodityMap = loadCommodityMap(state.market || {});
   const lines = [`{bold}${empire.name}{/bold}`];
 
-  const approval = `${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`;
+  const effectiveApproval = empire.approval + (empire.stats.approvalBonus || 0);
+  const approval = `${effectiveApproval >= 0 ? '+' : ''}${effectiveApproval.toFixed(0)}`;
   const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
   let stabilityDisplay = stabilityValue;
   if (empire.stability !== undefined) {
@@ -2002,7 +2006,8 @@ function appendInsurrectionInfo(lines, insurrections) {
 
 function formatEmpireBlock(empire, regularArmies, state) {
   const lines = [];
-  const approval = `${empire.approval >= 0 ? '+' : ''}${empire.approval.toFixed(0)}`;
+  const effectiveApproval = empire.approval + (empire.stats.approvalBonus || 0);
+  const approval = `${effectiveApproval >= 0 ? '+' : ''}${effectiveApproval.toFixed(0)}`;
   const stabilityValue = empire.stability !== undefined ? empire.stability.toFixed(0) : 'N/A';
   let stabilityDisplay = stabilityValue;
   if (empire.stability !== undefined) {
@@ -2269,23 +2274,23 @@ function renderRequestsView(state) {
      lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.build}{/yellow-fg}`);
      lines.push(`  Capacity: ${request.capacity}`);
 
-    const sustainKeys = Object.keys(request.sustainmentCost);
-    if (sustainKeys.length > 0) {
-      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
-      lines.push(`  Sustain: {yellow-fg}${sustainStr}{/yellow-fg}`);
-    }
+     const sustainKeys = Object.keys(request.sustainmentCost);
+     if (sustainKeys.length > 0) {
+       const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
+       lines.push(`  Sustainment: {yellow-fg}-${sustainStr}/tick{/yellow-fg}`);
+     }
 
-    const outputKeys = Object.keys(request.productionOutputs);
-    if (outputKeys.length > 0) {
-      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
-      lines.push(`  Produces: {green-fg}${outputStr}{/green-fg}`);
-    }
+     const outputKeys = Object.keys(request.productionOutputs);
+     if (outputKeys.length > 0) {
+       const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
+       lines.push(`  Produces: {green-fg}+${outputStr}/tick{/green-fg}`);
+     }
 
-    const modKeys = Object.keys(request.modifiers);
-    if (modKeys.length > 0) {
-      const modStr = modKeys.map(k => `${k}:${request.modifiers[k]}`).join(', ');
-      lines.push(`  Bonus: {cyan-fg}${modStr}{/cyan-fg}`);
-    }
+     const modKeys = Object.keys(request.modifiers);
+     if (modKeys.length > 0) {
+       const modStr = modKeys.map(k => formatImprovementModifier(k, request.modifiers[k])).join('  ');
+       lines.push(`  Modifiers: {cyan-fg}${modStr}{/cyan-fg}`);
+     }
 
     lines.push('');
   });
@@ -2331,23 +2336,23 @@ function renderImprovementsQueueView(state) {
 
     const benefitParts = [];
 
-    const sustainKeys = Object.keys(improvement.sustainmentCost);
-    if (sustainKeys.length > 0) {
-      const sustainStr = sustainKeys.map(k => `${k}:${improvement.sustainmentCost[k]}`).join(', ');
-      benefitParts.push(`{yellow-fg}-${sustainStr}{/yellow-fg}`);
-    }
+     const sustainKeys = Object.keys(improvement.sustainmentCost);
+     if (sustainKeys.length > 0) {
+       const sustainStr = sustainKeys.map(k => `${k}:${improvement.sustainmentCost[k]}`).join(', ');
+       benefitParts.push(`{yellow-fg}Sustain: -${sustainStr}/tick{/yellow-fg}`);
+     }
 
-    const outputKeys = Object.keys(improvement.productionOutputs);
-    if (outputKeys.length > 0) {
-      const outputStr = outputKeys.map(k => `${k}:+${improvement.productionOutputs[k]}`).join(', ');
-      benefitParts.push(`{green-fg}+${outputStr}{/green-fg}`);
-    }
+     const outputKeys = Object.keys(improvement.productionOutputs);
+     if (outputKeys.length > 0) {
+       const outputStr = outputKeys.map(k => `${k}:+${improvement.productionOutputs[k]}`).join(', ');
+       benefitParts.push(`{green-fg}Produce: +${outputStr}/tick{/green-fg}`);
+     }
 
-    const modKeys = Object.keys(improvement.modifiers);
-    if (modKeys.length > 0) {
-      const modStr = modKeys.map(k => formatImprovementModifier(k, improvement.modifiers[k])).join('  ');
-      benefitParts.push(`{cyan-fg}${modStr}{/cyan-fg}`);
-    }
+     const modKeys = Object.keys(improvement.modifiers);
+     if (modKeys.length > 0) {
+       const modStr = modKeys.map(k => formatImprovementModifier(k, improvement.modifiers[k])).join('  ');
+       benefitParts.push(`{cyan-fg}Mods: ${modStr}{/cyan-fg}`);
+     }
 
     if (benefitParts.length > 0) {
       lines.push(`  ${benefitParts.join('  {white-fg}->{/white-fg}  ')}`);
