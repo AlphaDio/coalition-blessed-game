@@ -349,7 +349,10 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       army.resolveBonus = 0;
       army.killRateBonus = 0;
     }
-        return;
+    for (const empire of state.empires) {
+      empire.stats.approvalBonus = 0;
+    }
+    return;
       }
     }
   }
@@ -368,13 +371,16 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
    log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
    logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
     // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
-    for (const army of state.armies) {
-      army.fervorBonus = 0;
-      army.protectionBonus = 0;
-      army.resolveBonus = 0;
-      army.killRateBonus = 0;
-    }
-}
+     for (const army of state.armies) {
+       army.fervorBonus = 0;
+       army.protectionBonus = 0;
+       army.resolveBonus = 0;
+       army.killRateBonus = 0;
+     }
+     for (const empire of state.empires) {
+       empire.stats.approvalBonus = 0;
+     }
+ }
 
 function triggerInsurrectionBattles(state, rng, activeBattles, log, logger) {
   if (!state.insurrections || !Array.isArray(state.insurrections)) {
@@ -586,6 +592,9 @@ function processEmpireStockpileConsumption(state, log) {
             army.killRateBonus = (army.killRateBonus || 0) + effect.amount;
           });
           log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} kill rate bonus to ${armies.length} armies (until next scourge battle)`);
+        } else if (effect.type === 'empire_approval_bonus') {
+          empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + effect.amount;
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} approval bonus (until next scourge battle)`);
         }
       }
     }

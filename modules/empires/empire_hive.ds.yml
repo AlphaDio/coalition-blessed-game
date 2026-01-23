@@ -84,6 +84,11 @@ declares:
           effect:
             type: industrial_output_bonus
             amount: 0.05
+        rare_gases:
+          threshold: 100000
+          effect:
+            type: empire_approval_bonus
+            amount: 1
         # unique bonus to research speed through genomes consumption
         genomes:
           threshold: 10000

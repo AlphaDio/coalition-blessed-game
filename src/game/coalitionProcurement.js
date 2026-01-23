@@ -18,8 +18,8 @@ export const ALLOWANCE_PER_TICK = 1000;
 export const ALLOWANCE_CAP_TICKS = 6;
 export const RESERVE_FLOOR_CREDITS = 1500;
 export const BANK_THRESHOLD = 1000; // Units needed in bank before conversion triggers
-export const BANK_ROLLOVER_THRESHOLD = 50000; // When bank reaches this, convert to requisition
-export const ROLLOVER_REQUISITION_MULTIPLIER = 10; // Requisition gained per rollover
+export const BANK_ROLLOVER_THRESHOLD = 25000; // When bank reaches this, convert to requisition
+export const ROLLOVER_REQUISITION_MULTIPLIER = 12; // Requisition gained per rollover
 export const STARTING_REQUISITION = 500; // Initial requisition for improvement construction
 
 /**

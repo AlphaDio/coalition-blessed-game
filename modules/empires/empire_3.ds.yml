@@ -82,6 +82,11 @@ declares:
           effect:
             type: industrial_output_bonus
             amount: 0.05
+        rare_gases:
+          threshold: 100000
+          effect:
+            type: empire_approval_bonus
+            amount: 1
         quantum_circuits:
           threshold: 1000
           effect:
