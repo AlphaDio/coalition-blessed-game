@@ -488,13 +488,10 @@ export function processEconomyTick(state) {
      // Convert stockpiles to requisition
     const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
 
-    // Compress logs: combine procurement and conversion into one line if both occurred
-    if (procurementLog.length > 0 && conversionLog.length > 0) {
-      log.push(`Coalition economy: ${procurementLog[0]}; ${conversionLog[0]}`);
-    } else {
-      if (procurementLog.length > 0) log.push(...procurementLog);
-      if (conversionLog.length > 0) log.push(...conversionLog);
-    }
+    // Coalition procurement and conversion logs are not displayed to reduce UI clutter
+    // They still occur and can be viewed in debug logs if needed
+    // if (procurementLog.length > 0) log.push(...procurementLog);
+    // if (conversionLog.length > 0) log.push(...conversionLog);
    
    // Step 8: Compute army fulfillment and performance
   state.armies.forEach(army => {

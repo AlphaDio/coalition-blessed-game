@@ -16,63 +16,63 @@ import { createTechnology } from './types.js';
 
 export const GENERAL_TECHS = [
   createTechnology(
-    'advanced_metallurgy',
-    'Advanced Metallurgy',
-    'New alloy compositions enable stronger, lighter construction materials.',
+    'power_armor',
+    'Power Armor',
+    'Enhanced armor technology boosts army effectiveness.',
     'general',
     {},
     { credits: 100 },
-    { industrial_output: 0.10, supply_efficiency: 0.04 }
+    { army_organization: 4, supply_efficiency: 0.05 }
   ),
-  
+
   createTechnology(
-    'unified_logistics',
-    'Unified Logistics Network',
-    'Standardized supply chains across coalition members reduce waste and delays.',
+    'fusion_power',
+    'Fusion Power',
+    'Clean, abundant energy source increases industrial output.',
     'general',
     {},
     { stability: 3 },
-    { supply_efficiency: 0.10, trade_income: 100 }
+    { industrial_output: 0.10, trade_income: 75 }
   ),
-  
+
   createTechnology(
-    'quantum_communications',
-    'Quantum Communications',
-    'Entangled particle networks enable instantaneous secure transmissions.',
+    'neural_links',
+    'Neural Links',
+    'Direct brain-computer interfaces accelerate research.',
     'general',
     {},
-    { cohesion: 2 },
-    { research_speed: 0.06, market_efficiency: 0.04 }
+    { approval: 4 },
+    { research_speed: 0.10, army_organization: 3 }
   ),
-  
+
   createTechnology(
-    'adaptive_shields',
-    'Adaptive Shield Arrays',
-    'Energy barriers that learn and adapt to incoming threats.',
+    'hyperdrive',
+    'Hyperdrive Technology',
+    'Faster-than-light travel improves logistics and trade.',
     'general',
     {},
-    { approval: 5 },
-    { army_organization: 4, supply_efficiency: 0.04 }
+    { cohesion: 3 },
+    { supply_efficiency: 0.08, market_efficiency: 0.05 }
   ),
-  
+
   createTechnology(
-    'stellar_cartography',
-    'Stellar Cartography Initiative',
-    'Comprehensive mapping of transit routes and resource deposits.',
-    'general',
-    {},
-    { credits: 150 },
-    { trade_income: 200, research_speed: 0.04 }
-  ),
-  
-  createTechnology(
-    'distributed_manufacturing',
-    'Distributed Manufacturing',
-    'Decentralized production networks increase resilience and throughput.',
+    'cloning',
+    'Cloning Technology',
+    'Population growth through artificial reproduction.',
     'general',
     {},
     { stability: 2 },
-    { industrial_output: 0.08, market_efficiency: 0.06 }
+    { population_growth: 0.025, empire_approval: 3 }
+  ),
+
+  createTechnology(
+    'ai_assistants',
+    'AI Assistants',
+    'Intelligent systems boost research and administration.',
+    'general',
+    {},
+    { approval: 3 },
+    { research_speed: 0.08, law_progress_speed: 0.05 }
   )
 ];
 
@@ -83,119 +83,119 @@ export const GENERAL_TECHS = [
 export const ALIGNED_TECHS = [
   // Mechanical-aligned (natural_mechanical > 0.3)
   createTechnology(
-    'synthetic_workforce',
-    'Synthetic Workforce Integration',
-    'Robotic labor supplements organic workers in hazardous conditions.',
+    'cybernetics',
+    'Cybernetics',
+    'Machine enhancements dramatically boost army and research capabilities.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
-    { credits: 200 },
-    { industrial_output: 0.16, population_growth: -0.010 }
+    { approval: 5 },
+    { army_organization: 8, research_speed: 0.12 }
   ),
-  
+
   createTechnology(
-    'neural_interface_standard',
-    'Neural Interface Standard',
-    'Direct brain-machine connections streamline complex operations.',
+    'automation',
+    'Total Automation',
+    'Machines handle all production, greatly increasing output.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
-    { approval: 8 },
-    { research_speed: 0.12, army_organization: 6 }
+    { stability: 4 },
+    { industrial_output: 0.15, population_growth: -0.010 }
   ),
-  
+
   // Natural-aligned (natural_mechanical < -0.3)
   createTechnology(
-    'biosphere_harmony',
-    'Biosphere Harmony Protocols',
-    'Ecological integration enhances sustainable resource extraction.',
+    'eco_harmony',
+    'Ecological Harmony',
+    'Living in balance with nature accelerates population and resource growth.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
-    { stability: 5 },
-    { population_growth: 0.030, empire_approval: 4 }
+    { stability: 6 },
+    { population_growth: 0.040, empire_approval: 5 }
   ),
-  
+
   createTechnology(
-    'organic_architecture',
-    'Organic Architecture',
-    'Living structures that grow, heal, and adapt to their inhabitants.',
+    'bio_engineering',
+    'Bio-Engineering',
+    'Genetic modifications enhance population growth and happiness.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
-    { approval: 5 },
-    { empire_approval: 4, supply_efficiency: 0.08 }
+    { approval: 8 },
+    { population_growth: 0.030, supply_efficiency: 0.08 }
   ),
-  
+
   // Militaristic-aligned (pacifist_militaristic > 0.3)
   createTechnology(
-    'combined_arms_doctrine',
-    'Combined Arms Doctrine',
-    'Integrated military tactics maximize force effectiveness.',
+    'elite_training',
+    'Elite Military Training',
+    'Advanced tactics and training create superior fighting forces.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
-    { approval: 5 },
+    { approval: 4 },
     { army_organization: 10, supply_efficiency: 0.06 }
   ),
-  
+
   createTechnology(
-    'orbital_bombardment_grid',
-    'Orbital Bombardment Grid',
-    'Coordinated satellite weapons provide devastating fire support.',
+    'orbital_weapons',
+    'Orbital Weapons Platform',
+    'Space-based weaponry provides overwhelming military advantage.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
     { cohesion: -3 },
-    { army_organization: 16 }
+    { army_organization: 12 }
   ),
-  
+
   // Pacifist-aligned (pacifist_militaristic < -0.3)
   createTechnology(
-    'diplomatic_corps_expansion',
-    'Diplomatic Corps Expansion',
-    'Trained negotiators resolve conflicts before they escalate.',
+    'diplomatic_mastery',
+    'Diplomatic Mastery',
+    'Exceptional negotiation skills improve all international relations.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
-    { cohesion: 5 },
-    { empire_approval: 6, trade_income: 200 }
+    { cohesion: 6 },
+    { empire_approval: 6, trade_income: 150 }
   ),
-  
+
   createTechnology(
-    'cultural_exchange_initiative',
-    'Cultural Exchange Initiative',
-    'Shared art and traditions build lasting bonds between peoples.',
+    'cultural_unity',
+    'Cultural Unity',
+    'Shared values and traditions unite the coalition in purpose.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
-    { approval: 10, stability: 3 },
-    { empire_approval: 4, population_growth: 0.02 }
+    { approval: 8, stability: 4 },
+    { empire_approval: 4, population_growth: 0.020 }
   ),
-  
+
   // Authoritarian-aligned (authoritarian_liberal > 0.3)
   createTechnology(
-    'centralized_command',
-    'Centralized Command Structure',
-    'Unified hierarchy enables rapid response and coordination.',
+    'centralized_control',
+    'Centralized Control',
+    'Unified command structure maximizes efficiency across all domains.',
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: 1, threshold: 0.3 } },
-    { stability: 5 },
-    { army_organization: 8, industrial_output: 0.08 }
+    { stability: 6 },
+    { army_organization: 6, industrial_output: 0.10 }
   ),
-  
+
   // Liberal-aligned (authoritarian_liberal < -0.3)
   createTechnology(
-    'open_innovation_networks',
-    'Open Innovation Networks',
-    'Free exchange of ideas accelerates scientific progress.',
+    'collaborative_science',
+    'Collaborative Science',
+    'Open sharing of knowledge dramatically accelerates technological progress.',
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: -1, threshold: 0.3 } },
-    { approval: 8 },
-    { research_speed: 0.16, market_efficiency: 0.08 }
+    { approval: 6 },
+    { research_speed: 0.15, market_efficiency: 0.08 }
   ),
-  
+
   // Spiritual-aligned (spiritual_materialistic > 0.3)
   createTechnology(
-    'sacred_architecture',
-    'Sacred Architecture Traditions',
-    'Temples and monuments strengthen cultural identity.',
+    'divine_inspiration',
+    'Divine Inspiration',
+    'Spiritual enlightenment enhances all aspects of society.',
     'aligned',
     { axis: { axis: 'spiritual_materialistic', direction: 1, threshold: 0.3 } },
     { stability: 8 },
-    { empire_approval: 6, population_growth: 0.010 }
+    { empire_approval: 6, population_growth: 0.015 }
   ),
   
   // Materialistic-aligned (spiritual_materialistic < -0.3)
@@ -217,46 +217,46 @@ export const ALIGNED_TECHS = [
 export const UNIQUE_TECHS = [
   // Hive-tagged empires
   createTechnology(
-    'collective_consciousness_amplifier',
-    'Collective Consciousness Amplifier',
-    'Enhanced neural links strengthen the gestalt mind.',
+    'hive_mind',
+    'Hive Mind Enhancement',
+    'Perfect coordination through collective consciousness.',
     'unique',
     { tags: ['hive'] },
-    { cohesion: 5 },
+    { cohesion: 8 },
     { army_organization: 12, research_speed: 0.10 }
   ),
-  
+
   // Mechanical-tagged empires
   createTechnology(
-    'self_replicating_factories',
-    'Self-Replicating Factories',
-    'Autonomous manufacturing units that build copies of themselves.',
+    'nanofabrication',
+    'Nanofabrication',
+    'Molecular assembly creates anything from raw materials.',
     'unique',
     { tags: ['mechanical'] },
-    { credits: 300 },
-    { industrial_output: 0.24, population_growth: 0.04 }
+    { credits: 250 },
+    { industrial_output: 0.20, supply_efficiency: 0.10 }
   ),
-  
+
   // Warped-tagged empires (touched by the Scourge)
   createTechnology(
-    'void_resonance_harnessing',
-    'Void Resonance Harnessing',
-    'Tapping into the energies that sustain the Scourge.',
+    'scourge_synthesis',
+    'Scourge Energy Synthesis',
+    'Harness the Scourge\'s power for unlimited energy.',
     'unique',
     { tags: ['warped'] },
-    { stability: -5, cohesion: -3 },
-    { research_speed: 0.20, energy_production: 0.30 }
+    { stability: -4, cohesion: -3 },
+    { research_speed: 0.18, industrial_output: 0.12 }
   ),
-  
+
   // Biologic-tagged empires
   createTechnology(
-    'accelerated_evolution',
-    'Accelerated Evolution Program',
-    'Guided genetic modification adapts populations rapidly.',
+    'genetic_perfection',
+    'Genetic Perfection',
+    'Perfect genetic engineering creates ideal citizens.',
     'unique',
     { tags: ['biologic'] },
-    { approval: 5 },
-    { population_growth: 0.050, empire_approval: 4 }
+    { approval: 10 },
+    { population_growth: 0.050, empire_approval: 8 }
   )
 ];
 

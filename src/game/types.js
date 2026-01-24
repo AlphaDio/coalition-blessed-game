@@ -477,6 +477,9 @@ export function createGameState(seed = 0) {
     
     // Improvements system
     coalitionConstruction: IMPROVEMENTS_CONSTANTS.COALITION_CONSTRUCTION, // Build progress added to ALL building improvements per tick
-    improvements: null // Improvements queue and requests (initialized in index.js)
+    improvements: null, // Improvements queue and requests (initialized in index.js)
+
+    // Timed modifiers from events
+    timedModifiers: [] // Array of {key, value, expiresAt, appliedAt}
   };
 }

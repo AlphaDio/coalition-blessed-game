@@ -110,52 +110,54 @@ function logBattleRound(front, leftArmy, rightArmy, logger) {
   }
   front.roundNumber += 1;
 
-  // Guard against division by zero or undefined
-  const leftMPMax = leftArmy.mp?.max || 1;
-  const rightMPMax = rightArmy.mp?.max || 1;
-  const leftMOMax = leftArmy.mo?.max || 1;
-  const rightMOMax = rightArmy.mo?.max || 1;
-  const leftMPPct = Math.floor(((leftArmy.mp?.current || 0) / leftMPMax) * 100);
-  const rightMPPct = Math.floor(((rightArmy.mp?.current || 0) / rightMPMax) * 100);
-  const leftMOPct = Math.floor(((leftArmy.mo?.current || 0) / leftMOMax) * 100);
-  const rightMOPct = Math.floor(((rightArmy.mo?.current || 0) / rightMOMax) * 100);
-
-  const leftBroken = front.moraleBroken.left;
-  const rightBroken = front.moraleBroken.right;
-
-  // Get damage dealt this round
-  const roundDamage = front.roundDamage || { left: 0, right: 0 };
-  const leftDamageDealt = roundDamage.left || 0;
-  const rightDamageDealt = roundDamage.right || 0;
-
-  // Log round at INFO level so it appears in file logs
-  logger.info(`Battle ${front.id} Round ${front.roundNumber}: ${leftArmy.name} vs ${rightArmy.name}`, {
-    round: front.roundNumber,
-    leftMP: `${Math.floor(leftArmy.mp?.current || 0)}/${Math.floor(leftMPMax)} (${leftMPPct}%)`,
-    rightMP: `${Math.floor(rightArmy.mp?.current || 0)}/${Math.floor(rightMPMax)} (${rightMPPct}%)`,
-    leftMO: `${Math.floor(leftArmy.mo?.current || 0)}/${Math.floor(leftMOMax)} (${leftMOPct}%)`,
-    rightMO: `${Math.floor(rightArmy.mo?.current || 0)}/${Math.floor(rightMOMax)} (${rightMOPct}%)`,
-    damageDealt: {
-      left: `${leftDamageDealt.toFixed(1)} MP`,
-      right: `${rightDamageDealt.toFixed(1)} MP`
-    },
-    leftBroken: leftBroken,
-    rightBroken: rightBroken
-  });
-
-  // Log morale breaks separately
-  if (leftBroken || rightBroken) {
-    const brokenSide = leftBroken ? leftArmy.name : rightArmy.name;
-    logger.info(`Battle ${front.id}: ${brokenSide} morale broken`);
+  // Track battle statistics for final summary (moved to DEBUG level to reduce verbosity)
+  if (!front.battleStats) {
+    front.battleStats = {
+      rounds: 0,
+      maxRounds: front.roundNumber,
+      leftMoraleBreaks: 0,
+      rightMoraleBreaks: 0,
+      totalDamageLeft: 0,
+      totalDamageRight: 0,
+      peakEngagementLeft: 0,
+      peakEngagementRight: 0
+    };
   }
 
-  // Detailed DEBUG logging for additional context
-  const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, leftBroken);
-  const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, rightBroken);
-  logger.debug(`Battle ${front.id} round ${front.roundNumber} details`, {
-    width: front.battlefieldSize,
-    leftEngaged: isNaN(leftEngaged) ? '0' : leftEngaged.toFixed(0),
-    rightEngaged: isNaN(rightEngaged) ? '0' : rightEngaged.toFixed(0)
+  front.battleStats.rounds = front.roundNumber;
+  front.battleStats.maxRounds = Math.max(front.battleStats.maxRounds, front.roundNumber);
+
+  // Track morale breaks
+  if (front.moraleBroken.left && !front.leftMoraleBrokenLogged) {
+    front.battleStats.leftMoraleBreaks += 1;
+    front.leftMoraleBrokenLogged = true;
+    logger.debug(`Battle ${front.id}: ${leftArmy.name} morale broken at round ${front.roundNumber}`);
+  }
+  if (front.moraleBroken.right && !front.rightMoraleBrokenLogged) {
+    front.battleStats.rightMoraleBreaks += 1;
+    front.rightMoraleBrokenLogged = true;
+    logger.debug(`Battle ${front.id}: ${rightArmy.name} morale broken at round ${front.roundNumber}`);
+  }
+
+  // Track damage and engagement
+  const roundDamage = front.roundDamage || { left: 0, right: 0 };
+  front.battleStats.totalDamageLeft += roundDamage.left || 0;
+  front.battleStats.totalDamageRight += roundDamage.right || 0;
+
+  const leftEngaged = calculateEngagedUnits(leftArmy, front.battlefieldSize, front.moraleBroken.left);
+  const rightEngaged = calculateEngagedUnits(rightArmy, front.battlefieldSize, front.moraleBroken.right);
+  front.battleStats.peakEngagementLeft = Math.max(front.battleStats.peakEngagementLeft, leftEngaged);
+  front.battleStats.peakEngagementRight = Math.max(front.battleStats.peakEngagementRight, rightEngaged);
+
+  // Reduced logging - only log key events at DEBUG level
+  logger.debug(`Battle ${front.id} Round ${front.roundNumber}: ${leftArmy.name} vs ${rightArmy.name}`, {
+    round: front.roundNumber,
+    leftMP: `${Math.floor(leftArmy.mp?.current || 0)}/${Math.floor(leftArmy.mp?.max || 1)}`,
+    rightMP: `${Math.floor(rightArmy.mp?.current || 0)}/${Math.floor(rightArmy.mp?.max || 1)}`,
+    damageThisRound: {
+      left: `${(roundDamage.left || 0).toFixed(1)} MP`,
+      right: `${(roundDamage.right || 0).toFixed(1)} MP`
+    }
   });
 }
 
@@ -412,10 +414,10 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const previousMO = defendingArmy.mo.current || 0;
   defendingArmy.mo.current = Math.max(0, previousMO - finalMODmg);
 
-  // Log morale damage at INFO level
+  // Log morale damage at DEBUG level (compressed battle logging)
   if (finalMODmg > 0) {
     const logger = getLogger();
-    logger.info(`Battle ${front.id} morale damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
+    logger.debug(`Battle ${front.id} morale damage: ${attackingArmy.name} → ${defendingArmy.name}`, {
       moraleDamage: `${finalMODmg.toFixed(1)} MO`,
       moraleBefore: previousMO.toFixed(0),
       moraleAfter: defendingArmy.mo.current.toFixed(0)
@@ -531,31 +533,75 @@ function applyReinforcement(army, inBattle = false) {
 function endBattle(front, worldState, winnerSide) {
   const logger = getLogger();
   const log = [];
-  
+
   front.state = 'ENDED';
   front.endedAtTick = worldState.turn;
-  
+
   const leftArmy = worldState.armies.find(a => a.id === front.leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === front.rightArmyId);
-  
-  // Generate battle summary
+
+  // Generate comprehensive battle summary
   if (leftArmy && rightArmy) {
-    const leftDestroyed = Math.floor(front.permanentLosses.left);
-    const rightDestroyed = Math.floor(front.permanentLosses.right);
+    const battleStats = front.battleStats || {
+      rounds: front.roundNumber || 1,
+      leftMoraleBreaks: 0,
+      rightMoraleBreaks: 0,
+      totalDamageLeft: front.permanentLosses?.left || 0,
+      totalDamageRight: front.permanentLosses?.right || 0,
+      peakEngagementLeft: 0,
+      peakEngagementRight: 0
+    };
+
+    const leftDestroyed = Math.floor(front.permanentLosses?.left || 0);
+    const rightDestroyed = Math.floor(front.permanentLosses?.right || 0);
     const leftRecovered = Math.floor(front.recoveredMP?.left || 0);
     const rightRecovered = Math.floor(front.recoveredMP?.right || 0);
     const leftRemaining = Math.floor(leftArmy.mp.current);
     const rightRemaining = Math.floor(rightArmy.mp.current);
-    
+
+    const winnerName = winnerSide === 'left' ? leftArmy.name : (winnerSide === 'right' ? rightArmy.name : 'Draw');
+    const duration = `${battleStats.rounds} rounds, ${front.battlefieldSize} width battlefield`;
+
+    // Comprehensive battle summary log
+    logger.info(`Battle ${front.id} COMPLETED: ${leftArmy.name} vs ${rightArmy.name} - Winner: ${winnerName}`, {
+      duration: duration,
+      casualties: {
+        leftDestroyed: leftDestroyed,
+        rightDestroyed: rightDestroyed,
+        leftRecovered: leftRecovered,
+        rightRecovered: rightRecovered,
+        leftRemaining: leftRemaining,
+        rightRemaining: rightRemaining
+      },
+      battleStats: {
+        rounds: battleStats.rounds,
+        leftMoraleBreaks: battleStats.leftMoraleBreaks,
+        rightMoraleBreaks: battleStats.rightMoraleBreaks,
+        totalDamageDealt: {
+          left: battleStats.totalDamageLeft.toFixed(1),
+          right: battleStats.totalDamageRight.toFixed(1)
+        },
+        peakEngagement: {
+          left: battleStats.peakEngagementLeft.toFixed(0),
+          right: battleStats.peakEngagementRight.toFixed(0)
+        }
+      },
+      finalState: {
+        leftMP: `${leftRemaining}/${Math.floor(leftArmy.mp.max)}`,
+        rightMP: `${rightRemaining}/${Math.floor(rightArmy.mp.max)}`
+      }
+    });
+
+    // UI log summary (compact)
     const leftSummary = `${leftArmy.name}: ${leftDestroyed} destroyed, ${leftRecovered} recovered, ${leftRemaining} remaining`;
     const rightSummary = `${rightArmy.name}: ${rightDestroyed} destroyed, ${rightRecovered} recovered, ${rightRemaining} remaining`;
-    
-    logger.info(`Battle ${front.id} summary - ${leftSummary}`);
-    logger.info(`Battle ${front.id} summary - ${rightSummary}`);
-    log.push(`${leftSummary}`);
-    log.push(`${rightSummary}`);
+    const battleSummary = `Battle concluded in ${battleStats.rounds} rounds - Winner: ${winnerName}`;
+
+    log.push(battleSummary);
+    log.push(leftSummary);
+    log.push(rightSummary);
   }
-  
+
   // Refill morale to max
   if (leftArmy) {
     leftArmy.mo.current = leftArmy.mo.max;
@@ -563,11 +609,11 @@ function endBattle(front, worldState, winnerSide) {
   if (rightArmy) {
     rightArmy.mo.current = rightArmy.mo.max;
   }
-  
+
   // Reset broken flags
   front.moraleBroken.left = false;
   front.moraleBroken.right = false;
-  
+
   // Emit battle_ended event
   emitEvent(worldState, 'battle_ended', {
     frontId: front.id,
@@ -577,7 +623,7 @@ function endBattle(front, worldState, winnerSide) {
     permanentLosses: { ...front.permanentLosses },
     recoveredMP: { ...(front.recoveredMP || { left: 0, right: 0 }) }
   });
-  
+
   return log;
 }
 

@@ -17,17 +17,17 @@ schema_version: "0.1"
 declares:
   event_data:
     id: "event_5"
-    name: "Resource Discovery"
-    description: "A cache of coalition supplies and salvage has been discovered."
+    name: "Requisition Discovery"
+    description: "A cache of coalition requisition funds has been discovered."
     choices:
-      - text: "Secure immediately (gain supplies)"
+      - text: "Secure immediately (gain requisition)"
         effects:
-          stockpiles:
-            supplies: 200
+          coalitionEconomy:
+            requisition: 200
       - text: "Share with all empires (gain approval)"
         effects:
-          stockpiles:
-            supplies: 100
+          coalitionEconomy:
+            requisition: 100
           empireApproval:
             "@all": 8
 

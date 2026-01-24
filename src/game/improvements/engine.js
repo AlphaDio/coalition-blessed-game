@@ -47,6 +47,7 @@ export function createImprovementRequest(id, name, description, {
   armyGrant = null,        // { manpower: number } - creates army or adds to existing
   manpowerGrant = null,    // number - adds manpower to empire's army
   requiresNoArmy = false,  // If true, improvement only available to empires without an army
+  requisitionUpkeep = 0,   // requisition cost per tick
 
   tier = 1,
   branch = 'general'
@@ -68,6 +69,7 @@ export function createImprovementRequest(id, name, description, {
     armyGrant,
     manpowerGrant,
     requiresNoArmy,
+    requisitionUpkeep,
     tier,
     branch,
     requestedAt: null
@@ -122,6 +124,7 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     sustainmentCost: { ...request.sustainmentCost },
     productionOutputs: { ...request.productionOutputs },
     modifiers: { ...request.modifiers },
+    requisitionUpkeep: request.requisitionUpkeep || 0,
     requiredLawId: request.requiredLawId || null,
     requiredLaws: request.requiredLaws || null,
     armyGrant: request.armyGrant || null,
@@ -326,6 +329,32 @@ export function processImprovementsTick(state) {
     }
 
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
+      // Process requisition upkeep
+      if (improvement.requisitionUpkeep > 0) {
+        if (!state.coalitionEconomy) {
+          state.coalitionEconomy = { requisition: 0 };
+        }
+        if (!state.coalitionEconomy.requisition) {
+          state.coalitionEconomy.requisition = 0;
+        }
+
+        if (state.coalitionEconomy.requisition >= improvement.requisitionUpkeep) {
+          state.coalitionEconomy.requisition -= improvement.requisitionUpkeep;
+          // Only log if this is a significant upkeep cost
+          if (improvement.requisitionUpkeep >= 5) {
+            log.push(`{yellow-fg}Upkeep:{/yellow-fg} ${improvement.name} (-${improvement.requisitionUpkeep} requisition)`);
+          }
+        } else {
+          // Insufficient requisition - degrade the improvement
+          if (improvement.state !== 'DEGRADED') {
+            improvement.state = 'DEGRADED';
+            improvement.degradedSince = state.turn;
+            log.push(`{red-fg}DEGRADED:{/red-fg} ${improvement.name} (insufficient requisition for upkeep)`);
+            logger.warn(`Improvement degraded due to insufficient requisition: ${improvement.name}`);
+          }
+        }
+      }
+
       // Process sustainment
       const sustainmentResult = processImprovementSustainment(state, improvement);
       log.push(...sustainmentResult.log);
@@ -523,7 +552,20 @@ export function processImprovementProduction(state, improvement) {
     const scaledQty = Math.floor(qty * population);
     if (scaledQty <= 0) continue;
 
-    // Create sell offer for the empire
+    // Special handling for requisition - add directly to coalition economy
+    if (commodity === 'requisition') {
+      if (!state.coalitionEconomy) {
+        state.coalitionEconomy = { requisition: 0 };
+      }
+      if (!state.coalitionEconomy.requisition) {
+        state.coalitionEconomy.requisition = 0;
+      }
+      state.coalitionEconomy.requisition += scaledQty;
+      log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty} ${commodity} -> coalition economy`);
+      continue;
+    }
+
+    // Create sell offer for other commodities
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     const discountedPrice = sellPrice * MARKET_SELL_PRICE_DISCOUNT;

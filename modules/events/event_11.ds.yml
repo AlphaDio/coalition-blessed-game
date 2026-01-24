@@ -1,0 +1,62 @@
+module:
+  id: "event_11"
+  name: "Sanctions Dispute"
+  description: "One empire imposes sanctions on another empire"
+  version: "1.0.0"
+  type: "event"
+  category: "crisis"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["sanctions", "dispute", "economic"]
+  created_at: "2026-01-24T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_11"
+    name: "Sanctions Dispute"
+    description: "${sanctioner.name} has imposed economic sanctions on ${target.name} over disagreements about resource allocation and military strategy."
+    variables:
+      - type: empire
+        select: random
+        count: 1
+        as: sanctioner
+      - type: empire
+        select: random
+        count: 1
+        exclude: ["$sanctioner"]
+        as: target
+    choices:
+      - text: "Support ${sanctioner.name}'s sanctions (damage relations, economic impact)"
+        effects:
+          empireRelations:
+            "$sanctioner":
+              "@all": 8
+            "$target":
+              "@all": -15
+          timedModifiers:
+            empire_production_multiplier:
+              value: -0.15
+              duration: 6
+          coalitionCohesion: -3
+      - text: "Mediate the dispute (moderate relations adjustment)"
+        effects:
+          empireRelations:
+            "$sanctioner":
+              "$target": -5
+            "$target":
+              "$sanctioner": -5
+      - text: "Side with ${target.name} (reverse sanctions)"
+        effects:
+          empireRelations:
+            "$target":
+              "@all": 10
+            "$sanctioner":
+              "@all": -12
+          timedModifiers:
+            army_organization:
+              value: -3
+              duration: 4

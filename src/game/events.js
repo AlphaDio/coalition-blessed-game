@@ -209,6 +209,60 @@ export function handleEventChoice(state, eventId, choiceIndex) {
         }
       });
     }
+
+    // Handle empire relations changes
+    if (expandedEffects.empireRelations) {
+      Object.entries(expandedEffects.empireRelations).forEach(([fromEmpireId, targets]) => {
+        Object.entries(targets).forEach(([toEmpireId, change]) => {
+          if (state.diplomacy?.relations?.[fromEmpireId]?.[toEmpireId] !== undefined) {
+            const actualChange = typeof change === 'function' ? change() : change;
+            const oldValue = state.diplomacy.relations[fromEmpireId][toEmpireId];
+            state.diplomacy.relations[fromEmpireId][toEmpireId] = Math.max(-100, Math.min(100, oldValue + actualChange));
+
+            const fromEmpire = state.empires.find(e => e.id === fromEmpireId);
+            const toEmpire = state.empires.find(e => e.id === toEmpireId);
+            if (fromEmpire && toEmpire) {
+              log.push(`${fromEmpire.name} relations with ${toEmpire.name}: ${actualChange >= 0 ? '+' : ''}${actualChange}`);
+            }
+          }
+        });
+      });
+    }
+
+    // Handle coalition economy changes
+    if (expandedEffects.coalitionEconomy) {
+      Object.entries(expandedEffects.coalitionEconomy).forEach(([key, change]) => {
+        if (state.coalitionEconomy && state.coalitionEconomy[key] !== undefined) {
+          const actualChange = typeof change === 'function' ? change() : change;
+          state.coalitionEconomy[key] = Math.max(0, state.coalitionEconomy[key] + actualChange);
+          log.push(`Coalition ${key}: ${actualChange >= 0 ? '+' : ''}${actualChange}`);
+        }
+      });
+    }
+
+    // Handle timed coalition modifiers
+    if (expandedEffects.timedModifiers) {
+      Object.entries(expandedEffects.timedModifiers).forEach(([modifierKey, config]) => {
+        if (config.value !== undefined && config.duration !== undefined) {
+          // Apply the modifier immediately
+          if (state.coalitionModifiers[modifierKey] !== undefined) {
+            const oldValue = state.coalitionModifiers[modifierKey];
+            state.coalitionModifiers[modifierKey] += config.value;
+
+            // Store the timed modifier for reversal
+            if (!state.timedModifiers) state.timedModifiers = [];
+            state.timedModifiers.push({
+              key: modifierKey,
+              value: config.value,
+              expiresAt: state.turn + config.duration,
+              appliedAt: state.turn
+            });
+
+            log.push(`Coalition ${modifierKey}: ${config.value >= 0 ? '+' : ''}${config.value} for ${config.duration} turns`);
+          }
+        }
+      });
+    }
   }
   
   state.activeEvent = null;

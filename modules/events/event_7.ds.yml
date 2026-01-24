@@ -1,0 +1,54 @@
+module:
+  id: "event_7"
+  name: "Diplomatic Summit"
+  description: "Empires gather to negotiate requisition fund allocation"
+  version: "1.0.0"
+  type: "event"
+  category: "diplomatic"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["diplomatic", "requisitions", "allocation"]
+  created_at: "2026-01-24T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_7"
+    name: "Diplomatic Summit"
+    description: "The coalition leadership has called a diplomatic summit to reallocate requisition funds. ${favored.name} is arguing for preferential allocation to their war efforts."
+    variables:
+      - type: empire
+        select: random
+        count: 1
+        as: favored
+      - type: empire
+        select: all
+        exclude: ["$favored"]
+        as: others
+    choices:
+      - text: "Grant ${favored.name} priority requisition funds (+50 requisition)"
+        effects:
+          empireRelations:
+            "$favored":
+              "@all": 10
+          coalitionEconomy:
+            requisition: 50
+      - text: "Maintain equal distribution (slight approval boost)"
+        effects:
+          empireApproval:
+            "@all": 5
+          empireRelations:
+            "$favored":
+              "@all": 5
+      - text: "Reduce everyone's requisition funds (-25 each, gain resources)"
+        effects:
+          empireApproval:
+            "@all": -10
+          empireRelations:
+            "$favored":
+              "@all": -10
+          coalitionEconomy:
+            requisition: -75

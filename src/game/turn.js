@@ -330,12 +330,47 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       logger.info(`Scourge targeting ${targetEmpire.name}`);
 
       const rebelliousArmyIds = collectRebelliousArmyIds(state.insurrections);
-      const participatingArmies = state.armies.filter(army =>
-        army.organization > 30 &&
+      let participatingArmies = [];
+
+      // First, collect all target empire armies that meet basic criteria
+      const targetEmpireArmies = state.armies.filter(army =>
+        army.empireId === targetEmpire.id &&
         isRegularArmy(army) &&
         !rebelliousArmyIds.has(army.id) &&
-        army.empireId === targetEmpire.id
+        army.organization > 30
       );
+      participatingArmies.push(...targetEmpireArmies);
+
+      // For each other empire with positive relations, select a percentage of armies
+      const otherEmpires = state.empires.filter(empire => empire.id !== targetEmpire.id);
+      for (const otherEmpire of otherEmpires) {
+        const relations = state.diplomacy?.relations?.[otherEmpire.id]?.[targetEmpire.id] ?? 0;
+        if (relations <= 0) continue; // Skip hostile or neutral empires
+
+        // Calculate participation percentage based on relations (0-100 range)
+        const participationPercentage = Math.min(100, Math.max(0, relations));
+
+        // Get all eligible armies from this empire (not rebellious, regular army)
+        const empireArmies = state.armies.filter(army =>
+          army.empireId === otherEmpire.id &&
+          isRegularArmy(army) &&
+          !rebelliousArmyIds.has(army.id)
+        );
+
+        if (empireArmies.length === 0) continue;
+
+        // Select a random subset based on participation percentage
+        const numToSelect = Math.ceil((empireArmies.length * participationPercentage) / 100);
+        const shuffledArmies = [...empireArmies].sort(() => rng() - 0.5); // Random shuffle
+        const selectedArmies = shuffledArmies.slice(0, numToSelect);
+
+        // Apply organization filter to selected armies
+        // Use a base threshold that gets lower with better relations
+        const baseOrgThreshold = Math.max(20, 60 - (relations / 4));
+        const filteredArmies = selectedArmies.filter(army => army.organization >= baseOrgThreshold);
+
+        participatingArmies.push(...filteredArmies);
+      }
 
       logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
       logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
@@ -787,7 +822,19 @@ export function advanceTurn(state, rng = Math.random) {
   const insurrectionLog = checkInsurrections(state);
   log.push(...insurrectionLog.log);
   
-  // 9. Check win/lose conditions
+  // 9. Expire timed modifiers
+  if (state.timedModifiers) {
+    const expiredModifiers = state.timedModifiers.filter(modifier => modifier.expiresAt <= state.turn);
+    expiredModifiers.forEach(modifier => {
+      if (state.coalitionModifiers[modifier.key] !== undefined) {
+        state.coalitionModifiers[modifier.key] -= modifier.value;
+        logger.debug(`Timed modifier expired: ${modifier.key} ${modifier.value >= 0 ? '+' : ''}${modifier.value} removed`);
+      }
+    });
+    state.timedModifiers = state.timedModifiers.filter(modifier => modifier.expiresAt > state.turn);
+  }
+
+  // 10. Check win/lose conditions
   if (state.coalitionCohesion <= 0) {
     logger.error('GAME OVER: Coalition collapsed!');
     log.push('GAME OVER: Coalition collapsed!');
@@ -799,7 +846,7 @@ export function advanceTurn(state, rng = Math.random) {
     state.gameOver = true;
     state.gameOverReason = 'Scourge Cohesion reached 0';
   }
-  
+
   state.turn++;
   
   // Add to log history

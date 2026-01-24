@@ -1,0 +1,48 @@
+module:
+  id: "event_8"
+  name: "Resource Sharing Initiative"
+  description: "One empire proposes sharing stockpiles with allies"
+  version: "1.0.0"
+  type: "event"
+  category: "economic"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["resources", "sharing", "diplomatic"]
+  created_at: "2026-01-24T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_8"
+    name: "Resource Sharing Initiative"
+    description: "${proposer.name} has proposed a resource sharing initiative to distribute coalition stockpiles more equitably among allies."
+    variables:
+      - type: empire
+        select: random
+        count: 1
+        as: proposer
+    choices:
+      - text: "Implement full resource sharing (boost relations, distribute requisition)"
+        effects:
+          empireRelations:
+            "$proposer":
+              "@all": 15
+          coalitionEconomy:
+            requisition: -200
+          empireApproval:
+            "@all": 10
+      - text: "Selective sharing with close allies only (moderate relations boost)"
+        effects:
+          empireRelations:
+            "$proposer":
+              "@all": 8
+      - text: "Reject the initiative (damage relations, keep requisition)"
+        effects:
+          empireRelations:
+            "$proposer":
+              "@all": -15
+          coalitionEconomy:
+            requisition: 100

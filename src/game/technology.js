@@ -254,13 +254,18 @@ export function processTechAccrual(state) {
 const TECH_EVENT_TEMPLATES = [
   {
     id: 'tech_breakthrough',
-    title: 'Scientific Breakthrough',
-    textTemplate: 'Researchers in {empireName} have made a significant discovery! Our scientists present three promising avenues of development.'
+    title: 'Research Breakthrough',
+    textTemplate: 'Scientists in {empireName} have achieved a major breakthrough! Choose which technology to develop:'
   },
   {
     id: 'tech_convergence',
-    title: 'Technological Convergence',
-    textTemplate: 'Multiple research initiatives in {empireName} have reached a critical juncture. We must choose which path to pursue.'
+    title: 'Technology Choice',
+    textTemplate: '{empireName} must choose which technology to prioritize for immediate development:'
+  },
+  {
+    id: 'tech_opportunity',
+    title: 'Innovation Opportunity',
+    textTemplate: 'A unique research opportunity has emerged for {empireName}. Select the most promising direction:'
   }
 ];
 
@@ -293,22 +298,71 @@ function formatModifier(key, value) {
  * @returns {Object} Event choice object
  */
 function generateTechChoice(tech) {
+  // Create a helpful description based on the technology's main benefits
+  let description = tech.description || tech.name;
+
+  // Add hints about major benefits
+  const hints = [];
+  const modifiers = tech.modifiers || {};
+
+  if (modifiers.army_organization && modifiers.army_organization > 8) {
+    hints.push('Strong military boost');
+  } else if (modifiers.army_organization && modifiers.army_organization > 3) {
+    hints.push('Military enhancement');
+  }
+
+  if (modifiers.industrial_output && modifiers.industrial_output > 0.12) {
+    hints.push('Major production increase');
+  } else if (modifiers.industrial_output && modifiers.industrial_output > 0.04) {
+    hints.push('Production boost');
+  }
+
+  if (modifiers.research_speed && modifiers.research_speed > 0.12) {
+    hints.push('Accelerated research');
+  } else if (modifiers.research_speed && modifiers.research_speed > 0.04) {
+    hints.push('Research enhancement');
+  }
+
+  if (modifiers.population_growth && modifiers.population_growth > 0.03) {
+    hints.push('Rapid population growth');
+  } else if (modifiers.population_growth && modifiers.population_growth > 0.01) {
+    hints.push('Population increase');
+  }
+
+  if (modifiers.trade_income && modifiers.trade_income > 100) {
+    hints.push('Major trade benefits');
+  } else if (modifiers.trade_income && modifiers.trade_income > 25) {
+    hints.push('Trade income');
+  }
+
+  if (modifiers.empire_approval && modifiers.empire_approval > 5) {
+    hints.push('High approval boost');
+  } else if (modifiers.empire_approval && modifiers.empire_approval > 2) {
+    hints.push('Approval increase');
+  }
+
   // Build effect description from modifiers
   const modifierStrings = Object.entries(tech.modifiers)
     .filter(([_, value]) => value !== 0)
     .map(([key, value]) => formatModifier(key, value));
-  
+
   const immediateStrings = Object.entries(tech.immediateEffects)
     .filter(([_, value]) => value !== 0)
     .map(([key, value]) => {
       const sign = value > 0 ? '+' : '';
       return `${sign}${value} ${key}`;
     });
-  
-  const effectText = [...immediateStrings, ...modifierStrings].join(', ') || 'No direct effects';
-  
+
+  let effectText = [...immediateStrings, ...modifierStrings].join(', ') || 'No direct effects';
+
+  // Combine description with hints and effects
+  let choiceText = tech.name;
+  if (hints.length > 0) {
+    choiceText += ` (${hints.join(', ')})`;
+  }
+
   return {
-    text: tech.name,
+    text: choiceText,
     effects: {
       // Tech granting is handled specially by handleTechEventChoice
       _grantTech: tech.id

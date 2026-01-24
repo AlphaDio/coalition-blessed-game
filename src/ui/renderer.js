@@ -12,6 +12,7 @@ import { EMERGENCY_LAW_DEFINITIONS, getActiveEmergencyLaws, getEmergencyLawCoold
 import { calculateTechPointsPerTick } from '../game/technology.js';
 import { MARKET_CONSTANTS } from '../game/constants.js';
 import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
+import { TECH_BY_ID } from '../game/technologyDefinitions.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -586,7 +587,7 @@ function buildEmergencyMenuItems(state) {
     } else {
       // Show cost preview
       const costs = def.costs_per_tick;
-      const costParts = [`${costs.supplies} sup/t`];
+      const costParts = [`${costs.supplies} req/t`];
       for (const [comm, qty] of Object.entries(costs.commodities || {})) {
         costParts.push(`${qty} ${comm}/t`);
       }
@@ -673,7 +674,7 @@ function buildRequestMenuItems(state) {
     items.push({
       id: `request_${request.id}`,
       label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: `${tierLabel} • ${request.suppliesCost} sup • cap ${request.capacity}${benefitHint}`,
+      hint: `${tierLabel} • ${request.suppliesCost} req • cap ${request.capacity}${benefitHint}`,
       detailLine: formatImprovementDetailLine(request),
       action: 'ACCEPT_REQUEST',
       requestIndex: originalIndex,
@@ -741,37 +742,39 @@ function buildImprovementMenuItems(state) {
   }
 
    filteredRequests.forEach((request) => {
-     const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
-     const tierLabel = request.tier ? `T${request.tier}` : 'T1';
-     const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
+    const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
+    const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+    const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
 
-     const capacityNeeded = buildingCapacity + request.capacity;
-     const capacityOk = capacityNeeded <= state.improvements.maxTotalCapacity;
+    const capacityNeeded = buildingCapacity + request.capacity;
+    const capacityOk = capacityNeeded <= state.improvements.maxTotalCapacity;
 
-     // Check empire budget for supplies cost
-     const empire = state.empires?.find(e => e.id === request.empireId);
-     const empireBudget = empire?.budget_credits || 0;
-     const budgetOk = empireBudget >= request.suppliesCost;
-     const disabled = !capacityOk || !budgetOk;
+    // Check coalition requisition for improvement cost
+    const coalitionRequisition = state.coalitionEconomy?.requisition || 0;
+    const budgetOk = coalitionRequisition >= request.suppliesCost;
+    const disabled = !capacityOk || !budgetOk;
 
-     let hint = `${tierLabel} • ${request.suppliesCost} cr`;
-     if (!capacityOk) {
-       hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
-     } else if (!budgetOk) {
-       hint = `{red-fg}need ${request.suppliesCost} cr (have ${empireBudget}){/red-fg}`;
-     }
+    let hint = `${tierLabel} • ${request.suppliesCost} req`;
+    if (request.requisitionUpkeep) {
+      hint += ` • ${request.requisitionUpkeep}/turn`;
+    }
+    if (!capacityOk) {
+      hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
+    } else if (!budgetOk) {
+      hint = `{red-fg}need ${request.suppliesCost} req (have ${state.coalitionEconomy?.requisition || 0}){/red-fg}`;
+    }
 
-     items.push({
-       id: `request_${request.id}`,
-       label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-       hint: hint,
-       detailLine: formatImprovementDetailLine(request),
-       action: 'ACCEPT_REQUEST',
-       requestIndex: originalIndex,
-       requestId: request.id,
-       disabled
-     });
-   });
+    items.push({
+      id: `request_${request.id}`,
+      label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
+      hint: hint,
+      detailLine: formatImprovementDetailLine(request),
+      action: 'ACCEPT_REQUEST',
+      requestIndex: originalIndex,
+      requestId: request.id,
+      disabled
+    });
+  });
 
   return items;
 }
@@ -1580,9 +1583,9 @@ function renderEmpireDetailView(state, ui) {
    // Show technologies for this empire
    if (empire.technologies && empire.technologies.length > 0) {
      lines.push('', '{bold}Technologies:{/bold}');
-     empire.technologies.forEach(tech => {
-       const techDef = state.techDefinitions?.find(t => t.id === tech.id) || tech;
-       const name = techDef.name || tech.id;
+     empire.technologies.forEach(techId => {
+       const techDef = TECH_BY_ID[techId];
+       const name = techDef?.name || techId;
        lines.push(`  ${name}`);
      });
    }
@@ -2211,8 +2214,15 @@ function formatLawEffects(modifiers) {
 
 function formatImprovementDetailLine(improvement) {
   const detailParts = [];
+
+  // Add description/game hint first
   if (improvement.description) {
     detailParts.push(improvement.description);
+  }
+
+  // Add upkeep info if present
+  if (improvement.requisitionUpkeep) {
+    detailParts.push(`${improvement.requisitionUpkeep} req/turn`);
   }
 
   const sustainKeys = Object.keys(improvement.sustainmentCost || {});
@@ -2264,35 +2274,48 @@ function renderRequestsView(state) {
   }
 
   lines.push('{bold}Available Requests:{/bold}');
-  lines.push('');
 
-   requests.forEach((request) => {
-     lines.push(`{bold}${request.name}{/bold}`);
+   requests.forEach((request, index) => {
+     if (index > 0) lines.push(''); // Single blank line between items
+
+     // Header with name and tier
+     const tierStr = request.tier ? `[T${request.tier}]` : '';
+     lines.push(`{bold}${request.name}{/bold} ${tierStr}`);
+
+     // Description/game hint
      if (request.description) {
        lines.push(`  {white-fg}${request.description}{/white-fg}`);
      }
-     lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} Supplies | Build: {yellow-fg}${request.build}{/yellow-fg}`);
-     lines.push(`  Capacity: ${request.capacity}`);
 
-     const sustainKeys = Object.keys(request.sustainmentCost);
-     if (sustainKeys.length > 0) {
-       const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
-       lines.push(`  Sustainment: {yellow-fg}-${sustainStr}/tick{/yellow-fg}`);
+     // Cost and upkeep info
+     const upkeepStr = request.requisitionUpkeep ? ` | Upkeep: {yellow-fg}${request.requisitionUpkeep}{/yellow-fg} req/turn` : '';
+     lines.push(`  Cost: {red-fg}${request.suppliesCost}{/red-fg} req | Build: {yellow-fg}${request.build}{/yellow-fg} ticks | Capacity: ${request.capacity}${upkeepStr}`);
+
+     // Production and sustainment
+     const infoParts = [];
+
+    const sustainKeys = Object.keys(request.sustainmentCost || {});
+    if (sustainKeys.length > 0) {
+      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
+      infoParts.push(`Sustain: {yellow-fg}-${sustainStr}{/yellow-fg}`);
+    }
+
+    const outputKeys = Object.keys(request.productionOutputs || {});
+    if (outputKeys.length > 0) {
+      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
+      infoParts.push(`Produce: {green-fg}+${outputStr}{/green-fg}`);
+    }
+
+     if (infoParts.length > 0) {
+       lines.push(`  ${infoParts.join(' | ')}`);
      }
 
-     const outputKeys = Object.keys(request.productionOutputs);
-     if (outputKeys.length > 0) {
-       const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
-       lines.push(`  Produces: {green-fg}+${outputStr}/tick{/green-fg}`);
-     }
-
-     const modKeys = Object.keys(request.modifiers);
+     // Modifiers
+     const modKeys = Object.keys(request.modifiers || {});
      if (modKeys.length > 0) {
        const modStr = modKeys.map(k => formatImprovementModifier(k, request.modifiers[k])).join('  ');
        lines.push(`  Modifiers: {cyan-fg}${modStr}{/cyan-fg}`);
      }
-
-    lines.push('');
   });
 
   return lines.join('\n');

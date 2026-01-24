@@ -28,9 +28,9 @@ declares:
         effects:
           coalitionCohesion: -5
           scourgeCohesion: 2
-      - text: "Scorched earth (lose supplies, damage Scourge)"
+      - text: "Scorched earth (lose requisition, damage Scourge)"
         effects:
-          stockpiles:
-            supplies: -150
+          coalitionEconomy:
+            requisition: -150
           scourgeCohesion: -8
 

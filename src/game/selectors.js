@@ -299,6 +299,8 @@ export function expandEffectTargets(effects, context, state) {
       expanded.empireApproval = expandEntityEffects(value, context, 'empire', state);
     } else if (key === 'armyFervor' && value && typeof value === 'object') {
       expanded.armyFervor = expandEntityEffects(value, context, 'army', state);
+    } else if (key === 'empireRelations' && value && typeof value === 'object') {
+      expanded.empireRelations = expandEmpireRelations(value, context, state);
     } else {
       // Pass through non-entity effects
       expanded[key] = value;
@@ -356,6 +358,68 @@ function expandEntityEffects(effectDef, context, entityType, state) {
   }
 
   return result;
+}
+
+/**
+ * Expand empire relations effects - handles from->to empire pairs
+ */
+function expandEmpireRelations(effectDef, context, state) {
+  const result = {};
+
+  for (const [fromTarget, toTargets] of Object.entries(effectDef)) {
+    if (!toTargets || typeof toTargets !== 'object') continue;
+
+    // Get the source empires
+    const fromEmpires = expandRelationTargets(fromTarget, context, state);
+
+    for (const fromEmpire of fromEmpires) {
+      if (!result[fromEmpire.id]) result[fromEmpire.id] = {};
+
+      for (const [toTarget, value] of Object.entries(toTargets)) {
+        // Get the target empires
+        const toEmpires = expandRelationTargets(toTarget, context, state);
+
+        for (const toEmpire of toEmpires) {
+          if (fromEmpire.id !== toEmpire.id) { // Can't have relations to self
+            result[fromEmpire.id][toEmpire.id] = value;
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Expand relation targets (similar to expandEntityEffects but for relations)
+ */
+function expandRelationTargets(target, context, state) {
+  const entities = [];
+
+  if (target.startsWith('$')) {
+    // Reference to context variable
+    const ref = target.slice(1);
+    const refEntities = context[ref];
+
+    if (Array.isArray(refEntities)) {
+      entities.push(...refEntities);
+    } else if (refEntities && refEntities.id) {
+      entities.push(refEntities);
+    }
+  } else if (target === '@all') {
+    // Target all empires
+    entities.push(...(state.empires || []));
+  } else if (target === '@others') {
+    // This is context-dependent for relations, skip for now
+    // (would need more complex logic)
+  } else {
+    // Direct ID reference
+    const empire = state.empires?.find(e => e.id === target);
+    if (empire) entities.push(empire);
+  }
+
+  return entities;
 }
 
 /**

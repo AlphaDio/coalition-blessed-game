@@ -1,7 +1,7 @@
 module:
   id: "event_1"
-  name: "Supply Convoy Attacked"
-  description: "A supply convoy has been ambushed by Scourge forces"
+  name: "Requisition Convoy Attacked"
+  description: "A requisition convoy has been ambushed by Scourge forces"
   version: "1.0.0"
   type: "event"
   category: "crisis"
@@ -9,7 +9,7 @@ module:
 
 metadata:
   author: "Coalition Team"
-  tags: ["supplies", "scourge", "combat"]
+  tags: ["requisition", "scourge", "combat"]
   created_at: "2026-01-16T00:00:00Z"
 
 schema_version: "0.1"
@@ -17,16 +17,16 @@ schema_version: "0.1"
 declares:
   event_data:
     id: "event_1"
-    name: "Supply Convoy Attacked"
-    description: "A supply convoy bound for coalition forces has been ambushed by Scourge forces. How do you respond?"
+    name: "Requisition Convoy Attacked"
+    description: "A requisition convoy bound for coalition forces has been ambushed by Scourge forces. How do you respond?"
     choices:
-      - text: "Send reinforcements (lose supplies, gain approval)"
+      - text: "Send reinforcements (lose requisition, gain approval)"
         effects:
-          stockpiles:
-            supplies: -100
+          coalitionEconomy:
+            requisition: -100
           empireApproval:
             "@all": 5
-      - text: "Abandon convoy (lose approval, save resources)"
+      - text: "Abandon convoy (lose approval, save requisition)"
         effects:
           empireApproval:
             "@all": -10
