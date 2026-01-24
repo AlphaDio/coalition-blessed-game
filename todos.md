@@ -6,7 +6,7 @@ Make the laws enacted give a "color" to the Coalition, pretty much adopting a Sp
 - Biomass -> Increases population
 - Rare Gases -> Increases Research Speed
 - Ancient Relics -> Increases Fervor Contribution to Army Power
-- Solid Ice -> Supply efficiency
+- Plasma Fuel -> Supply efficiency
 - Super Alloys -> Construction
 - Sentient Cores -> Law Progress
 # DONE

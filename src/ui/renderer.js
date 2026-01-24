@@ -758,6 +758,9 @@ function buildImprovementMenuItems(state) {
     if (request.requisitionUpkeep) {
       hint += ` • ${request.requisitionUpkeep}/turn`;
     }
+    // Add benefit details
+    hint += benefitHint;
+
     if (!capacityOk) {
       hint = `{red-fg}cap ${capacityNeeded}/${state.improvements.maxTotalCapacity}{/red-fg}`;
     } else if (!budgetOk) {
@@ -1964,13 +1967,16 @@ function formatArmyBlock(army, empireName, empire = null) {
   const parts = [`{bold}${army.name}{/bold} (${empireName})`];
 
   // Stats line
+  const effectiveProtection = Math.min(1, (army.protection || 0) + (army.protectionBonus || 0));
+  const effectiveResolve = Math.min(1, (army.resolve || 0) + (army.resolveBonus || 0));
+
   const stats = [
     `Fervor: ${formatNumber(army.fervor)}`,
     `Org: ${formatNumber(army.organization)}`,
     `Agg: ${formatNumber(army.aggravation)}`,
     `Cmd: ${formatNumber(army.command || 50)}`,
-    `Prot: ${formatNumber(army.protection || 0)}`,
-    `Res: ${formatNumber(army.resolve || 0)}`,
+    `Prot: ${formatNumber(effectiveProtection * 100, 1)}%`,
+    `Res: ${formatNumber(effectiveResolve * 100, 1)}%`,
     `Kill: ${formatNumber((army.killRate || 0.1) * 100, 1)}%`
   ];
   parts.push(`  ${stats.join(', ')}`);

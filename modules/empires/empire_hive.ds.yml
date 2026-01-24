@@ -34,7 +34,7 @@ declares:
     stats:
       population: 1600
       influence: 55
-      tech_rate_bonus: 0.01
+      tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
           genomes: 0.0025

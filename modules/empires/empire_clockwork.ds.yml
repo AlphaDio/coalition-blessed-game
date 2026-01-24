@@ -34,7 +34,7 @@ declares:
     stats:
       population: 300
       influence: 80
-      tech_rate_bonus: 0.20
+      tech_rate_bonus: 0.40
       production:
         outputs_per_tick:
           quantum_circuits: 0.000025

@@ -33,7 +33,7 @@ declares:
     stats:
       population: 800
       influence: 70
-      tech_rate_bonus: 0.15
+      tech_rate_bonus: 0.30
       production:
         outputs_per_tick:
           solid_ice: 0.0625

@@ -28,12 +28,45 @@ The economy system simulates a market-based supply/demand loop with coalition pr
 - In shortage (supply < demand), each buyer receives `needed * (supply / demand)`.
 - `traded_qty` records total executed volume for the tick.
 
-## Procurement and Budgeting
+## Coalition Procurement System
+The coalition maintains a separate procurement system for acquiring commodities that are converted into **requisition** for building improvements.
+
+### Procurement Mechanics
 - Coalition procurement scans sell offers (excluding coalition sellers) sorted by ask price.
 - Each commodity uses a priority threshold (`theta`) derived from tier defaults or coalition overrides.
-- Purchases stop when budget is exhausted; spent amount is deducted from `budget_credits`.
-- Default budget per tick is `budget_credits_per_tick` (100 by config), with a fixed starting coalition budget of 5,000 credits.
-- The fixed starting budget is defined in `COALITION_ECONOMY.INITIAL_BUDGET` for consistency with code defaults.
+- Purchases stop when budget is exhausted; spent amount is deducted from `treasury_credits` and `allowance_credits`.
+- Allowance credits refill at 1000 credits per tick, capped at 4 ticks worth (4000 credits).
+- Reserve floor prevents spending below 1500 treasury credits.
+
+### Procurement Configuration
+- **Spend Throttle**: 0.8 (80% of available spending capacity)
+- **Theta Presets**: Per-commodity price thresholds (Balanced, Aggressive, Conservative)
+- **Priority**: Coalition buys use commodity-specific theta multipliers
+
+### Requisition System
+Requisition is the coalition's construction currency, produced by converting purchased commodities.
+
+#### Bank Mechanics
+- **Stockpile Bank**: Accumulates purchased commodities
+- **Stockpile Ready**: Commodities moved here when bank reaches threshold (1000 units)
+- **Bank**: Final conversion destination using milli-unit precision
+
+#### Conversion Process
+1. Commodities accumulate in `stockpile_bank`
+2. When bank reaches 1000+ units, commodities move to `stockpile_ready`
+3. Ready commodities convert to bank units in batches of 1000 units
+4. Conversion rates: T1 commodities = 1000 milli-units, T2 = 100, T3 = 10 per unit
+
+#### Bank Rollover
+- When bank reaches 25,000 milli-units, it converts to **requisition**
+- Each rollover produces 24 requisition units
+- Bank resets to 0 after rollover
+- Batch conversion bonus: additional milli-units per conversion batch
+
+### Starting Resources
+- **Initial Requisition**: 500 units for basic improvement construction
+- **Treasury Credits**: 0 (refills through allowance system)
+- **Allowance Credits**: 0 (refills at 1000 per tick)
 
 ## Army Fulfillment
 - Needs penalties kick in below the fulfillment threshold (default 0.80).
@@ -42,23 +75,27 @@ The economy system simulates a market-based supply/demand loop with coalition pr
 - Fulfillment ratios are stored in `army.supply_state`.
 
 ## Data Flow
-- Inputs: commodity definitions, economy config, buy/sell orders.
-- Tick: update market state → compute target prices → smooth/clamp → clear orders.
-- Post-clear: run coalition procurement → update coalition stockpiles/budget.
-- Final: compute army fulfillment → update `army.performance.current`.
+- **Market Phase**: commodity definitions, economy config, buy/sell orders → update market state → compute target prices → smooth/clamp → clear orders
+- **Procurement Phase**: coalition procurement from post-clear surplus → add to stockpile_bank
+- **Conversion Phase**: stockpile_bank → stockpile_ready → bank → requisition (via rollover)
+- **Fulfillment Phase**: compute army fulfillment → update `army.performance.current`
 
 ## Key Data
-- Market state: `price`, `last_price`, `floor_price`, `demand_qty`, `supply_qty`, `traded_qty`, `volatility_index`.
-- Orders: buy orders (`max_price`, `priority`, `filled_qty`) and sell offers (`ask_price`, `priority`, `filled_qty`).
-- Procurement: per-commodity priority thresholds derived from tier defaults and coalition overrides.
+- **Market state**: `price`, `last_price`, `floor_price`, `demand_qty`, `supply_qty`, `traded_qty`, `volatility_index`
+- **Orders**: buy orders (`max_price`, `priority`, `filled_qty`) and sell offers (`ask_price`, `priority`, `filled_qty`)
+- **Procurement**: per-commodity theta presets, spend throttle, allowance credits, treasury credits
+- **Requisition System**: stockpile_bank, stockpile_ready, bank (milli-units), requisition, rollover mechanics
 
 ## Integration Points
-- `src/game/marketEconomy.js` handles pricing, market clearing, procurement, and fulfillment.
-- `src/game/constants.js` defines coalition budget defaults mirrored in docs.
-- `docs/input/economy_system.yaml` configures pricing parameters and procurement behavior.
-- `docs/input/resources.yaml` supplies commodity metadata and tiers.
+- `src/game/marketEconomy.js` handles pricing, market clearing, and fulfillment
+- `src/game/coalitionProcurement.js` manages coalition procurement and requisition conversion
+- `src/game/constants.js` defines coalition budget defaults
+- `docs/input/economy_system.yaml` configures pricing parameters and procurement behavior
+- `docs/input/resources.yaml` supplies commodity metadata and tiers
+- `src/game/improvements/engine.js` consumes requisition for building improvements
 
 ## Files
-- `src/game/marketEconomy.js`
-- `docs/input/economy_system.yaml`
-- `docs/input/resources.yaml`
+- `src/game/marketEconomy.js` - Market pricing and clearing
+- `src/game/coalitionProcurement.js` - Coalition procurement and requisition
+- `docs/input/economy_system.yaml` - Economy configuration
+- `docs/input/resources.yaml` - Commodity definitions

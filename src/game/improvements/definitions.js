@@ -220,7 +220,7 @@ const RESEARCH_BRANCH = [
 /**
  * MILITARY BRANCH
  * Focus: Combat effectiveness, army management
- * Thematic Resource: Solid Ice -> Supply Efficiency
+ * Thematic Resource: Plasma Fuel -> Supply Efficiency
  */
 const MILITARY_BRANCH = [
     // T1: Basic military
@@ -813,8 +813,8 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
       const tierWeight = SUGGESTION_WEIGHTS[tier] || 1;
       tierRequests.forEach(req => {
         // Check if this definition is already requested or active for any empire
-        const existingRequest = state.improvements.requests.find(r => r.definitionId === req.id);
-        const active = state.improvements.queue.find(q => q.definitionId === req.id);
+        const existingRequest = state.improvements.requests.find(r => r.id === req.id);
+        const active = state.improvements.queue.find(q => q.requestId === req.id);
         if (!existingRequest && !active) {
           // Check requiresNoArmy condition
           if (req.requiresNoArmy) {

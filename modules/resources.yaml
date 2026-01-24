@@ -57,7 +57,7 @@ resources:
       notes: "Organics for foodstock, biofuels, basic bioprocessing."
 
     - key: solid_ice
-      name: "Solid Ice"
+      name: "Plasma Fuel"
       tier: t1
       floor_price: 0.05
       tags: [logistics, coolant, life_support]

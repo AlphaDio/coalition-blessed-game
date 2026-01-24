@@ -15,12 +15,13 @@ The Improvements system implements a deterministic, queue-based infrastructure m
 ### Improvement Requests
 Available improvements that can be started. Each request defines:
 - **Name & Description**: Display information
-- **Supplies Cost**: Paid upfront when accepted (no refunds on cancellation)
+- **Requisition Cost**: Paid upfront when accepted (no refunds on cancellation)
 - **Build Duration**: Number of turns to complete construction
 - **Capacity & Potency**: Concurrency metrics that limit total active improvements
 - **Sustainment Cost**: Resources consumed per tick to keep improvement active
 - **Production Outputs**: Resources produced per tick when active
 - **Modifiers**: Stat bonuses applied to empires/armies
+- **Requisition Upkeep**: Ongoing requisition cost per tick
 - **Tags**: Categorization for filtering and effects
 
 ### Improvement Queue
@@ -181,17 +182,17 @@ These epic mega-structures and grand events represent the peak of civilization's
 ## Acceptance Rules
 
 ### Prerequisites
-1. Sufficient Supplies in coalition stockpile
+1. Sufficient requisition in coalition economy
 2. Not exceeding max total capacity for BUILDING improvements
 
 ### On Acceptance
-- Supplies deducted immediately
+- Requisition deducted immediately from coalition economy
 - Improvement added to queue in BUILDING state
 - Build progress starts at 0
 
 ### On Cancellation
 - Improvement removed from queue
-- No refund of Supplies
+- No refund of requisition
 - BUILDING capacity limit is recalculated after removal
 
 ## Degradation Mechanics
@@ -256,16 +257,20 @@ npm run test:improvements
 ## Integration Points
 
 ### Files
-- `src/game/improvements.js`: Core system logic
-- `src/game/types.js`: State initialization
+- `src/game/improvements/definitions.js`: Improvement catalog and tier system
+- `src/game/improvements/engine.js`: Core system logic and queue management
+- `src/game/improvements/index.js`: Main exports and initialization
+- `src/game/improvements/types.js`: Type definitions and constants
+- `src/game/improvements/ui.js`: UI components and rendering
+- `src/game/coalitionProcurement.js`: Requisition system integration
 - `src/game/turn.js`: Turn loop integration
 - `src/ui/renderer.js`: UI rendering (Requests/Improvements views)
 - `src/ui/input.js`: Keyboard handlers
-- `index.js`: System initialization
 
 ### Dependencies
-- Economy system: For stockpiles and market orders
-- Empire system: For ownership and budgets
+- Economy system: For market orders and fulfillment
+- Coalition Procurement system: For requisition management and bank conversion
+- Empire system: For ownership and stat modifiers
 - Turn system: For tick processing
 - Logger: For debug/info messages
 
