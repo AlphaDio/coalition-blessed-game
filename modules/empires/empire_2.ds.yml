@@ -53,6 +53,11 @@ declares:
           effect:
             type: population_percent
             amount: 1
+        genomes:
+          threshold: 100000
+          effect:
+            type: population_percent
+            amount: 0.1
         ancient_relics:
           threshold: 1000
           effect:
@@ -84,7 +89,7 @@ declares:
             type: army_kill_rate_bonus
             amount: 0.05
         plasma_fuel:
-          threshold: 1000
+          threshold: 10000
           effect:
             type: industrial_output_bonus
             amount: 0.05

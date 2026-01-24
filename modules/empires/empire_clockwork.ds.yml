@@ -59,7 +59,7 @@ declares:
             type: army_kill_rate_bonus
             amount: 0.05
         plasma_fuel:
-          threshold: 1000
+          threshold: 10000
           effect:
             type: industrial_output_bonus
             amount: 0.05

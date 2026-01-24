@@ -84,7 +84,7 @@ declares:
             type: coalition_construction_bonus
             amount: 1
         plasma_fuel:
-          threshold: 1000
+          threshold: 10000
           effect:
             type: industrial_output_bonus
             amount: 0.05

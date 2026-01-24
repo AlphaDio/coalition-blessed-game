@@ -74,7 +74,9 @@ function createScourgeArmy(state, idSuffix) {
   const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
   const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
   const fervorMPBonus = state.scourgeFervor * 50;
-  const totalMP = baseMP + fervorMPBonus;
+  // Manpower increases exponentially as cohesion drops
+  const cohesionMultiplier = Math.exp((100 - state.scourgeCohesion) / 25);
+  const totalMP = (baseMP + fervorMPBonus) * cohesionMultiplier;
 
   const scourgeArmy = {
     id: scourgeId,
