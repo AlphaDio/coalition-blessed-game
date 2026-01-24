@@ -32,7 +32,7 @@ declares:
       stoicist_hedonistic: -0.7
       essentialist_constructivist: -0.8
     stats:
-      population: 450
+      population: 1600
       influence: 55
       tech_rate_bonus: 0.01
       production:
@@ -95,6 +95,11 @@ declares:
           effect:
             type: research_speed_bonus
             amount: 0.1
+        anti_grav_modules:
+          threshold: 1000
+          effect:
+            type: coalition_construction_bonus
+            amount: 1
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15

@@ -31,7 +31,7 @@ declares:
       stoicist_hedonistic: 0.4
       essentialist_constructivist: 0.5
     stats:
-      population: 400
+      population: 800
       influence: 70
       tech_rate_bonus: 0.15
       production:
@@ -92,6 +92,11 @@ declares:
           effect:
             type: research_speed_bonus
             amount: 0.1
+        anti_grav_modules:
+          threshold: 1000
+          effect:
+            type: coalition_construction_bonus
+            amount: 1
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:
       intensity: 0.95

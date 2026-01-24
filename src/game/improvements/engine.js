@@ -9,6 +9,7 @@
  */
 
 import { getLogger } from '../../modules/logger.js';
+import { IMPROVEMENTS_CONSTANTS } from '../constants.js';
 import { createArmy } from '../types.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
@@ -149,7 +150,7 @@ export function initializeImprovementsState() {
     completed: [], // Archive of completed/removed improvements
 
     // Capacity limit (applies only to BUILDING improvements)
-    maxTotalCapacity: 5,
+    maxTotalCapacity: 4,
 
     // Current utilization (BUILDING only)
     currentCapacity: 0
@@ -607,7 +608,7 @@ export function applyImprovementModifiers(state) {
       } else if (stat === 'improvement_queue_capacity') {
         // Increase coalition improvement queue capacity
         if (!state.improvements.maxTotalCapacity) {
-          state.improvements.maxTotalCapacity = 6;
+          state.improvements.maxTotalCapacity = IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY;
         }
         state.improvements.maxTotalCapacity += value;
       }

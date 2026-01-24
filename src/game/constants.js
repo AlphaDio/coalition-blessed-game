@@ -130,3 +130,8 @@ export const TECH_CONSTANTS = {
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
   TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
 };
+
+export const IMPROVEMENTS_CONSTANTS = {
+  INITIAL_MAX_TOTAL_CAPACITY: 6,     // Starting maximum total improvement capacity
+  COALITION_CONSTRUCTION: 4          // Build progress added to ALL building improvements per tick
+};

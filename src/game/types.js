@@ -1,5 +1,5 @@
 // Type definitions and initializers
-import { TECH_CONSTANTS } from './constants.js';
+import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS } from './constants.js';
 
 // Coalition procurement constants
 export const THETA_PRESETS = {
@@ -476,7 +476,7 @@ export function createGameState(seed = 0) {
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
     
     // Improvements system
-    coalitionConstruction: 40, // Build progress added to ALL building improvements per tick (×10 for testing)
+    coalitionConstruction: IMPROVEMENTS_CONSTANTS.COALITION_CONSTRUCTION, // Build progress added to ALL building improvements per tick
     improvements: null // Improvements queue and requests (initialized in index.js)
   };
 }

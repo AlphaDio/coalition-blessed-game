@@ -32,7 +32,7 @@ declares:
       stoicist_hedonistic: -0.2
       essentialist_constructivist: 0.7
     stats:
-      population: 150
+      population: 300
       influence: 80
       tech_rate_bonus: 0.20
       production:
@@ -80,6 +80,11 @@ declares:
           effect:
             type: army_protection_bonus
             amount: 0.2
+        anti_grav_modules:
+          threshold: 1000
+          effect:
+            type: coalition_construction_bonus
+            amount: 1
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0

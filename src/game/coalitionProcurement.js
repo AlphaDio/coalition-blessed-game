@@ -15,7 +15,7 @@ const logger = getLogger();
  * Coalition allowance and procurement settings
  */
 export const ALLOWANCE_PER_TICK = 1000;
-export const ALLOWANCE_CAP_TICKS = 6;
+export const ALLOWANCE_CAP_TICKS = 4;
 export const RESERVE_FLOOR_CREDITS = 1500;
 export const BANK_THRESHOLD = 1000; // Units needed in bank before conversion triggers
 export const BANK_ROLLOVER_THRESHOLD = 25000; // When bank reaches this, convert to requisition

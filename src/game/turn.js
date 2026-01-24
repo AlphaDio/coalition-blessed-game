@@ -595,6 +595,11 @@ function processEmpireStockpileConsumption(state, log) {
         } else if (effect.type === 'empire_approval_bonus') {
           empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + effect.amount;
           log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} approval bonus (until next scourge battle)`);
+        } else if (effect.type === 'coalition_construction_bonus') {
+          const increments = Math.floor(consumed / threshold);
+          const bonus = increments * effect.amount;
+          state.coalitionConstruction = (state.coalitionConstruction || 0) + bonus;
+          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${bonus} coalition construction (permanent)`);
         }
       }
     }

@@ -31,7 +31,7 @@ declares:
       stoicist_hedonistic: 0.2
       essentialist_constructivist: -0.5
     stats:
-      population: 450
+      population: 900
       influence: 55
       tech_rate_bonus: 0.05
       production:
@@ -68,6 +68,11 @@ declares:
           effect:
             type: army_resolve_bonus
             amount: 0.1
+        anti_grav_modules:
+          threshold: 1000
+          effect:
+            type: coalition_construction_bonus
+            amount: 1
         sentient_cores:
           threshold: 1000
           effect:
