@@ -55,7 +55,7 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { super_alloys: 0.008 },
         modifiers: { industrial_output: 0.02 },
         tags: ['industrial', 'production', 'orbital'],
-        requisitionUpkeep: 1
+        requisitionUpkeep: 2
       }
     ),
 
@@ -73,7 +73,7 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { plasma_fuel: 1, requisition: 1 },
         modifiers: {},
         tags: ['industrial', 'requisition', 'conversion'],
-        requisitionUpkeep: 1
+        requisitionUpkeep: 2
       }
     ),
 
@@ -91,7 +91,7 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { rare_gases: 0.05, plasma_fuel: 0.03 },
         modifiers: {},
        tags: ['industrial', 'mining', 'automated'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
     ),
 
@@ -109,7 +109,7 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { requisition: 1 },
         modifiers: {},
         tags: ['industrial', 'requisition', 'administration'],
-        requisitionUpkeep: 1
+        requisitionUpkeep: 2
       }
     ),
 
@@ -174,7 +174,7 @@ const RESEARCH_BRANCH = [
        productionOutputs: {},
        modifiers: { research_speed: 0.15 },
        tags: ['research', 'facility'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -238,7 +238,7 @@ const MILITARY_BRANCH = [
        productionOutputs: {},
        modifiers: { army_organization: 1 },
        tags: ['military', 'training', 'organization'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -256,7 +256,7 @@ const MILITARY_BRANCH = [
         productionOutputs: {},
         modifiers: { army_fervor: 1 },
         tags: ['military', 'propaganda', 'fervor'],
-        requisitionUpkeep: 1
+        requisitionUpkeep: 2
       }
     ),
 
@@ -274,7 +274,7 @@ const MILITARY_BRANCH = [
        productionOutputs: {},
        modifiers: { supply_efficiency: 0.05 },
        tags: ['military', 'logistics'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -338,7 +338,7 @@ const CULTURAL_BRANCH = [
         productionOutputs: { biomass: 0.05 },
         modifiers: { population_growth: 0.5 },
        tags: ['cultural', 'agriculture', 'food'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -356,7 +356,7 @@ const CULTURAL_BRANCH = [
       productionOutputs: {},
       modifiers: { empire_approval: 5, population_growth: 1 },
       tags: ['cultural', 'social'],
-      requisitionUpkeep: 1
+      requisitionUpkeep: 2
     }
   ),
 
@@ -418,7 +418,7 @@ const ECONOMIC_BRANCH = [
        productionOutputs: {},
        modifiers: { trade_income: 20 },
       tags: ['economic', 'trade'],
-      requisitionUpkeep: 1
+      requisitionUpkeep: 2
     }
   ),
 
@@ -482,7 +482,7 @@ const SPIRITUAL_BRANCH = [
        productionOutputs: { ancient_relics: 1 },
        modifiers: { army_fervor: 3 },
        tags: ['spiritual', 'morale', 'relics'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -546,7 +546,7 @@ const GOVERNANCE_BRANCH = [
        productionOutputs: {},
        modifiers: { law_progress_speed: 0.03, improvement_queue_capacity: 1 },
        tags: ['governance', 'administration'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -612,7 +612,7 @@ const RESOURCE_BRANCH = [
        productionOutputs: { plasma_fuel: 0.25 },
        modifiers: {},
        tags: ['resource', 'passive', 'extraction'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -630,7 +630,7 @@ const RESOURCE_BRANCH = [
         productionOutputs: { super_alloys: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'production'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -648,7 +648,7 @@ const RESOURCE_BRANCH = [
        productionOutputs: { genomes: 0.03 },
        modifiers: {},
        tags: ['resource', 'passive', 'research'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -667,7 +667,7 @@ const RESOURCE_BRANCH = [
        productionOutputs: { genomes: 3 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    ),
 
@@ -685,7 +685,7 @@ const RESOURCE_BRANCH = [
        productionOutputs: { rare_gases: 0.3 },
        modifiers: {},
        tags: ['resource', 'passive', 'mining'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 2
      }
    )
  ];

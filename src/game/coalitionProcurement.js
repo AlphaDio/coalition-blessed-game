@@ -18,7 +18,7 @@ export const ALLOWANCE_PER_TICK = 1000;
 export const ALLOWANCE_CAP_TICKS = 4;
 export const RESERVE_FLOOR_CREDITS = 1500;
 export const BANK_THRESHOLD = 1000; // Units needed in bank before conversion triggers
-export const BANK_ROLLOVER_THRESHOLD = 25000; // When bank reaches this, convert to requisition
+export const BANK_ROLLOVER_THRESHOLD = 75000; // When bank reaches this, convert to requisition
 export const ROLLOVER_REQUISITION_MULTIPLIER = 24; // Requisition gained per rollover
 export const STARTING_REQUISITION = 500; // Initial requisition for improvement construction
 
@@ -246,36 +246,22 @@ export function executeSupplyConversion(coalitionEconomy, config) {
     const unitsPerBatch = MILLI_PER_UNIT_BY_TIER[tier];
 
     const convertQty = Math.floor(readyQty / BATCH_SIZE_UNITS) * BATCH_SIZE_UNITS;
-    const gainBank = convertQty * unitsPerBatch;
+    const baseGain = convertQty * unitsPerBatch;
+
+    // Diminishing returns: efficiency decreases as requisition accumulates
+    const REQUISITION_HALF_EFFICIENCY = 1000;  // At 1000 req, efficiency is 50%
+    const currentRequisition = coalitionEconomy.requisition || 0;
+    const efficiency = REQUISITION_HALF_EFFICIENCY / (REQUISITION_HALF_EFFICIENCY + currentRequisition);
+    const effectiveGain = Math.floor(baseGain * efficiency);
 
     coalitionEconomy.stockpile_ready[commodityId] -= convertQty;
-    coalitionEconomy.bank += gainBank;
+    coalitionEconomy.bank += effectiveGain;
     totalConvertedUnits += convertQty;
     hasAnyConversion = true;
 
-    conversionsByCommodity[commodityId] = (conversionsByCommodity[commodityId] || 0) + gainBank;
+    conversionsByCommodity[commodityId] = (conversionsByCommodity[commodityId] || 0) + effectiveGain;
   }
 
-  // If any conversion occurred, empty ALL remaining stockpiles
-  if (hasAnyConversion) {
-    let totalEmptied = 0;
-
-    // Empty stockpile_ready (remaining amounts)
-    if (coalitionEconomy.stockpile_ready) {
-      totalEmptied += Object.values(coalitionEconomy.stockpile_ready).reduce((sum, qty) => sum + qty, 0);
-      coalitionEconomy.stockpile_ready = {};
-    }
-
-    // Empty stockpile_bank (any remaining amounts that didn't reach threshold)
-    if (coalitionEconomy.stockpile_bank) {
-      totalEmptied += Object.values(coalitionEconomy.stockpile_bank).reduce((sum, qty) => sum + qty, 0);
-      coalitionEconomy.stockpile_bank = {};
-    }
-
-    if (totalEmptied > 0) {
-      logger.debug(`Stockpile emptied: ${totalEmptied} units cleared on conversion`);
-    }
-  }
 
    // Add batch conversion bonus
    const batchBonus = Math.floor(totalConvertedUnits / BATCH_SIZE_UNITS) * BATCH_BONUS_MILLI;

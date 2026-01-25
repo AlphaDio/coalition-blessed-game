@@ -22,10 +22,10 @@ export const COMMODITY_DEFINITIONS = {
 };
 
 export const MILLI_PER_UNIT_BY_TIER = {
-  T1: 10,
-  T2: 20,
-  T3: 50,
-  T4: 100
+  T1: 3,
+  T2: 6,
+  T3: 15,
+  T4: 30
 };
 
 export const BATCH_SIZE_UNITS = 100;

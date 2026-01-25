@@ -758,7 +758,28 @@ function buildImprovementMenuItems(state) {
     if (request.requisitionUpkeep) {
       hint += ` • ${request.requisitionUpkeep}/turn`;
     }
+
     // Add benefit details
+    const benefitParts = [];
+    const sustainKeys = Object.keys(request.sustainmentCost || {});
+    if (sustainKeys.length > 0) {
+      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
+      benefitParts.push(`-${sustainStr}`);
+    }
+
+    const outputKeys = Object.keys(request.productionOutputs || {});
+    if (outputKeys.length > 0) {
+      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
+      benefitParts.push(`+${outputStr}`);
+    }
+
+    const modKeys = Object.keys(request.modifiers || {});
+    if (modKeys.length > 0) {
+      const modStr = modKeys.map(k => formatImprovementModifier(k, request.modifiers[k])).join('  ');
+      benefitParts.push(modStr);
+    }
+
+    const benefitHint = benefitParts.length > 0 ? ` • ${benefitParts.join(' -> ')}` : '';
     hint += benefitHint;
 
     if (!capacityOk) {
