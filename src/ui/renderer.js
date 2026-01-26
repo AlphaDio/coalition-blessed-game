@@ -587,7 +587,7 @@ function buildEmergencyMenuItems(state) {
     } else {
       // Show cost preview
       const costs = def.costs_per_tick;
-      const costParts = [`${costs.supplies} req/t`];
+      const costParts = [`${costs.requisition} req/t`];
       for (const [comm, qty] of Object.entries(costs.commodities || {})) {
         costParts.push(`${qty} ${comm}/t`);
       }
