@@ -18,19 +18,22 @@ declares:
   event_data:
     id: "event_4"
     name: "Scourge Advance"
-    description: "Scourge forces are advancing on a Nexus Dominion relay station."
+    description: "Scourge forces are advancing on a Nexus Dominion relay station. Our scouts report information on their attacking formations and supply lines."
     choices:
-      - text: "Stand and fight (battle risk, potential victory)"
+      - text: "Stand and fight (learn from combat engagement)"
         effects:
           coalitionCohesion: -3
           scourgeCohesion: -5
-      - text: "Tactical retreat (lose cohesion, save forces)"
+          scourgePredictionConfidence: 0.15
+      - text: "Tactical retreat (preserve forces and knowledge)"
         effects:
           coalitionCohesion: -5
           scourgeCohesion: 2
-      - text: "Scorched earth (lose requisition, damage Scourge)"
+          scourgePredictionConfidence: 0.1
+      - text: "Scorched earth (extreme measures, massive intelligence gain)"
         effects:
           coalitionEconomy:
             requisition: -150
           scourgeCohesion: -8
+          scourgePredictionConfidence: 0.4
 

@@ -5,6 +5,7 @@ import { getLogger } from '../modules/logger.js';
 import { resolveEventVariables, expandEffectTargets, interpolateText } from './selectors.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { handleTechEventChoice } from './technology.js';
+import { boostScourgePredictionConfidence } from './scourgePrediction.js';
 
 
 export function checkEvent(state, rng = Math.random) {
@@ -193,8 +194,21 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       Object.entries(expandedEffects.armyFervor).forEach(([armyId, change]) => {
         const army = state.armies.find(a => a.id === armyId);
         if (army) {
-          army.fervor = clampStat(army.fervor + change);
-          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${change}`);
+          // Add as a timed fervor bonus instead of direct fervor change
+          if (!army.timedFervorBonuses) {
+            army.timedFervorBonuses = [];
+          }
+          
+          // Fervor bonuses from events expire at the next scourge battle
+          // Use a very high expiresAt value to ensure they last until scourge battle
+          army.timedFervorBonuses.push({
+            amount: change,
+            expiresAt: Number.MAX_SAFE_INTEGER, // Expires at next scourge battle
+            source: `Event: ${event.title || event.id}`,
+            appliedAt: state.turn
+          });
+          
+          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${change} (until next scourge battle)`);
         }
       });
     }
@@ -262,6 +276,20 @@ export function handleEventChoice(state, eventId, choiceIndex) {
           }
         }
       });
+    }
+
+    // Handle Scourge prediction confidence boost
+    if (expandedEffects.scourgePredictionConfidence !== undefined) {
+      const confidenceBoost = typeof expandedEffects.scourgePredictionConfidence === 'function' 
+        ? expandedEffects.scourgePredictionConfidence() 
+        : expandedEffects.scourgePredictionConfidence;
+      
+      if (state.scourgePrediction) {
+        boostScourgePredictionConfidence(state, confidenceBoost);
+        const newLevel = state.scourgePrediction.confidenceLevel;
+        const direction = confidenceBoost >= 0 ? '+' : '';
+        log.push(`Scourge prediction confidence ${direction}${confidenceBoost.toFixed(2)} (now ${newLevel.toUpperCase()})`);
+      }
     }
   }
   

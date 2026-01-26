@@ -1,0 +1,33 @@
+module:
+  id: "event_scourge_scouts_report"
+  name: "Scout Report on Scourge Movement"
+  description: "Coalition scouts have gathered intelligence on Scourge movements"
+  version: "1.0.0"
+  type: "event"
+  category: "intelligence"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["scourge", "intelligence", "reconnaissance"]
+  created_at: "2026-01-26T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_scourge_scouts_report"
+    name: "Scout Report on Scourge Movement"
+    description: "Coalition reconnaissance teams have detected Scourge force movements. Our scouts have gathered valuable intelligence about their likely next targets and timing."
+    choices:
+      - text: "Analyze intelligence thoroughly (boost prediction confidence)"
+        effects:
+          scourgePredictionConfidence: 0.3
+          armyFervor:
+            "@all": 5
+      - text: "Conserve scout resources (small confidence boost, minimal cost)"
+        effects:
+          scourgePredictionConfidence: 0.1
+      - text: "Ignore reports and focus on defense (no benefit)"
+        effects:
+          coalitionCohesion: 2

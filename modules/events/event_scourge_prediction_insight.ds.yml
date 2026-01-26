@@ -1,0 +1,35 @@
+module:
+  id: "event_scourge_prediction_insight"
+  name: "Strategic Insight into Scourge Patterns"
+  description: "Military analysts have identified patterns in Scourge attack strategies"
+  version: "1.0.0"
+  type: "event"
+  category: "military"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["scourge", "strategic", "analysis"]
+  created_at: "2026-01-26T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "event_scourge_prediction_insight"
+    name: "Strategic Insight into Scourge Patterns"
+    description: "After analyzing numerous Scourge engagements, our military analysts believe they have identified patterns in the enemy's decision-making. This knowledge could help predict their next moves."
+    choices:
+      - text: "Distribute insights to all empires (major confidence boost)"
+        effects:
+          scourgePredictionConfidence: 0.4
+          empireApproval:
+            "@all": 5
+      - text: "Share with core allies only (moderate confidence boost)"
+        effects:
+          scourgePredictionConfidence: 0.2
+      - text: "Classify for exclusive use (boost but reduce collaboration)"
+        effects:
+          scourgePredictionConfidence: 0.25
+          empireApproval:
+            "@all": -3
