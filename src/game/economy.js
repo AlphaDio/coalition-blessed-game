@@ -46,7 +46,7 @@ export function consumeRequisition(state) {
 
 /**
  * Applies cohesion penalty based on negative requisition
- * For every 100 points of negative requisition, reduces cohesion by 1 point
+ * For every 250 points of negative requisition, reduces cohesion by 1 point
  * @param {Object} state - The game state
  * @returns {Object} { log: string[], cohesionLoss: number } - Log messages and cohesion loss amount
  */
@@ -57,8 +57,8 @@ export function applyNegativeRequisitionCohesionPenalty(state) {
   const requisition = state.coalitionEconomy?.requisition || 0;
   
   if (requisition < 0) {
-    // For every 100 points of negative requisition, reduce cohesion by 1
-    const cohesionLoss = Math.abs(requisition) / 100;
+    // Apply cohesion penalty based on configurable constant
+    const cohesionLoss = Math.abs(requisition) / ECONOMY_CONSTANTS.NEGATIVE_REQUISITION_COHESION_DIVISOR;
     const prevCohesion = state.coalitionCohesion;
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
     
