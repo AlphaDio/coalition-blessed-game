@@ -1692,7 +1692,6 @@ function renderEmpireDetailView(state, ui) {
    if (empire.stats) {
      const statParts = [];
      statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
-     statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
      if (empire.stats.tech_rate_bonus) {
        statParts.push(`Tech Bonus: +${formatNumber(empire.stats.tech_rate_bonus * 100, 0)}%`);
      }
@@ -2243,7 +2242,6 @@ function formatEmpireBlock(empire, regularArmies, state) {
   const statParts = [];
   if (empire.stats) {
     statParts.push(`Population: ${formatNumber(empire.stats.population || 0)}`);
-    statParts.push(`Influence: ${formatNumber(empire.stats.influence || 0)}`);
   }
   if (empire.budget_credits !== undefined) {
     statParts.push(`Budget: {green-fg}${formatNumber(empire.budget_credits, 0)}{/green-fg}`);

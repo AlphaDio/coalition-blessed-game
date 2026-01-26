@@ -29,7 +29,6 @@ values:                          # Position on each axis [-1..+1]
 
 stats:
   population: 1200              # Empire size/manpower
-  influence: 65                 # Galactic leverage
 
 tags: ["Industrial", "Federation"]  # Identity traits
 
@@ -112,7 +111,7 @@ Convert reaction to approval change:
 
 Scaled by empire pressure:
 ```
-pressure = influence * (population ^ 0.5)
+pressure = population ^ 0.5
 approval_change = base_change * log_scale(pressure)
 ```
 

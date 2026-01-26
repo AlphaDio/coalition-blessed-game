@@ -96,7 +96,7 @@ function applyEmergencyModifiers(state, modifiers, log) {
 function applyBasePopulationGrowth(state) {
   if (!state.empires) return;
   state.empires.forEach(empire => {
-    if (!empire.stats) empire.stats = { population: MIN_POPULATION, influence: 50 };
+    if (!empire.stats) empire.stats = { population: MIN_POPULATION };
     const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : MIN_POPULATION;
     if (currentPopulation <= 0) {
       empire.stats.population = MIN_POPULATION;

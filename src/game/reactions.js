@@ -75,11 +75,10 @@ export function calculateReaction(empire, law) {
   // 4. Convert to discrete reaction
   const reaction = getReactionTier(score);
 
-  // 5. Calculate power/pressure
+  // 5. Calculate power/pressure (based on population only)
   const population = empire.stats?.population || 1000;
-  const influence = empire.stats?.influence || 50;
   const popExponent = REACTION_CONSTANTS.POWER_SCALING.POP_EXPONENT;
-  const pressure = influence * Math.pow(population, popExponent);
+  const pressure = Math.pow(population, popExponent);
 
   return {
     alignment,

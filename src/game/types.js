@@ -50,7 +50,6 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     values: values,
     stats: {
       population: stats.population || 1000,
-      influence: stats.influence || 50,
       tech_rate_bonus: stats.tech_rate_bonus || 0,
       researchSpeedBonus: 0,
       approvalBonus: 0
