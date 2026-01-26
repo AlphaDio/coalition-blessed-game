@@ -619,67 +619,191 @@ function buildEmergencyMenuItems(state) {
   return items;
 }
 
+/**
+ * Build a comprehensive improvement requests view from scratch
+ * Displays categorized improvement suggestions with full details
+ */
 function buildRequestMenuItems(state) {
   const items = [
     { id: 'back', label: '← Back', hint: '[ESC]', action: 'SWITCH_MODE', mode: 'main' }
   ];
 
-  if (!state.improvements || !state.improvements.requests || state.improvements.requests.length === 0) {
-    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+  // Validate data
+  if (!state.improvements || !state.improvements.requests) {
+    items.push({ id: 'empty', label: 'Improvements system not initialized', info: true });
     return items;
   }
 
-  // Filter requests to only show those that meet tier requirements
-  const filteredRequests = state.improvements.requests.filter(request => {
-    if (!request.empireId) {
-      return false;
+  if (state.improvements.requests.length === 0) {
+    items.push({ id: 'empty', label: 'No improvement requests available', info: true });
+    return items;
+  }
+
+  // Get coalition requisition budget
+  const coalitionRequisition = state.coalitionEconomy?.requisition || 0;
+  
+  // Calculate current building capacity
+  const buildingCapacity = (state.improvements.queue || [])
+    .filter(i => i.state === 'BUILDING')
+    .reduce((sum, i) => sum + (i.capacity || 0), 0);
+
+  // Categorize requests by empire
+  const byEmpire = {};
+  state.improvements.requests.forEach(request => {
+    if (!request.empireId) return;
+
+    const empire = state.empires?.find(e => e.id === request.empireId);
+    if (!empire) return;
+
+    // Filter by tier unlock
+    if (!isImprovementTierUnlocked(request.tier || 1, state, request.empireId)) {
+      return;
     }
-    return isImprovementTierUnlocked(request.tier || 1, state, request.empireId);
+
+    if (!byEmpire[empire.id]) {
+      byEmpire[empire.id] = { empire, requests: [] };
+    }
+    byEmpire[empire.id].requests.push(request);
   });
 
-
-  if (filteredRequests.length === 0) {
-    items.push({ id: 'no_requests', label: 'No requests available', info: true });
+  const empireIds = Object.keys(byEmpire);
+  
+  if (empireIds.length === 0) {
+    items.push({ id: 'empty', label: 'No unlocked improvement requests', info: true });
     return items;
   }
 
-  filteredRequests.forEach((request) => {
-    const { label, colorTag } = formatSuggestionLabel(request.empireId, state);
-    const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+  // Add header with global info
+  items.push({ id: 'header_budget', label: 'Budget:', info: true });
+  items.push({
+    id: 'budget_info',
+    label: `{yellow-fg}${coalitionRequisition}{/yellow-fg} requisition • Max capacity: {cyan-fg}${state.improvements.maxTotalCapacity}{/cyan-fg} (building: {green-fg}${buildingCapacity}{/green-fg})`,
+    info: true
+  });
+  items.push({ id: 'spacer_1', label: '', info: true });
 
-    const benefitParts = [];
-    const sustainKeys = Object.keys(request.sustainmentCost || {});
-    if (sustainKeys.length > 0) {
-      const sustainStr = sustainKeys.map(k => `${k}:${request.sustainmentCost[k]}`).join(', ');
-      benefitParts.push(`-${sustainStr}`);
-    }
+  // Add categorized requests
+  empireIds.forEach(empireId => {
+    const { empire, requests } = byEmpire[empireId];
+    const { label: empireLabel, colorTag } = formatSuggestionLabel(empireId, state);
 
-    const outputKeys = Object.keys(request.productionOutputs || {});
-    if (outputKeys.length > 0) {
-      const outputStr = outputKeys.map(k => `${k}:+${request.productionOutputs[k]}`).join(', ');
-      benefitParts.push(`+${outputStr}`);
-    }
-
-    const modKeys = Object.keys(request.modifiers || {});
-    if (modKeys.length > 0) {
-      const modStr = modKeys.map(k => formatImprovementModifier(k, request.modifiers[k])).join('  ');
-      benefitParts.push(modStr);
-    }
-
-    const benefitHint = benefitParts.length > 0 ? ` • ${benefitParts.join(' -> ')}` : '';
-
-    // Find original index for action handling
-    const originalIndex = state.improvements.requests.findIndex(r => r.id === request.id);
-    
+    // Empire header
     items.push({
-      id: `request_${request.id}`,
-      label: `${request.name} {${colorTag}-fg}[${label}]{/${colorTag}-fg}`,
-      hint: `${tierLabel} • ${request.suppliesCost} req • cap ${request.capacity}${benefitHint}`,
-      detailLine: formatImprovementDetailLine(request),
-      action: 'ACCEPT_REQUEST',
-      requestIndex: originalIndex,
-      requestId: request.id
+      id: `empire_${empireId}`,
+      label: `{${colorTag}-fg}${empire.name}{/${colorTag}-fg} {gray-fg}[${empireLabel}]{/gray-fg}`,
+      info: true
     });
+
+    // Sort requests by tier (ascending), then name
+    const sortedRequests = [...requests].sort((a, b) => {
+      const tierDiff = (a.tier || 1) - (b.tier || 1);
+      if (tierDiff !== 0) return tierDiff;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    sortedRequests.forEach((request, idx) => {
+      const tierLabel = request.tier ? `T${request.tier}` : 'T1';
+      const originalRequestIndex = state.improvements.requests.findIndex(r => r.id === request.id);
+
+      // Check if buildable
+      const capacityOk = buildingCapacity + request.capacity <= state.improvements.maxTotalCapacity;
+      const budgetOk = coalitionRequisition >= request.suppliesCost;
+      const allOk = capacityOk && budgetOk;
+
+      // Status color based on affordability
+      const statusColor = allOk ? 'green' : 'red';
+
+      // Build main label with availability indicator
+      const availabilityIcon = allOk ? '{green-fg}✓{/green-fg}' : '{red-fg}✗{/red-fg}';
+      const mainLabel = `  ${availabilityIcon} {bold}${request.name}{/bold}`;
+
+      // Build hint string with critical info
+      let hintParts = [`${tierLabel}`];
+      hintParts.push(`${request.suppliesCost} req`);
+      
+      if (!budgetOk) {
+        hintParts.push(`{red-fg}NEED ${request.suppliesCost - coalitionRequisition}{/red-fg}`);
+      }
+
+      hintParts.push(`cap +${request.capacity}`);
+      
+      if (!capacityOk) {
+        const needed = buildingCapacity + request.capacity - state.improvements.maxTotalCapacity;
+        hintParts.push(`{red-fg}CAP +${needed}{/red-fg}`);
+      }
+
+      if (request.requisitionUpkeep) {
+        hintParts.push(`${request.requisitionUpkeep}/turn`);
+      }
+
+      const hintStr = hintParts.join(' • ');
+
+      // Build detail line showing benefits
+      let detailLine = '';
+      const benefits = [];
+
+      // Sustainment costs (what it needs)
+      if (request.sustainmentCost && Object.keys(request.sustainmentCost).length > 0) {
+        const sustain = Object.entries(request.sustainmentCost)
+          .map(([k, v]) => `${k}: {red-fg}${v}{/red-fg}`)
+          .join(', ');
+        benefits.push(`Needs: ${sustain}`);
+      }
+
+      // Production outputs (what it generates)
+      if (request.productionOutputs && Object.keys(request.productionOutputs).length > 0) {
+        const outputs = Object.entries(request.productionOutputs)
+          .map(([k, v]) => `${k}: {green-fg}+${v}{/green-fg}`)
+          .join(', ');
+        benefits.push(`Produces: ${outputs}`);
+      }
+
+      // Modifiers (bonuses)
+      if (request.modifiers && Object.keys(request.modifiers).length > 0) {
+        const mods = Object.entries(request.modifiers)
+          .map(([k, v]) => `${formatImprovementModifier(k, v)}`)
+          .join(', ');
+        benefits.push(`Bonuses: {cyan-fg}${mods}{/cyan-fg}`);
+      }
+
+      if (benefits.length > 0) {
+        detailLine = benefits.join(' | ');
+      }
+
+      items.push({
+        id: `request_${request.id}`,
+        label: mainLabel,
+        hint: hintStr,
+        detailLine: detailLine,
+        action: allOk ? 'ACCEPT_REQUEST' : 'NOOP',
+        requestIndex: originalRequestIndex,
+        requestId: request.id
+      });
+
+      // Add explanatory sub-line if not buildable
+      if (!allOk) {
+        const reasons = [];
+        if (!budgetOk) reasons.push(`Not enough requisition ({red-fg}need ${request.suppliesCost - coalitionRequisition} more{/red-fg})`);
+        if (!capacityOk) reasons.push(`Exceeds capacity limit`);
+        items.push({
+          id: `request_${request.id}_reason`,
+          label: `      {gray-fg}${reasons.join(', ')}{/gray-fg}`,
+          info: true
+        });
+      }
+
+      // Add description if available
+      if (request.description) {
+        items.push({
+          id: `request_${request.id}_desc`,
+          label: `      {gray-fg}${request.description}{/gray-fg}`,
+          info: true
+        });
+      }
+    });
+
+    // Spacer between empires
+    items.push({ id: `spacer_${empireId}`, label: '', info: true });
   });
 
   return items;
