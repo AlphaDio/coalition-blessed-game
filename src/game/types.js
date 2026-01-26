@@ -423,7 +423,7 @@ export function createGameState(seed = 0) {
     selectedLawIndex: 0,
     selectedArmyIndex: 0,
     focus: 'main', // 'main', 'laws', 'event'
-    paused: false, // Real-time game pause state
+    paused: true, // Real-time game pause state
     gameSpeed: 1, // Game speed multiplier (0.5 = slow, 1 = normal, 2 = fast)
     rngSeed: seed, // Seed for deterministic content variation
     

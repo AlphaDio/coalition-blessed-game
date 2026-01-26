@@ -32,12 +32,12 @@ async function main() {
     const gameManager = result.gameManager;
 
     // Initialize game
-    if (SEED !== undefined) {
-      gameManager.newGame(SEED);
-      logger.info(`New game created with seed: ${SEED}`);
-    } else {
-      logger.info('Game ready');
-    }
+    const gameSeed = SEED !== undefined ? SEED : Math.floor(Math.random() * 1000000);
+    gameManager.newGame(gameSeed);
+    logger.info(`New game created with seed: ${gameSeed}`);
+    
+    // Start the game loop (will respect paused state)
+    gameManager.startGameLoop();
 
     // Graceful shutdown
     process.on('SIGINT', () => {
