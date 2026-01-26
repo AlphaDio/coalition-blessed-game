@@ -1847,10 +1847,34 @@ function formatStats(state) {
   const scourgeCohesion = state.scourgeCohesion ?? 80;
   lines.push(`{bold}Scourge Cohesion:{/bold} ${formatNumber(scourgeCohesion, 1)}`);
   lines.push(`{bold}Scourge Fervor:{/bold} ${formatNumber(state.scourgeFervor, 1)}`);
+  
+  // Display current target
   const targetEmpire = state.empires?.find(empire => empire.id === state.scourgeTargetEmpireId);
   if (targetEmpire) {
     lines.push(`{bold}Scourge Target:{/bold} ${targetEmpire.name}`);
   }
+  
+  // Display next predicted target
+  if (state.scourgePrediction && state.scourgePrediction.targetEmpireId) {
+    const predictedEmpire = state.empires?.find(empire => empire.id === state.scourgePrediction.targetEmpireId);
+    if (predictedEmpire) {
+      const confidenceBadge = 
+        state.scourgePrediction.confidenceLevel === 'high' ? '{green-fg}HIGH{/green-fg}' :
+        state.scourgePrediction.confidenceLevel === 'medium' ? '{yellow-fg}MEDIUM{/yellow-fg}' :
+        '{red-fg}LOW{/red-fg}';
+      
+      let eta = 'UNKNOWN';
+      if (state.scourgePrediction.estimatedTurnsToNextBattle !== null) {
+        eta = `${state.scourgePrediction.estimatedTurnsToNextBattle} turns`;
+        if (state.scourgePrediction.uncertaintyRange?.min !== null) {
+          eta += ` ({cyan-fg}±${state.scourgePrediction.uncertaintyRange.max - state.scourgePrediction.estimatedTurnsToNextBattle}{/cyan-fg})`;
+        }
+      }
+      
+      lines.push(`{bold}Next Target:{/bold} ${predictedEmpire.name} (ETA: ${eta}, Confidence: ${confidenceBadge})`);
+    }
+  }
+  
    lines.push('', '{bold}Stockpiles:{/bold}');
    lines.push(`  ${formatResource('Requisition', state.coalitionEconomy?.requisition || 0)}`, '');
 

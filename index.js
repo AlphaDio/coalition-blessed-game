@@ -155,6 +155,15 @@ function applyLawSystemDefaults(state, { force = false } = {}) {
   if (state.scourgeTargetEmpireId === undefined) {
     state.scourgeTargetEmpireId = null;
   }
+  if (force || !state.scourgePrediction) {
+    state.scourgePrediction = {
+      targetEmpireId: null,
+      estimatedTurnsToNextBattle: null,
+      confidenceModifier: 1.0,
+      confidenceLevel: 'low',
+      uncertaintyRange: { min: null, max: null }
+    };
+  }
 }
 
 function buildNewGameState(seed) {

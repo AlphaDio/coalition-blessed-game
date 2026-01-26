@@ -146,6 +146,15 @@ export class GameManager {
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;
     }
+    if (force || !this.state.scourgePrediction) {
+      this.state.scourgePrediction = {
+        targetEmpireId: null,
+        estimatedTurnsToNextBattle: null,
+        confidenceModifier: 1.0,
+        confidenceLevel: 'low',
+        uncertaintyRange: { min: null, max: null }
+      };
+    }
   }
 
   /**
@@ -197,6 +206,11 @@ export class GameManager {
    */
   setGameSpeed(speed) {
     this.state.gameSpeed = speed;
+    // Restart game loop with new interval if it's running
+    if (this.gameLoopInterval) {
+      this.stopGameLoop();
+      this.startGameLoop();
+    }
     this.notifyStateChange();
   }
 
@@ -290,9 +304,21 @@ export class GameManager {
     }
 
     const tick = () => {
-      if (!this.state.paused && !this.state.gameOver && !this.state.activeEvent) {
+      try {
+        if (this.state.paused) {
+          return; // Game is paused, skip this tick
+        }
+        if (this.state.gameOver) {
+          logger.info(`Game ended: ${this.state.gameOverReason || 'Unknown reason'}`);
+          this.stopGameLoop();
+          return;
+        }
+        if (this.state.activeEvent) {
+          return; // Waiting for event choice, skip this tick
+        }
+        
         const result = advanceTurn(this.state);
-        if (result.log) {
+        if (result && result.log) {
           logger.info(`Turn ${this.state.turn}: ${result.log.length} log entries`);
         }
         this.notifyStateChange();
@@ -301,12 +327,17 @@ export class GameManager {
           logger.info(`Game ended: ${this.state.gameOverReason || 'Unknown reason'}`);
           this.stopGameLoop();
         }
+      } catch (error) {
+        logger.error(`Error in game loop tick: ${error.message}`);
+        logger.error(error.stack);
+        // Don't stop the loop, but log the error
       }
     };
 
-    const interval = (2000) / this.state.gameSpeed; // Base 2 second interval
+    const gameSpeed = this.state.gameSpeed || 1;
+    const interval = Math.max(100, (2000) / gameSpeed); // Base 2 second interval, minimum 100ms
     this.gameLoopInterval = setInterval(tick, interval);
-    logger.info(`Game loop started with interval ${interval}ms`);
+    logger.info(`Game loop started with interval ${interval}ms (speed: ${gameSpeed}x)`);
   }
 
   /**

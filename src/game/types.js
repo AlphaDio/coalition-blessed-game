@@ -95,6 +95,7 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     protectionBonus: 0,
     resolveBonus: 0,
     killRateBonus: 0,
+    timedFervorBonuses: [], // Array of {amount, expiresAt, source} for event-based fervor
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -140,6 +141,10 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     command: initialCommand,
     recovery: initialRecovery,
     reinforcementRate: 100,
+    
+    // Replenishment modifiers
+    replenishmentMultiplier: 1.0,  // Multiplicative modifier (e.g., 1.2 = +20%)
+    replenishmentBonus: 0,          // Additive modifier (added after all multipliers)
     
     // Signature commodity for reinforcement (consumed from empire stockpile)
     signatureCommodity: null,
@@ -412,6 +417,16 @@ export function createGameState(seed = 0) {
     heroes: [],
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
+    
+    // Scourge prediction system
+    scourgePrediction: {
+      targetEmpireId: null,          // Predicted next target
+      estimatedTurnsToNextBattle: null, // Estimated turns until battle (null = very uncertain)
+      confidenceModifier: 1.0,        // 1.0 = baseline certainty, >1.0 = more certain, <1.0 = less certain
+      confidenceLevel: 'low',         // 'low' | 'medium' | 'high' based on modifier
+      uncertaintyRange: { min: null, max: null } // Range of possible turn counts
+    },
+    
     laws: [],
     activeLaws: [],
     insurrections: [],
