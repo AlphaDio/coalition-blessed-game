@@ -1036,11 +1036,21 @@ function formatMenuItems(items, selectedIndex, panel) {
       }
     });
 
-    // Set scroll percentage to keep selected item in view
-    // Assuming ~15-20 lines visible, scroll to position selected item in upper-middle area
+    // Set scroll percentage to keep selected item centered in view
     const totalLines = lines.length;
     const visibleLines = 15; // Approximate visible lines in panel
-    const scrollPerc = Math.max(0, Math.min(100, (selectedLineNum / Math.max(1, totalLines - visibleLines)) * 100));
+    
+    // Calculate the top line number that should be visible to center the selected item
+    const topLine = Math.max(0, Math.min(
+      selectedLineNum - Math.floor(visibleLines / 2),
+      Math.max(0, totalLines - visibleLines)
+    ));
+    
+    // Convert to scroll percentage
+    const scrollPerc = totalLines > visibleLines 
+      ? (topLine / (totalLines - visibleLines)) * 100 
+      : 0;
+    
     panel.setScrollPerc(scrollPerc);
   }
 
