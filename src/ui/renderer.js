@@ -425,28 +425,10 @@ export function renderActionPanel(ui, state) {
        items = buildMainMenuItems(state);
    }
 
-   if (mode !== 'procurement_view') {
-     panel.menuItems = items;
-     content = formatMenuItems(items, selectedIndex);
-     
-     // Auto-scroll to selected item
-     // Calculate the line number of the selected item
-     let selectedLine = 0;
-     for (let i = 0; i < selectedIndex; i++) {
-       const item = items[i];
-       selectedLine += 1;
-       // Detail lines take up an extra line
-       if (!item.divider && !item.info && item.detailLine) {
-        selectedLine += 1;
-       }
-     }
-     
-     // Blessed's scroll method: positive number scrolls down
-     // We want to ensure the selected line is visible (roughly centered)
-     const panelHeight = panel.height || 20;
-     const desiredScrollTop = Math.max(0, selectedLine - Math.floor(panelHeight / 3));
-     panel.scrollOffset = desiredScrollTop;
-   }
+  if (mode !== 'procurement_view') {
+    panel.menuItems = items;
+    content = formatMenuItems(items, selectedIndex, panel);
+  }
 
   panel.setLabel(label);
   panel.setContent(content);
@@ -997,9 +979,9 @@ function buildInfoSelectItems() {
 
 
 /**
- * Format menu items for display
+ * Format menu items for display with automatic scrolling
  */
-function formatMenuItems(items, selectedIndex) {
+function formatMenuItems(items, selectedIndex, panel) {
   const lines = [];
 
   items.forEach((item, idx) => {
@@ -1030,7 +1012,39 @@ function formatMenuItems(items, selectedIndex) {
     }
   });
 
-  return lines.join('\n');
+  const content = lines.join('\n');
+
+  // Auto-scroll to keep selected item visible
+  if (panel && typeof panel.setScrollPerc === 'function') {
+    // Calculate how many detail lines the selected item has
+    const selectedItem = items[selectedIndex];
+    let selectedLineNum = 0;
+    let currentLine = 0;
+    
+    items.forEach((item, idx) => {
+      if (idx === selectedIndex) {
+        selectedLineNum = currentLine;
+      }
+      
+      if (item.divider || item.info) {
+        currentLine++;
+      } else {
+        currentLine++; // Label line
+        if (idx === selectedIndex && item.detailLine) {
+          currentLine++; // Detail line
+        }
+      }
+    });
+
+    // Set scroll percentage to keep selected item in view
+    // Assuming ~15-20 lines visible, scroll to position selected item in upper-middle area
+    const totalLines = lines.length;
+    const visibleLines = 15; // Approximate visible lines in panel
+    const scrollPerc = Math.max(0, Math.min(100, (selectedLineNum / Math.max(1, totalLines - visibleLines)) * 100));
+    panel.setScrollPerc(scrollPerc);
+  }
+
+  return content;
 }
 
 export function renderEvent(ui, state) {
