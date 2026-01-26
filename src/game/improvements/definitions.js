@@ -60,24 +60,6 @@ const INDUSTRIAL_BRANCH = [
     ),
 
     createTieredImprovementRequest(
-      'supply_refinery',
-      'Supply Refinery',
-      'Automated facility converting raw commodities into Coalition supplies for military use',
-      1,
-      'industrial',
-      {
-        suppliesCost: 120,
-        build: 200,
-        capacity: 2,
-        sustainmentCost: { biomass: 0.5 },
-        productionOutputs: { plasma_fuel: 1, requisition: 1 },
-        modifiers: {},
-        tags: ['industrial', 'requisition', 'conversion'],
-        requisitionUpkeep: 1
-      }
-    ),
-
-   createTieredImprovementRequest(
      'asteroid_mining',
      'Asteroid Mining Operation',
      'Automated extraction of precious minerals from asteroid belts',
@@ -96,19 +78,19 @@ const INDUSTRIAL_BRANCH = [
     ),
 
     createTieredImprovementRequest(
-      'requisition_generator',
-      'Requisition Generator',
-      'Basic facility that generates 1 additional requisition per turn through administrative efficiency',
+      'requisition_processing_center',
+      'Requisition Processing Center',
+      'Advanced facility extracting and refining commodities into Coalition requisition supplies and plasma fuel',
       1,
       'industrial',
       {
-        suppliesCost: 60,
-        build: 120,
-        capacity: 5,
-        sustainmentCost: { biomass: 0.2 },
-        productionOutputs: { requisition: 1 },
-        modifiers: {},
-        tags: ['industrial', 'requisition', 'administration'],
+        suppliesCost: 110,
+        build: 160,
+        capacity: 2,
+        sustainmentCost: { biomass: 0.35 },
+        productionOutputs: { plasma_fuel: 0.8, requisition: 1.2 },
+        modifiers: { industrial_output: 0.01 },
+        tags: ['industrial', 'requisition', 'conversion', 'processing'],
         requisitionUpkeep: 1
       }
     ),
@@ -225,37 +207,19 @@ const RESEARCH_BRANCH = [
 const MILITARY_BRANCH = [
     // T1: Basic military
     createTieredImprovementRequest(
-      'barracks',
-     'Planetary Barracks',
-     'Training facilities that improve army organization through disciplined drilling',
-     1,
-     'military',
-     {
-       suppliesCost: 80,
-       build: 160,
-       capacity: 2,
-       sustainmentCost: { biomass: 1 },
-       productionOutputs: {},
-       modifiers: { army_organization: 1 },
-       tags: ['military', 'training', 'organization'],
-       requisitionUpkeep: 1
-     }
-   ),
-
-    createTieredImprovementRequest(
-      'propaganda_center',
-      'Propaganda Center',
-      'Ideological messaging that boosts army fervor and morale',
+      'war_academy',
+      'War Academy Complex',
+      'Military institution training soldiers in both tactical discipline and combat fervor for unified martial excellence',
       1,
       'military',
       {
-        suppliesCost: 70,
-        build: 140,
+        suppliesCost: 90,
+        build: 160,
         capacity: 2,
-        sustainmentCost: { biomass: 0.2 },
+        sustainmentCost: { biomass: 0.8 },
         productionOutputs: {},
-        modifiers: { army_fervor: 1 },
-        tags: ['military', 'propaganda', 'fervor'],
+        modifiers: { army_organization: 1, army_fervor: 1 },
+        tags: ['military', 'training', 'organization', 'fervor'],
         requisitionUpkeep: 1
       }
     ),
@@ -325,40 +289,22 @@ const MILITARY_BRANCH = [
 const CULTURAL_BRANCH = [
    // T1: Basic culture
     createTieredImprovementRequest(
-      'hydroponics_farms',
-      'Hydroponics Farms',
-      'Advanced agricultural complex cultivating organic matter for population sustenance',
+      'civilization_hub',
+      'Civilization Hub',
+      'Integrated complex combining agricultural production with cultural services, fostering population growth and social harmony',
       1,
       'cultural',
       {
         suppliesCost: 50,
-        build: 80,
+        build: 100,
         capacity: 2,
-        sustainmentCost: { plasma_fuel: 0.01 },
+        sustainmentCost: { plasma_fuel: 0.01, biomass: 0.15 },
         productionOutputs: { biomass: 0.05 },
-        modifiers: { population_growth: 0.5 },
-       tags: ['cultural', 'agriculture', 'food'],
-       requisitionUpkeep: 1
-     }
-   ),
-
-    createTieredImprovementRequest(
-      'cultural_center',
-      'Cultural Center',
-      'Community hub fostering social bonds and cultural expression with abundant resources',
-      1,
-      'cultural',
-    {
-      suppliesCost: 60,
-      build: 120,
-      capacity: 2,
-      sustainmentCost: { biomass: 0.3 },
-      productionOutputs: {},
-      modifiers: { empire_approval: 5, population_growth: 1 },
-      tags: ['cultural', 'social'],
-      requisitionUpkeep: 1
-    }
-  ),
+        modifiers: { population_growth: 1.5, empire_approval: 3 },
+        tags: ['cultural', 'agriculture', 'social', 'food'],
+        requisitionUpkeep: 1
+      }
+    ),
 
    // T2: Advanced culture
    createTieredImprovementRequest(
@@ -686,6 +632,29 @@ const RESOURCE_BRANCH = [
        modifiers: {},
        tags: ['resource', 'passive', 'mining'],
        requisitionUpkeep: 1
+     }
+   ),
+
+   // T2: Exotic matter facility - produces all three ultra-advanced commodities needed for Dark Matter Power Surge
+   createTieredImprovementRequest(
+     'exotic_matter_fabricator',
+     'Exotic Matter Fabricator',
+     'Fabricator producing exotic matter.',
+     2,
+     'resource',
+     {
+       suppliesCost: 200,
+       build: 250,
+       capacity: 2,
+       sustainmentCost: { quantum_circuits: 0.25, genomes: 0.05, plasma_fuel: 0.15 },
+       productionOutputs: { 
+         wormhole_reactors: 0.4, 
+         dark_matter: 0.0015, 
+         nano_machines: 0.08 
+       },
+       modifiers: {},
+       tags: ['resource', 'passive', 'exotic', 'advanced_commodity'],
+       requisitionUpkeep: 3
      }
    )
  ];
