@@ -32,10 +32,10 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 50,
     cooldown: 100,
     costs_per_tick: {
-      requisition: 25,
+      requisition: 2.5,
       commodities: {
-        super_alloys: 5,
-        biomass: 3
+        super_alloys: 5000,
+        biomass: 3000
       }
     },
     modifiers: {
@@ -61,11 +61,11 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 60,
     cooldown: 120,
     costs_per_tick: {
-      requisition: 30,
+      requisition: 3.0,
       commodities: {
-        biomass: 5,
-        rare_gases: 2,
-        genomes: 1
+        biomass: 5000,
+        rare_gases: 2000,
+        genomes: 1000
       }
     },
     modifiers: {
@@ -90,12 +90,12 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 30,
     cooldown: 90,
     costs_per_tick: {
-      requisition: 40,
+      requisition: 4.0,
       commodities: {
-        rare_gases: 4,
-        genomes: 3,
-        ancient_relics: 1,
-        quantum_circuits: 1
+        rare_gases: 4000,
+        genomes: 3000,
+        ancient_relics: 100,
+        quantum_circuits: 10
       }
     },
     modifiers: {
@@ -120,9 +120,9 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 45,
     cooldown: 90,
     costs_per_tick: {
-      requisition: 20,
+      requisition: 2.0,
       commodities: {
-        biomass: 4,
+        biomass: 4000,
         psycho_implants: 2
       }
     },
@@ -149,11 +149,11 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 20,
     cooldown: 150,
     costs_per_tick: {
-      requisition: 50,
+      requisition: 5.0,
       commodities: {
         wormhole_reactors: 2,
         dark_matter: 1,
-        nano_machines: 3
+        nano_machines: 300
       }
     },
     modifiers: {
@@ -162,7 +162,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       army_damage_multiplier: 0.75,      // +75% army damage
       research_speed: 0.50,              // +50% research
       supply_efficiency: 0.30,           // +30% supply efficiency
-      cohesion_drain: -5                 // Very destabilizing
+      cohesion_drain: -1                 // Somewhat destabilizing
     },
     axis_vector: {
       spiritual_materialistic: 0.8,

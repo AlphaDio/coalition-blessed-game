@@ -16,7 +16,9 @@ const DEFAULT_COMBAT_STATS = {
   killRate: 0.1,
   recovery: 50,
   command: 50,
-  reinforcementRate: 100
+  reinforcementRate: 100,
+  replenishmentMultiplier: 1.0,
+  replenishmentBonus: 0
 };
 
 function getHeroModifiers(heroes) {

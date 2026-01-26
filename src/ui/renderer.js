@@ -427,7 +427,25 @@ export function renderActionPanel(ui, state) {
 
    if (mode !== 'procurement_view') {
      panel.menuItems = items;
-     content = formatMenuItemsWithScroll(items, selectedIndex, panel);
+     content = formatMenuItems(items, selectedIndex);
+     
+     // Auto-scroll to selected item
+     // Calculate the line number of the selected item
+     let selectedLine = 0;
+     for (let i = 0; i < selectedIndex; i++) {
+       const item = items[i];
+       selectedLine += 1;
+       // Detail lines take up an extra line
+       if (!item.divider && !item.info && item.detailLine) {
+        selectedLine += 1;
+       }
+     }
+     
+     // Blessed's scroll method: positive number scrolls down
+     // We want to ensure the selected line is visible (roughly centered)
+     const panelHeight = panel.height || 20;
+     const desiredScrollTop = Math.max(0, selectedLine - Math.floor(panelHeight / 3));
+     panel.scrollOffset = desiredScrollTop;
    }
 
   panel.setLabel(label);
@@ -1013,73 +1031,6 @@ function formatMenuItems(items, selectedIndex) {
   });
 
   return lines.join('\n');
-}
-
-/**
- * Format menu items with automatic scrolling based on selected index
- * Ensures the selected item is always visible in the viewport
- */
-function formatMenuItemsWithScroll(items, selectedIndex, panel) {
-  const lines = [];
-
-  items.forEach((item, idx) => {
-    if (item.divider) {
-      lines.push(`{gray-fg}${item.label}{/gray-fg}`);
-      return;
-    }
-
-    if (item.info) {
-      lines.push(`{cyan-fg}${item.label}{/cyan-fg}`);
-      return;
-    }
-
-    const isSelected = idx === selectedIndex;
-    const marker = isSelected ? '{inverse} › {/inverse}' : '   ';
-    const labelColor = item.disabled ? 'gray' : (isSelected ? 'white' : 'white');
-    const hintText = item.hint ? ` {gray-fg}${item.hint}{/gray-fg}` : '';
-
-    if (item.disabled) {
-      lines.push(`${marker}{gray-fg}${item.label}{/gray-fg}${hintText}`);
-    } else if (isSelected) {
-      lines.push(`${marker}{bold}{yellow-fg}${item.label}{/yellow-fg}{/bold}${hintText}`);
-      if (item.detailLine) {
-        lines.push(`{white-fg}   ${item.detailLine}{/white-fg}`);
-      }
-    } else {
-      lines.push(`${marker}{${labelColor}-fg}${item.label}{/${labelColor}-fg}${hintText}`);
-    }
-  });
-
-  // Get the panel's visible height (approximate - blessed box height minus margins/borders)
-  const visibleHeight = (panel.height || 20) - 2; // Account for borders/padding
-  
-  // Calculate scroll offset to keep selected item visible
-  const scrollOffset = panel.scrollOffset || 0;
-  let newScrollOffset = scrollOffset;
-
-  // If selected item is above visible area, scroll up
-  if (selectedIndex < scrollOffset) {
-    newScrollOffset = selectedIndex;
-  }
-  // If selected item is below visible area, scroll down
-  else if (selectedIndex >= scrollOffset + visibleHeight) {
-    newScrollOffset = Math.max(0, selectedIndex - visibleHeight + 1);
-  }
-
-  panel.scrollOffset = newScrollOffset;
-
-  // Slice visible lines based on scroll offset
-  const visibleLines = lines.slice(newScrollOffset, newScrollOffset + visibleHeight);
-  const content = visibleLines.join('\n');
-
-  // Add scroll indicator if there's more content
-  let finalContent = content;
-  if (lines.length > visibleHeight) {
-    const scrollPct = ((newScrollOffset / Math.max(1, lines.length - visibleHeight)) * 100).toFixed(0);
-    finalContent += `\n{gray-fg}[Scroll: ${newScrollOffset + 1}-${Math.min(newScrollOffset + visibleHeight, lines.length)}/${lines.length}]{/gray-fg}`;
-  }
-
-  return finalContent;
 }
 
 export function renderEvent(ui, state) {

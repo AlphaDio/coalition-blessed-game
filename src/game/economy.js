@@ -1,5 +1,5 @@
 import { ECONOMY_CONSTANTS } from './constants.js';
-import { clampStat } from './cohesion.js';
+import { clampStat, clampCohesion } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
 /**
@@ -24,10 +24,10 @@ export function consumeRequisition(state) {
     state.coalitionEconomy.requisition = requisition - totalNeeded;
     logger.debug(`Requisition consumed: ${totalNeeded.toFixed(1)}, remaining=${state.coalitionEconomy.requisition.toFixed(1)}`);
   } else {
-    // Shortage
+    // Shortage - allow requisition to go negative
     const hadRequisition = requisition;
     const shortage = totalNeeded - hadRequisition;
-    state.coalitionEconomy.requisition = 0;
+    state.coalitionEconomy.requisition = requisition - totalNeeded; // Can be negative
     
     state.armies.forEach(army => {
       if (army.supplyNeed > 0) {
@@ -37,9 +37,38 @@ export function consumeRequisition(state) {
       }
     });
     
-    logger.warn(`Requisition shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadRequisition.toFixed(1)}, shortage=${shortage.toFixed(1)}`);
+    logger.warn(`Requisition shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadRequisition.toFixed(1)}, shortage=${shortage.toFixed(1)}, requisition now: ${state.coalitionEconomy.requisition.toFixed(1)}`);
     log.push(`Requisition shortage! Organizations and Aggravation affected.`);
   }
   
   return { log };
+}
+
+/**
+ * Applies cohesion penalty based on negative requisition
+ * For every 100 points of negative requisition, reduces cohesion by 1 point
+ * @param {Object} state - The game state
+ * @returns {Object} { log: string[], cohesionLoss: number } - Log messages and cohesion loss amount
+ */
+export function applyNegativeRequisitionCohesionPenalty(state) {
+  const logger = getLogger();
+  const log = [];
+  
+  const requisition = state.coalitionEconomy?.requisition || 0;
+  
+  if (requisition < 0) {
+    // For every 100 points of negative requisition, reduce cohesion by 1
+    const cohesionLoss = Math.abs(requisition) / 100;
+    const prevCohesion = state.coalitionCohesion;
+    state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+    
+    if (cohesionLoss > 0.01) { // Only log if significant
+      logger.warn(`Negative requisition penalty: ${requisition.toFixed(1)} req -> -${cohesionLoss.toFixed(2)} cohesion (${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)})`);
+      log.push(`{red-fg}Negative Requisition:{/red-fg} Coalition Cohesion ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss.toFixed(2)})`);
+    }
+    
+    return { log, cohesionLoss };
+  }
+  
+  return { log, cohesionLoss: 0 };
 }

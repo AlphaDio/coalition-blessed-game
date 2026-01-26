@@ -334,12 +334,15 @@ export function processImprovementsTick(state) {
         if (!state.coalitionEconomy) {
           state.coalitionEconomy = { requisition: 0 };
         }
-        if (!state.coalitionEconomy.requisition) {
+        if (state.coalitionEconomy.requisition === undefined || state.coalitionEconomy.requisition === null) {
           state.coalitionEconomy.requisition = 0;
         }
 
-        if (state.coalitionEconomy.requisition >= improvement.requisitionUpkeep) {
-          state.coalitionEconomy.requisition -= improvement.requisitionUpkeep;
+        // Allow requisition to go negative
+        const prevRequisition = state.coalitionEconomy.requisition;
+        state.coalitionEconomy.requisition -= improvement.requisitionUpkeep;
+
+        if (prevRequisition >= improvement.requisitionUpkeep) {
           // Only log if this is a significant upkeep cost
           if (improvement.requisitionUpkeep >= 5) {
             log.push(`{yellow-fg}Upkeep:{/yellow-fg} ${improvement.name} (-${improvement.requisitionUpkeep} requisition)`);
