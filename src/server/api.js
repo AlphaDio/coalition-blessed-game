@@ -546,6 +546,27 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Get technology definitions
+  app.get('/api/game/definitions/technologies', (req, res) => {
+    try {
+      const { TECH_BY_ID } = await import('../game/technologyDefinitions.js');
+      const technologies = Object.entries(TECH_BY_ID).map(([id, tech]) => ({
+        id,
+        name: tech.name,
+        description: tech.description,
+        category: tech.category
+      }));
+      res.sendSuccess({ technologies });
+    } catch (error) {
+      logger.error('Failed to fetch technology definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch technology definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Health check
   app.get('/api/health', (req, res) => {
     res.sendSuccess({ status: 'ok' });
