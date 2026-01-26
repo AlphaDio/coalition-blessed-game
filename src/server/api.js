@@ -567,6 +567,54 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Get law definitions
+  app.get('/api/game/definitions/laws', (req, res) => {
+    try {
+      const { TIERED_LAW_DEFINITIONS } = await import('../game/lawDefinitions.js');
+      const laws = TIERED_LAW_DEFINITIONS.map((law) => ({
+        id: law.id,
+        name: law.name,
+        description: law.description,
+        tier: law.tier,
+        branch: law.branch,
+        tags: law.tags
+      }));
+      res.sendSuccess({ laws });
+    } catch (error) {
+      logger.error('Failed to fetch law definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch law definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get improvement definitions
+  app.get('/api/game/definitions/improvements', (req, res) => {
+    try {
+      const { getTieredImprovementRequests } = await import('../game/improvements/definitions.js');
+      const improvementRequests = getTieredImprovementRequests();
+      const improvements = improvementRequests.map((imp) => ({
+        id: imp.id,
+        name: imp.name,
+        description: imp.description,
+        tier: imp.tier,
+        branch: imp.branch,
+        supplyUpkeep: imp.supplyUpkeep,
+        modifiers: imp.modifiers
+      }));
+      res.sendSuccess({ improvements });
+    } catch (error) {
+      logger.error('Failed to fetch improvement definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch improvement definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Health check
   app.get('/api/health', (req, res) => {
     res.sendSuccess({ status: 'ok' });
