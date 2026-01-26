@@ -547,18 +547,29 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   });
 
   // Get technology definitions
-  app.get('/api/game/definitions/technologies', (req, res) => {
+  app.get('/api/game/definitions/technologies', async (req, res) => {
     try {
-      const { TECH_BY_ID } = await import('../game/technologyDefinitions.js');
+      logger.debug('Technologies endpoint called');
+      const techModule = await import('../game/technologyDefinitions.js');
+      logger.debug('Technology module imported, keys:', Object.keys(techModule));
+      
+      const TECH_BY_ID = techModule.TECH_BY_ID;
+      if (!TECH_BY_ID || typeof TECH_BY_ID !== 'object') {
+        logger.error('TECH_BY_ID is not available or invalid:', typeof TECH_BY_ID);
+        throw new Error('TECH_BY_ID is not available or invalid');
+      }
+      
+      logger.debug('TECH_BY_ID has', Object.keys(TECH_BY_ID).length, 'entries');
       const technologies = Object.entries(TECH_BY_ID).map(([id, tech]) => ({
         id,
-        name: tech.name,
-        description: tech.description,
-        category: tech.category
+        name: tech.name || id,
+        description: tech.description || '',
+        category: tech.category || 'general'
       }));
       res.sendSuccess({ technologies });
     } catch (error) {
       logger.error('Failed to fetch technology definitions:', error);
+      logger.error(error.stack);
       res.sendError(
         ErrorCodes.INTERNAL_SERVER_ERROR,
         'Failed to fetch technology definitions',
@@ -568,7 +579,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   });
 
   // Get law definitions
-  app.get('/api/game/definitions/laws', (req, res) => {
+  app.get('/api/game/definitions/laws', async (req, res) => {
     try {
       const { TIERED_LAW_DEFINITIONS } = await import('../game/lawDefinitions.js');
       const laws = TIERED_LAW_DEFINITIONS.map((law) => ({
@@ -591,7 +602,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   });
 
   // Get improvement definitions
-  app.get('/api/game/definitions/improvements', (req, res) => {
+  app.get('/api/game/definitions/improvements', async (req, res) => {
     try {
       const { getTieredImprovementRequests } = await import('../game/improvements/definitions.js');
       const improvementRequests = getTieredImprovementRequests();
