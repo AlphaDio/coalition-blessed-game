@@ -138,6 +138,12 @@ Shows in the Stats Panel component:
 2. **Reduce Scourge Fervor**: Some laws/events can reduce fervor
 3. **Maintain Army Organization**: Keep armies well-organized
 4. **Enact Intelligence Laws**: Use laws that improve information gathering
+5. **Participate in Events**: Intelligence events directly boost confidence:
+   - Scout Report on Scourge Movement
+   - Strategic Insight into Scourge Patterns
+   - Combat encounters provide tactical knowledge
+
+See [SCOURGE_EVENTS_AND_CONFIDENCE.md](./SCOURGE_EVENTS_AND_CONFIDENCE.md) for details on event-based confidence mechanics.
 
 ### Future Expansion Opportunities
 
