@@ -1,5 +1,9 @@
 # Consumption-Based Requisition System Implementation
 
+**Related Documentation:**
+- [Production Bank System](PRODUCTION_BANK_SYSTEM.md) - How improvements accumulate and release production
+- [Suggestion Queue Plateau](SUGGESTION_QUEUE_PLATEAU_IMPLEMENTATION.md) - How improvements are suggested
+
 ## Summary
 
 The coalition procurement and stockpile conversion system has been completely redesigned. Coalition now generates both requisitions AND credits from empire commodity consumption, with a configurable share rate that can be modified by laws and effects.

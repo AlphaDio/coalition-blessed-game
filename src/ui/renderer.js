@@ -2258,6 +2258,21 @@ function formatImprovementDetailLine(improvement) {
     detailParts.push(`+${outputStr}`);
   }
 
+  // Add production bank contents with threshold information
+  const bankKeys = Object.keys(improvement.productionBank || {}).filter(k => improvement.productionBank[k] > 0);
+  if (bankKeys.length > 0) {
+    const bankStr = bankKeys.map(k => `{yellow-fg}${k}:${improvement.productionBank[k]}{/yellow-fg}`).join(' ');
+    
+    // Calculate threshold for display
+    const threshold = improvement.productionBankThreshold || 1;
+    let thresholdLabel = '';
+    if (threshold > 1) {
+      thresholdLabel = ` (Threshold: x${threshold})`;
+    }
+    
+    detailParts.push(`[Bank: ${bankStr}${thresholdLabel}]`);
+  }
+
   const modKeys = Object.keys(improvement.modifiers || {});
   if (modKeys.length > 0) {
     const modStr = modKeys.map(k => formatImprovementModifier(k, improvement.modifiers[k])).join('  ');

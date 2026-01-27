@@ -31,7 +31,7 @@ declares:
       stoicist_hedonistic: -0.3
       essentialist_constructivist: 0.4
     stats:
-      population: 1200
+      population: 900
       tech_rate_bonus: 0.20
       production:
         outputs_per_tick:

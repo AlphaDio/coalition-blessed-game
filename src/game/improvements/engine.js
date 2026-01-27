@@ -48,6 +48,7 @@ export function createImprovementRequest(id, name, description, {
   manpowerGrant = null,    // number - adds manpower to empire's army
   requiresNoArmy = false,  // If true, improvement only available to empires without an army
   requisitionUpkeep = 0,   // requisition cost per tick
+  productionBankThreshold = 10, // multiplier of total production output per tick (10 = release when accumulated 10x per-tick)
 
   tier = 1,
   branch = 'general'
@@ -70,6 +71,7 @@ export function createImprovementRequest(id, name, description, {
     manpowerGrant,
     requiresNoArmy,
     requisitionUpkeep,
+    productionBankThreshold,
     tier,
     branch,
     requestedAt: null
@@ -134,6 +136,10 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     stockpile: {},
     maxStockpile: populationMultiplier > 0 ? populationMultiplier * IMPROVEMENT_SUSTAINMENT_TICKS : 0,
 
+    // Production bank (accumulates before releasing to market)
+    productionBank: {},
+    productionBankThreshold: request.productionBankThreshold || 10, // multiplier for release threshold
+    
     // Degradation tracking
     degradedSince: null,
     ticksSinceSustained: 0,
@@ -329,8 +335,12 @@ export function processImprovementsTick(state) {
     }
 
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
-      // Process requisition upkeep
-      if (improvement.requisitionUpkeep > 0) {
+      // Release accumulated production from bank to market (happens first)
+      const releaseResult = releaseProductionFromBank(state, improvement);
+      log.push(...releaseResult.log);
+
+      // Process requisition upkeep (only for ACTIVE improvements)
+      if (improvement.state === 'ACTIVE' && improvement.requisitionUpkeep > 0) {
         if (!state.coalitionEconomy) {
           state.coalitionEconomy = { requisition: 0 };
         }
@@ -352,7 +362,7 @@ export function processImprovementsTick(state) {
       const sustainmentResult = processImprovementSustainment(state, improvement);
       log.push(...sustainmentResult.log);
 
-      // Process production (only if ACTIVE)
+      // Process production (only if ACTIVE) - accumulates in productionBank
       if (improvement.state === 'ACTIVE') {
         const productionResult = processImprovementProduction(state, improvement);
         log.push(...productionResult.log);
@@ -525,7 +535,7 @@ export function processImprovementSustainment(state, improvement) {
 
 /**
  * Process production outputs for an improvement
- * Creates sell orders that the owning empire can fulfill
+ * Accumulates in production bank, held until threshold is met
  */
 export function processImprovementProduction(state, improvement) {
   const log = [];
@@ -535,17 +545,17 @@ export function processImprovementProduction(state, improvement) {
 
   const population = empire.stats?.population || 1;
 
-  // Initialize market orders if needed
-  if (!state.marketOrders) {
-    state.marketOrders = { buyOrders: [], sellOffers: [] };
+  // Initialize production bank if needed
+  if (!improvement.productionBank) {
+    improvement.productionBank = {};
   }
 
-  // Process production outputs
+  // Process production outputs - accumulate in production bank
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
     const scaledQty = Math.floor(qty * population);
     if (scaledQty <= 0) continue;
 
-    // Special handling for requisition - add directly to coalition economy
+    // Special handling for requisition - add directly to coalition economy (bypass bank)
     if (commodity === 'requisition') {
       if (!state.coalitionEconomy) {
         state.coalitionEconomy = { requisition: 0 };
@@ -554,11 +564,67 @@ export function processImprovementProduction(state, improvement) {
         state.coalitionEconomy.requisition = 0;
       }
       state.coalitionEconomy.requisition += scaledQty;
-      log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty} ${commodity} -> coalition economy`);
+      log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty} ${commodity} -> coalition economy (direct)`);
       continue;
     }
 
-    // Create sell offer for other commodities
+    // Accumulate commodity in production bank (no log - only log when released)
+    improvement.productionBank[commodity] = (improvement.productionBank[commodity] || 0) + scaledQty;
+  }
+
+  return { log };
+}
+
+/**
+ * Release accumulated production from improvement's bank to the market as sell offers
+ * Only releases when threshold is met (based on production output per tick)
+ */
+export function releaseProductionFromBank(state, improvement) {
+  const log = [];
+  const empire = state.empires.find(e => e.id === improvement.empireId);
+
+  if (!empire) return { log };
+
+  // Initialize market orders if needed
+  if (!state.marketOrders) {
+    state.marketOrders = { buyOrders: [], sellOffers: [] };
+  }
+
+  // Calculate threshold based on improvement's production output per tick
+  const population = empire.stats?.population || 1;
+  let thresholdValue = 0;
+  
+  // Calculate what would be produced this tick (for threshold)
+  for (const [commodity, qty] of Object.entries(improvement.productionOutputs || {})) {
+    if (commodity !== 'requisition') {
+      thresholdValue += Math.floor(qty * population);
+    }
+  }
+  
+  // Apply the threshold multiplier
+  const threshold = thresholdValue * (improvement.productionBankThreshold || 1);
+
+  // Check if total accumulated production meets threshold
+  let totalAccumulated = 0;
+  for (const qty of Object.values(improvement.productionBank)) {
+    totalAccumulated += qty;
+  }
+
+  // Only release if threshold is met
+  if (totalAccumulated < threshold) {
+    // Threshold not met, don't release
+    const holdMessage = threshold > 0 ? `(${totalAccumulated}/${Math.ceil(threshold)} to release)` : '';
+    if (totalAccumulated > 0) {
+      log.push(`{cyan-fg}Holding:{/cyan-fg} Production bank accumulating ${holdMessage}`);
+    }
+    return { log };
+  }
+
+  // Release all accumulated production from bank to market
+  for (const [commodity, qty] of Object.entries(improvement.productionBank)) {
+    if (qty <= 0) continue;
+
+    // Get market price for this commodity
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     const discountedPrice = sellPrice * MARKET_SELL_PRICE_DISCOUNT;
@@ -568,7 +634,7 @@ export function processImprovementProduction(state, improvement) {
       owner_type: 'empire',
       owner_id: empire.id,
       commodity,
-      qty: scaledQty,
+      qty: qty,
       ask_price: discountedPrice,
       filled_qty: 0,
       priority: 100, // Normal priority
@@ -582,7 +648,11 @@ export function processImprovementProduction(state, improvement) {
     };
 
     state.marketOrders.sellOffers.push(sellOffer);
-    log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty} ${commodity} -> sell order @ ${discountedPrice.toFixed(2)}`);
+    // Log "Produced" when releasing to market
+    log.push(`{blue-fg}Produced:{/blue-fg} ${qty} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
+    
+    // Clear from bank after releasing
+    improvement.productionBank[commodity] = 0;
   }
 
   return { log };
