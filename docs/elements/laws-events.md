@@ -68,37 +68,57 @@ Mandatory military service and resource contribution.
 
 ## Standard Events in Play
 
-### Supply Convoy Attacked (event_1)
-Supply convoy ambushed by the Scourge.
-- Send reinforcements: supplies -100, approval +5 (empires 1-3), +4 (clockwork/hive)
-- Abandon convoy: approval -10 (empires 1-3), -8 (clockwork/hive)
+### Requisition Convoy Attacked (event_1)
+Requisition convoy ambushed by the Scourge.
+- Send reinforcements + analyze tactics: requisition -100, approval +5, prediction confidence +0.15
+- Abandon convoy but help struggling allies: boost weakest empire approval, hurt richest empire approval
+- Ambush the ambushers: coalition cohesion -5, scourge cohesion -3, prediction confidence +0.2
 
 ### Heroic Stand (event_2)
 Coalition armies hold a critical breach.
-- Publicize victory: army fervor +10 for all armies
+- Publicize the victory: army fervor +10 for all armies
 - Rotate forces: army fervor -5 for all armies
 
 ### Diplomatic Crisis (event_3)
 Tensions rise over resource allocation.
-- Favor Stellar Federation: approval +15 (empire_1), -8 (empires 2-3), -6 (clockwork/hive)
-- Favor Verdant Colonies: approval +15 (empire_2), -8 (empire_1/3), -6 (clockwork/hive)
+- Favor ${favored.name}: dynamic targeting with approval +15 to chosen empire, -8 to others
+- Maintain equal treatment: approval -3 all, coalition cohesion +5
 
 ### Scourge Advance (event_4)
 Scourge advances on a Nexus relay station.
-- Stand and fight: coalition cohesion -3, scourge cohesion -5
-- Tactical retreat: coalition cohesion -5, scourge cohesion +2
-- Scorched earth: supplies -150, scourge cohesion -8
+- Stand and fight: requisition -50, coalition cohesion -4, scourge cohesion -5, prediction confidence +0.2
+- Tactical retreat: coalition cohesion -2, scourge cohesion +2, prediction confidence +0.07
+- Scorched earth deployment: requisition -150, coalition cohesion -8, scourge cohesion -8, prediction confidence +0.4
 
 ### Resource Discovery (event_5)
-Supply cache discovered in deep space.
-- Secure immediately: supplies +200
-- Share with empires: supplies +100, approval +8 (empires 1-3), +6 (clockwork/hive)
+Requisition cache discovered in deep space.
+- Secure immediately: requisition +200
+- Distribute to struggling allies: requisition +50, boost weakest empire approval +12
+- Reward strong partners: requisition +75, boost richest empire approval +10
 
 ### Desertion Crisis (event_6)
 Desertions rise across coalition forces.
-- Boost supplies: supplies -100
-- Propaganda campaign: army fervor +8 for all armies, approval -5 (empires 1-3), -4 (clockwork/hive)
-- Crack down: approval -8 (empires 1-3), -6 (clockwork/hive)
+- Boost requisition and equipment: requisition -100
+- Target support to weakest allies: requisition -50, boost weakest empire approval +6, army fervor +3 all
+- Propaganda campaign: army fervor +8 all, approval -5 all
+
+### Scout Report on Scourge Movement (event_scourge_scouts_report)
+Coalition scouts gather intelligence on Scourge movements.
+- Analyze thoroughly with full resources: requisition -75, prediction confidence +0.35, army fervor +5 all
+- Share selectively with weaker allies: boost weakest empire approval +5, prediction confidence +0.18, cohesion +1
+- Keep findings internal: prediction confidence +0.12, cohesion +2
+
+### Lost Scout Team (event_scourge_intel_loss)
+Coalition reconnaissance team ambushed and eliminated.
+- Rapid rebuild with all available resources: requisition -100, prediction confidence -0.12, cohesion +3
+- Request allied support: approval -1 all, prediction confidence -0.22, cohesion +1
+- Accept the loss peacefully: prediction confidence -0.35, cohesion +2
+
+### Strategic Insight into Scourge Patterns (event_scourge_prediction_insight)
+Military analysts identify patterns in Scourge strategies.
+- Distribute insights widely: requisition -80, prediction confidence +0.4, approval +2 all
+- Share selectively with wealthy allies: boost richest empire approval +5, prediction confidence +0.2
+- Classify for exclusive use: approval -2 all, prediction confidence +0.22
 
 ## Content Sources
 - Laws: `modules/laws/*.ds.yml`
