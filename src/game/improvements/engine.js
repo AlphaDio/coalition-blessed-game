@@ -13,7 +13,7 @@ import { IMPROVEMENTS_CONSTANTS } from '../constants.js';
 import { createArmy } from '../types.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
-import { getTieredImprovementRequests, generateImprovementSuggestions, canStartImprovement } from './definitions.js';
+import { getTieredImprovementRequests, generateImprovementSuggestions, generateReplacementSuggestion, canStartImprovement } from './definitions.js';
 import {
   SUSTAINMENT_MAX_PRICE_MULTIPLIER,
   MARKET_SELL_PRICE_DISCOUNT,
@@ -248,6 +248,13 @@ export function acceptImprovementRequest(state, requestId, empireId) {
    const requestIdx = state.improvements.requests.findIndex(r => r.id === requestId);
    if (requestIdx !== -1) {
      state.improvements.requests.splice(requestIdx, 1);
+   }
+
+   // Generate a replacement suggestion for this empire
+   const replacement = generateReplacementSuggestion(state, empireId);
+   if (replacement) {
+     state.improvements.requests.push(replacement);
+     logger.debug(`Replacement suggestion added for ${empireId}: ${replacement.name}`);
    }
 
     logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Requisition: ${request.suppliesCost}, Tier: ${improvement.tier})`);
@@ -613,9 +620,11 @@ export function releaseProductionFromBank(state, improvement) {
   // Only release if threshold is met
   if (totalAccumulated < threshold) {
     // Threshold not met, don't release
+    // Log to file/Logs view only (not in-game log) to reduce noise
     const holdMessage = threshold > 0 ? `(${totalAccumulated}/${Math.ceil(threshold)} to release)` : '';
     if (totalAccumulated > 0) {
-      log.push(`{cyan-fg}Holding:{/cyan-fg} Production bank accumulating ${holdMessage}`);
+      const logger = getLogger();
+      logger.debug(`Holding: ${improvement.name} production bank accumulating ${holdMessage}`);
     }
     return { log };
   }

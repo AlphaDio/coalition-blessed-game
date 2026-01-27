@@ -19,4 +19,4 @@ export * from './ui.js';
 // Legacy exports for backward compatibility
 export { getImprovementStats } from './ui.js';
 export { getSampleImprovementRequests, initializeImprovementSuggestions, acceptImprovementRequest, cancelImprovement, processImprovementsTick, applyImprovementModifiers } from './engine.js';
-export { getTieredImprovementRequests, canStartImprovement, generateImprovementSuggestions } from './definitions.js';
+export { getTieredImprovementRequests, canStartImprovement, generateImprovementSuggestions, generateReplacementSuggestion, MAX_SUGGESTIONS_PER_EMPIRE } from './definitions.js';

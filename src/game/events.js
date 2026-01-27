@@ -166,8 +166,9 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       const change = typeof expandedEffects.coalitionCohesion === 'function' 
         ? expandedEffects.coalitionCohesion() 
         : expandedEffects.coalitionCohesion;
-      state.coalitionCohesion = clampCohesion(state.coalitionCohesion + change);
-      log.push(`Coalition Cohesion ${change >= 0 ? '+' : ''}${change}`);
+      const reducedChange = change * 0.5;  // Reduce cohesion changes by 50%
+      state.coalitionCohesion = clampCohesion(state.coalitionCohesion + reducedChange);
+      log.push(`Coalition Cohesion ${reducedChange >= 0 ? '+' : ''}${reducedChange.toFixed(2)}`);
     }
     
     // Handle scourgeCohesion (function or number)
@@ -175,8 +176,9 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       const change = typeof expandedEffects.scourgeCohesion === 'function' 
         ? expandedEffects.scourgeCohesion() 
         : expandedEffects.scourgeCohesion;
-      state.scourgeCohesion = clampStat(state.scourgeCohesion + change, 0, 100);
-      log.push(`Scourge Cohesion ${change >= 0 ? '+' : ''}${change}`);
+      const reducedChange = change * 0.5;  // Reduce cohesion changes by 50%
+      state.scourgeCohesion = clampStat(state.scourgeCohesion + reducedChange, 0, 100);
+      log.push(`Scourge Cohesion ${reducedChange >= 0 ? '+' : ''}${reducedChange.toFixed(2)}`);
     }
     
     if (expandedEffects.empireApproval) {
@@ -184,7 +186,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
         const empire = state.empires.find(e => e.id === empireId);
         if (empire) {
           empire.approval = clampApproval(empire.approval + change);
-          log.push(`${empire.name} approval ${change >= 0 ? '+' : ''}${change}`);
+          log.push(`${empire.name} approval ${change >= 0 ? '+' : ''}${(change).toFixed(2)}`);
         }
       });
     }
@@ -206,7 +208,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
             source: `Event: ${event.title || event.id}`
           });
           
-          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${change} (until next scourge battle)`);
+          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${(change).toFixed(2)} (until next scourge battle)`);
         }
       });
     }
@@ -217,7 +219,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
           // Handle function-based effects (for random values)
           const actualChange = typeof change === 'function' ? change() : change;
           state.stockpiles[resource] = Math.max(0, state.stockpiles[resource] + actualChange);
-          log.push(`${resource} ${actualChange >= 0 ? '+' : ''}${actualChange}`);
+          log.push(`${resource} ${actualChange >= 0 ? '+' : ''}${(actualChange).toFixed(2)}`);
         }
       });
     }
@@ -234,7 +236,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
             const fromEmpire = state.empires.find(e => e.id === fromEmpireId);
             const toEmpire = state.empires.find(e => e.id === toEmpireId);
             if (fromEmpire && toEmpire) {
-              log.push(`${fromEmpire.name} relations with ${toEmpire.name}: ${actualChange >= 0 ? '+' : ''}${actualChange}`);
+              log.push(`${fromEmpire.name} relations with ${toEmpire.name}: ${actualChange >= 0 ? '+' : ''}${(actualChange).toFixed(2)}`);
             }
           }
         });
@@ -246,8 +248,9 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       Object.entries(expandedEffects.coalitionEconomy).forEach(([key, change]) => {
         if (state.coalitionEconomy && state.coalitionEconomy[key] !== undefined) {
           const actualChange = typeof change === 'function' ? change() : change;
-          state.coalitionEconomy[key] = Math.max(0, state.coalitionEconomy[key] + actualChange);
-          log.push(`Coalition ${key}: ${actualChange >= 0 ? '+' : ''}${actualChange}`);
+          const reducedChange = actualChange * 0.5;  // Reduce all economy changes by 50%
+          state.coalitionEconomy[key] = Math.max(0, state.coalitionEconomy[key] + reducedChange);
+          log.push(`Coalition ${key}: ${reducedChange >= 0 ? '+' : ''}${reducedChange.toFixed(2)}`);
         }
       });
     }
@@ -269,7 +272,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
               expiresAt: state.turn + config.duration
             });
 
-            log.push(`Coalition ${modifierKey}: ${config.value >= 0 ? '+' : ''}${config.value} for ${config.duration} turns`);
+            log.push(`Coalition ${modifierKey}: ${config.value >= 0 ? '+' : ''}${(config.value).toFixed(2)} for ${config.duration} turns`);
           }
         }
       });

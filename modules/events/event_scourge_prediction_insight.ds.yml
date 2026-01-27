@@ -20,16 +20,20 @@ declares:
     name: "Strategic Insight into Scourge Patterns"
     description: "After analyzing numerous Scourge engagements, our military analysts believe they have identified patterns in the enemy's decision-making. This knowledge could help predict their next moves."
     choices:
-      - text: "Distribute insights to all empires (major confidence boost)"
+      - text: "Distribute insights widely (costs 80 requisition, major confidence boost)"
         effects:
+          coalitionEconomy:
+            requisition: -80
           scourgePredictionConfidence: 0.4
           empireApproval:
-            "@all": 5
-      - text: "Share with core allies only (moderate confidence boost)"
+            "@all": 2
+      - text: "Share selectively with wealthy allies (free, good confidence, reward strong partners)"
         effects:
-          scourgePredictionConfidence: 0.2
-      - text: "Classify for exclusive use (boost but reduce collaboration)"
-        effects:
-          scourgePredictionConfidence: 0.25
           empireApproval:
-            "@all": -3
+            "@richest": 5
+          scourgePredictionConfidence: 0.2
+      - text: "Classify for exclusive use (free, decent confidence but damage relations)"
+        effects:
+          empireApproval:
+            "@all": -2
+          scourgePredictionConfidence: 0.22

@@ -24,10 +24,16 @@ declares:
         effects:
           coalitionEconomy:
             requisition: 200
-      - text: "Share with all empires (gain approval)"
+      - text: "Distribute to struggling allies (gain approval from weaker empires)"
         effects:
           coalitionEconomy:
-            requisition: 100
+            requisition: 50
           empireApproval:
-            "@all": 8
+            "@poorest": 12
+      - text: "Reward strong partners (incentivize wealthy allies)"
+        effects:
+          coalitionEconomy:
+            requisition: 75
+          empireApproval:
+            "@richest": 10
 

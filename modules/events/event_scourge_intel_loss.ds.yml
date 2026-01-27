@@ -20,15 +20,19 @@ declares:
     name: "Lost Scout Team"
     description: "A coalition reconnaissance team has been ambushed and eliminated by Scourge forces. Our intelligence gathering capabilities have been significantly weakened."
     choices:
-      - text: "Reorganize and rebuild scouts (minor confidence loss, prepare for recovery)"
+      - text: "Rapid rebuild with all available resources (costs 100 requisition, minimal intel loss, boost morale)"
         effects:
-          scourgePredictionConfidence: -0.2
+          coalitionEconomy:
+            requisition: -100
+          scourgePredictionConfidence: -0.12
+          coalitionCohesion: 3
+      - text: "Request allied support (free, moderate intel loss, slight approval cost)"
+        effects:
           empireApproval:
-            "@all": 2
-      - text: "Acknowledge the loss and move on (accept reduced visibility)"
+            "@all": -1
+          scourgePredictionConfidence: -0.22
+          coalitionCohesion: 1
+      - text: "Accept the loss peacefully (free, significant intel loss but maintain stability)"
         effects:
-          scourgePredictionConfidence: -0.3
-      - text: "Launch rescue mission (confidence loss, potential casualties)"
-        effects:
-          scourgePredictionConfidence: -0.15
-          coalitionCohesion: -5
+          scourgePredictionConfidence: -0.35
+          coalitionCohesion: 2

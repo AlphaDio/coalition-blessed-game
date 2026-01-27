@@ -218,29 +218,11 @@ const MILITARY_BRANCH = [
         capacity: 2,
         sustainmentCost: { biomass: 0.8 },
         productionOutputs: {},
-        modifiers: { army_organization: 1, army_fervor: 1 },
+        modifiers: { army_organization: 1, army_fervor: 100 },
         tags: ['military', 'training', 'organization', 'fervor'],
         requisitionUpkeep: 1
       }
     ),
-
-   createTieredImprovementRequest(
-     'military_depot',
-     'Military Depot',
-     'Logistics hub improving army supply lines with advanced cooling systems',
-     1,
-     'military',
-      {
-       suppliesCost: 140,
-       build: 180,
-       capacity: 2,
-       sustainmentCost: { biomass: 0.1 },
-       productionOutputs: {},
-       modifiers: { supply_efficiency: 0.05 },
-       tags: ['military', 'logistics'],
-       requisitionUpkeep: 1
-     }
-   ),
 
    // T2: Advanced military
    createTieredImprovementRequest(
@@ -426,7 +408,7 @@ const SPIRITUAL_BRANCH = [
        capacity: 2,
        sustainmentCost: { ancient_relics: 0.1, biomass: 0.2 },
        productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 3 },
+       modifiers: { army_fervor: 300 },
        tags: ['spiritual', 'morale', 'relics'],
        requisitionUpkeep: 1
      }
@@ -445,7 +427,7 @@ const SPIRITUAL_BRANCH = [
        capacity: 4,
         sustainmentCost: { ancient_relics: 0.3, psycho_implants: 0.2 },
         productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
+       modifiers: { army_fervor: 600, cohesionModifier: 1.02 },
        tags: ['mega_structure', 'spiritual', 'heritage', 'relics'],
        requisitionUpkeep: 6
      }
@@ -464,7 +446,7 @@ const SPIRITUAL_BRANCH = [
        capacity: 6,
         sustainmentCost: { ancient_relics: 0.5, psycho_implants: 0.3, sentient_cores: 0.1 },
         productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
+       modifiers: { army_fervor: 1200, cohesionModifier: 1.05, empire_approval: 2 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics'],
        requisitionUpkeep: 8
      }
@@ -728,20 +710,19 @@ export function canStartImprovement(improvementId, state, empireId) {
 }
 
 /**
+ * Maximum suggestions each empire can have at once
+ */
+export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
+
+/**
  * Generate improvement suggestions for empires
- * Returns a list of available improvement requests based on empire tier access
- * T1 improvements are common, higher tiers are rarer
+ * Simple system: each empire gets up to MAX_SUGGESTIONS_PER_EMPIRE suggestions
+ * When an improvement is built, the empire suggests a replacement
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
-  const MAX_SUGGESTIONS_PER_EMPIRE = 2;
-  const SUGGESTION_WEIGHTS = {
-    1: 10,  // T1: 10x weight (common)
-    2: 3,   // T2: 3x weight (less common)
-    3: 1    // T3: 1x weight (rare)
-  };
   const suggestions = [];
 
-  // Track how many suggestions each empire already has
+  // Count existing suggestions per empire
   const currentCounts = {};
   state.empires.forEach(e => currentCounts[e.id] = 0);
   state.improvements.requests.forEach(r => {
@@ -750,81 +731,19 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
     }
   });
 
-  // Get all empires
+  // Fill up suggestions for each empire
   state.empires.forEach(empire => {
     const currentCount = currentCounts[empire.id] || 0;
-    if (currentCount >= MAX_SUGGESTIONS_PER_EMPIRE) return;
+    const slotsNeeded = MAX_SUGGESTIONS_PER_EMPIRE - currentCount;
+    
+    if (slotsNeeded <= 0) return;
 
-    // Determine available tiers for this empire
-    const availableTiers = [1]; // T1 always available
-
-    // Check if T2 is unlocked
-    const t1Completed = state.improvements.queue
-      .filter(i => i.empireId === empire.id && i.state !== 'BUILDING' && i.tier === 1)
-      .length;
-    if (t1Completed >= IMPROVEMENT_TIER_REQUIREMENTS[2]) {
-      availableTiers.push(2);
-    }
-
-    // Check if T3 is unlocked
-    const t2Completed = state.improvements.queue
-      .filter(i => i.empireId === empire.id && i.state !== 'BUILDING' && i.tier === 2)
-      .length;
-    if (t2Completed >= IMPROVEMENT_TIER_REQUIREMENTS[3]) {
-      availableTiers.push(3);
-    }
-
-    // Get available requests for this empire's tiers
-    const tieredRequests = getTieredImprovementRequests();
-    const empireSuggestions = [];
-    availableTiers.forEach(tier => {
-      const tierRequests = tieredRequests[tier] || [];
-      const tierWeight = SUGGESTION_WEIGHTS[tier] || 1;
-      tierRequests.forEach(req => {
-        // Check if this definition is already requested or active for any empire
-        const existingRequest = state.improvements.requests.find(r => r.id === req.id);
-        const active = state.improvements.queue.find(q => q.requestId === req.id);
-        if (!existingRequest && !active) {
-          // Check requiresNoArmy condition
-          if (req.requiresNoArmy) {
-            const empireHasArmy = state.armies?.some(a => a.owner_empire_id === empire.id);
-            if (empireHasArmy) {
-              return; // Skip this improvement - empire already has an army
-            }
-          }
-          // Add suggestion with tier weight (appears multiple times for weighted selection)
-          for (let i = 0; i < tierWeight; i++) {
-            empireSuggestions.push(req);
-          }
-        }
-      });
-    });
-
-    // Shuffle weighted suggestions
-    for (let i = empireSuggestions.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [empireSuggestions[i], empireSuggestions[j]] = [empireSuggestions[j], empireSuggestions[i]];
-    }
-
-    // Add up to remaining slots using weighted random selection
-    const slotsRemaining = MAX_SUGGESTIONS_PER_EMPIRE - currentCount;
-    const selectedImprovements = [];
-    const usedIds = new Set();
-
-    for (let slot = 0; slot < slotsRemaining && empireSuggestions.length > 0; slot++) {
-      // Find first unused improvement
-      for (let i = 0; i < empireSuggestions.length; i++) {
-        if (!usedIds.has(empireSuggestions[i].id)) {
-          selectedImprovements.push(empireSuggestions[i]);
-          usedIds.add(empireSuggestions[i].id);
-          break;
-        }
-      }
-      // If all suggestions used, break
-      if (selectedImprovements.length <= slot) break;
-    }
-
-    selectedImprovements.forEach(req => {
+    // Get available improvements for this empire
+    const available = getAvailableImprovementsForEmpire(state, empire.id, rng);
+    
+    // Take up to slotsNeeded suggestions
+    const newSuggestions = available.slice(0, slotsNeeded);
+    newSuggestions.forEach(req => {
       suggestions.push({
         ...req,
         empireId: empire.id
@@ -832,13 +751,108 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
     });
   });
 
-  // Shuffle all suggestions
-  for (let i = suggestions.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [suggestions[i], suggestions[j]] = [suggestions[j], suggestions[i]];
+  return suggestions;
+}
+
+/**
+ * Generate a single replacement suggestion for an empire
+ * Called when an improvement is accepted to replace the used request
+ */
+export function generateReplacementSuggestion(state, empireId, rng = Math.random) {
+  // Count current suggestions for this empire
+  const currentCount = state.improvements.requests.filter(r => r.empireId === empireId).length;
+  
+  if (currentCount >= MAX_SUGGESTIONS_PER_EMPIRE) {
+    return null; // Already at max
   }
 
-  return suggestions;
+  // Get available improvements for this empire
+  const available = getAvailableImprovementsForEmpire(state, empireId, rng);
+  
+  if (available.length === 0) {
+    return null; // No improvements available
+  }
+
+  // Pick one and return it
+  const suggestion = {
+    ...available[0],
+    empireId: empireId
+  };
+
+  return suggestion;
+}
+
+/**
+ * Get available improvements for an empire (not already requested or building)
+ * Returns shuffled list weighted by tier
+ */
+function getAvailableImprovementsForEmpire(state, empireId, rng = Math.random) {
+  const SUGGESTION_WEIGHTS = {
+    1: 10,  // T1: 10x weight (common)
+    2: 3,   // T2: 3x weight (less common)
+    3: 1    // T3: 1x weight (rare)
+  };
+
+  // Determine available tiers for this empire
+  const availableTiers = [1]; // T1 always available
+
+  // Check if T2 is unlocked
+  const t1Completed = state.improvements.queue
+    .filter(i => i.empireId === empireId && i.state !== 'BUILDING' && i.tier === 1)
+    .length;
+  if (t1Completed >= IMPROVEMENT_TIER_REQUIREMENTS[2]) {
+    availableTiers.push(2);
+  }
+
+  // Check if T3 is unlocked
+  const t2Completed = state.improvements.queue
+    .filter(i => i.empireId === empireId && i.state !== 'BUILDING' && i.tier === 2)
+    .length;
+  if (t2Completed >= IMPROVEMENT_TIER_REQUIREMENTS[3]) {
+    availableTiers.push(3);
+  }
+
+  // Collect available improvements with weights
+  const tieredRequests = getTieredImprovementRequests();
+  const weightedPool = [];
+
+  availableTiers.forEach(tier => {
+    const tierRequests = tieredRequests[tier] || [];
+    const tierWeight = SUGGESTION_WEIGHTS[tier] || 1;
+
+    tierRequests.forEach(req => {
+      // Check requiresNoArmy condition
+      if (req.requiresNoArmy) {
+        const empireHasArmy = state.armies?.some(a => a.owner_empire_id === empireId);
+        if (empireHasArmy) {
+          return; // Skip - empire already has an army
+        }
+      }
+
+      // Add with tier weight (allow duplicates - empires can request/build same improvement multiple times)
+      for (let i = 0; i < tierWeight; i++) {
+        weightedPool.push(req);
+      }
+    });
+  });
+
+  // Shuffle the weighted pool
+  for (let i = weightedPool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
+  }
+
+  // Deduplicate while preserving weighted order
+  const seen = new Set();
+  const result = [];
+  for (const req of weightedPool) {
+    if (!seen.has(req.id)) {
+      seen.add(req.id);
+      result.push(req);
+    }
+  }
+
+  return result;
 }
 
 /**

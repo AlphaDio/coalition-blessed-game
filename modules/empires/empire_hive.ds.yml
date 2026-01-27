@@ -93,7 +93,7 @@ declares:
           threshold: 10000
           effect:
             type: research_speed_bonus
-            amount: 0.1
+            amount: 0.01
         anti_grav_modules:
           threshold: 1000
           effect:

@@ -27,10 +27,12 @@ declares:
           empireApproval:
             "@all": 5
           scourgePredictionConfidence: 0.15
-      - text: "Abandon convoy (lose approval, save resources)"
+      - text: "Abandon convoy but help struggling allies (free, boost weaker empires)"
         effects:
           empireApproval:
-            "@all": -10
+            "@poorest": 8
+          empireApproval:
+            "@richest": -8
       - text: "Ambush the ambushers (lose cohesion, learn from combat)"
         effects:
           coalitionCohesion: -5

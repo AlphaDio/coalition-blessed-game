@@ -27,18 +27,22 @@ declares:
     triggers: []
     base_weight: 1.0
     choices:
-      - text: "Accept their support (gain momentum, lose legitimacy)"
+      - text: "Accept support from wealthy factions (gain momentum, lose legitimacy, empower rich)"
         effects:
           progress: 0.25
           meters:
             momentum: 0.15
             legitimacy: -0.1
             reject_pressure: -0.05
-      - text: "Reject their influence (lose momentum, gain legitimacy)"
+          empireApproval:
+            "@richest": 3
+      - text: "Seek grassroots support (lose momentum, gain legitimacy, empower weak)"
         effects:
           progress: 0.1
           meters:
             momentum: -0.1
             legitimacy: 0.15
             polarization: 0.05
+          empireApproval:
+            "@poorest": 3
     weight_modifiers: []

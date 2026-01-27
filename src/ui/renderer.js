@@ -960,7 +960,11 @@ export function renderTables(ui, state) {
     const empire = empireMap.get(army.empireId);
     const empireName = empire ? empire.name : 'Unknown';
     content += `  ${army.name} (${empireName}):\n`;
-    content += `    Fervor: ${formatNumber(army.fervor)}, Org: ${formatNumber(army.organization)}\n`;
+    const effectiveFervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+    const fervorDisplay = army.fervorBonus && army.fervorBonus > 0 
+      ? `${formatNumber(effectiveFervor)} (+${formatNumber(army.fervorBonus)})` 
+      : formatNumber(effectiveFervor);
+    content += `    Fervor: ${fervorDisplay}, Org: ${formatNumber(army.organization)}\n`;
     content += `    Supply Need: ${army.supplyNeed}, Aggravation: ${formatNumber(army.aggravation)}\n`;
   });
   
@@ -1995,9 +1999,13 @@ function formatArmyBlock(army, empireName, empire = null) {
   // Stats line
   const effectiveProtection = Math.min(1, (army.protection || 0) + (army.protectionBonus || 0));
   const effectiveResolve = Math.min(1, (army.resolve || 0) + (army.resolveBonus || 0));
+  const effectiveFervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervorDisplay = army.fervorBonus && army.fervorBonus > 0 
+    ? `${formatNumber(effectiveFervor)} (+${formatNumber(army.fervorBonus)})` 
+    : formatNumber(effectiveFervor);
 
   const stats = [
-    `Fervor: ${formatNumber(army.fervor)}`,
+    `Fervor: ${fervorDisplay}`,
     `Org: ${formatNumber(army.organization)}`,
     `Agg: ${formatNumber(army.aggravation)}`,
     `Cmd: ${formatNumber(army.command || 50)}`,

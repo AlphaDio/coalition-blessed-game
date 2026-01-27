@@ -35,13 +35,17 @@ Make the resources.yaml follow the ds.yaml format
 
 Extract log making
 
-Increase to 100000 the super alloys consumption threshold
-Make Rare Gases consumption effect to increasing Approval by 1 for 100000
+Increase to 100000 the super alloys consumption threshold # DONE
+Make Rare Gases consumption effect to increasing Approval by 1 for 100000 # DONE
 
 # Build the Scourge events
+You can build the Scourge to be "stronger" in order to obtain more Glory for Heroes
 
 # Enactment events that takes into account Legitimacy and Unrest
 
 Increase Req prices of improvements
 
 Need a comeback variable
+
+Heroes will consume Empire credits to activate their effects
+Can have choices to get rid of them

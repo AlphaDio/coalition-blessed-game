@@ -20,14 +20,20 @@ declares:
     name: "Scout Report on Scourge Movement"
     description: "Coalition reconnaissance teams have detected Scourge force movements. Our scouts have gathered valuable intelligence about their likely next targets and timing."
     choices:
-      - text: "Analyze intelligence thoroughly (boost prediction confidence)"
+      - text: "Analyze thoroughly with full resources (costs 75 requisition, high confidence, fervor)"
         effects:
-          scourgePredictionConfidence: 0.3
+          coalitionEconomy:
+            requisition: -75
+          scourgePredictionConfidence: 0.35
           armyFervor:
             "@all": 5
-      - text: "Conserve scout resources (small confidence boost, minimal cost)"
+      - text: "Share selectively with weaker allies (free, good confidence, boost struggling empires)"
         effects:
-          scourgePredictionConfidence: 0.1
-      - text: "Ignore reports and focus on defense (no benefit)"
+          empireApproval:
+            "@poorest": 5
+          scourgePredictionConfidence: 0.18
+          coalitionCohesion: 1
+      - text: "Keep findings internal (no cost, modest confidence)"
         effects:
+          scourgePredictionConfidence: 0.12
           coalitionCohesion: 2

@@ -24,14 +24,18 @@ declares:
         effects:
           coalitionEconomy:
             requisition: -100
+      - text: "Target support to weakest allies (preserve resources, help struggling empires)"
+        effects:
+          coalitionEconomy:
+            requisition: -50
+          empireApproval:
+            "@poorest": 6
+          armyFervor:
+            "@all": 3
       - text: "Propaganda campaign (gain fervor, lose approval)"
         effects:
           armyFervor:
             "@all": 8
           empireApproval:
             "@all": -5
-      - text: "Crack down (reduce aggravation, lose approval)"
-        effects:
-          empireApproval:
-            "@all": -8
 
