@@ -94,8 +94,112 @@ Requisition is the coalition's construction currency, produced by converting pur
 - `docs/input/resources.yaml` supplies commodity metadata and tiers
 - `src/game/improvements/engine.js` consumes requisition for building improvements
 
+## Consumption-to-Requisition System
+
+The Consumption-to-Requisition system converts empire commodity consumption directly into coalition requisition and credits.
+
+### How It Works
+
+1. **Tracking**: When empires consume commodities from their stockpiles, the system records the consumption
+2. **Valuation**: Consumption is valued based on current market prices
+3. **Conversion**: Coalition receives requisition based on consumption value and a base share rate
+4. **Credits**: Additional credits are generated through the allowance system
+
+### Conversion Formula
+
+```
+requisition_gained = (consumption_value * COALITION_SHARE) / CREDITS_PER_REQUISITION
+```
+
+Where:
+- `consumption_value` = market price × quantity consumed
+- `COALITION_SHARE` = base share (10%) with modifier scaling
+- `CREDITS_PER_REQUISITION` = 1000 (conversion rate)
+
+### Coalition Share
+
+Base: 10% of consumption value
+
+Modified by:
+- `conversion_requisition_multiplier`: Multiplicative modifier (e.g., 10x multiplier makes consumption 10x more valuable)
+- Coalition modifiers from enacted laws
+
+### Allowance System
+
+The coalition maintains an allowance pool for credit spending:
+
+- **Refill Rate**: 1000 credits per tick
+- **Maximum**: 4000 credits (4 ticks worth)
+- **Usage**: Spent during coalition procurement
+- **Reset**: Treasury can refill allowance when depleted
+
+### Implementation
+
+- **Initialization**: `initializeTurnConsumptionTracking()` at turn start
+- **Recording**: `recordConsumption(commodityId, quantity, empireId)` during consumption
+- **Calculation**: `calculateConsumptionValue(market, empireId)` to compute value
+- **Application**: `applyConsumptionRequisition(state, rng)` applies requisition at end of economy tick
+- **Refill**: `refillCoalitionAllowance(state)` restores allowance
+
+## Economy Tick Pipeline
+
+The `economyTick.js` module orchestrates the complete economy processing:
+
+### Execution Order
+
+1. **Initialization**: Initialize market, load config, reset order books
+2. **Buy Orders**: Create buy orders from armies for needed supplies
+3. **Sell Offers**: Create sell offers from empires' stockpiles
+4. **Market Update**: Update prices based on supply/demand
+5. **Market Clearing**: Match buyers and sellers, apply prices
+6. **Coalition Procurement**: Coalition buys from remaining offers
+7. **Consumption Processing**: Record and apply consumption-to-requisition
+8. **Fulfillment**: Calculate army fulfillment and apply modifiers
+9. **Aggregation**: Prepare orders for next tick
+
+### Order Aggregation
+
+Orders are aggregated across ticks to prevent spam:
+
+- **Existing Orders**: Carries forward unfilled orders from previous tick
+- **New Orders**: Created based on current needs
+- **Merging**: Combines existing and new orders for same owner/commodity
+- **Price Averaging**: Uses weighted average price for aggregated orders
+
+### Key Processes
+
+#### Buy Order Creation
+```javascript
+// Armies create buy orders for needed supplies
+// Priority based on urgency
+// Price cap prevents overspending
+```
+
+#### Sell Offer Creation
+```javascript
+// Empires create sell offers from surplus stockpiles
+// Market prices determine asking price
+// Priority affects matching order
+```
+
+#### Price Updates
+```javascript
+// Target price calculated from demand/supply ratio
+// Smoothed over time to prevent volatility
+// Clamped to prevent extreme swings
+```
+
+#### Market Clearing
+```javascript
+// Orders matched per commodity
+// Surplus/shortage logic determines fulfillment
+// Prices apply to transactions
+```
+
 ## Files
 - `src/game/marketEconomy.js` - Market pricing and clearing
 - `src/game/coalitionProcurement.js` - Coalition procurement and requisition
+- `src/game/economyTick.js` - Economy tick orchestration
+- `src/game/consumptionToRequisition.js` - Consumption tracking and requisition conversion
 - `docs/input/economy_system.yaml` - Economy configuration
 - `docs/input/resources.yaml` - Commodity definitions
