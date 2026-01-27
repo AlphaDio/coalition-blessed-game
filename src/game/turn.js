@@ -767,7 +767,7 @@ export function advanceTurn(state, rng = Math.random) {
           let empireWithMost = null;
           let maxCount = 0;
           for (const [empireId, count] of Object.entries(empireRequestCounts)) {
-            if (count > MAX_SUGGESTIONS_PER_EMPIRE && count > maxCount) {
+            if (count >= MAX_SUGGESTIONS_PER_EMPIRE && count > maxCount) {
               empireWithMost = empireId;
               maxCount = count;
             }

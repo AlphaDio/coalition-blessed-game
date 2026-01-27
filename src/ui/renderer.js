@@ -65,7 +65,6 @@ import {
   createActiveLawsBox,
   createStockpilesBox,
   createLawsBox,
-  disableListSearch,
   createEventBox,
   createLogBox,
   createStatsBox,
@@ -79,7 +78,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { getAvailableLaws } from '../game/lawDefinitions.js';
-import { getAvailableImprovements, isImprovementTierUnlocked } from '../game/improvements/definitions.js';
+import { isImprovementTierUnlocked } from '../game/improvements/definitions.js';
 import { EMERGENCY_LAW_DEFINITIONS, getActiveEmergencyLaws, getEmergencyLawCooldown, canActivateEmergencyLaw } from '../game/emergencyLaws.js';
 import { calculateTechPointsPerTick } from '../game/technology.js';
 import { MARKET_CONSTANTS } from '../game/constants.js';
