@@ -83,6 +83,7 @@ import { EMERGENCY_LAW_DEFINITIONS, getActiveEmergencyLaws, getEmergencyLawCoold
 import { calculateTechPointsPerTick } from '../game/technology.js';
 import { MARKET_CONSTANTS } from '../game/constants.js';
 import { TECH_BY_ID } from '../game/technologyDefinitions.js';
+import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -778,13 +779,22 @@ function formatMenuItems(items, selectedIndex, panel) {
 
     if (item.disabled) {
       lines.push(`${marker}{gray-fg}${item.label}{/gray-fg}${hintText}`);
+      // Always show technical details for disabled items too
+      if (item.detailLine) {
+        lines.push(`{gray-fg}      ${item.detailLine}{/gray-fg}`);
+      }
     } else if (isSelected) {
       lines.push(`${marker}{bold}{yellow-fg}${item.label}{/yellow-fg}{/bold}${hintText}`);
+      // Show technical details with highlight for selected item
       if (item.detailLine) {
-        lines.push(`{white-fg}   ${item.detailLine}{/white-fg}`);
+        lines.push(`{white-fg}      ${item.detailLine}{/white-fg}`);
       }
     } else {
       lines.push(`${marker}{${labelColor}-fg}${item.label}{/${labelColor}-fg}${hintText}`);
+      // Always show technical details for non-selected items
+      if (item.detailLine) {
+        lines.push(`{gray-fg}      ${item.detailLine}{/gray-fg}`);
+      }
     }
   });
 
@@ -792,8 +802,8 @@ function formatMenuItems(items, selectedIndex, panel) {
 
   // Auto-scroll to keep selected item visible
   if (panel && typeof panel.setScrollPerc === 'function') {
-    // Calculate how many detail lines the selected item has
-    const selectedItem = items[selectedIndex];
+    // Calculate the line number of the selected item
+    // Now all items can have detail lines, so we count them all
     let selectedLineNum = 0;
     let currentLine = 0;
     
@@ -806,7 +816,8 @@ function formatMenuItems(items, selectedIndex, panel) {
         currentLine++;
       } else {
         currentLine++; // Label line
-        if (idx === selectedIndex && selectedItem && selectedItem.detailLine) {
+        // All non-divider/info items now have their detail line shown
+        if (item.detailLine) {
           currentLine++; // Detail line
         }
       }
