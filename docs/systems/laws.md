@@ -74,6 +74,38 @@ When `unrest >= 0.3`, each law tick applies negative externalities (scaled by le
 - `tick_delay_multiplier` scales how quickly law ticks fire (lower is faster).
 - `enactment_chance_bonus` reduces the pass threshold during vote tallying.
 
+## Immediate Effects (NEW)
+When a law is enacted, it applies both **immediate one-time effects** and **ongoing modifiers**:
+
+### Immediate Effects
+Applied instantly when the law passes voting:
+- **supplies**: Immediate boost/drain to coalition supply stockpile
+- **credits**: Immediate boost/drain to coalition credit balance  
+- **cohesion**: Immediate change to coalition cohesion (±1 to ±10 typical)
+- **empireApproval**: Immediate approval change applied to all empires
+- **armyOrganization**: Immediate organization change to all armies
+
+These represent the immediate impact of the law being enacted - the instant shock, relief, or mobilization as the policy takes effect.
+
+### Ongoing Modifiers
+Applied every tick while the law remains active:
+- **empire_approval**: Approval change per tick to all empires
+- **trade_income**: Credits per tick
+- **population_growth**: Population increase per tick
+- **industrial_output**: Production multiplier (percentage)
+- **cohesionModifier**: Cohesion recovery multiplier
+- **army_maintenance_cost_modifier**: Cost reduction multiplier
+- **relations_strength_modifier**: Diplomacy effectiveness multiplier
+- **supply_efficiency**: Supply usage reduction
+- **army_organization**: Organization boost to all armies (also applied immediately)
+
+### Examples
+- **Prosperity Doctrine** (T1 Economic): +500 credits + 100 supplies immediately, then +150 credits/tick ongoing
+- **Liberty Framework** (T1 Rights): +5 approval + 3 cohesion immediately, then +1 approval/tick ongoing
+- **Emergency Resource Rationing** (T2 Emergency): +200 supplies - 3 approval - 2 cohesion immediately, then +20% supply efficiency ongoing
+
+This dual-effect design makes laws feel impactful **now** (solve immediate problems) while also providing strategic **long-term** value.
+
 ## Data Flow
 - Inputs: law definition, empire values, current meters, RNG.
 - Tick: select eligible events -> apply effects -> update meters/progress -> apply unrest externalities.
