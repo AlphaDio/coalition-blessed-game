@@ -76,7 +76,7 @@ Each improvement object has:
     grain: 2400,
     steel: 1200
   },
-  productionBankThreshold: 1  // multiplier for release threshold (default: 1)
+  productionBankThreshold: 10  // multiplier for release threshold (default: 10)
 }
 ```
 

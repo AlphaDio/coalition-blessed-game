@@ -43,7 +43,7 @@ export const ALLOWANCE_CAP_TICKS = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_C
 export const ALLOWANCE_MAX = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS; // 4000
 
 /**
- * Track consumption consumption during a turn phase
+ * Track consumption during a turn phase
  * @type {Object} Map of empireId -> { commodity -> quantity consumed }
  */
 let turnConsumptionTracker = {};

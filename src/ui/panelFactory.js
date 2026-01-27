@@ -345,7 +345,7 @@ export function disableWidgetInput(widgets) {
       const originalFocus = widget.focus;
       widget.focus = function() {
         this.input = false;
-        return originalFocus.call(this);
+        return originalFocus ? originalFocus.call(this) : undefined;
       };
     }
   });
