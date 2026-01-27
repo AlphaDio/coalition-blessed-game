@@ -1,4 +1,4 @@
-import { createGameState } from '../game/types.js';
+import { createGameState, migrateGameState } from '../game/types.js';
 import { createSampleContent } from '../game/content.js';
 import { advanceTurn } from '../game/turn.js';
 import { getSampleLawDefinitions } from '../game/lawDefinitions.js';
@@ -7,7 +7,7 @@ import { createPowerSystemPolicy } from '../game/types.js';
 import { initializeLogger } from '../modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from '../game/marketEconomy.js';
 import { DeterministicRNG } from '../modules/rng.js';
-import { initializeImprovementsState, getSampleImprovementRequests } from '../game/improvements/index.js';
+import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
 import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
@@ -318,7 +318,7 @@ export class GameManager {
         }
         
         const result = advanceTurn(this.state);
-        if (result && result.log) {
+        if (result) {
           logger.info(`Turn ${this.state.turn}: ${result.log.length} log entries`);
         }
         this.notifyStateChange();
@@ -335,7 +335,7 @@ export class GameManager {
     };
 
     const gameSpeed = this.state.gameSpeed || 1;
-    const interval = Math.max(100, (2000) / gameSpeed); // Base 2 second interval, minimum 100ms
+    const interval = Math.max(100, Math.min(10000, (2000) / gameSpeed)); // Min 100ms, max 10s
     this.gameLoopInterval = setInterval(tick, interval);
     logger.info(`Game loop started with interval ${interval}ms (speed: ${gameSpeed}x)`);
   }
@@ -362,7 +362,8 @@ export class GameManager {
    * Load save state
    */
   loadSaveState(saveData) {
-    this.state = saveData;
+    // Migrate save data to current schema to handle missing fields
+    this.state = migrateGameState(saveData);
     this.notifyStateChange();
     logger.info(`Game loaded: turn ${this.state.turn}`);
     return this.state;

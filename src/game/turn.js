@@ -502,7 +502,7 @@ function recoverArmyOrganization(state, activeBattles) {
  * Replenish manpower for armies not currently in active battles
  * Replenishment rate is based on:
  * - Army fervor (higher fervor = faster replenishment)
- * - Empire size (population/influence - larger empires can replenish faster)
+ * - Empire size (population - larger empires can replenish faster)
  * @param {Object} state - Game state
  * @param {Array} activeBattles - Array of active battle fronts
  */

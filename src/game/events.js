@@ -7,7 +7,6 @@ import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { handleTechEventChoice } from './technology.js';
 import { boostScourgePredictionConfidence } from './scourgePrediction.js';
 
-
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
   if (state.activeEvent) {
@@ -204,8 +203,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
           army.timedFervorBonuses.push({
             amount: change,
             expiresAt: Number.MAX_SAFE_INTEGER, // Expires at next scourge battle
-            source: `Event: ${event.title || event.id}`,
-            appliedAt: state.turn
+            source: `Event: ${event.title || event.id}`
           });
           
           log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${change} (until next scourge battle)`);
@@ -268,8 +266,7 @@ export function handleEventChoice(state, eventId, choiceIndex) {
             state.timedModifiers.push({
               key: modifierKey,
               value: config.value,
-              expiresAt: state.turn + config.duration,
-              appliedAt: state.turn
+              expiresAt: state.turn + config.duration
             });
 
             log.push(`Coalition ${modifierKey}: ${config.value >= 0 ? '+' : ''}${config.value} for ${config.duration} turns`);

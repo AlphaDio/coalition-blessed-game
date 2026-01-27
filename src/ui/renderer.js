@@ -710,8 +710,15 @@ function buildRequestMenuItems(state) {
       const budgetOk = coalitionRequisition >= request.suppliesCost;
       const allOk = capacityOk && budgetOk;
 
-      // Status color based on affordability
-      const statusColor = allOk ? 'green' : 'red';
+      // Status color based on specific constraints
+      let statusColor = 'green'; // Default: can build
+      if (!budgetOk && !capacityOk) {
+        statusColor = 'magenta'; // Both issues: critical
+      } else if (!budgetOk) {
+        statusColor = 'yellow'; // Just budget: warning
+      } else if (!capacityOk) {
+        statusColor = 'cyan'; // Just capacity: info
+      }
 
       // Build main label with availability indicator
       const availabilityIcon = allOk ? '{green-fg}✓{/green-fg}' : '{red-fg}✗{/red-fg}';
@@ -980,6 +987,10 @@ function buildInfoSelectItems() {
 
 /**
  * Format menu items for display with automatic scrolling
+ * @param {Array} items - Menu items to display
+ * @param {number} selectedIndex - Index of selected item
+ * @param {Object} panel - Blessed panel object (for calculating visible lines)
+ * @returns {string} Formatted menu content
  */
 function formatMenuItems(items, selectedIndex, panel) {
   const lines = [];
@@ -1030,15 +1041,19 @@ function formatMenuItems(items, selectedIndex, panel) {
         currentLine++;
       } else {
         currentLine++; // Label line
-        if (idx === selectedIndex && item.detailLine) {
+        if (idx === selectedIndex && selectedItem && selectedItem.detailLine) {
           currentLine++; // Detail line
         }
       }
     });
 
+    // Calculate visible lines dynamically from panel height
+    // Panel height includes borders, label, etc. so we need to account for that
+    // Blessed panels typically have height that includes 2 lines for borders
+    const visibleLines = calculateVisibleLines(panel, lines.length);
+    
     // Set scroll percentage to keep selected item centered in view
     const totalLines = lines.length;
-    const visibleLines = 15; // Approximate visible lines in panel
     
     // Calculate the top line number that should be visible to center the selected item
     const topLine = Math.max(0, Math.min(
@@ -1055,6 +1070,31 @@ function formatMenuItems(items, selectedIndex, panel) {
   }
 
   return content;
+}
+
+/**
+ * Calculate the number of visible lines in a panel
+ * Uses dynamic calculation based on panel height, with fallback to reasonable default
+ * @param {Object} panel - Blessed panel object
+ * @param {number} totalLines - Total lines of content
+ * @returns {number} Estimated number of visible lines
+ */
+function calculateVisibleLines(panel, totalLines) {
+  // Try to get panel height dynamically
+  if (panel && typeof panel.height === 'number' && panel.height > 0) {
+    // Account for top and bottom borders (2 lines) and padding
+    // Blessed uses 1 line per row of text
+    const contentHeight = panel.height - 2; // Subtract borders
+    return Math.max(3, contentHeight); // Minimum 3 lines to avoid edge cases
+  }
+  
+  if (panel && panel.rows && typeof panel.rows === 'number') {
+    return Math.max(3, panel.rows - 2);
+  }
+  
+  // Fallback to reasonable default if panel height not available
+  // This is conservative to avoid over-scrolling
+  return 12; // Slightly less than the hardcoded 15 for safety margin
 }
 
 export function renderEvent(ui, state) {

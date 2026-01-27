@@ -5,11 +5,8 @@ import cors from 'cors';
 import { getLogger } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
 import { 
-  formatSuccess, 
-  formatError, 
   apiResponseMiddleware,
-  ErrorCodes,
-  createGameError 
+  ErrorCodes
 } from './apiResponseFormatter.js';
 
 /**
@@ -120,7 +117,23 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       });
     } catch (error) {
       logger.error(`WebSocket connection handler error: ${error.message}`);
-      ws.close();
+      logger.error(error.stack);
+      
+      // Send error message to client before closing
+      try {
+        ws.send(JSON.stringify({
+          type: 'connection_error',
+          payload: {
+            message: 'Connection initialization failed',
+            details: error.message
+          },
+          timestamp: Date.now()
+        }));
+      } catch (sendError) {
+        logger.error(`Failed to send error message to client: ${sendError.message}`);
+      }
+      
+      ws.close(1011, 'Server error during connection initialization');
     }
   });
 

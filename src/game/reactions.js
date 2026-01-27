@@ -107,7 +107,7 @@ export function getReactionTier(score) {
 /**
  * Calculate approval change based on reaction
  * @param {string} reaction - Reaction tier
- * @param {number} pressure - Empire's influence pressure
+ * @param {number} pressure - Empire's population pressure (larger empires exert more pressure)
  * @returns {number} - Approval change
  */
 export function getApprovalChange(reaction, pressure = 1) {

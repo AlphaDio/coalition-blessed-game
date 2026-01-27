@@ -494,6 +494,121 @@ export function createGameState(seed = 0) {
     improvements: null, // Improvements queue and requests (initialized in index.js)
 
     // Timed modifiers from events
-    timedModifiers: [] // Array of {key, value, expiresAt, appliedAt}
+    timedModifiers: [] // Array of {key, value, expiresAt}
   };
+}
+
+/**
+ * Clean up expired timed fervor bonuses for an army
+ * Removes bonuses where expiresAt <= currentTurn
+ * @param {Object} army - Army object
+ * @param {number} currentTurn - Current game turn
+ * @returns {Array} Array of expired bonuses that were removed
+ */
+export function cleanupExpiredFervorBonuses(army, currentTurn) {
+  if (!army.timedFervorBonuses || !Array.isArray(army.timedFervorBonuses)) {
+    return [];
+  }
+  
+  const expired = [];
+  army.timedFervorBonuses = army.timedFervorBonuses.filter(bonus => {
+    if (bonus.expiresAt <= currentTurn) {
+      expired.push(bonus);
+      return false; // Remove expired bonus
+    }
+    return true; // Keep active bonus
+  });
+  
+  return expired;
+}
+
+/**
+ * Clean up expired timed modifiers for the entire state
+ * Reverts modifier changes and removes expired entries
+ * @param {Object} state - Game state
+ * @returns {Array} Array of expired modifiers that were reverted
+ */
+export function cleanupExpiredTimedModifiers(state) {
+  if (!state.timedModifiers || !Array.isArray(state.timedModifiers)) {
+    return [];
+  }
+  
+  const expired = [];
+  const remaining = [];
+  
+  state.timedModifiers.forEach(modifier => {
+    if (modifier.expiresAt <= state.turn) {
+      // Revert the modifier
+      if (state.coalitionModifiers && state.coalitionModifiers[modifier.key] !== undefined) {
+        state.coalitionModifiers[modifier.key] -= modifier.value;
+      }
+      expired.push(modifier);
+    } else {
+      remaining.push(modifier);
+    }
+  });
+  
+  state.timedModifiers = remaining;
+  return expired;
+}
+
+/**
+ * Clean up all expired bonuses and modifiers for the entire state
+ * Call this once per turn to maintain system integrity
+ * @param {Object} state - Game state
+ * @returns {Object} Summary of cleanup {fervorBonuses: [], timedModifiers: []}
+ */
+export function cleanupAllExpiredBonuses(state) {
+  const summary = {
+    fervorBonuses: [],
+    timedModifiers: []
+  };
+  
+  // Clean fervor bonuses for all armies
+  if (state.armies && Array.isArray(state.armies)) {
+    state.armies.forEach(army => {
+      const expired = cleanupExpiredFervorBonuses(army, state.turn);
+      summary.fervorBonuses.push(...expired);
+    });
+  }
+  
+  // Clean timed modifiers
+  summary.timedModifiers = cleanupExpiredTimedModifiers(state);
+  
+  return summary;
+}
+
+/**
+ * Migrate saved game state to current schema
+ * Adds missing fields that may not exist in older saves
+ * @param {Object} state - Game state (potentially from a save file)
+ * @returns {Object} Migrated state with all required fields
+ */
+export function migrateGameState(state) {
+  if (!state) return state;
+  
+  // Migrate armies - ensure replenishment fields exist
+  if (state.armies && Array.isArray(state.armies)) {
+    state.armies.forEach(army => {
+      // Add missing replenishment fields with defaults
+      if (army.replenishmentMultiplier === undefined) {
+        army.replenishmentMultiplier = 1.0;
+      }
+      if (army.replenishmentBonus === undefined) {
+        army.replenishmentBonus = 0;
+      }
+      
+      // Ensure timed fervor bonuses array exists
+      if (!Array.isArray(army.timedFervorBonuses)) {
+        army.timedFervorBonuses = [];
+      }
+    });
+  }
+  
+  // Ensure state has timedModifiers array for expired modifier cleanup
+  if (!Array.isArray(state.timedModifiers)) {
+    state.timedModifiers = [];
+  }
+  
+  return state;
 }
