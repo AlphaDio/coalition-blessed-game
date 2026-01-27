@@ -13,7 +13,6 @@ import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
-import { initializeCoalitionProcurement } from '../game/coalitionProcurement.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -75,7 +74,13 @@ export class GameManager {
 
       const marketRng = new DeterministicRNG(this.state.rngSeed);
       this.state.market = initializeMarket(commodities, marketRng.random.bind(marketRng));
-      this.state.coalitionEconomy = initializeCoalitionProcurement();
+      // Coalition economy now generates requisition from empire consumption
+      // and credits from the allowance pool
+      this.state.coalitionEconomy = {
+        requisition: 500,
+        treasury_credits: 10000,
+        allowance_credits: 1000
+      };
 
       logger.info(`Economy initialized: ${commodities.length} commodities`);
     } catch (error) {

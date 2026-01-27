@@ -20,6 +20,7 @@ import { processTechAccrual, createTechEvent } from './technology.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
 import { calculateScourgePrediction } from './scourgePrediction.js';
 import { MARKET_CONSTANTS } from './constants.js';
+import { initializeTurnConsumptionTracking, recordConsumption, processConsumptionToRequisition } from './consumptionToRequisition.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.001;
 const MIN_POPULATION = 1;
@@ -603,6 +604,9 @@ function replenishArmyManpower(state, activeBattles) {
         army.mp.max = army.manpower;
         army.mp.current = Math.min(army.mp.current + manpowerGained, army.mp.max);
         
+        // Track consumption for coalition requisition generation
+        recordConsumption(army.signatureCommodity, available);
+        
         logger.debug(`Signature commodity trigger: ${army.name} consumed ${available} ${army.signatureCommodity} for +${manpowerGained} manpower`);
       }
     }
@@ -611,7 +615,7 @@ function replenishArmyManpower(state, activeBattles) {
 
 /**
  * Processes stockpile consumption for empires, consuming commodities above thresholds
- * to apply effects like population growth.
+ * to apply effects like population growth, and tracks consumption for coalition requisition.
  * @param {Object} state - The game state
  * @param {Function} log - Logging function
  */
@@ -623,6 +627,10 @@ function processEmpireStockpileConsumption(state, log) {
       if (available >= threshold) {
         const consumed = available;
         empire.stockpiles[commodity] = 0;
+        
+        // Track consumption for coalition requisition generation
+        recordConsumption(commodity, consumed);
+        
         if (effect.type === 'population_percent') {
           const increments = Math.floor(consumed / 100000);
           const populationIncrease = Math.floor(empire.stats.population * (effect.amount / 100) * increments);
@@ -819,8 +827,32 @@ export function advanceTurn(state, rng = Math.random) {
    // 3.5. Apply baseline population growth
    applyBasePopulationGrowth(state);
 
-   // 3.6. Process empire stockpile consumption
+   // 3.6. Initialize consumption tracking for requisition generation
+   initializeTurnConsumptionTracking();
+
+   // 3.7. Process empire stockpile consumption
    processEmpireStockpileConsumption(state, log);
+
+   // 3.8. Convert tracked consumption to coalition requisition and credits
+   // Build consumption share rate modifiers from active laws/effects
+   const consumptionModifiers = {
+     multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier || 1.0,
+     additiveShare: state.coalitionModifiers?.consumptionShareBonus || 0
+   };
+   
+   const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers);
+   if (consumptionResult.requisitionGained > 0.001 || consumptionResult.creditsSpent > 0.001) {
+     const logParts = [];
+     if (consumptionResult.requisitionGained > 0.001) {
+       logParts.push(`+${consumptionResult.requisitionGained.toFixed(3)} req`);
+     }
+     if (consumptionResult.creditsSpent > 0.001) {
+       logParts.push(`+${Math.round(consumptionResult.creditsSpent)} credits`);
+     }
+     if (logParts.length > 0) {
+       log.push(`Coalition from consumption: ${logParts.join(', ')}`);
+     }
+   }
 
    // 4. Update law cooldowns
   

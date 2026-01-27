@@ -1,4 +1,3 @@
-import { initializeCoalitionProcurement } from './src/game/coalitionProcurement.js';
 import { createSampleContent } from './src/game/content.js';
 import { createUI, renderAll } from './src/ui/renderer.js';
 import { setupInputHandlers } from './src/ui/input.js';
@@ -91,7 +90,13 @@ function initializeEconomyState(state) {
     const marketRng = new DeterministicRNG(state.rngSeed);
     state.market = initializeMarket(commodities, marketRng.random.bind(marketRng));
     
-    state.coalitionEconomy = initializeCoalitionProcurement();
+    // Coalition economy now generates requisition from empire consumption
+    // and credits from the allowance pool
+    state.coalitionEconomy = {
+      requisition: 500,
+      treasury_credits: 10000,
+      allowance_credits: 1000
+    };
     
     console.log(`Economy initialized: ${commodities.length} commodities, market ready`);
   } catch (error) {

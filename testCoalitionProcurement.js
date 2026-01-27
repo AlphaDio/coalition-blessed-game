@@ -9,7 +9,7 @@ console.log('Starting test file...');
 
 import { createGameState } from './src/game/types.js';
 import { loadEconomyConfig } from './src/game/marketEconomy.js';
-import { initializeCoalitionProcurement, refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, processBankRollover, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from './src/game/coalitionProcurement.js';
+import { refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, processBankRollover, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from './src/game/coalitionProcurement.js';
 import { DeterministicRNG } from './src/modules/rng.js';
 
 function testProcurementAlgorithm() {

@@ -470,19 +470,14 @@ export function createGameState(seed = 0) {
     activeEmergencyLaws: [],     // Active emergency law instances
     emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
     
-    // Coalition procurement and supply conversion system
+    // Coalition economy system (requisition generation from empire consumption)
     coalitionEconomy: {
-      treasury_credits: 10000, // Baseline B starting treasury
-      allowance_credits: 500, // Refilled each tick
-      reserve_floor_credits: 1500, // Baseline B reserve floor
-      bank: 0, // Coalition bank (accumulates resources)
       requisition: 500, // Starting requisition for purchasing improvements
-      stockpile_bank: {},     // Map<commodityId, int> - accumulates purchased commodities
-      stockpile_ready: {},    // Map<commodityId, int> - ready for conversion (reached threshold)
-      procurement: {
-        spend_throttle: 0.75, // Baseline B default
-        theta_preset_by_commodity: {} // Map<commodityId, ThetaPresetId>
-      }
+      treasury_credits: 10000, // Coalition treasury (long-term storage)
+      allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
+      // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
+      // and credits from the allowance pool (up to allowance cap per tick)
+      // Modifiable by multiplicativeShare and additiveShare modifiers
     },
     
     // Market economy system (updated with floor prices)

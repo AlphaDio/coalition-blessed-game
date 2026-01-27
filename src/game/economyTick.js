@@ -15,12 +15,7 @@ import {
   coalitionProcurement,
   computeArmyFulfillment
 } from './marketEconomy.js';
-import {
-  refillCoalitionAllowance,
-  executeCoalitionProcurement,
-  executeSupplyConversion,
-  initializeCoalitionProcurement
-} from './coalitionProcurement.js';
+import { refillCoalitionAllowance } from './consumptionToRequisition.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -71,8 +66,12 @@ export function processEconomyTick(state) {
   
   // Initialize coalition economy state if needed
   if (!state.coalitionEconomy) {
-    state.coalitionEconomy = initializeCoalitionProcurement();
-    logger.info('Coalition procurement initialized');
+    state.coalitionEconomy = {
+      requisition: 500,
+      treasury_credits: 10000,
+      allowance_credits: 1000
+    };
+    logger.info('Coalition economy initialized');
   }
   
    // Reset order books - start empty for new orders
@@ -478,29 +477,14 @@ export function processEconomyTick(state) {
       sellOffers: uniqueSellOffers
     };
     
-    // Step 7: Coalition procurement after market clear
-   // Refill allowance
-   refillCoalitionAllowance(state.coalitionEconomy);
+    // Step 7: Refill coalition allowance each tick (from faucet)
+    // This is the primary credit source for the coalition
+    refillCoalitionAllowance(state.coalitionEconomy);
    
-    // Procure from post-clear surplus
-    const procurementLog = executeCoalitionProcurement(state.market, state.coalitionEconomy, config);
-
-     // Convert stockpiles to requisition
-    const conversionLog = executeSupplyConversion(state.coalitionEconomy, config);
-
-    // Coalition procurement and conversion logs are not displayed to reduce UI clutter
-    // They still occur and can be viewed in debug logs if needed
-    // if (procurementLog.length > 0) log.push(...procurementLog);
-    // if (conversionLog.length > 0) log.push(...conversionLog);
-   
-   // Step 8: Compute army fulfillment and performance
-  state.armies.forEach(army => {
-    computeArmyFulfillment(army, config);
-  });
-  
-   // Replenish coalition treasury
-   state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + 
-     config.coalition.procurement.budget_credits_per_tick;
+    // Step 8: Compute army fulfillment and performance
+    state.armies.forEach(army => {
+      computeArmyFulfillment(army, config);
+    });
    
     // Apply coalition modifiers from enacted laws
     if (state.coalitionModifiers && state.empires) {
