@@ -111,7 +111,7 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { quantum_circuits: 0.04 },
         modifiers: {},
         tags: ['industrial', 'fabrication', 'quantum'],
-        requisitionUpkeep: 3
+        requisitionUpkeep: 6
       }
     ),
 
@@ -125,12 +125,12 @@ const INDUSTRIAL_BRANCH = [
       {
         suppliesCost: 1000,
         build: 800,
-        capacity: 5,
+        capacity: 6,
         sustainmentCost: { quantum_circuits: 0.2, super_alloys: 0.8 },
         productionOutputs: { dark_matter: 0.001, quantum_circuits: 0.005 },
         modifiers: { industrial_output: 0.1, coalition_construction_mult: 0.2 },
         tags: ['mega_structure', 'industrial', 'energy', 'transcendent'],
-        requisitionUpkeep: 7
+        requisitionUpkeep: 8
       }
     )
 ];
@@ -170,12 +170,12 @@ const RESEARCH_BRANCH = [
       {
        suppliesCost: 320,
        build: 320,
-       capacity: 3,
+       capacity: 4,
        sustainmentCost: { rare_gases: 0.4, quantum_circuits: 0.1 },
        productionOutputs: {},
        modifiers: { research_speed: 0.3 },
        tags: ['research', 'computing', 'neural'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 6
      }
    ),
 
@@ -189,12 +189,12 @@ const RESEARCH_BRANCH = [
      {
        suppliesCost: 600,
        build: 600,
-       capacity: 4,
+       capacity: 6,
         sustainmentCost: { rare_gases: 0.6, quantum_circuits: 0.2, genomes: 0.2 },
         productionOutputs: { rare_gases: 0.03 },
        modifiers: { research_speed: 0.5 },
         tags: ['mega_structure', 'research', 'knowledge', 'transcendent'],
-        requisitionUpkeep: 7
+        requisitionUpkeep: 8
      }
    )
  ];
@@ -257,7 +257,7 @@ const MILITARY_BRANCH = [
        productionOutputs: {},
        modifiers: { army_organization: 3, supply_efficiency: 0.08 },
        tags: ['mega_structure', 'military', 'coordination'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 6
      }
    ),
 
@@ -271,12 +271,12 @@ const MILITARY_BRANCH = [
      {
        suppliesCost: 800,
        build: 700,
-       capacity: 4,
+       capacity: 6,
        sustainmentCost: { super_alloys: 0.4, quantum_circuits: 0.2 },
        productionOutputs: {},
        modifiers: { army_organization: 5, supply_efficiency: 0.12 },
        tags: ['mega_structure', 'military', 'fortress', 'transcendent'],
-       requisitionUpkeep: 7
+       requisitionUpkeep: 8
      }
    )
  ];
@@ -316,12 +316,12 @@ const CULTURAL_BRANCH = [
      {
        suppliesCost: 500,
        build: 160,
-       capacity: 3,
+       capacity: 4,
         sustainmentCost: { genomes: 0.2, psycho_implants: 0.1 },
         productionOutputs: { genomes: 0.004 },
        modifiers: { population_growth: 4, empire_approval: 5 },
        tags: ['mega_structure', 'cultural', 'celebration', 'biologic'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 6
      }
    ),
 
@@ -335,12 +335,12 @@ const CULTURAL_BRANCH = [
      {
        suppliesCost: 700,
        build: 480,
-       capacity: 4,
+       capacity: 6,
         sustainmentCost: { genomes: 0.3, psycho_implants: 0.2 },
         productionOutputs: { genomes: 0.005, psycho_implants: 0.2 },
        modifiers: { population_growth: 8, empire_approval: 10 },
        tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic'],
-       requisitionUpkeep: 7
+       requisitionUpkeep: 8
      }
    )
  ];
@@ -383,7 +383,7 @@ const ECONOMIC_BRANCH = [
       productionOutputs: {},
       modifiers: { trade_income: 100, market_efficiency: 0.05 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace'],
-      requisitionUpkeep: 3
+      requisitionUpkeep: 6
     }
   ),
 
@@ -397,12 +397,12 @@ const ECONOMIC_BRANCH = [
     {
       suppliesCost: 900,
       build: 750,
-      capacity: 5,
+      capacity: 6,
       sustainmentCost: { quantum_circuits: 0.3, psycho_implants: 0.5, sentient_cores: 0.4 },
       productionOutputs: {},
        modifiers: { market_efficiency: 0.3 },
        tags: ['mega_structure', 'economic', 'wealth', 'transcendent'],
-       requisitionUpkeep: 7
+       requisitionUpkeep: 8
      }
    )
  ];
@@ -442,12 +442,12 @@ const SPIRITUAL_BRANCH = [
      {
        suppliesCost: 360,
        build: 350,
-       capacity: 3,
+       capacity: 4,
         sustainmentCost: { ancient_relics: 0.3, psycho_implants: 0.2 },
         productionOutputs: { ancient_relics: 1 },
        modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
        tags: ['mega_structure', 'spiritual', 'heritage', 'relics'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 6
      }
    ),
 
@@ -461,12 +461,12 @@ const SPIRITUAL_BRANCH = [
      {
        suppliesCost: 700,
        build: 650,
-       capacity: 4,
+       capacity: 6,
         sustainmentCost: { ancient_relics: 0.5, psycho_implants: 0.3, sentient_cores: 0.1 },
         productionOutputs: { ancient_relics: 1 },
        modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics'],
-       requisitionUpkeep: 7
+       requisitionUpkeep: 8
      }
    )
  ];
@@ -506,7 +506,7 @@ const GOVERNANCE_BRANCH = [
      {
        suppliesCost: 400,
        build: 380,
-       capacity: 3,
+       capacity: 4,
        sustainmentCost: { sentient_cores: 0.2, quantum_circuits: 0.1 },
        productionOutputs: {},
        modifiers: { law_progress_speed: 0.10, tick_delay_multiplier: 0.9 },
@@ -525,12 +525,12 @@ const GOVERNANCE_BRANCH = [
      {
        suppliesCost: 800,
        build: 700,
-       capacity: 4,
+       capacity: 6,
         sustainmentCost: { sentient_cores: 0.4, quantum_circuits: 0.2, psycho_implants: 0.2 },
         productionOutputs: { sentient_cores: 0.001 },
        modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
        tags: ['mega_structure', 'governance', 'transcendent', 'sentient'],
-       requisitionUpkeep: 7
+       requisitionUpkeep: 8
      }
    )
  ];
@@ -654,7 +654,7 @@ const RESOURCE_BRANCH = [
        },
        modifiers: {},
        tags: ['resource', 'passive', 'exotic', 'advanced_commodity'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 6
      }
    )
  ];

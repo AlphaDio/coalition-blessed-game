@@ -34,8 +34,8 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     costs_per_tick: {
       requisition: 2.5,
       commodities: {
-        super_alloys: 5000,
-        biomass: 3000
+        super_alloys: 50,
+        biomass: 30
       }
     },
     modifiers: {
@@ -63,9 +63,9 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     costs_per_tick: {
       requisition: 3.0,
       commodities: {
-        biomass: 5000,
-        rare_gases: 2000,
-        genomes: 1000
+        biomass: 50,
+        rare_gases: 20,
+        genomes: 10
       }
     },
     modifiers: {
@@ -92,9 +92,9 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     costs_per_tick: {
       requisition: 2.5,
       commodities: {
-        rare_gases: 2500,
-        genomes: 1500,
-        ancient_relics: 50,
+        rare_gases: 25,
+        genomes: 15,
+        ancient_relics: 5,
         quantum_circuits: 5
       }
     },
@@ -122,7 +122,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     costs_per_tick: {
       requisition: 2.0,
       commodities: {
-        biomass: 3000,
+        biomass: 30,
         psycho_implants: 2
       }
     },
@@ -153,7 +153,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       commodities: {
         wormhole_reactors: 0.5,
         dark_matter: 0.25,
-        nano_machines: 150
+        nano_machines: 15
       }
     },
     modifiers: {
