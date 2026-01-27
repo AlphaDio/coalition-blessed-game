@@ -37,3 +37,11 @@ Extract log making
 
 Increase to 100000 the super alloys consumption threshold
 Make Rare Gases consumption effect to increasing Approval by 1 for 100000
+
+# Build the Scourge events
+
+# Enactment events that takes into account Legitimacy and Unrest
+
+Increase Req prices of improvements
+
+Need a comeback variable

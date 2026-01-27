@@ -67,7 +67,8 @@ export const ECONOMY_CONSTANTS = {
   UNDERFUNDED_AGGRAVATION_INCREASE: 3,
   SUPPLY_SHORTAGE_ORG_PENALTY: 10,
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
-  SCOURGE_FERVOR_GROWTH: 0.02
+  SCOURGE_FERVOR_GROWTH: 0.02,
+  NEGATIVE_REQUISITION_COHESION_DIVISOR: 250 // For every 250 req, lose 1 cohesion
 
 };
 
@@ -135,3 +136,19 @@ export const IMPROVEMENTS_CONSTANTS = {
   INITIAL_MAX_TOTAL_CAPACITY: 6,     // Starting maximum total improvement capacity
   COALITION_CONSTRUCTION: 4          // Build progress added to ALL building improvements per tick
 };
+
+export const SCOURGE_PREDICTION_CONSTANTS = {
+  BASE_CONFIDENCE_MODIFIER: 1.0,      // Default certainty level
+  CONFIDENCE_PER_LEVEL: 0.3,           // Modifier increase per confidence tier improvement
+  STABLE_BONUS: 0.1,                   // Bonus modifier when coalition is Stable
+  STRAINED_PENALTY: -0.05,             // Penalty when Strained
+  DESPERATE_PENALTY: -0.15,            // Penalty when Desperate
+  MIN_CONFIDENCE_MODIFIER: 0.1,        // Minimum (very uncertain)
+  MAX_CONFIDENCE_MODIFIER: 2.0,        // Maximum (very certain)
+  
+  // Uncertainty ranges based on confidence
+  UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low
+  UNCERTAINTY_RANGE_MEDIUM: { min: 2, max: 8 },    // Moderate range
+  UNCERTAINTY_RANGE_HIGH: { min: 1, max: 3 }       // Narrow range
+};
+

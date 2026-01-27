@@ -18,15 +18,21 @@ declares:
   event_data:
     id: "event_1"
     name: "Requisition Convoy Attacked"
-    description: "A requisition convoy bound for coalition forces has been ambushed by Scourge forces. How do you respond?"
+    description: "A requisition convoy bound for coalition forces has been ambushed by Scourge forces. Analysis of the attack reveals information about Scourge tactics. How do you respond?"
     choices:
-      - text: "Send reinforcements (lose requisition, gain approval)"
+      - text: "Send reinforcements + analyze tactics (lose requisition, analyze patterns)"
         effects:
           coalitionEconomy:
             requisition: -100
           empireApproval:
             "@all": 5
-      - text: "Abandon convoy (lose approval, save requisition)"
+          scourgePredictionConfidence: 0.15
+      - text: "Abandon convoy (lose approval, save resources)"
         effects:
           empireApproval:
             "@all": -10
+      - text: "Ambush the ambushers (lose cohesion, learn from combat)"
+        effects:
+          coalitionCohesion: -5
+          scourgePredictionConfidence: 0.2
+          scourgeCohesion: -3

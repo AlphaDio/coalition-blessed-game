@@ -32,7 +32,6 @@ declares:
       essentialist_constructivist: 0.5
     stats:
       population: 800
-      influence: 70
       tech_rate_bonus: 0.30
       production:
         outputs_per_tick:

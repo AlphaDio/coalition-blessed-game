@@ -643,13 +643,13 @@ export function calculateEmpireVotes(empire, policy, state) {
   let votes = policy.config.base_votes_per_empire || 1;
   
   if (policy.type === 'pressure_weighted') {
-    // Votes increase with influence/pressure
-    const pressure = empire.stats.influence || 50;
+    // Votes increase with population
+    const pressure = empire.stats.population || 1000;
     votes += Math.floor(pressure * policy.config.pressure_multiplier);
   } else if (policy.type === 'hegemonic') {
-    // Top empire gets bonus
-    const maxInfluence = Math.max(...state.empires.map(e => e.stats.influence || 50));
-    if (empire.stats.influence === maxInfluence) {
+    // Top empire by population gets bonus
+    const maxPopulation = Math.max(...state.empires.map(e => e.stats.population || 1000));
+    if (empire.stats.population === maxPopulation) {
       votes += policy.config.hegemonic_bonus || 0;
     }
   }

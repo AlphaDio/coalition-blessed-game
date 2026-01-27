@@ -22,10 +22,10 @@ export const COMMODITY_DEFINITIONS = {
 };
 
 export const MILLI_PER_UNIT_BY_TIER = {
-  T1: 10,
-  T2: 20,
-  T3: 50,
-  T4: 100
+  T1: 3,
+  T2: 6,
+  T3: 15,
+  T4: 30
 };
 
 export const BATCH_SIZE_UNITS = 100;
@@ -50,7 +50,6 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     values: values,
     stats: {
       population: stats.population || 1000,
-      influence: stats.influence || 50,
       tech_rate_bonus: stats.tech_rate_bonus || 0,
       researchSpeedBonus: 0,
       approvalBonus: 0
@@ -95,6 +94,7 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     protectionBonus: 0,
     resolveBonus: 0,
     killRateBonus: 0,
+    timedFervorBonuses: [], // Array of {amount, expiresAt, source} for event-based fervor
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -140,6 +140,10 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     command: initialCommand,
     recovery: initialRecovery,
     reinforcementRate: 100,
+    
+    // Replenishment modifiers
+    replenishmentMultiplier: 1.0,  // Multiplicative modifier (e.g., 1.2 = +20%)
+    replenishmentBonus: 0,          // Additive modifier (added after all multipliers)
     
     // Signature commodity for reinforcement (consumed from empire stockpile)
     signatureCommodity: null,
@@ -412,6 +416,16 @@ export function createGameState(seed = 0) {
     heroes: [],
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
+    
+    // Scourge prediction system
+    scourgePrediction: {
+      targetEmpireId: null,          // Predicted next target
+      estimatedTurnsToNextBattle: null, // Estimated turns until battle (null = very uncertain)
+      confidenceModifier: 1.0,        // 1.0 = baseline certainty, >1.0 = more certain, <1.0 = less certain
+      confidenceLevel: 'low',         // 'low' | 'medium' | 'high' based on modifier
+      uncertaintyRange: { min: null, max: null } // Range of possible turn counts
+    },
+    
     laws: [],
     activeLaws: [],
     insurrections: [],
@@ -423,7 +437,7 @@ export function createGameState(seed = 0) {
     selectedLawIndex: 0,
     selectedArmyIndex: 0,
     focus: 'main', // 'main', 'laws', 'event'
-    paused: false, // Real-time game pause state
+    paused: true, // Real-time game pause state
     gameSpeed: 1, // Game speed multiplier (0.5 = slow, 1 = normal, 2 = fast)
     rngSeed: seed, // Seed for deterministic content variation
     
@@ -480,6 +494,121 @@ export function createGameState(seed = 0) {
     improvements: null, // Improvements queue and requests (initialized in index.js)
 
     // Timed modifiers from events
-    timedModifiers: [] // Array of {key, value, expiresAt, appliedAt}
+    timedModifiers: [] // Array of {key, value, expiresAt}
   };
+}
+
+/**
+ * Clean up expired timed fervor bonuses for an army
+ * Removes bonuses where expiresAt <= currentTurn
+ * @param {Object} army - Army object
+ * @param {number} currentTurn - Current game turn
+ * @returns {Array} Array of expired bonuses that were removed
+ */
+export function cleanupExpiredFervorBonuses(army, currentTurn) {
+  if (!army.timedFervorBonuses || !Array.isArray(army.timedFervorBonuses)) {
+    return [];
+  }
+  
+  const expired = [];
+  army.timedFervorBonuses = army.timedFervorBonuses.filter(bonus => {
+    if (bonus.expiresAt <= currentTurn) {
+      expired.push(bonus);
+      return false; // Remove expired bonus
+    }
+    return true; // Keep active bonus
+  });
+  
+  return expired;
+}
+
+/**
+ * Clean up expired timed modifiers for the entire state
+ * Reverts modifier changes and removes expired entries
+ * @param {Object} state - Game state
+ * @returns {Array} Array of expired modifiers that were reverted
+ */
+export function cleanupExpiredTimedModifiers(state) {
+  if (!state.timedModifiers || !Array.isArray(state.timedModifiers)) {
+    return [];
+  }
+  
+  const expired = [];
+  const remaining = [];
+  
+  state.timedModifiers.forEach(modifier => {
+    if (modifier.expiresAt <= state.turn) {
+      // Revert the modifier
+      if (state.coalitionModifiers && state.coalitionModifiers[modifier.key] !== undefined) {
+        state.coalitionModifiers[modifier.key] -= modifier.value;
+      }
+      expired.push(modifier);
+    } else {
+      remaining.push(modifier);
+    }
+  });
+  
+  state.timedModifiers = remaining;
+  return expired;
+}
+
+/**
+ * Clean up all expired bonuses and modifiers for the entire state
+ * Call this once per turn to maintain system integrity
+ * @param {Object} state - Game state
+ * @returns {Object} Summary of cleanup {fervorBonuses: [], timedModifiers: []}
+ */
+export function cleanupAllExpiredBonuses(state) {
+  const summary = {
+    fervorBonuses: [],
+    timedModifiers: []
+  };
+  
+  // Clean fervor bonuses for all armies
+  if (state.armies && Array.isArray(state.armies)) {
+    state.armies.forEach(army => {
+      const expired = cleanupExpiredFervorBonuses(army, state.turn);
+      summary.fervorBonuses.push(...expired);
+    });
+  }
+  
+  // Clean timed modifiers
+  summary.timedModifiers = cleanupExpiredTimedModifiers(state);
+  
+  return summary;
+}
+
+/**
+ * Migrate saved game state to current schema
+ * Adds missing fields that may not exist in older saves
+ * @param {Object} state - Game state (potentially from a save file)
+ * @returns {Object} Migrated state with all required fields
+ */
+export function migrateGameState(state) {
+  if (!state) return state;
+  
+  // Migrate armies - ensure replenishment fields exist
+  if (state.armies && Array.isArray(state.armies)) {
+    state.armies.forEach(army => {
+      // Add missing replenishment fields with defaults
+      if (army.replenishmentMultiplier === undefined) {
+        army.replenishmentMultiplier = 1.0;
+      }
+      if (army.replenishmentBonus === undefined) {
+        army.replenishmentBonus = 0;
+      }
+      
+      // Ensure timed fervor bonuses array exists
+      if (!Array.isArray(army.timedFervorBonuses)) {
+        army.timedFervorBonuses = [];
+      }
+    });
+  }
+  
+  // Ensure state has timedModifiers array for expired modifier cleanup
+  if (!Array.isArray(state.timedModifiers)) {
+    state.timedModifiers = [];
+  }
+  
+  return state;
 }

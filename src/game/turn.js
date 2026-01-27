@@ -1,6 +1,6 @@
 import { ECONOMY_CONSTANTS, BATTLE_CONSTANTS } from './constants.js';
 import { clampCohesion, clampStat, clampApproval } from './cohesion.js';
-import { consumeRequisition } from './economy.js';
+import { consumeRequisition, applyNegativeRequisitionCohesionPenalty } from './economy.js';
 import { processEconomyTick } from './economyTick.js';
 import { checkInsurrections } from './insurrection.js';
 import { updateLawCooldowns } from './laws.js';
@@ -18,6 +18,7 @@ import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { refreshArmyAggregates } from './armyComposition.js';
 import { processTechAccrual, createTechEvent } from './technology.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.js';
+import { calculateScourgePrediction } from './scourgePrediction.js';
 import { MARKET_CONSTANTS } from './constants.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.001;
@@ -95,7 +96,7 @@ function applyEmergencyModifiers(state, modifiers, log) {
 function applyBasePopulationGrowth(state) {
   if (!state.empires) return;
   state.empires.forEach(empire => {
-    if (!empire.stats) empire.stats = { population: MIN_POPULATION, influence: 50 };
+    if (!empire.stats) empire.stats = { population: MIN_POPULATION };
     const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : MIN_POPULATION;
     if (currentPopulation <= 0) {
       empire.stats.population = MIN_POPULATION;
@@ -377,17 +378,18 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       if (participatingArmies.length > 0) {
         const battleResult = startScourgeBattle(state, participatingArmies, rng);
         log.push(...battleResult.log);
-    // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
-    for (const army of state.armies) {
-      army.fervorBonus = 0;
-      army.protectionBonus = 0;
-      army.resolveBonus = 0;
-      army.killRateBonus = 0;
-    }
-    for (const empire of state.empires) {
-      empire.stats.approvalBonus = 0;
-    }
-    return;
+        // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
+        for (const army of state.armies) {
+          army.fervorBonus = 0;
+          army.protectionBonus = 0;
+          army.resolveBonus = 0;
+          army.killRateBonus = 0;
+          army.timedFervorBonuses = []; // Clear event-based fervor bonuses
+        }
+        for (const empire of state.empires) {
+          empire.stats.approvalBonus = 0;
+        }
+        return;
       }
     }
   }
@@ -403,19 +405,20 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
     empire.approval = clampApproval(empire.approval - approvalLoss);
   });
 
-   log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-   logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-    // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
-     for (const army of state.armies) {
-       army.fervorBonus = 0;
-       army.protectionBonus = 0;
-       army.resolveBonus = 0;
-       army.killRateBonus = 0;
-     }
-     for (const empire of state.empires) {
-       empire.stats.approvalBonus = 0;
-     }
- }
+  log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+  logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+  // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
+  for (const army of state.armies) {
+    army.fervorBonus = 0;
+    army.protectionBonus = 0;
+    army.resolveBonus = 0;
+    army.killRateBonus = 0;
+    army.timedFervorBonuses = []; // Clear event-based fervor bonuses
+  }
+  for (const empire of state.empires) {
+    empire.stats.approvalBonus = 0;
+  }
+}
 
 function triggerInsurrectionBattles(state, rng, activeBattles, log, logger) {
   if (!state.insurrections || !Array.isArray(state.insurrections)) {
@@ -499,7 +502,7 @@ function recoverArmyOrganization(state, activeBattles) {
  * Replenish manpower for armies not currently in active battles
  * Replenishment rate is based on:
  * - Army fervor (higher fervor = faster replenishment)
- * - Empire size (population/influence - larger empires can replenish faster)
+ * - Empire size (population - larger empires can replenish faster)
  * @param {Object} state - Game state
  * @param {Array} activeBattles - Array of active battle fronts
  */
@@ -531,18 +534,49 @@ function replenishArmyManpower(state, activeBattles) {
     
     // Fervor modifier: 0.5x at 0 fervor, 1.5x at 100 fervor
     // Linear interpolation: 0.5 + (fervor / 100) * 1.0
-    const effectiveFervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+    // Include both permanent fervorBonus and active timed fervor bonuses
+    let totalFervorBonus = (army.fervorBonus || 0);
+    if (army.timedFervorBonuses && Array.isArray(army.timedFervorBonuses)) {
+      totalFervorBonus += army.timedFervorBonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
+    }
+    const effectiveFervor = Math.min(100, (army.fervor || 0) + totalFervorBonus);
     const fervorModifier = 0.5 + (effectiveFervor / 100) * 1.0;
     
     // Empire size modifier based on population
     // Normalize population: log10 scale, then scale to 0.5x - 2.0x range
     const population = empire.stats?.population || 1000;
     const logPopulation = Math.log10(Math.max(1, population));
-    // Scale: 1000 (3.0) = 0.5x, 1M (6.0) = 1.0x, 1B (9.0) = 2.0x
-    const populationModifier = Math.max(0.5, Math.min(2.0, 0.5 + (logPopulation - 3.0) / 3.0));
+    // Scale: 1000 (3.0) = 0.5x, 10000 (4.0) = 1.0x, 100000 (5.0) = 1.5x, 1M (6.0) = 2.0x
+    // Linear interpolation between breakpoints
+    let populationModifier;
+    if (logPopulation <= 3.0) {
+      // Below 1000: 0.5x
+      populationModifier = 0.5;
+    } else if (logPopulation <= 4.0) {
+      // 1000 to 10000: 0.5x to 1.0x
+      populationModifier = 0.5 + (logPopulation - 3.0) * 0.5;
+    } else if (logPopulation <= 5.0) {
+      // 10000 to 100000: 1.0x to 1.5x
+      populationModifier = 1.0 + (logPopulation - 4.0) * 0.5;
+    } else if (logPopulation <= 6.0) {
+      // 100000 to 1M: 1.5x to 2.0x
+      populationModifier = 1.5 + (logPopulation - 5.0) * 0.5;
+    } else {
+      // Above 1M: cap at 2.0x
+      populationModifier = 2.0;
+    }
     
     // Calculate effective replenishment rate
-    const effectiveRate = baseRate * fervorModifier * populationModifier;
+    // Apply multiplicative modifier (default 1.0)
+    const replenishmentMultiplier = army.replenishmentMultiplier || 1.0;
+    let effectiveRate = baseRate * fervorModifier * populationModifier * replenishmentMultiplier;
+    
+    // Apply additive bonus (default 0)
+    const replenishmentBonus = army.replenishmentBonus || 0;
+    effectiveRate += replenishmentBonus;
+    
+    // Ensure rate is non-negative
+    effectiveRate = Math.max(0, effectiveRate);
     
     // Apply replenishment
     const spaceAvailable = army.mp.max - army.mp.current;
@@ -688,6 +722,12 @@ export function advanceTurn(state, rng = Math.random) {
       applyImprovementModifiers(state);
     }
 
+    // 3.5. Apply cohesion penalty for negative requisition
+    const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
+    if (cohesionPenaltyResult.log && cohesionPenaltyResult.log.length > 0) {
+      log.push(...cohesionPenaltyResult.log);
+    }
+
     // Remove expired improvement suggestions (older than 45 ticks)
     const expiredCount = removeExpiredSuggestions(state);
     if (expiredCount > 0) {
@@ -817,6 +857,19 @@ export function advanceTurn(state, rng = Math.random) {
   const prevFervor = state.scourgeFervor;
   state.scourgeFervor = clampStat(state.scourgeFervor + ECONOMY_CONSTANTS.SCOURGE_FERVOR_GROWTH, 0, 100);
   logger.debug(`Scourge fervor: ${prevFervor.toFixed(1)} -> ${state.scourgeFervor.toFixed(1)}`);
+  
+  // 7.5. Update Scourge prediction (next target and battle timing)
+  if (!state.scourgePrediction) {
+    state.scourgePrediction = {
+      targetEmpireId: null,
+      estimatedTurnsToNextBattle: null,
+      confidenceModifier: 1.0,
+      confidenceLevel: 'low',
+      uncertaintyRange: { min: null, max: null }
+    };
+  }
+  state.scourgePrediction = calculateScourgePrediction(state, rngFn);
+  logger.debug(`Scourge prediction updated: target=${state.scourgePrediction.targetEmpireId}, ETA=${state.scourgePrediction.estimatedTurnsToNextBattle}, confidence=${state.scourgePrediction.confidenceLevel}`);
   
   // 8. Check insurrections
   const insurrectionLog = checkInsurrections(state);

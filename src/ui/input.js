@@ -138,7 +138,8 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
    ui.screen.key(['tab'], () => {
      if (ui.lawsBox.currentMode === 'procurement_view') {
        ui.lawsBox.currentMode = 'main';
-       renderAll(ui, state);
+       renderActionPanel(ui, state);
+       ui.screen.render();
        return;
      }
      if (!state.focus) {
@@ -149,6 +150,28 @@ export function setupInputHandlers(ui, state, { startGameLoop = null, updateGame
        state.focus = FOCUS_MODES.ACTIONS;
      }
      renderAll(ui, state);
+   });
+   
+   // ESC key - exit/refresh the actions panel
+   ui.screen.key(['escape'], () => {
+     if (state.focus === FOCUS_MODES.ACTIONS) {
+       // Exit actions mode
+       state.focus = FOCUS_MODES.MAIN;
+       // Reset to main menu if in a submenu
+       if (ui.lawsBox.currentMode !== 'main') {
+         ui.lawsBox.currentMode = 'main';
+         ui.lawsBox.selectedIndex = 0;
+       }
+       renderAll(ui, state);
+       return;
+     }
+     // If in procurement view, go back to main
+     if (ui.lawsBox.currentMode === 'procurement_view') {
+       ui.lawsBox.currentMode = 'main';
+       renderActionPanel(ui, state);
+       ui.screen.render();
+       return;
+     }
    });
   
   // Slash key - focus command input box

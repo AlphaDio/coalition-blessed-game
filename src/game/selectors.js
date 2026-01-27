@@ -8,7 +8,7 @@
  *   target:
  *     type: "empire" | "army"
  *     select: "all" | "random" | "highest" | "lowest" | "first" | "exclude"
- *     by: "population" | "influence" | "approval" | "fervor" | "organization" | etc.
+ *     by: "population" | "approval" | "fervor" | "organization" | etc.
  *     filter:
  *       - { field: "approval", op: "gt", value: 50 }
  *       - { has_tag: "Industrial" }
@@ -138,9 +138,6 @@ function getFieldValue(entity, field, state) {
   // Handle special computed fields
   if (field === 'population' && entity.stats) {
     return entity.stats.population || 0;
-  }
-  if (field === 'influence' && entity.stats) {
-    return entity.stats.influence || 0;
   }
 
   // Handle nested paths like "stats.population"

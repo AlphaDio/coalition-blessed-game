@@ -75,11 +75,10 @@ export function calculateReaction(empire, law) {
   // 4. Convert to discrete reaction
   const reaction = getReactionTier(score);
 
-  // 5. Calculate power/pressure
+  // 5. Calculate power/pressure (based on population only)
   const population = empire.stats?.population || 1000;
-  const influence = empire.stats?.influence || 50;
   const popExponent = REACTION_CONSTANTS.POWER_SCALING.POP_EXPONENT;
-  const pressure = influence * Math.pow(population, popExponent);
+  const pressure = Math.pow(population, popExponent);
 
   return {
     alignment,
@@ -108,7 +107,7 @@ export function getReactionTier(score) {
 /**
  * Calculate approval change based on reaction
  * @param {string} reaction - Reaction tier
- * @param {number} pressure - Empire's influence pressure
+ * @param {number} pressure - Empire's population pressure (larger empires exert more pressure)
  * @returns {number} - Approval change
  */
 export function getApprovalChange(reaction, pressure = 1) {

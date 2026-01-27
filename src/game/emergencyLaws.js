@@ -32,10 +32,10 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 50,
     cooldown: 100,
     costs_per_tick: {
-      requisition: 25,
+      requisition: 2.5,
       commodities: {
-        super_alloys: 5,
-        biomass: 3
+        super_alloys: 50,
+        biomass: 30
       }
     },
     modifiers: {
@@ -61,11 +61,11 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     duration: 60,
     cooldown: 120,
     costs_per_tick: {
-      requisition: 30,
+      requisition: 3.0,
       commodities: {
-        biomass: 5,
-        rare_gases: 2,
-        genomes: 1
+        biomass: 50,
+        rare_gases: 20,
+        genomes: 10
       }
     },
     modifiers: {
@@ -87,15 +87,15 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     id: 'emergency_crash_research',
     name: 'Crash Research Program',
     description: 'All scientific resources redirected to breakthrough research. Rapid tech gains but very expensive.',
-    duration: 30,
-    cooldown: 90,
+    duration: 50,
+    cooldown: 120,
     costs_per_tick: {
-      requisition: 40,
+      requisition: 2.5,
       commodities: {
-        rare_gases: 4,
-        genomes: 3,
-        ancient_relics: 1,
-        quantum_circuits: 1
+        rare_gases: 25,
+        genomes: 15,
+        ancient_relics: 5,
+        quantum_circuits: 5
       }
     },
     modifiers: {
@@ -103,7 +103,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       tech_points_per_tick: 5000,        // +5000 tech points per tick
       energy_production: 0.30,           // +30% energy (labs running hot)
       industrial_output: -0.20,          // -20% industrial output
-      trade_income: -300                 // High opportunity cost
+      trade_income: -200                 // Opportunity cost
     },
     axis_vector: {
       spiritual_materialistic: 0.6,
@@ -117,21 +117,21 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     id: 'emergency_martial_law',
     name: 'Martial Law Declaration',
     description: 'Military assumes direct control of civilian governance. Order restored but freedoms suspended.',
-    duration: 45,
-    cooldown: 90,
+    duration: 40,
+    cooldown: 120,
     costs_per_tick: {
-      requisition: 20,
+      requisition: 2.0,
       commodities: {
-        biomass: 4,
+        biomass: 30,
         psycho_implants: 2
       }
     },
     modifiers: {
       army_organization_bonus: 10,       // +10 organization
       supply_efficiency: 0.15,           // +15% supply efficiency
-      cohesion_bonus: 3,                 // +3 cohesion per tick (forced unity)
+      cohesion_bonus: 1.5,               // +1.5 cohesion per tick (forced unity)
       army_fervor_bonus: 8,              // +8 fervor (patriotic fervor)
-      empire_approval: -10,              // Heavy approval penalty
+      empire_approval: -12,              // Significant approval penalty
       population_growth: -0.05           // Population suppressed
     },
     axis_vector: {
@@ -146,14 +146,14 @@ export const EMERGENCY_LAW_DEFINITIONS = [
     id: 'emergency_dark_matter_surge',
     name: 'Dark Matter Power Surge',
     description: 'Unleash dark matter reactors at maximum output. Incredible power across all systems but extremely dangerous and costly.',
-    duration: 20,
-    cooldown: 150,
+    duration: 50,
+    cooldown: 200,
     costs_per_tick: {
-      requisition: 50,
+      requisition: 3.0,
       commodities: {
-        wormhole_reactors: 2,
-        dark_matter: 1,
-        nano_machines: 3
+        wormhole_reactors: 0.5,
+        dark_matter: 0.25,
+        nano_machines: 15
       }
     },
     modifiers: {
@@ -162,7 +162,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       army_damage_multiplier: 0.75,      // +75% army damage
       research_speed: 0.50,              // +50% research
       supply_efficiency: 0.30,           // +30% supply efficiency
-      cohesion_drain: -5                 // Very destabilizing
+      cohesion_drain: -2.0               // Significant destabilization cost
     },
     axis_vector: {
       spiritual_materialistic: 0.8,
@@ -194,7 +194,7 @@ export function createActiveEmergencyLaw(lawId, startTick = 0) {
     modifiers: { ...def.modifiers },
     costs_per_tick: JSON.parse(JSON.stringify(def.costs_per_tick)),
     resourcesConsumed: {
-      supplies: 0,
+      requisition: 0,
       commodities: {}
     }
   };
@@ -263,10 +263,20 @@ export function canActivateEmergencyLaw(lawId, state) {
  */
 export function activateEmergencyLaw(lawId, state) {
   const logger = getLogger();
+  const MAX_CONCURRENT_EMERGENCY_LAWS = 2; // Prevent unbounded modifier stacking
   
   const check = canActivateEmergencyLaw(lawId, state);
   if (!check.canActivate) {
     return { success: false, message: check.reason };
+  }
+  
+  // Check concurrent law limit
+  const activeEmergencyLaws = state.activeEmergencyLaws || [];
+  if (activeEmergencyLaws.filter(l => l.active).length >= MAX_CONCURRENT_EMERGENCY_LAWS) {
+    return { 
+      success: false, 
+      message: `Cannot activate more than ${MAX_CONCURRENT_EMERGENCY_LAWS} emergency laws simultaneously` 
+    };
   }
   
   const def = getEmergencyLawDef(lawId);
@@ -323,8 +333,8 @@ export function tickEmergencyLaws(state) {
     
     // Check commodities
     const coalitionStockpiles = state.coalitionEconomy?.stockpiles || {};
-    if (canAfford) {
-      for (const [commodity, qty] of Object.entries(costs.commodities || {})) {
+    if (canAfford && costs.commodities) {
+      for (const [commodity, qty] of Object.entries(costs.commodities)) {
         const available = coalitionStockpiles[commodity] || 0;
         if (available < qty) {
           canAfford = false;
