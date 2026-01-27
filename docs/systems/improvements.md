@@ -13,16 +13,24 @@ The Improvements system implements a deterministic, queue-based infrastructure m
 ## Core Components
 
 ### Improvement Requests
-Available improvements that can be started. Each request defines:
+Available improvements that can be started. Each empire maintains a queue of suggested improvements. Empires can be suggested the same improvement multiple times if they're already building it or have already requested it elsewhere - this allows for flexibility in coalition strategy.
+
+Each request defines:
 - **Name & Description**: Display information
 - **Requisition Cost**: Paid upfront when accepted (no refunds on cancellation)
 - **Build Duration**: Number of turns to complete construction
 - **Capacity & Potency**: Concurrency metrics that limit total active improvements
 - **Sustainment Cost**: Resources consumed per tick to keep improvement active
 - **Production Outputs**: Resources produced per tick when active
-- **Modifiers**: Stat bonuses applied to empires/armies
+- **Modifiers**: Stat bonuses applied to empires/armies (including fervor bonuses for armies)
 - **Requisition Upkeep**: Ongoing requisition cost per tick
 - **Tags**: Categorization for filtering and effects
+
+### Suggestion System
+- Each empire starts with 3 improvement suggestions at game start
+- When an empire accepts and begins building an improvement, a replacement suggestion is immediately generated
+- Suggestions are drawn from available improvements weighted by tier unlock status
+- The same improvement can be suggested multiple times to an empire, allowing strategic flexibility
 
 ### Improvement Queue
 Active improvements in various states:
@@ -165,6 +173,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 
 ### Army Modifiers
 - `army_organization`: Boosts organization recovery (applied gradually)
+- `army_fervor`: Increases army fervor per tick (scales with army population, multiplied by 100 for testing)
 - `supply_efficiency`: Reduces supply consumption
 
 ### Empire Modifiers

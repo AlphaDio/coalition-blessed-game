@@ -65,7 +65,16 @@ effects:
     "$favored": 15      # Reference resolved variable
     "$others": -8       # Apply to all entities in variable
     "@all": 5           # Apply to all entities of this type
+    "@richest": 3       # Apply to richest empire (by credits)
+    "@poorest": 5       # Apply to poorest empire (by credits)
 ```
+
+**Dynamic Empire Selectors:**
+- `@all`: All empires
+- `@richest`: Empire with most credits
+- `@poorest`: Empire with least credits
+
+These selectors are resolved at effect application time based on current game state, allowing events to dynamically reward or penalize empires based on their economic standing.
 
 ### Text Interpolation
 
@@ -87,6 +96,31 @@ Interpolation supports:
 - Cohesion tiers control event frequency (Stable, Strained, Desperate).
 - Law events use scope `LAW` and are filtered out of the regular event pool.
 - Events are validated for ids and choices before activation.
+
+## Event Balancing
+
+Events are designed with meaningful choice mechanics where no single option is strictly dominant:
+
+### Balance Levers
+- **Requisition Costs**: Economic tradeoff (pay resources for better outcomes)
+- **Approval Penalties/Bonuses**: Coalition harmony vs performance
+- **Cohesion Impact**: Morale cost of decisions
+- **Intel Gain**: Knowledge/Scourge Prediction Confidence
+- **Strategic Targeting**: Decisions that reward or penalize specific empires
+
+### Design Principles
+- Each event presents 2-3 distinct strategic paths with different costs and benefits
+- "Cheap" options sacrifice quality (less intelligence, less approval)
+- "Expensive" options require requisition but provide greater benefits
+- Some choices strategically target weak/strong empires to enable coalition management
+- Decisions should feel contextual based on current coalition state (low on requisition, low approval, need intelligence, etc.)
+
+### Example: Scout Report Event
+- **Full Analysis** (75 req): Best intel + fervor, costs resources
+- **Share with Weak Allies** (free): Help struggling empires, good intel
+- **Keep Internal** (free): Modest intel, best morale
+
+Players must decide: invest resources for maximum intelligence, help struggling allies diplomatically, or preserve resources and morale.
 
 ## Effect Resolution
 - Effects can be static numbers or functions (used for random outcomes).
