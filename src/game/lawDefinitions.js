@@ -33,14 +33,16 @@ export const TIER_REQUIREMENTS = {
  * @param {Object} support_weights - Biases like population_incentive, security_incentive
  * @param {Object} phase_tags - Event tags eligible in each phase
  * @param {Object} modifiers - Law-specific modifiers
+ * @param {Object} immediateEffects - One-time effects applied when law is enacted (e.g., supplies, credits, cohesion)
  * @returns {Object} Tiered law definition
  */
-export function createTieredLawDefinition(id, name, tier, branch, axis_vector = {}, law_tags = [], support_weights = {}, phase_tags = {}, modifiers = {}) {
+export function createTieredLawDefinition(id, name, tier, branch, axis_vector = {}, law_tags = [], support_weights = {}, phase_tags = {}, modifiers = {}, immediateEffects = {}) {
   const baseDef = createLawDefinition(id, name, axis_vector, law_tags, support_weights, phase_tags, modifiers);
   return {
     ...baseDef,
     tier,
-    branch
+    branch,
+    immediateEffects
   };
 }
 
@@ -72,6 +74,10 @@ const MILITARY_BRANCH = [
     {
       army_maintenance_cost_modifier: 0.9, // 10% reduction
       relations_strength_modifier: 1.075 // 7.5% relations boost
+    },
+    {
+      credits: 300,      // Immediate +300 credits from reduced military spending
+      cohesion: 2        // Immediate +2 cohesion from diplomatic efforts
     }
   ),
   
@@ -100,6 +106,10 @@ const MILITARY_BRANCH = [
     {
       army_maintenance_cost_modifier: 0.95, // 5% reduction
       relations_strength_modifier: 1.0375 // 3.75% relations boost
+    },
+    {
+      armyOrganization: 10,  // Immediate +10 organization to all armies
+      supplies: 150          // Immediate +150 supplies from military stockpiles
     }
   ),
   
@@ -129,6 +139,11 @@ const MILITARY_BRANCH = [
       army_maintenance_cost_modifier: 0.8, // 20% army cost reduction
       army_organization: 10, // +10 organization to all armies
       empire_approval: -0.5 // Slight approval drain due to sacrifices
+    },
+    {
+      armyOrganization: 20,  // Immediate +20 organization to all armies
+      supplies: 300,         // Immediate +300 supplies from total mobilization
+      empireApproval: -5     // Immediate -5 approval (harsh measures)
     }
   )
 ];
@@ -160,6 +175,10 @@ const RIGHTS_BRANCH = [
     },
     {
       empire_approval: 1 // +1 approval per empire
+    },
+    {
+      empireApproval: 5, // Immediate +5 approval to all empires
+      cohesion: 3        // Immediate +3 cohesion from unifying principles
     }
   ),
   
@@ -187,6 +206,10 @@ const RIGHTS_BRANCH = [
     },
     {
       empire_approval: 0.5 // +0.5 approval per empire
+    },
+    {
+      empireApproval: 3, // Immediate +3 approval to all empires
+      cohesion: 2        // Immediate +2 cohesion from expanded rights
     }
   ),
   
@@ -216,6 +239,10 @@ const RIGHTS_BRANCH = [
       empire_approval: 2, // +2 approval per tick to all empires
       cohesionModifier: 1.1, // 10% cohesion recovery bonus
       relations_strength_modifier: 1.15 // 15% diplomacy bonus
+    },
+    {
+      empireApproval: 10, // Immediate +10 approval to all empires (historic moment)
+      cohesion: 8         // Immediate +8 cohesion from unity of purpose
     }
   )
 ];
@@ -247,6 +274,10 @@ const ECONOMIC_BRANCH = [
     },
     {
       trade_income: 150 // +150 income per tick
+    },
+    {
+      credits: 500, // Immediate +500 credits from initial trade boom
+      supplies: 100  // Immediate +100 supplies from resource mobilization
     }
   ),
   
@@ -274,6 +305,10 @@ const ECONOMIC_BRANCH = [
     },
     {
       trade_income: 75 // +75 income per tick
+    },
+    {
+      credits: 800, // Immediate +800 credits from market unification
+      supplies: 150  // Immediate +150 supplies from streamlined conversion
     }
   ),
   
@@ -303,6 +338,11 @@ const ECONOMIC_BRANCH = [
       trade_income: 300, // +300 credits per tick
       industrial_output: 0.1, // 10% production bonus
       supply_efficiency: 0.15 // 15% supply efficiency
+    },
+    {
+      credits: 1500, // Immediate +1500 credits from unified currency
+      supplies: 300,  // Immediate +300 supplies from coordinated logistics
+      cohesion: 5     // Immediate +5 cohesion from economic stability
     }
   )
 ];
@@ -567,6 +607,11 @@ const EMERGENCY_BRANCH = [
       supply_efficiency: 0.2, // 20% supply efficiency
       trade_income: -50, // -50 credits per tick (rationing costs)
       empire_approval: -0.25 // Slight approval drain
+    },
+    {
+      supplies: 200,         // Immediate +200 supplies from rationed stockpiles
+      empireApproval: -3,    // Immediate -3 approval (unpopular measure)
+      cohesion: -2           // Immediate -2 cohesion from discontent
     }
   ),
   
@@ -598,6 +643,12 @@ const EMERGENCY_BRANCH = [
       supply_efficiency: 0.25, // 25% supply efficiency
       empire_approval: -1, // -1 approval per tick (authoritarian measures)
       cohesionModifier: 0.95 // 5% cohesion penalty (internal tensions)
+    },
+    {
+      armyOrganization: 15,  // Immediate +15 organization (emergency coordination)
+      supplies: 400,         // Immediate +400 supplies (emergency reserves)
+      empireApproval: -8,    // Immediate -8 approval (harsh emergency measures)
+      cohesion: -5           // Immediate -5 cohesion (shock from authoritarian shift)
     }
   )
 ];

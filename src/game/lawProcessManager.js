@@ -152,7 +152,49 @@ function applyLawModifiers(lawDef, state) {
      log.push(`Empire production multiplier: +${(modifiers.empire_production_multiplier * 100).toFixed(0)}%`);
    }
 
-   // Apply immediate empire reactions based on law's axis vector
+   // Apply immediate one-time effects (new feature for instant impact)
+  const immediateEffects = lawDef.immediateEffects || {};
+  
+  // Immediate supplies boost
+  if (immediateEffects.supplies) {
+    state.stockpile.supplies = (state.stockpile.supplies || 0) + immediateEffects.supplies;
+    log.push(`IMMEDIATE: +${immediateEffects.supplies} supplies`);
+  }
+  
+  // Immediate credits boost
+  if (immediateEffects.credits) {
+    state.stockpile.credits = (state.stockpile.credits || 0) + immediateEffects.credits;
+    log.push(`IMMEDIATE: +${immediateEffects.credits} credits`);
+  }
+  
+  // Immediate cohesion boost
+  if (immediateEffects.cohesion) {
+    state.coalitionCohesion = clamp(state.coalitionCohesion + immediateEffects.cohesion, 0, 100);
+    const sign = immediateEffects.cohesion >= 0 ? '+' : '';
+    log.push(`IMMEDIATE: ${sign}${immediateEffects.cohesion} coalition cohesion`);
+  }
+  
+  // Immediate empire approval boost (one-time to all empires)
+  if (immediateEffects.empireApproval && state.empires) {
+    state.empires.forEach(empire => {
+      empire.approval = clampApproval(empire.approval + immediateEffects.empireApproval);
+    });
+    const sign = immediateEffects.empireApproval >= 0 ? '+' : '';
+    log.push(`IMMEDIATE: ${sign}${immediateEffects.empireApproval} approval to all empires`);
+  }
+  
+  // Immediate army organization boost (one-time to all armies)
+  if (immediateEffects.armyOrganization && state.armies) {
+    state.armies.forEach(army => {
+      if (army.organization !== undefined) {
+        army.organization = clamp(army.organization + immediateEffects.armyOrganization, 0, 100);
+      }
+    });
+    const sign = immediateEffects.armyOrganization >= 0 ? '+' : '';
+    log.push(`IMMEDIATE: ${sign}${immediateEffects.armyOrganization} organization to all armies`);
+  }
+  
+  // Apply immediate empire reactions based on law's axis vector
   if (lawDef.axis_vector && Object.keys(lawDef.axis_vector).length > 0 && state.empires) {
     const lawForReaction = {
       vector: lawDef.axis_vector,
