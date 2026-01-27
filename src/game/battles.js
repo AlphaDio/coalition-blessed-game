@@ -435,6 +435,9 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   
   removeScourgeForces(state);
   
+  // Clear the Scourge target now that the battle has ended
+  state.scourgeTargetEmpireId = null;
+  
   return { log };
 }
 
