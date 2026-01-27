@@ -152,3 +152,11 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   UNCERTAINTY_RANGE_HIGH: { min: 1, max: 3 }       // Narrow range
 };
 
+export const CONSUMPTION_REQUISITION_CONSTANTS = {
+  CREDITS_PER_REQUISITION: 1000,                    // Conversion rate: 1000 credits = 1 requisition
+  COALITION_CONSUMPTION_SHARE_BASE: 0.10,           // 10% - Base coalition share of consumption value
+  CONVERSION_REQUISITION_MULTIPLIER: 10,            // 10x - Multiplier for requisition from consumption
+  ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
+  ALLOWANCE_CAP_TICKS: 4                            // Maximum allowance (in ticks worth)
+};
+

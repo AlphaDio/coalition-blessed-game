@@ -628,8 +628,8 @@ function processEmpireStockpileConsumption(state, log) {
         const consumed = available;
         empire.stockpiles[commodity] = 0;
         
-        // Track consumption for coalition requisition generation
-        recordConsumption(commodity, consumed);
+        // Track consumption for coalition requisition generation (with empire ID for approval scaling)
+        recordConsumption(commodity, consumed, empire.id);
         
         if (effect.type === 'population_percent') {
           const increments = Math.floor(consumed / 100000);
@@ -877,7 +877,7 @@ export function advanceTurn(state, rng = Math.random) {
      additiveShare: state.coalitionModifiers?.consumptionShareBonus || 0
    };
    
-   const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers);
+   const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers, state.empires);
    if (consumptionResult.requisitionGained > 0.001 || consumptionResult.creditsSpent > 0.001) {
      const logParts = [];
      if (consumptionResult.requisitionGained > 0.001) {
