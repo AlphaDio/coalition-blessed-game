@@ -2,7 +2,7 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import cors from 'cors';
-import fs from 'fs';
+import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -23,6 +23,31 @@ import {
 const logger = getLogger();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Cached resources - loaded once at startup
+let cachedResources = null;
+let resourcesLoadError = null;
+
+/**
+ * Load and cache resources.yaml at startup
+ * This avoids blocking the event loop on every request
+ */
+async function loadAndCacheResources() {
+  try {
+    const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
+    const content = await fsPromises.readFile(resourcesPath, 'utf8');
+    const doc = yaml.load(content);
+    cachedResources = {
+      commodities: doc.resources?.commodities || [],
+      lastLoadedAt: Date.now()
+    };
+    logger.debug(`Resources cached successfully (${cachedResources.commodities.length} commodities)`);
+  } catch (error) {
+    resourcesLoadError = error;
+    logger.error(`Failed to cache resources at startup: ${error.message}`);
+    logger.error(error.stack);
+  }
+}
 
 export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000') {
   const app = express();
@@ -45,6 +70,24 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // Track connected clients
   const connectedClients = new Set();
 
+  /**
+   * Safely send message to a WebSocket client, removing it if send fails
+   */
+  function safelySendToClient(ws, message) {
+    try {
+      ws.send(message);
+    } catch (error) {
+      logger.warn(`Failed to send message to WebSocket client: ${error.message}`);
+      // Remove from connected clients and close the socket
+      connectedClients.delete(ws);
+      try {
+        ws.close(1011, 'Send error');
+      } catch (closeError) {
+        // Socket may already be closed, ignore
+      }
+    }
+  }
+
   // Broadcast game state to all connected clients
   function broadcastGameState(state) {
     const message = JSON.stringify({
@@ -55,7 +98,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
 
     connectedClients.forEach(ws => {
       if (ws.readyState === 1) { // WebSocket.OPEN
-        ws.send(message);
+        safelySendToClient(ws, message);
       }
     });
   }
@@ -70,7 +113,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
 
     connectedClients.forEach(ws => {
       if (ws.readyState === 1) {
-        ws.send(message);
+        safelySendToClient(ws, message);
       }
     });
   }
@@ -88,7 +131,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
 
     connectedClients.forEach(ws => {
       if (ws.readyState === 1) {
-        ws.send(message);
+        safelySendToClient(ws, message);
       }
     });
   }
@@ -672,8 +715,21 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // Get recent logs
   app.get('/api/game/logs', (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 500;
-      const logs = logger.getHistory(isNaN(limit) ? 500 : limit);
+      const MAX_LOG_LIMIT = 1000; // Match logger's maxHistorySize
+      const MIN_LOG_LIMIT = 1;
+      const DEFAULT_LOG_LIMIT = 500;
+
+      // Parse and validate limit parameter
+      let limit = DEFAULT_LOG_LIMIT;
+      if (req.query.limit) {
+        const parsed = parseInt(req.query.limit, 10);
+        // Clamp to valid range: must be a positive integer
+        if (!isNaN(parsed) && parsed > 0) {
+          limit = Math.min(parsed, MAX_LOG_LIMIT);
+        }
+      }
+
+      const logs = logger.getHistory(limit);
       res.sendSuccess({ logs });
     } catch (error) {
       logger.error(`Error getting logs: ${error.message}`);
@@ -713,11 +769,18 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // Get commodity definitions
   app.get('/api/game/definitions/resources', (req, res) => {
     try {
-      const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
-      const content = fs.readFileSync(resourcesPath, 'utf8');
-      const doc = yaml.load(content);
-      const commodities = doc.resources?.commodities || [];
-      res.sendSuccess({ commodities });
+      // Check if resources failed to load at startup
+      if (resourcesLoadError && !cachedResources) {
+        logger.error('Resources not available - failed to load at startup');
+        return res.sendError(
+          ErrorCodes.INTERNAL_SERVER_ERROR,
+          'Failed to fetch resource definitions',
+          { originalError: resourcesLoadError.message }
+        );
+      }
+
+      // Serve from cache (non-blocking)
+      res.sendSuccess({ commodities: cachedResources?.commodities || [] });
     } catch (error) {
       logger.error('Failed to fetch resource definitions:', error);
       res.sendError(
@@ -748,10 +811,65 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   });
 
   // Start the server
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
+    // Load resources at startup before accepting requests
+    await loadAndCacheResources();
+
     httpServer.listen(port, () => {
       logger.info(`API server listening on port ${port}`);
       logger.info(`CORS enabled for origin: ${corsOrigin}`);
+
+      // Setup cleanup handlers for graceful shutdown
+      const cleanup = () => {
+        logger.info('API server shutting down, cleaning up resources...');
+        
+        // Unsubscribe logger listener
+        try {
+          logUnsubscribe();
+          logger.debug('Logger subscription cleaned up');
+        } catch (error) {
+          console.error('Error unsubscribing from logger:', error.message);
+        }
+        
+        // Close all WebSocket connections
+        try {
+          wss.clients.forEach((client) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              client.close(1001, 'Server shutting down');
+            }
+          });
+          logger.debug('WebSocket clients closed');
+        } catch (error) {
+          console.error('Error closing WebSocket clients:', error.message);
+        }
+        
+        // Clear connected clients set
+        connectedClients.clear();
+        
+        // Close the WebSocket server
+        try {
+          wss.close(() => {
+            logger.debug('WebSocket server closed');
+          });
+        } catch (error) {
+          console.error('Error closing WebSocket server:', error.message);
+        }
+      };
+
+      // Wire cleanup to HTTP server close event
+      httpServer.on('close', cleanup);
+      
+      // Also handle process signals for graceful shutdown
+      process.once('SIGTERM', () => {
+        logger.info('SIGTERM received, closing HTTP server');
+        httpServer.close();
+      });
+      
+      process.once('SIGINT', () => {
+        logger.info('SIGINT received, closing HTTP server');
+        httpServer.close();
+      });
+
       resolve({ httpServer, app, wss, gameManager, broadcastGameState, broadcastNotification, broadcastLogEntry, logUnsubscribe });
     });
   });

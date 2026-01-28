@@ -38,6 +38,8 @@ class Logger {
     this.logHistory = []; // Store log entries for UI display
     this.maxHistorySize = 1000; // Maximum number of log entries to keep in memory
     this.listeners = new Set();
+    this.listenerFailures = new Map(); // Track failures per listener to disable after threshold
+    this.listenerFailureThreshold = 5; // Disable listener after N consecutive failures
     
     // Create logs directory if file logging is enabled
     if (this.enableFile && !this.filePath) {
@@ -178,10 +180,52 @@ class Logger {
       this.writeToFile(formattedMessage);
     }
 
+    // Invoke listeners with error isolation
     if (level >= this.level) {
-      this.listeners.forEach(listener => listener(entry));
+      this.invokeListeners(entry);
     }
   }
+
+  /**
+   * Invoke all listeners with error handling and failure tracking
+   * Ensures that one failing listener doesn't prevent others from being called
+   */
+  invokeListeners(entry) {
+    const failedListeners = new Set();
+
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+        // Reset failure count on successful invocation
+        this.listenerFailures.set(listener, 0);
+      } catch (error) {
+        // Track failure
+        const failureCount = (this.listenerFailures.get(listener) ?? 0) + 1;
+        this.listenerFailures.set(listener, failureCount);
+
+        // Log error (without triggering listener again to avoid recursion)
+        console.error(
+          `[Logger] Listener error (${failureCount}/${this.listenerFailureThreshold}):`,
+          error.message
+        );
+
+        // Disable listener after repeated failures
+        if (failureCount >= this.listenerFailureThreshold) {
+          failedListeners.add(listener);
+          console.error(
+            `[Logger] Listener disabled after ${failureCount} failures. Consider checking listener implementation.`
+          );
+        }
+      }
+    }
+
+    // Remove repeatedly failing listeners
+    for (const listener of failedListeners) {
+      this.listeners.delete(listener);
+      this.listenerFailures.delete(listener);
+    }
+  }
+  
   
   /**
    * Get log history for display
