@@ -2,8 +2,14 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
 import { getLogger } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
+import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
+import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
 import { 
   apiResponseMiddleware,
   ErrorCodes
@@ -15,6 +21,8 @@ import {
  */
 
 const logger = getLogger();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000') {
   const app = express();
@@ -634,6 +642,62 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       res.sendError(
         ErrorCodes.INTERNAL_SERVER_ERROR,
         'Failed to fetch improvement definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get emergency law definitions
+  app.get('/api/game/definitions/emergency-laws', (req, res) => {
+    try {
+      const emergencyLaws = EMERGENCY_LAW_DEFINITIONS.map((law) => ({
+        id: law.id,
+        name: law.name,
+        description: law.description,
+        duration: law.duration,
+        cooldown: law.cooldown,
+        costs_per_tick: law.costs_per_tick,
+        modifiers: law.modifiers,
+        axis_vector: law.axis_vector
+      }));
+      res.sendSuccess({ emergencyLaws });
+    } catch (error) {
+      logger.error('Failed to fetch emergency law definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch emergency law definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get commodity definitions
+  app.get('/api/game/definitions/resources', (req, res) => {
+    try {
+      const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
+      const content = fs.readFileSync(resourcesPath, 'utf8');
+      const doc = yaml.load(content);
+      const commodities = doc.resources?.commodities || [];
+      res.sendSuccess({ commodities });
+    } catch (error) {
+      logger.error('Failed to fetch resource definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch resource definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get procurement constants
+  app.get('/api/game/definitions/procurement', (req, res) => {
+    try {
+      res.sendSuccess({ bankThreshold: BANK_THRESHOLD });
+    } catch (error) {
+      logger.error('Failed to fetch procurement definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch procurement definitions',
         { originalError: error.message }
       );
     }
