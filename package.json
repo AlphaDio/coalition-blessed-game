@@ -1,34 +1,30 @@
 {
-    "name": "coalition-blessed-game",
-    "version": "0.0.1",
-    "description": "Victoria-like grand-strategy CLI game",
-    "type": "module",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js",
-        "new": "node index.js --new",
-        "dev": "nodemon index.js",
-        "server": "node server.js",
-        "server:dev": "nodemon server.js",
-        "test": "node testDeterminism.js && node testFrontBattles.js && node testExtendedGameplay.js && node testImprovements.js && node testBattleIntegration.js && node testCoalitionProcurement.js",
-        "test:determinism": "node testDeterminism.js",
-        "test:battles": "node testFrontBattles.js",
-        "test:integration": "node testBattleIntegration.js",
-        "test:gameplay": "node testExtendedGameplay.js",
-        "test:improvements": "node testImprovements.js",
-        "test:procurement": "node testCoalitionProcurement.js"
-    },
-    "author": "diop.alpha@tribalcreative.xyz",
-    "license": "ISC",
-    "dependencies": {
-        "blessed": "^0.1.81",
-        "blessed-contrib": "^4.11.0",
-        "cors": "^2.8.5",
-        "express": "^4.18.2",
-        "js-yaml": "^4.1.0",
-        "ws": "^8.14.2"
-    },
-    "devDependencies": {
-        "nodemon": "^3.0.1"
-    }
+    "name":  "coalition-server",
+    "version":  "0.0.1",
+    "description":  "Coalition game server",
+    "type":  "module",
+    "main":  "server.js",
+    "scripts":  {
+                    "start":  "node server.js",
+                    "server":  "node server.js",
+                    "server:dev":  "nodemon server.js",
+                    "test":  "node testDeterminism.js \u0026\u0026 node testFrontBattles.js \u0026\u0026 node testExtendedGameplay.js \u0026\u0026 node testImprovements.js \u0026\u0026 node testBattleIntegration.js \u0026\u0026 node testCoalitionProcurement.js",
+                    "test:determinism":  "node testDeterminism.js",
+                    "test:battles":  "node testFrontBattles.js",
+                    "test:integration":  "node testBattleIntegration.js",
+                    "test:gameplay":  "node testExtendedGameplay.js",
+                    "test:improvements":  "node testImprovements.js",
+                    "test:procurement":  "node testCoalitionProcurement.js"
+                },
+    "author":  "diop.alpha@tribalcreative.xyz",
+    "license":  "ISC",
+    "dependencies":  {
+                         "cors":  "^2.8.5",
+                         "express":  "^4.18.2",
+                         "js-yaml":  "^4.1.0",
+                         "ws":  "^8.14.2"
+                     },
+    "devDependencies":  {
+                            "nodemon":  "^3.0.1"
+                        }
 }

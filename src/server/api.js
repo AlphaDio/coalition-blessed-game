@@ -2,8 +2,14 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
 import { getLogger } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
+import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
+import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
 import { 
   apiResponseMiddleware,
   ErrorCodes
@@ -15,6 +21,8 @@ import {
  */
 
 const logger = getLogger();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000') {
   const app = express();
@@ -66,6 +74,28 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       }
     });
   }
+
+  function broadcastLogEntry(entry) {
+    const message = JSON.stringify({
+      type: 'log_event',
+      payload: {
+        level: entry.level,
+        message: entry.message,
+        timestamp: entry.timestamp,
+        data: entry.data
+      }
+    });
+
+    connectedClients.forEach(ws => {
+      if (ws.readyState === 1) {
+        ws.send(message);
+      }
+    });
+  }
+
+  const logUnsubscribe = logger.onLog((entry) => {
+    broadcastLogEntry(entry);
+  });
 
   // WebSocket connection handler
   wss.on('connection', (ws) => {
@@ -639,6 +669,79 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Get recent logs
+  app.get('/api/game/logs', (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 500;
+      const logs = logger.getHistory(isNaN(limit) ? 500 : limit);
+      res.sendSuccess({ logs });
+    } catch (error) {
+      logger.error(`Error getting logs: ${error.message}`);
+      logger.error(error.stack);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to retrieve logs',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get emergency law definitions
+  app.get('/api/game/definitions/emergency-laws', (req, res) => {
+    try {
+      const emergencyLaws = EMERGENCY_LAW_DEFINITIONS.map((law) => ({
+        id: law.id,
+        name: law.name,
+        description: law.description,
+        duration: law.duration,
+        cooldown: law.cooldown,
+        costs_per_tick: law.costs_per_tick,
+        modifiers: law.modifiers,
+        axis_vector: law.axis_vector
+      }));
+      res.sendSuccess({ emergencyLaws });
+    } catch (error) {
+      logger.error('Failed to fetch emergency law definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch emergency law definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get commodity definitions
+  app.get('/api/game/definitions/resources', (req, res) => {
+    try {
+      const resourcesPath = path.join(__dirname, '..', '..', 'modules', 'resources.yaml');
+      const content = fs.readFileSync(resourcesPath, 'utf8');
+      const doc = yaml.load(content);
+      const commodities = doc.resources?.commodities || [];
+      res.sendSuccess({ commodities });
+    } catch (error) {
+      logger.error('Failed to fetch resource definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch resource definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
+  // Get procurement constants
+  app.get('/api/game/definitions/procurement', (req, res) => {
+    try {
+      res.sendSuccess({ bankThreshold: BANK_THRESHOLD });
+    } catch (error) {
+      logger.error('Failed to fetch procurement definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch procurement definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Health check
   app.get('/api/health', (req, res) => {
     res.sendSuccess({ status: 'ok' });
@@ -649,7 +752,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     httpServer.listen(port, () => {
       logger.info(`API server listening on port ${port}`);
       logger.info(`CORS enabled for origin: ${corsOrigin}`);
-      resolve({ httpServer, app, wss, gameManager, broadcastGameState, broadcastNotification });
+      resolve({ httpServer, app, wss, gameManager, broadcastGameState, broadcastNotification, broadcastLogEntry, logUnsubscribe });
     });
   });
 }

@@ -11,6 +11,7 @@ import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
 import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
+import { handleLawEventChoice } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import path from 'path';
@@ -239,7 +240,18 @@ export class GameManager {
    */
   handleEventChoice(eventId, choiceIndex) {
     try {
-      const result = handleEventChoice(this.state, eventId, choiceIndex);
+      let result;
+
+      if (this.state.activeEvent?.isLawEvent) {
+        result = handleLawEventChoice(
+          this.state,
+          this.state.activeEvent.lawProcessId,
+          eventId,
+          choiceIndex
+        );
+      } else {
+        result = handleEventChoice(this.state, eventId, choiceIndex);
+      }
       if (result.success || !result.error) {
         this.notifyStateChange();
       }
