@@ -37,6 +37,7 @@ class Logger {
     this.fileStream = null;
     this.logHistory = []; // Store log entries for UI display
     this.maxHistorySize = 1000; // Maximum number of log entries to keep in memory
+    this.listeners = new Set();
     
     // Create logs directory if file logging is enabled
     if (this.enableFile && !this.filePath) {
@@ -148,16 +149,17 @@ class Logger {
    */
   log(level, message, data = null) {
     const formattedMessage = this.formatMessage(level, message, data);
+    const entry = {
+      level,
+      message,
+      formattedMessage,
+      timestamp: new Date().toISOString(),
+      data
+    };
     
     // Store in history for logs window (only if above console level)
     if (level >= this.level) {
-      this.logHistory.push({
-        level,
-        message,
-        formattedMessage,
-        timestamp: new Date().toISOString(),
-        data
-      });
+      this.logHistory.push(entry);
       
       // Keep history size manageable
       if (this.logHistory.length > this.maxHistorySize) {
@@ -174,6 +176,10 @@ class Logger {
     // File always writes if above file level (defaults to DEBUG)
     if (level >= this.fileLevel) {
       this.writeToFile(formattedMessage);
+    }
+
+    if (level >= this.level) {
+      this.listeners.forEach(listener => listener(entry));
     }
   }
   
@@ -192,6 +198,12 @@ class Logger {
    */
   clearHistory() {
     this.logHistory = [];
+  }
+
+  onLog(listener) {
+    if (typeof listener !== 'function') return () => {};
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   /**

@@ -75,6 +75,28 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     });
   }
 
+  function broadcastLogEntry(entry) {
+    const message = JSON.stringify({
+      type: 'log_event',
+      payload: {
+        level: entry.level,
+        message: entry.message,
+        timestamp: entry.timestamp,
+        data: entry.data
+      }
+    });
+
+    connectedClients.forEach(ws => {
+      if (ws.readyState === 1) {
+        ws.send(message);
+      }
+    });
+  }
+
+  const logUnsubscribe = logger.onLog((entry) => {
+    broadcastLogEntry(entry);
+  });
+
   // WebSocket connection handler
   wss.on('connection', (ws) => {
     try {
@@ -647,6 +669,23 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Get recent logs
+  app.get('/api/game/logs', (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit, 10) : 500;
+      const logs = logger.getHistory(isNaN(limit) ? 500 : limit);
+      res.sendSuccess({ logs });
+    } catch (error) {
+      logger.error(`Error getting logs: ${error.message}`);
+      logger.error(error.stack);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to retrieve logs',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Get emergency law definitions
   app.get('/api/game/definitions/emergency-laws', (req, res) => {
     try {
@@ -713,7 +752,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     httpServer.listen(port, () => {
       logger.info(`API server listening on port ${port}`);
       logger.info(`CORS enabled for origin: ${corsOrigin}`);
-      resolve({ httpServer, app, wss, gameManager, broadcastGameState, broadcastNotification });
+      resolve({ httpServer, app, wss, gameManager, broadcastGameState, broadcastNotification, broadcastLogEntry, logUnsubscribe });
     });
   });
 }

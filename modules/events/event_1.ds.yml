@@ -31,7 +31,6 @@ declares:
         effects:
           empireApproval:
             "@poorest": 8
-          empireApproval:
             "@richest": -8
       - text: "Ambush the ambushers (lose cohesion, learn from combat)"
         effects:
