@@ -6,11 +6,18 @@ import { resolveEventVariables, expandEffectTargets, interpolateText } from './s
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { handleTechEventChoice } from './technology.js';
 import { boostScourgePredictionConfidence } from './scourgePrediction.js';
+import { buildHeroRecruitmentEvent, handleHeroRecruitmentChoice } from './heroes.js';
 
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
   if (state.activeEvent) {
     return null; // Event already active
+  }
+
+  const heroRecruitmentEvent = buildHeroRecruitmentEvent(state, rng);
+  if (heroRecruitmentEvent) {
+    logger.info(`Hero recruitment triggered for ${heroRecruitmentEvent.empire_id}`);
+    return heroRecruitmentEvent;
   }
   
   const tier = getCohesionTier(state.coalitionCohesion);
@@ -122,6 +129,10 @@ export function handleEventChoice(state, eventId, choiceIndex) {
   // Route tech events to specialized handler
   if (event.scope === 'TECH') {
     return handleTechEventChoice(state, event, choiceIndex);
+  }
+
+  if (event.scope === 'HERO_RECRUIT') {
+    return handleHeroRecruitmentChoice(state, event, choiceIndex);
   }
   
   // Get resolved context for expanding effect targets

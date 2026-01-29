@@ -159,11 +159,31 @@ export function createUnit(id, armyId, empireId, name, stats = {}, demands = {})
   return null;
 }
 
-export function createHero(id, empireId, name, modifiers = {}) {
+export function createHero(id, empireId, name, options = {}) {
+  const modifiers = options.modifiers || {};
   return {
     id,
-    empireId,
+    empire_id: empireId,
     name,
+    tagline: options.tagline || '',
+    tags: options.tags || [],
+    values: options.values || {},
+    status: options.status || 'ACTIVE',
+    budget_share: options.budget_share ?? 0.1,
+    charge: options.charge ?? 0,
+    ability_id: options.ability_id || null,
+    passive: options.passive || {
+      phase: 'DEBATE',
+      cadence: 'OnStart',
+      passive_id: null
+    },
+    meters: options.meters || {
+      heat: 0,
+      grievance: 0,
+      popularity: 50
+    },
+    last_trigger_turn: options.last_trigger_turn ?? -1,
+    cooldowns: options.cooldowns || { ability: 0 },
     modifiers: {
       dmgPerUnitMP: modifiers.dmgPerUnitMP || 0,
       dmgPerTickMO: modifiers.dmgPerTickMO || 0,
