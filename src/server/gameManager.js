@@ -70,7 +70,7 @@ export class GameManager {
     this.initializeImprovementsState();
     this.applyLawSystemDefaults(true);
 
-    logger.info(`Game initialized with seed: ${seed}`);
+    logger.debug(`Game initialized with seed: ${seed}`);
   }
 
   /**
@@ -94,7 +94,7 @@ export class GameManager {
         allowance_credits: 1000
       };
 
-      logger.info(`Economy initialized: ${commodities.length} commodities`);
+      logger.debug(`Economy initialized: ${commodities.length} commodities`);
     } catch (error) {
       logger.warn(`Economy initialization failed: ${error.message}`);
     }
@@ -111,7 +111,7 @@ export class GameManager {
         this.state,
         improvementRng.random.bind(improvementRng)
       );
-      logger.info(`Improvements system initialized: ${this.state.improvements.requests.length} requests`);
+      logger.debug(`Improvements system initialized: ${this.state.improvements.requests.length} requests`);
     } catch (error) {
       logger.warn(`Improvements initialization failed: ${error.message}`);
     }
@@ -163,6 +163,15 @@ export class GameManager {
     this.ensureHeroRoster(force);
     if (force || !this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {
       this.state.heroRecruitmentState = {};
+    }
+    if (force || !this.state.enactedLawsByCategory || typeof this.state.enactedLawsByCategory !== 'object') {
+      this.state.enactedLawsByCategory = {};
+    }
+    if (force || !Array.isArray(this.state.enactedLawsHistory)) {
+      this.state.enactedLawsHistory = Array.isArray(this.state.enactedLaws) ? [...this.state.enactedLaws] : [];
+    }
+    if (force || !this.state.lawTierUnlocks || typeof this.state.lawTierUnlocks !== 'object') {
+      this.state.lawTierUnlocks = { 1: true, 2: false, 3: false };
     }
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;
@@ -351,7 +360,7 @@ export class GameManager {
         
         const result = advanceTurn(this.state);
         if (result) {
-          logger.info(`Turn ${this.state.turn}: ${result.log.length} log entries`);
+          logger.debug(`Turn ${this.state.turn}: ${result.log.length} log entries`);
         }
         this.notifyStateChange();
 
@@ -369,7 +378,7 @@ export class GameManager {
     const gameSpeed = this.state.gameSpeed || 1;
     const interval = Math.max(100, Math.min(10000, (2000) / gameSpeed)); // Min 100ms, max 10s
     this.gameLoopInterval = setInterval(tick, interval);
-    logger.info(`Game loop started with interval ${interval}ms (speed: ${gameSpeed}x)`);
+    logger.debug(`Game loop started with interval ${interval}ms (speed: ${gameSpeed}x)`);
   }
 
   /**
@@ -379,7 +388,7 @@ export class GameManager {
     if (this.gameLoopInterval) {
       clearInterval(this.gameLoopInterval);
       this.gameLoopInterval = null;
-      logger.info('Game loop stopped');
+      logger.debug('Game loop stopped');
     }
   }
 
@@ -401,7 +410,7 @@ export class GameManager {
       this.state.heroRecruitmentState = {};
     }
     this.notifyStateChange();
-    logger.info(`Game loaded: turn ${this.state.turn}`);
+    logger.debug(`Game loaded: turn ${this.state.turn}`);
     return this.state;
   }
 

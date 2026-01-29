@@ -1,4 +1,4 @@
-module:
+﻿module:
   id: "hero_hive_4"
   name: "Harbinger Silex"
   description: "Swarm emissary who tempers unrest."
@@ -28,9 +28,10 @@ declares:
       pacifist_militaristic: 0.5
       stoicist_hedonistic: -0.8
       essentialist_constructivist: -0.85
-    budget_share: 0.09
+    budget_share: 0.0009
     ability_id: "ABILITY_PUBLIC_MANDATE"
     passive:
       phase: "VOTING"
       cadence: "OnStart"
       passive_id: "PASSIVE_VOTING_START_WHIP"
+

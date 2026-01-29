@@ -471,6 +471,9 @@ export function createGameState(seed = 0) {
     lawProcesses: [], // In-flight law processes
     powerSystemPolicy: null, // Current voting power system
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
+    enactedLawsByCategory: {}, // Map category -> active lawId
+    enactedLawsHistory: [], // Array of law IDs ever enacted (for tier unlocks)
+    lawTierUnlocks: { 1: true, 2: false, 3: false },
     
     // Coalition global modifiers (from laws, improvements, etc.)
     coalitionModifiers: {
@@ -626,6 +629,19 @@ export function migrateGameState(state) {
   // Ensure state has timedModifiers array for expired modifier cleanup
   if (!Array.isArray(state.timedModifiers)) {
     state.timedModifiers = [];
+  }
+
+  if (!Array.isArray(state.enactedLaws)) {
+    state.enactedLaws = [];
+  }
+  if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
+    state.enactedLawsByCategory = {};
+  }
+  if (!Array.isArray(state.enactedLawsHistory)) {
+    state.enactedLawsHistory = [...state.enactedLaws];
+  }
+  if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
+    state.lawTierUnlocks = { 1: true, 2: false, 3: false };
   }
   
   return state;

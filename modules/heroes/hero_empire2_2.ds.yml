@@ -1,4 +1,4 @@
-module:
+﻿module:
   id: "hero_empire2_2"
   name: "Biomancer Thalia Keene"
   description: "Gene-mapper who amplifies public mandate."
@@ -28,9 +28,10 @@ declares:
       pacifist_militaristic: -0.2
       stoicist_hedonistic: 0.4
       essentialist_constructivist: -0.4
-    budget_share: 0.11
+    budget_share: 0.0011
     ability_id: "ABILITY_LEGISLATIVE_SURGE"
     passive:
       phase: "DEBATE"
       cadence: "OnTick"
       passive_id: "PASSIVE_DEBATE_TICK_ORATOR"
+

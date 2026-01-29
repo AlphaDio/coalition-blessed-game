@@ -23,7 +23,7 @@ Hero fields (see `src/game/types.js`):
 - `tagline`
 - `tags`, `values` (axis vectors)
 - `status`: `ACTIVE | SIDELINED | DISGRACED | EXILED`
-- `budget_share`: 0..0.30
+- `budget_share`: 0..0.003 (hero definitions are scaled down by 100)
 - `charge`: 0..100
 - `siphon_bank`: credits accumulated from virtual siphon (spent on ability fire)
 - `ability_id`

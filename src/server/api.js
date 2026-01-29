@@ -144,7 +144,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // WebSocket connection handler
   wss.on('connection', (ws) => {
     try {
-      logger.info('WebSocket client connected');
+      logger.debug('WebSocket client connected');
       connectedClients.add(ws);
 
       // Send current game state to new client
@@ -182,7 +182,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       });
 
       ws.on('close', () => {
-        logger.info('WebSocket client disconnected');
+        logger.debug('WebSocket client disconnected');
         connectedClients.delete(ws);
       });
 
@@ -835,12 +835,12 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     await loadAndCacheResources();
 
     httpServer.listen(port, () => {
-      logger.info(`API server listening on port ${port}`);
-      logger.info(`CORS enabled for origin: ${corsOrigin}`);
+      logger.debug(`API server listening on port ${port}`);
+      logger.debug(`CORS enabled for origin: ${corsOrigin}`);
 
       // Setup cleanup handlers for graceful shutdown
       const cleanup = () => {
-        logger.info('API server shutting down, cleaning up resources...');
+        logger.debug('API server shutting down, cleaning up resources...');
         
         // Unsubscribe logger listener
         try {
@@ -880,12 +880,12 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       
       // Also handle process signals for graceful shutdown
       process.once('SIGTERM', () => {
-        logger.info('SIGTERM received, closing HTTP server');
+        logger.debug('SIGTERM received, closing HTTP server');
         httpServer.close();
       });
       
       process.once('SIGINT', () => {
-        logger.info('SIGINT received, closing HTTP server');
+        logger.debug('SIGINT received, closing HTTP server');
         httpServer.close();
       });
 

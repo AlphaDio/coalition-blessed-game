@@ -14,7 +14,7 @@ They are not armies; they act through **passives**, **signature abilities**, and
 - `tagline`
 - `tags`, `values`
 - `status`: `ACTIVE | SIDELINED | DISGRACED | EXILED`
-- `budget_share`: 0..0.30
+- `budget_share`: 0..0.003 (hero definitions are scaled down by 100)
 - `charge`: 0..100 (ability meter)
 - `siphon_bank`: virtual credits accumulated and spent when ability fires
 - `ability_id`

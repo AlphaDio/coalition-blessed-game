@@ -85,7 +85,7 @@ console.log('=== Test 1: Hero Creation ===');
 {
   const hero = createHero('HERO_1', 'EMPIRE_1', 'Test Hero', {
     tagline: 'A steady hand in chaos.',
-    budget_share: 0.2,
+    budget_share: 0.002,
     ability_id: 'ABILITY_PUBLIC_MANDATE',
     passive: { phase: 'VOTING', cadence: 'OnStart', passive_id: 'PASSIVE_VOTING_START_WHIP' }
   });
@@ -93,7 +93,7 @@ console.log('=== Test 1: Hero Creation ===');
   assert(hero.id === 'HERO_1', 'Hero id set');
   assert(hero.empire_id === 'EMPIRE_1', 'Hero empire_id set');
   assert(hero.tagline === 'A steady hand in chaos.', 'Hero tagline set');
-  assert(hero.budget_share === 0.2, 'Hero budget_share set');
+  assert(hero.budget_share === 0.002, 'Hero budget_share set');
   assert(hero.charge === 0, 'Hero charge defaulted to 0');
   assert(hero.siphon_bank === 0, 'Hero siphon_bank defaulted to 0');
   assert(hero.ability_id === 'ABILITY_PUBLIC_MANDATE', 'Hero ability_id set');
@@ -106,7 +106,7 @@ console.log('=== Test 2: Budget Siphon Mechanics ===');
   const empire = state.empires[0];
   empire.budget_credits = 1000;
   const hero = createHero('HERO_1', empire.id, 'Siphon Hero', {
-    budget_share: 0.2,
+    budget_share: 0.002,
     ability_id: 'ABILITY_PUBLIC_MANDATE'
   });
   state.heroes = [hero];
@@ -115,8 +115,8 @@ console.log('=== Test 2: Budget Siphon Mechanics ===');
   applyHeroBudgetSiphon(state, log);
 
   assert(empire.budget_credits === 1000, 'Empire budget not deducted by virtual siphon');
-  assert(approxEqual(hero.siphon_bank, 200), 'Hero siphon_bank accumulates virtual credits');
-  assert(approxEqual(hero.charge, 4), 'Hero charge increases by virtual siphon');
+  assert(approxEqual(hero.siphon_bank, 2), 'Hero siphon_bank accumulates virtual credits');
+  assert(approxEqual(hero.charge, 0.04), 'Hero charge increases by virtual siphon');
 }
 console.log();
 

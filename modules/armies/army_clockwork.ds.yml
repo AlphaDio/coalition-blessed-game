@@ -35,7 +35,7 @@ declares:
         quantum_circuits: 0.0015
         nano_machines: 0.001
       wants:
-        sentient_cores: 0.0005
-        wormhole_reactors: 0.0002
+        sentient_cores: 0.0001
+        wormhole_reactors: 0.0001
     signatureCommodity: quantum_circuits
     signatureThreshold: 50

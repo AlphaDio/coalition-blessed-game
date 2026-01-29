@@ -1,4 +1,4 @@
-module:
+﻿module:
   id: "hero_clockwork_1"
   name: "Node Prime K-47"
   description: "Primary decision node for the Collective."
@@ -28,9 +28,10 @@ declares:
       pacifist_militaristic: 0.1
       stoicist_hedonistic: -0.3
       essentialist_constructivist: 0.8
-    budget_share: 0.12
+    budget_share: 0.0012
     ability_id: "ABILITY_PUBLIC_MANDATE"
     passive:
       phase: "VOTING"
       cadence: "OnStart"
       passive_id: "PASSIVE_VOTING_START_WHIP"
+

@@ -1,4 +1,4 @@
-module:
+﻿module:
   id: "hero_empire1_2"
   name: "Minister Orrin Vale"
   description: "Economic minister skilled in consensus building."
@@ -28,9 +28,10 @@ declares:
       pacifist_militaristic: 0.0
       stoicist_hedonistic: -0.4
       essentialist_constructivist: 0.3
-    budget_share: 0.1
+    budget_share: 0.001
     ability_id: "ABILITY_LEGISLATIVE_SURGE"
     passive:
       phase: "DEBATE"
       cadence: "OnTick"
       passive_id: "PASSIVE_DEBATE_TICK_ORATOR"
+
