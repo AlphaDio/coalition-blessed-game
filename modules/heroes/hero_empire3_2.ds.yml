@@ -1,0 +1,37 @@
+module:
+  id: "hero_empire3_2"
+  name: "Prefect Nira Sol"
+  description: "Dominion prefect shaping the legislative agenda."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "dominion", "governance"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire3_2"
+    empireId: "empire_3"
+    name: "Prefect Nira Sol"
+    tagline: "Sharp debater who forces policy breakthroughs."
+    tags: ["political", "hero", "governance", "dominion"]
+    values:
+      authoritarian_liberal: 0.6
+      spiritual_materialistic: 0.1
+      natural_mechanical: 0.1
+      pacifist_militaristic: 0.5
+      stoicist_hedonistic: 0.5
+      essentialist_constructivist: 0.4
+    budget_share: 0.001
+    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    passive:
+      phase: "DEBATE"
+      cadence: "OnTick"
+      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"
+

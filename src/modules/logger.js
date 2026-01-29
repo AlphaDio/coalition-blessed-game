@@ -15,7 +15,7 @@ export const LogLevel = {
   ERROR: 3
 };
 
-const LogLevelNames = {
+export const LogLevelNames = {
   [LogLevel.DEBUG]: 'DEBUG',
   [LogLevel.INFO]: 'INFO',
   [LogLevel.WARN]: 'WARN',
@@ -230,11 +230,17 @@ class Logger {
   /**
    * Get log history for display
    */
-  getHistory(limit = null) {
-    if (limit) {
-      return this.logHistory.slice(-limit);
+  getHistory(limit = null, minLevel = null) {
+    let history = this.logHistory;
+
+    if (minLevel !== null && minLevel !== undefined) {
+      history = history.filter(entry => entry.level >= minLevel);
     }
-    return this.logHistory;
+
+    if (limit) {
+      return history.slice(-limit);
+    }
+    return history;
   }
   
   /**

@@ -35,6 +35,6 @@ declares:
         super_alloys: 0.0018
         rare_gases: 0.0012
       wants:
-        quantum_circuits: 0.0006
+        quantum_circuits: 0.0001
     signatureCommodity: rare_gases
     signatureThreshold: 10000

@@ -18,8 +18,8 @@ import { canStartLaw } from './lawDefinitions.js';
 import { clamp, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { updateCoalitionColor } from './coalitionColor.js';
-import { refreshImprovementSuggestions } from './improvements/definitions.js';
 import { calculateLawReactions } from './reactions.js';
+import { applyHeroLawPressure, runHeroPassives, triggerHeroAbilities } from './heroes.js';
 
 /**
  * Get the law progress speed multiplier from coalition modifiers
@@ -40,6 +40,9 @@ const LAW_UI_LOG_KEYWORDS = [
   '*** LAW BURIED',
   'Phase advanced',
   'VOTING phase complete',
+  'Hero Passive',
+  'Hero pressure',
+  'Hero Ability',
   'ERROR'
 ];
 
@@ -381,8 +384,12 @@ export function resolveLawProcess(lawProcess, state, rng) {
     log.push(`ERROR: Law definition not found for ${lawProcess.lawId}`);
     return log;
   }
-  
+
   log.push(`\n=== Resolving Law: ${lawDef.name} (Phase: ${lawProcess.phase}) ===`);
+
+  if (lawProcess.phaseTicks === 0) {
+    runHeroPassives(state, lawProcess, lawDef, 'OnStart', log);
+  }
   
   // Build context
   const context = buildLawContext(lawProcess, lawDef, state);
@@ -495,8 +502,13 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
 
   
-  // Track phase progress for deadlock detection
-  lawProcess.phaseTicks += 1;
+    // Hero phase-tick passives + law pressure
+    runHeroPassives(state, lawProcess, lawDef, 'OnTick', log);
+    applyHeroLawPressure(state, lawProcess, lawDef, log);
+    triggerHeroAbilities(state, lawProcess, log);
+
+    // Track phase progress for deadlock detection
+    lawProcess.phaseTicks += 1;
 
   // Check phase advancement
   if (checkPhaseAdvancement(lawProcess)) {
@@ -537,11 +549,6 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);
-    const improvementRng = rng && typeof rng.random === 'function'
-      ? () => rng.random()
-      : (typeof rng === 'function' ? rng : Math.random);
-    refreshImprovementSuggestions(state, improvementRng);
-
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');
   }

@@ -1,0 +1,37 @@
+module:
+  id: "hero_clockwork_3"
+  name: "Curator Hex-9"
+  description: "Archive curator who steadies legitimacy."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "collective", "archives"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_clockwork_3"
+    empireId: "empire_clockwork"
+    name: "Curator Hex-9"
+    tagline: "Archivist who brokers emergency resources."
+    tags: ["political", "hero", "synthetic", "archives"]
+    values:
+      authoritarian_liberal: 0.1
+      spiritual_materialistic: 0.85
+      natural_mechanical: 0.98
+      pacifist_militaristic: 0.2
+      stoicist_hedonistic: -0.2
+      essentialist_constructivist: 0.75
+    budget_share: 0.001
+    ability_id: "ABILITY_EMERGENCY_FUNDS"
+    passive:
+      phase: "FALLOUT"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"
+

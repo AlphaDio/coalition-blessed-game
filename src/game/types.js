@@ -101,7 +101,6 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     
     // Manpower and economy fields (no longer derived from units)
     manpower: initialManpower,
-    owner_empire_id: empireId,
     performance: {
       base: 1.0,
       current: 1.0,
@@ -159,11 +158,32 @@ export function createUnit(id, armyId, empireId, name, stats = {}, demands = {})
   return null;
 }
 
-export function createHero(id, empireId, name, modifiers = {}) {
+export function createHero(id, empireId, name, options = {}) {
+  const modifiers = options.modifiers || {};
   return {
     id,
     empireId,
     name,
+    tagline: options.tagline || '',
+    tags: options.tags || [],
+    values: options.values || {},
+    status: options.status || 'ACTIVE',
+    budget_share: options.budget_share ?? 0.1,
+    charge: options.charge ?? 0,
+    siphon_bank: options.siphon_bank ?? 0,
+    ability_id: options.ability_id || null,
+    passive: options.passive || {
+      phase: 'DEBATE',
+      cadence: 'OnStart',
+      passive_id: null
+    },
+    meters: options.meters || {
+      heat: 0,
+      grievance: 0,
+      popularity: 50
+    },
+    last_trigger_turn: options.last_trigger_turn ?? -1,
+    cooldowns: options.cooldowns || { ability: 0 },
     modifiers: {
       dmgPerUnitMP: modifiers.dmgPerUnitMP || 0,
       dmgPerTickMO: modifiers.dmgPerTickMO || 0,
@@ -411,9 +431,11 @@ export function createGameState(seed = 0) {
     scourgeFervor: 10,
     stockpiles: {
     },
-    empires: [],
-    armies: [],
-    heroes: [],
+      empires: [],
+      armies: [],
+      heroes: [],
+      heroRoster: [],
+      heroRecruitmentState: {},
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
     
@@ -448,6 +470,9 @@ export function createGameState(seed = 0) {
     lawProcesses: [], // In-flight law processes
     powerSystemPolicy: null, // Current voting power system
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
+    enactedLawsByCategory: {}, // Map category -> active lawId
+    enactedLawsHistory: [], // Array of law IDs ever enacted (for tier unlocks)
+    lawTierUnlocks: { 1: true, 2: false, 3: false },
     
     // Coalition global modifiers (from laws, improvements, etc.)
     coalitionModifiers: {
@@ -603,6 +628,19 @@ export function migrateGameState(state) {
   // Ensure state has timedModifiers array for expired modifier cleanup
   if (!Array.isArray(state.timedModifiers)) {
     state.timedModifiers = [];
+  }
+
+  if (!Array.isArray(state.enactedLaws)) {
+    state.enactedLaws = [];
+  }
+  if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
+    state.enactedLawsByCategory = {};
+  }
+  if (!Array.isArray(state.enactedLawsHistory)) {
+    state.enactedLawsHistory = [...state.enactedLaws];
+  }
+  if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
+    state.lawTierUnlocks = { 1: true, 2: false, 3: false };
   }
   
   return state;

@@ -1,0 +1,37 @@
+module:
+  id: "hero_clockwork_4"
+  name: "Protocol Echo-3"
+  description: "Compliance protocol guiding coalition consensus."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "collective", "protocol"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_clockwork_4"
+    empireId: "empire_clockwork"
+    name: "Protocol Echo-3"
+    tagline: "Compliance engine that keeps votes aligned."
+    tags: ["political", "hero", "synthetic", "protocol"]
+    values:
+      authoritarian_liberal: 0.15
+      spiritual_materialistic: 0.9
+      natural_mechanical: 0.96
+      pacifist_militaristic: 0.1
+      stoicist_hedonistic: -0.25
+      essentialist_constructivist: 0.85
+    budget_share: 0.0009
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"
+

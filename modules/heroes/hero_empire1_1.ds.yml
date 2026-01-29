@@ -1,0 +1,37 @@
+module:
+  id: "hero_empire1_1"
+  name: "Admiral Lysandra Kade"
+  description: "Federation fleet admiral turned coalition power broker."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "federation", "navy"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire1_1"
+    empireId: "empire_1"
+    name: "Admiral Lysandra Kade"
+    tagline: "Fleet hardliner who trades favors for stability."
+    tags: ["political", "hero", "military", "federation"]
+    values:
+      authoritarian_liberal: 0.4
+      spiritual_materialistic: 0.6
+      natural_mechanical: 0.7
+      pacifist_militaristic: 0.2
+      stoicist_hedonistic: -0.2
+      essentialist_constructivist: 0.5
+    budget_share: 0.0012
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"
+

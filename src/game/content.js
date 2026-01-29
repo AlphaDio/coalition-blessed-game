@@ -186,6 +186,13 @@ export function createSampleContent(seed = 0) {
   });
 
   const relations = buildEmpireRelations(empires);
-  
-  return { empires, armies, laws, events, diplomacy: { relations } };
+
+  // Extract heroes from modules
+  const heroModules = getModulesByType(registry, 'hero');
+  const heroRoster = heroModules.map(entry => {
+    const moduleDoc = registry.modules[entry.id];
+    return moduleDoc.declares.hero_data;
+  });
+
+  return { empires, armies, laws, events, diplomacy: { relations }, heroes: [], heroRoster };
 }

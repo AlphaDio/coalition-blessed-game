@@ -21,6 +21,7 @@ import { tickEmergencyLaws, getActiveEmergencyModifiers } from './emergencyLaws.
 import { calculateScourgePrediction } from './scourgePrediction.js';
 import { MARKET_CONSTANTS } from './constants.js';
 import { initializeTurnConsumptionTracking, recordConsumption, processConsumptionToRequisition } from './consumptionToRequisition.js';
+import { applyHeroBudgetSiphon, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters } from './heroes.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.001;
 const MIN_POPULATION = 1;
@@ -719,19 +720,24 @@ export function advanceTurn(state, rng = Math.random) {
   // 2.5. Refresh army stats from units after economy
   refreshArmyAggregates(state);
 
-   // 3. Process improvements tick
-   if (state.improvements) {
-     const improvementResult = processImprovementsTick(state);
-     if (improvementResult.log && improvementResult.log.length > 0) {
-       log.push(...improvementResult.log);
-     }
-
-      // Apply improvement modifiers
-      applyImprovementModifiers(state);
+  // 3. Process improvements tick
+  if (state.improvements) {
+    const improvementResult = processImprovementsTick(state);
+    if (improvementResult.log && improvementResult.log.length > 0) {
+      log.push(...improvementResult.log);
     }
 
-    // 3.5. Apply cohesion penalty for negative requisition
-    const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
+    // Apply improvement modifiers
+    applyImprovementModifiers(state);
+  }
+
+  // 3.2. Hero budget siphon, cooldowns, and meter drift
+  applyHeroBudgetSiphon(state, log);
+  tickHeroCooldowns(state);
+  tickHeroMeters(state, log);
+
+  // 3.5. Apply cohesion penalty for negative requisition
+  const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
     if (cohesionPenaltyResult.log && cohesionPenaltyResult.log.length > 0) {
       log.push(...cohesionPenaltyResult.log);
     }
@@ -940,8 +946,9 @@ export function advanceTurn(state, rng = Math.random) {
   state.scourgePrediction = calculateScourgePrediction(state, rngFn);
   logger.debug(`Scourge prediction updated: target=${state.scourgePrediction.targetEmpireId}, ETA=${state.scourgePrediction.estimatedTurnsToNextBattle}, confidence=${state.scourgePrediction.confidenceLevel}`);
   
-  // 8. Check insurrections
-  const insurrectionLog = checkInsurrections(state);
+    // 8. Apply hero spillover then check insurrections
+    applyHeroSpillover(state, log);
+    const insurrectionLog = checkInsurrections(state);
   log.push(...insurrectionLog.log);
   
   // 9. Expire timed modifiers

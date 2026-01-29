@@ -6,7 +6,7 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
-import { getLogger } from '../modules/logger.js';
+import { getLogger, LogLevel, LogLevelNames } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
 import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
 import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
@@ -123,6 +123,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       type: 'log_event',
       payload: {
         level: entry.level,
+        levelName: LogLevelNames[entry.level] || 'UNKNOWN',
         message: entry.message,
         timestamp: entry.timestamp,
         data: entry.data
@@ -143,7 +144,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // WebSocket connection handler
   wss.on('connection', (ws) => {
     try {
-      logger.info('WebSocket client connected');
+      logger.debug('WebSocket client connected');
       connectedClients.add(ws);
 
       // Send current game state to new client
@@ -181,7 +182,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       });
 
       ws.on('close', () => {
-        logger.info('WebSocket client disconnected');
+        logger.debug('WebSocket client disconnected');
         connectedClients.delete(ws);
       });
 
@@ -718,6 +719,13 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       const MAX_LOG_LIMIT = 1000; // Match logger's maxHistorySize
       const MIN_LOG_LIMIT = 1;
       const DEFAULT_LOG_LIMIT = 500;
+      const LOG_LEVEL_BY_NAME = {
+        debug: LogLevel.DEBUG,
+        info: LogLevel.INFO,
+        warn: LogLevel.WARN,
+        warning: LogLevel.WARN,
+        error: LogLevel.ERROR
+      };
 
       // Parse and validate limit parameter
       let limit = DEFAULT_LOG_LIMIT;
@@ -729,7 +737,18 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         }
       }
 
-      const logs = logger.getHistory(limit);
+      let minLevel = null;
+      if (req.query.minLevel || req.query.level) {
+        const rawLevel = String(req.query.minLevel || req.query.level).trim().toLowerCase();
+        const numericLevel = parseInt(rawLevel, 10);
+        if (!isNaN(numericLevel)) {
+          minLevel = numericLevel;
+        } else if (rawLevel in LOG_LEVEL_BY_NAME) {
+          minLevel = LOG_LEVEL_BY_NAME[rawLevel];
+        }
+      }
+
+      const logs = logger.getHistory(limit, minLevel);
       res.sendSuccess({ logs });
     } catch (error) {
       logger.error(`Error getting logs: ${error.message}`);
@@ -816,12 +835,12 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     await loadAndCacheResources();
 
     httpServer.listen(port, () => {
-      logger.info(`API server listening on port ${port}`);
-      logger.info(`CORS enabled for origin: ${corsOrigin}`);
+      logger.debug(`API server listening on port ${port}`);
+      logger.debug(`CORS enabled for origin: ${corsOrigin}`);
 
       // Setup cleanup handlers for graceful shutdown
       const cleanup = () => {
-        logger.info('API server shutting down, cleaning up resources...');
+        logger.debug('API server shutting down, cleaning up resources...');
         
         // Unsubscribe logger listener
         try {
@@ -861,12 +880,12 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       
       // Also handle process signals for graceful shutdown
       process.once('SIGTERM', () => {
-        logger.info('SIGTERM received, closing HTTP server');
+        logger.debug('SIGTERM received, closing HTTP server');
         httpServer.close();
       });
       
       process.once('SIGINT', () => {
-        logger.info('SIGINT received, closing HTTP server');
+        logger.debug('SIGINT received, closing HTTP server');
         httpServer.close();
       });
 
