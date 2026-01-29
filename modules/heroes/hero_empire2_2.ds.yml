@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire2_2"
   name: "Biomancer Thalia Keene"
   description: "Gene-mapper who amplifies public mandate."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire2_2"
-    empire_id: "empire_2"
+    empireId: "empire_2"
     name: "Biomancer Thalia Keene"
     tagline: "Charismatic botanist who rallies votes."
     tags: ["political", "hero", "biologic", "research"]

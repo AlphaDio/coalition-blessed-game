@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire1_3"
   name: "Strategist Mira Holt"
   description: "Systems analyst who converts policy into momentum."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire1_3"
-    empire_id: "empire_1"
+    empireId: "empire_1"
     name: "Strategist Mira Holt"
     tagline: "Calm planner who turns debate into progress."
     tags: ["political", "hero", "strategy", "federation"]

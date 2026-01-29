@@ -16,7 +16,7 @@ export function checkEvent(state, rng = Math.random) {
 
   const heroRecruitmentEvent = buildHeroRecruitmentEvent(state, rng);
   if (heroRecruitmentEvent) {
-    logger.info(`Hero recruitment triggered for ${heroRecruitmentEvent.empire_id}`);
+    logger.info(`Hero recruitment triggered for ${heroRecruitmentEvent.empireId}`);
     return heroRecruitmentEvent;
   }
   

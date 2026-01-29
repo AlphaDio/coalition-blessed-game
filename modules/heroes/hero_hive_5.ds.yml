@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_hive_5"
   name: "Nectar-Speaker Rala"
   description: "Swarm negotiator who keeps debate flowing."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_hive_5"
-    empire_id: "empire_hive"
+    empireId: "empire_hive"
     name: "Nectar-Speaker Rala"
     tagline: "Orator who speeds swarm consensus."
     tags: ["political", "hero", "hive", "speaker"]

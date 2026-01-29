@@ -1,4 +1,4 @@
-import { createEmpire, createArmy, createLaw, createEvent, createHero } from './types.js';
+import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
 

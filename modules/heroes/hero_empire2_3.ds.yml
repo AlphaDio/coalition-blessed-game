@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire2_3"
   name: "Warden Jorin Ash"
   description: "Frontier warden guarding the colony charter."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire2_3"
-    empire_id: "empire_2"
+    empireId: "empire_2"
     name: "Warden Jorin Ash"
     tagline: "Hardy sentinel who unlocks emergency credits."
     tags: ["political", "hero", "security", "agrarian"]

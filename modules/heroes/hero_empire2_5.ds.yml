@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire2_5"
   name: "Harvester Kellan Rook"
   description: "Logistics chief who turns debate into action."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire2_5"
-    empire_id: "empire_2"
+    empireId: "empire_2"
     name: "Harvester Kellan Rook"
     tagline: "Logistics tactician who accelerates law progress."
     tags: ["political", "hero", "logistics", "agrarian"]

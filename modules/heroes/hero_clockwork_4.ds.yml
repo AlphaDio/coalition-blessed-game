@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_clockwork_4"
   name: "Protocol Echo-3"
   description: "Compliance protocol guiding coalition consensus."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_clockwork_4"
-    empire_id: "empire_clockwork"
+    empireId: "empire_clockwork"
     name: "Protocol Echo-3"
     tagline: "Compliance engine that keeps votes aligned."
     tags: ["political", "hero", "synthetic", "protocol"]

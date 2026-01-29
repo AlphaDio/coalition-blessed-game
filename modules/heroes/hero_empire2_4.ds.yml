@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire2_4"
   name: "Ecologist Mara Venn"
   description: "Sustains public faith in the Verdant charter."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire2_4"
-    empire_id: "empire_2"
+    empireId: "empire_2"
     name: "Ecologist Mara Venn"
     tagline: "Patient negotiator who reduces unrest."
     tags: ["political", "hero", "ecology", "agrarian"]

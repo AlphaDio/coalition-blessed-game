@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire1_2"
   name: "Minister Orrin Vale"
   description: "Economic minister skilled in consensus building."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire1_2"
-    empire_id: "empire_1"
+    empireId: "empire_1"
     name: "Minister Orrin Vale"
     tagline: "Budget hawk who keeps the assembly on message."
     tags: ["political", "hero", "economic", "federation"]

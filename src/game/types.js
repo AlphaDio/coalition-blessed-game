@@ -101,7 +101,6 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     
     // Manpower and economy fields (no longer derived from units)
     manpower: initialManpower,
-    owner_empire_id: empireId,
     performance: {
       base: 1.0,
       current: 1.0,
@@ -163,7 +162,7 @@ export function createHero(id, empireId, name, options = {}) {
   const modifiers = options.modifiers || {};
   return {
     id,
-    empire_id: empireId,
+    empireId,
     name,
     tagline: options.tagline || '',
     tags: options.tags || [],

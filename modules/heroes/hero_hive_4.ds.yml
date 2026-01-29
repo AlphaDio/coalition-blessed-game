@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_hive_4"
   name: "Harbinger Silex"
   description: "Swarm emissary who tempers unrest."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_hive_4"
-    empire_id: "empire_hive"
+    empireId: "empire_hive"
     name: "Harbinger Silex"
     tagline: "Unifier who cools the swarm's anger."
     tags: ["political", "hero", "hive", "discipline"]

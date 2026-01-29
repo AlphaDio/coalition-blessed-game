@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire1_1"
   name: "Admiral Lysandra Kade"
   description: "Federation fleet admiral turned coalition power broker."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire1_1"
-    empire_id: "empire_1"
+    empireId: "empire_1"
     name: "Admiral Lysandra Kade"
     tagline: "Fleet hardliner who trades favors for stability."
     tags: ["political", "hero", "military", "federation"]

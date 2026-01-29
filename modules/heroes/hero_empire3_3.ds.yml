@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire3_3"
   name: "Quartermaster Jace Lin"
   description: "Resource tactician who opens emergency coffers."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire3_3"
-    empire_id: "empire_3"
+    empireId: "empire_3"
     name: "Quartermaster Jace Lin"
     tagline: "Logistics chief who unlocks emergency reserves."
     tags: ["political", "hero", "logistics", "dominion"]

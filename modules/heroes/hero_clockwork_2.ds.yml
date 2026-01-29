@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_clockwork_2"
   name: "Analyst Cipher V6"
   description: "Predictive analyst who accelerates debate outcomes."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_clockwork_2"
-    empire_id: "empire_clockwork"
+    empireId: "empire_clockwork"
     name: "Analyst Cipher V6"
     tagline: "Statistical engine that advances policy quickly."
     tags: ["political", "hero", "synthetic", "analysis"]

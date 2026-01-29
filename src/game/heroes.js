@@ -49,7 +49,7 @@ function getLawValues(lawDef) {
 }
 
 function getHeroEmpireId(hero) {
-  return hero.empire_id || hero.empireId || null;
+  return hero.empireId || null;
 }
 
 export function computeAlignmentScore(valuesA = {}, valuesB = {}) {
@@ -265,7 +265,7 @@ export function applyHeroSpillover(state, log) {
 
     if (aggravationDelta <= 0) return;
 
-    const armies = (state.armies || []).filter(army => army.empireId === empire.id || army.owner_empire_id === empire.id);
+    const armies = (state.armies || []).filter(army => army.empireId === empire.id);
     armies.forEach(army => {
       army.aggravation = clamp((army.aggravation || 0) + aggravationDelta, 0, 100);
     });
@@ -303,7 +303,7 @@ function shuffle(array, rng = Math.random) {
 export function buildHeroCandidates(state, empire, rng = Math.random, count = HERO_RECRUIT_CHOICE_COUNT) {
   const roster = Array.isArray(state.heroRoster) ? state.heroRoster : [];
   const available = roster.filter(def =>
-    def.empire_id === empire.id &&
+    def.empireId === empire.id &&
     !(state.heroes || []).some(hero => hero.id === def.id)
   );
 
@@ -405,7 +405,7 @@ export function buildHeroRecruitmentEvent(state, rng = Math.random) {
   return {
     id: `HERO_RECRUIT_${empire.id}_${state.turn ?? 0}`,
     scope: 'HERO_RECRUIT',
-    empire_id: empire.id,
+    empireId: empire.id,
     title: `Hero Candidates for ${empire.name}`,
     text: `${empire.name} lacks a hero. Choose a candidate to represent their interests.`,
       choices: candidates.map(candidate => ({
@@ -423,7 +423,7 @@ export function handleHeroRecruitmentChoice(state, event, choiceIndex, rng = Mat
   }
 
   const candidate = choice.hero_candidate;
-  const empireId = candidate.empire_id || event.empire_id || null;
+  const empireId = candidate.empireId || event.empireId || null;
   const empire = state.empires?.find(e => e.id === empireId) || state.empires?.find(e => candidate.name?.startsWith(e.name));
   if (!empire) {
     return { error: 'Empire not found for hero recruitment' };

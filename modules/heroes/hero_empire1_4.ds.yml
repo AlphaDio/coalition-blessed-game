@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire1_4"
   name: "Envoy Cassian Roe"
   description: "Coalition envoy known for calming unrest."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire1_4"
-    empire_id: "empire_1"
+    empireId: "empire_1"
     name: "Envoy Cassian Roe"
     tagline: "Soft-spoken diplomat who cools volatility."
     tags: ["political", "hero", "diplomatic", "federation"]

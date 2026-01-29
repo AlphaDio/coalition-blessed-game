@@ -713,7 +713,6 @@ export function advanceTurn(state, rng = Math.random) {
   
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
-  tickHeroMeters(state, log);
 
   // 2. Process economy tick (market economy system)
   handleEconomyTick(state, log, logger);
@@ -732,9 +731,10 @@ export function advanceTurn(state, rng = Math.random) {
     applyImprovementModifiers(state);
   }
 
-  // 3.2. Hero budget siphon and cooldowns
+  // 3.2. Hero budget siphon, cooldowns, and meter drift
   applyHeroBudgetSiphon(state, log);
   tickHeroCooldowns(state);
+  tickHeroMeters(state, log);
 
   // 3.5. Apply cohesion penalty for negative requisition
   const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);

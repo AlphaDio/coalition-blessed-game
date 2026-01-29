@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_clockwork_1"
   name: "Node Prime K-47"
   description: "Primary decision node for the Collective."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_clockwork_1"
-    empire_id: "empire_clockwork"
+    empireId: "empire_clockwork"
     name: "Node Prime K-47"
     tagline: "Deterministic arbiter who locks in votes."
     tags: ["political", "hero", "synthetic", "collective"]

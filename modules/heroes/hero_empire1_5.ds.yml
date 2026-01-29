@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire1_5"
   name: "Architect Selene Marr"
   description: "Infrastructure visionary with deep assembly ties."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire1_5"
-    empire_id: "empire_1"
+    empireId: "empire_1"
     name: "Architect Selene Marr"
     tagline: "Builder of consensus who unlocks emergency funds."
     tags: ["political", "hero", "industrial", "federation"]

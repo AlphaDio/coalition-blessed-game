@@ -823,7 +823,7 @@ function getAvailableImprovementsForEmpire(state, empireId, rng = Math.random) {
     tierRequests.forEach(req => {
       // Check requiresNoArmy condition
       if (req.requiresNoArmy) {
-        const empireHasArmy = state.armies?.some(a => a.owner_empire_id === empireId);
+        const empireHasArmy = state.armies?.some(a => a.empireId === empireId);
         if (empireHasArmy) {
           return; // Skip - empire already has an army
         }

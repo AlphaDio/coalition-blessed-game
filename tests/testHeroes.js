@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 /**
  * Test suite for hero system v0.3
@@ -11,11 +11,11 @@ import {
   createHero,
   createLawProcess,
   createPowerSystemPolicy
-} from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { DeterministicRNG } from './src/modules/rng.js';
-import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { resolveAllLawProcesses } from './src/game/lawProcessManager.js';
+} from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { DeterministicRNG } from '../src/modules/rng.js';
+import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
+import { resolveAllLawProcesses } from '../src/game/lawProcessManager.js';
 import {
   applyHeroBudgetSiphon,
   applyHeroLawPressure,
@@ -25,8 +25,8 @@ import {
   buildHeroRecruitmentEvent,
   handleHeroRecruitmentChoice,
   HERO_RECRUIT_DELAY_RANGE
-} from './src/game/heroes.js';
-import { initializeLogger, LogLevel } from './src/modules/logger.js';
+} from '../src/game/heroes.js';
+import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 // Initialize logger with minimal output
 initializeLogger({
@@ -91,7 +91,7 @@ console.log('=== Test 1: Hero Creation ===');
   });
 
   assert(hero.id === 'HERO_1', 'Hero id set');
-  assert(hero.empire_id === 'EMPIRE_1', 'Hero empire_id set');
+  assert(hero.empireId === 'EMPIRE_1', 'Hero empireId set');
   assert(hero.tagline === 'A steady hand in chaos.', 'Hero tagline set');
   assert(hero.budget_share === 0.002, 'Hero budget_share set');
   assert(hero.charge === 0, 'Hero charge defaulted to 0');
@@ -260,13 +260,12 @@ console.log('=== Test 8: Hero Recruitment Event ===');
     if (event) break;
   }
   assert(!!event, 'Recruitment event generated after stagger delay');
-  assert(!!event, 'Recruitment event generated for empire without hero');
   assert(event.choices.length === 2, 'Recruitment event offers 2 candidates');
 
   const result = handleHeroRecruitmentChoice(state, event, 0, rng.random.bind(rng));
   assert(result.success, 'Recruitment choice succeeds');
   assert(state.heroes.length === 1, 'Hero added to state');
-  assert(state.heroes[0].empire_id === event.empire_id, 'Hero assigned to target empire');
+  assert(state.heroes[0].empireId === event.empireId, 'Hero assigned to target empire');
 }
 console.log();
 

@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_hive_3"
   name: "Chorus-Mind Orr"
   description: "Collective voice guiding resource allocation."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_hive_3"
-    empire_id: "empire_hive"
+    empireId: "empire_hive"
     name: "Chorus-Mind Orr"
     tagline: "Harmonic broker who unlocks emergency credits."
     tags: ["political", "hero", "hive", "collective"]

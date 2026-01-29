@@ -530,7 +530,7 @@ export function processEconomyTick(state) {
     // TODO: Implement proper army maintenance system
     if (state.coalitionModifiers.army_maintenance_cost_modifier && state.coalitionModifiers.army_maintenance_cost_modifier !== 1.0) {
       state.empires.forEach(empire => {
-        const armies = state.armies.filter(a => a.owner_empire_id === empire.id);
+        const armies = state.armies.filter(a => a.empireId === empire.id);
         // Placeholder: reduce maintenance costs by modifier (assuming some base cost per army)
         // This is a stub until full army maintenance is implemented
         const baseMaintenancePerArmy = 10; // placeholder value

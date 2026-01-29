@@ -1,7 +1,7 @@
-﻿module:
+module:
   id: "hero_empire3_4"
   name: "Fleet Judge Elan Mora"
-  description: "Judicial officer who steady the Dominion vote."
+  description: "Judicial officer who steadies the Dominion vote."
   version: "1.0.0"
   type: "hero"
   category: "character"
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire3_4"
-    empire_id: "empire_3"
+    empireId: "empire_3"
     name: "Fleet Judge Elan Mora"
     tagline: "Rule-of-law envoy who disciplines the vote."
     tags: ["political", "hero", "judiciary", "dominion"]

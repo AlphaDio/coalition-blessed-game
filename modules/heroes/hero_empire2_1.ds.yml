@@ -1,4 +1,4 @@
-﻿module:
+module:
   id: "hero_empire2_1"
   name: "Caretaker Ilya Rowan"
   description: "Steward of the Verdant biospheres."
@@ -17,7 +17,7 @@ schema_version: "0.1"
 declares:
   hero_data:
     id: "hero_empire2_1"
-    empire_id: "empire_2"
+    empireId: "empire_2"
     name: "Caretaker Ilya Rowan"
     tagline: "Gentle reformer who keeps growth steady."
     tags: ["political", "hero", "biologic", "agrarian"]

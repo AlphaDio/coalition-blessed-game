@@ -79,7 +79,7 @@ export function refreshArmyAggregates(state) {
 
     // Apply hero modifiers
     const empireHeroes = (state.heroes || []).filter(hero =>
-      hero.empireId === army.empireId || hero.empire_id === army.empireId
+      hero.empireId === army.empireId
     );
     if (empireHeroes.length > 0) {
       const heroMods = getHeroModifiers(empireHeroes);
