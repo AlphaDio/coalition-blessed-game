@@ -188,10 +188,7 @@ export function createSampleContent(seed = 0) {
 
   const relations = buildEmpireRelations(empires);
 
-  const heroes = empires.map((empire, index) => {
-    const hero = createHeroFromEmpire(empire, index, rng.random.bind(rng));
-    return createHero(hero.id, hero.empire_id, hero.name, hero);
-  });
+  const heroes = empires.map((empire, index) => createHeroFromEmpire(empire, index, rng.random.bind(rng)));
   
   return { empires, armies, laws, events, diplomacy: { relations }, heroes };
 }

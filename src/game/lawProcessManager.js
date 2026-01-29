@@ -549,9 +549,6 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);
-    const improvementRng = rng && typeof rng.random === 'function'
-      ? () => rng.random()
-      : (typeof rng === 'function' ? rng : Math.random);
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');
   }

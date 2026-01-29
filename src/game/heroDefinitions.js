@@ -82,7 +82,6 @@ export const HERO_ABILITIES = {
   ABILITY_PUBLIC_MANDATE: {
     id: 'ABILITY_PUBLIC_MANDATE',
     description: 'Convert popularity into short-term stability: reduce heat/grievance, boost popularity.',
-    cost_credits: 1500,
     cooldown: 10,
     trigger({ hero, popularityScalar, log }) {
       const heatReduction = 10 * popularityScalar;
@@ -99,7 +98,6 @@ export const HERO_ABILITIES = {
   ABILITY_LEGISLATIVE_SURGE: {
     id: 'ABILITY_LEGISLATIVE_SURGE',
     description: 'Add immediate law phase progress if a law is active.',
-    cost_credits: 2000,
     cooldown: 12,
     trigger({ hero, lawProcess, popularityScalar, log }) {
       if (!lawProcess) return;
@@ -114,7 +112,6 @@ export const HERO_ABILITIES = {
   ABILITY_EMERGENCY_FUNDS: {
     id: 'ABILITY_EMERGENCY_FUNDS',
     description: 'Inject credits into the hero empire.',
-    cost_credits: 2500,
     cooldown: 8,
     trigger({ hero, empire, popularityScalar, log }) {
       const baseGrant = 2000;

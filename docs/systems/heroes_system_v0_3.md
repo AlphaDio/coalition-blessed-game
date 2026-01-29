@@ -20,10 +20,12 @@ This implementation follows the `heroes_system_v0_3` spec and adds an event-driv
 ## Data Model
 Hero fields (see `src/game/types.js`):
 - `id`, `empire_id`, `name`
+- `tagline`
 - `tags`, `values` (axis vectors)
 - `status`: `ACTIVE | SIDELINED | DISGRACED | EXILED`
 - `budget_share`: 0..0.30
 - `charge`: 0..100
+- `siphon_bank`: credits accumulated from virtual siphon (spent on ability fire)
 - `ability_id`
 - `passive`: `{ phase, cadence, passive_id }`
 - `meters`: `{ heat, grievance, popularity }`
@@ -32,8 +34,11 @@ Hero fields (see `src/game/types.js`):
 
 ## Budgets → Charge
 Per empire tick (after mandatory spending):
-1. **Hero siphon** takes `sum(budget_share)` from remaining `budget_credits`.
+1. **Hero siphon** scales with `sum(budget_share)` of remaining `budget_credits` (virtual).
 2. Each hero receives a share and converts credits to charge.
+3. Siphoned credits accumulate in a **siphon bank** and are only deducted from `budget_credits` when the hero ability fires.
+
+This keeps budgets intact during charge-up while still ensuring the full virtual siphon is paid on ability activation.
 
 Charge gains scale by hero status:
 - `ACTIVE`: 1.0
@@ -135,3 +140,4 @@ Integrations:
 ## Notes
 - No UI panel yet (can be added to info panel in clients if desired).
 - Law log lines include `Hero pressure`, `Hero Passive`, and `Hero Ability` for visibility.
+

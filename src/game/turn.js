@@ -721,23 +721,23 @@ export function advanceTurn(state, rng = Math.random) {
   // 2.5. Refresh army stats from units after economy
   refreshArmyAggregates(state);
 
-    // 3. Process improvements tick
-    if (state.improvements) {
-      const improvementResult = processImprovementsTick(state);
-      if (improvementResult.log && improvementResult.log.length > 0) {
-        log.push(...improvementResult.log);
-      }
+  // 3. Process improvements tick
+  if (state.improvements) {
+    const improvementResult = processImprovementsTick(state);
+    if (improvementResult.log && improvementResult.log.length > 0) {
+      log.push(...improvementResult.log);
+    }
 
-       // Apply improvement modifiers
-       applyImprovementModifiers(state);
-     }
+    // Apply improvement modifiers
+    applyImprovementModifiers(state);
+  }
 
-      // 3.2. Hero budget siphon and cooldowns
-      applyHeroBudgetSiphon(state, log);
-      tickHeroCooldowns(state);
+  // 3.2. Hero budget siphon and cooldowns
+  applyHeroBudgetSiphon(state, log);
+  tickHeroCooldowns(state);
 
-    // 3.5. Apply cohesion penalty for negative requisition
-    const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
+  // 3.5. Apply cohesion penalty for negative requisition
+  const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
     if (cohesionPenaltyResult.log && cohesionPenaltyResult.log.length > 0) {
       log.push(...cohesionPenaltyResult.log);
     }

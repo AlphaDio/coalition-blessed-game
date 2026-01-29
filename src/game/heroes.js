@@ -100,7 +100,8 @@ export function applyHeroBudgetSiphon(state, log) {
       const statusMultiplier = HERO_CONSTANTS.STATUS_CHARGE_MULTIPLIER[hero.status] ?? 1;
       const chargeGain = siphoned * HERO_CONSTANTS.CHARGE_PER_CREDIT * statusMultiplier;
       hero.charge = clamp((hero.charge || 0) + chargeGain, 0, HERO_CONSTANTS.ABILITY_CHARGE_MAX);
-      const message = `Hero charge: ${hero.name} accumulates +${chargeGain.toFixed(1)} charge (budget share ${Math.round((hero.budget_share || 0) * 100)}%).`;
+      hero.siphon_bank = (hero.siphon_bank || 0) + siphoned;
+      const message = `Hero charge: ${hero.name} accumulates +${chargeGain.toFixed(1)} charge (virtual siphon ${Math.round(siphoned)} credits).`;
       log.push(message);
       logger.debug(message);
     });
@@ -191,8 +192,8 @@ export function triggerHeroAbilities(state, lawProcess, log) {
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
 
-    const cost = abilityDef.cost_credits || 0;
-    if (cost > 0 && (empire.budget_credits || 0) < cost) {
+    const siphonBank = hero.siphon_bank || 0;
+    if (siphonBank > 0 && (empire.budget_credits || 0) < siphonBank) {
       return;
     }
 
@@ -202,9 +203,10 @@ export function triggerHeroAbilities(state, lawProcess, log) {
     hero.cooldowns = hero.cooldowns || {};
     hero.cooldowns.ability = abilityDef.cooldown ?? 10;
     hero.last_trigger_turn = state.turn;
-    if (cost > 0) {
-      empire.budget_credits = Math.max(0, (empire.budget_credits || 0) - cost);
-      const message = `Hero Ability cost: ${hero.name} spent ${cost} credits from ${empire.name}.`;
+    if (siphonBank > 0) {
+      empire.budget_credits = Math.max(0, (empire.budget_credits || 0) - siphonBank);
+      hero.siphon_bank = 0;
+      const message = `Hero Ability siphon: ${hero.name} spent ${Math.round(siphonBank)} credits from ${empire.name}.`;
       log.push(message);
       logger.info(message);
     }
@@ -315,6 +317,7 @@ export function createHeroFromEmpire(empire, index = 0, rng = Math.random) {
         grievance: 0,
         popularity: 50
       },
+      siphon_bank: 0,
       last_trigger_turn: -1,
       cooldowns: { ability: 0 },
       modifiers: {}
@@ -392,6 +395,7 @@ export function createHeroFromCandidate(state, empire, candidate, rng = Math.ran
         grievance: 0,
         popularity: 50
       },
+      siphon_bank: 0,
       last_trigger_turn: state.turn ?? -1,
       cooldowns: { ability: 0 },
       modifiers: {}

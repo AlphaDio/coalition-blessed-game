@@ -171,6 +171,7 @@ export function createHero(id, empireId, name, options = {}) {
     status: options.status || 'ACTIVE',
     budget_share: options.budget_share ?? 0.1,
     charge: options.charge ?? 0,
+    siphon_bank: options.siphon_bank ?? 0,
     ability_id: options.ability_id || null,
     passive: options.passive || {
       phase: 'DEBATE',

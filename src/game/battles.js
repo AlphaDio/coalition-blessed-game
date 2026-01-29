@@ -381,8 +381,12 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
       army.organization = clampStat(army.organization - BATTLE_CONSTANTS.WIN_ORG_LOSS);
       army.fervor = clampStat(army.fervor + BATTLE_CONSTANTS.WIN_FERVOR_GAIN);
     } else {
+      // On defeat: only apply fervor loss to armies from the scourge target empire
+      const isTargetEmpireArmy = army.empireId === state.scourgeTargetEmpireId;
       army.organization = clampStat(army.organization - BATTLE_CONSTANTS.LOSS_ORG_LOSS);
-      army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.LOSS_FERVOR_LOSS);
+      if (isTargetEmpireArmy) {
+        army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.LOSS_FERVOR_LOSS);
+      }
     }
   });
   
