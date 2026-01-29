@@ -41,6 +41,14 @@ export class GameManager {
     this.initializeNewGame();
   }
 
+  ensureHeroRoster(force = false) {
+    if (!this.state) return;
+    if (force || !Array.isArray(this.state.heroRoster) || this.state.heroRoster.length === 0) {
+      const content = createSampleContent(this.state.rngSeed ?? 0);
+      this.state.heroRoster = content.heroRoster || [];
+    }
+  }
+
   /**
    * Initialize a brand new game
    */
@@ -57,6 +65,7 @@ export class GameManager {
     this.state.diplomacy = content.diplomacy || { relations: {} };
 
     this.ensureDiplomacy();
+    this.ensureHeroRoster();
     this.initializeEconomyState();
     this.initializeImprovementsState();
     this.applyLawSystemDefaults(true);
@@ -151,8 +160,9 @@ export class GameManager {
     if (force || !Array.isArray(this.state.heroes)) {
       this.state.heroes = [];
     }
-    if (force || !Array.isArray(this.state.heroRoster)) {
-      this.state.heroRoster = [];
+    this.ensureHeroRoster(force);
+    if (force || !this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {
+      this.state.heroRecruitmentState = {};
     }
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;
@@ -386,6 +396,10 @@ export class GameManager {
   loadSaveState(saveData) {
     // Migrate save data to current schema to handle missing fields
     this.state = migrateGameState(saveData);
+    this.ensureHeroRoster();
+    if (!this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {
+      this.state.heroRecruitmentState = {};
+    }
     this.notifyStateChange();
     logger.info(`Game loaded: turn ${this.state.turn}`);
     return this.state;
