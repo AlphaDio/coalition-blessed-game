@@ -589,6 +589,7 @@ export function processImprovementProduction(state, improvement) {
 export function releaseProductionFromBank(state, improvement) {
   const log = [];
   const empire = state.empires.find(e => e.id === improvement.empireId);
+  const logger = getLogger();
 
   if (!empire) return { log };
 
@@ -659,6 +660,7 @@ export function releaseProductionFromBank(state, improvement) {
     state.marketOrders.sellOffers.push(sellOffer);
     // Log "Produced" when releasing to market
     log.push(`{blue-fg}Produced:{/blue-fg} ${qty} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
+    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qty} ${commodity} to market.`);
     
     // Clear from bank after releasing
     improvement.productionBank[commodity] = 0;

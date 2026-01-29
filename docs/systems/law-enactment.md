@@ -2,17 +2,17 @@
 
 ## Overview
 
-The Law Enactment system is a streamlined framework for enacting laws that provide permanent coalition-wide modifiers. Laws are organized in tiers (T1, T2, T3) within ideological branches, with tier progression requiring enacted laws from previous tiers. Once enacted, laws apply their effects permanently via coalitionModifiers.
+The Law Enactment system uses a multi-phase process (DEBATE, FALLOUT, VOTING) to adopt powerful laws. Laws are organized into **three categories** (Economy, Military, Gouvernance) with **three tiers** (T1–T3). Only **one law per category** can be active at a time; enacting a new law in a category **replaces** the old one and removes its ongoing modifiers.
 
 ## Architecture
 
 ### Core Principles
 
-1. **Immediate Enactment**: Laws are enacted instantly upon selection, applying permanent effects.
-2. **Tiered Progression**: T1 laws always available, T2 requires 2 enacted T1, T3 requires 2 enacted T2.
+1. **Category Slots**: One active law per category; new laws replace old ones in that category.
+2. **Tiered Progression**: T1 laws always available, T2 requires at least 1 enacted T1, T3 requires at least 1 enacted T2 (global, history-based).
 3. **Ideological Alignment**: Laws positioned on 6 ideological axes: Pacifist-Militaristic, Authoritarian-Liberal, Stoicist-Hedonistic, Natural-Mechanical, Essentialist-Constructivist, Spiritual-Materialistic.
-4. **Branch Organization**: Laws grouped into 6 branches: Military, Rights, Economic, Governance, Biologic, Emergency.
-5. **Permanent Effects**: All effects are permanent coalitionModifiers (no expiration or trade-offs).
+4. **Category Organization**: Laws grouped into 3 categories: Economy, Military, Gouvernance.
+5. **Immediate Adoption Effects**: Each law grants a strong immediate reward on enactment (credits, requisition, cohesion, influence, etc.), plus ongoing modifiers while active.
 
 ### Data Models
 
@@ -20,27 +20,31 @@ The Law Enactment system is a streamlined framework for enacting laws that provi
 Defines a law's properties, requirements, and effects:
 ```javascript
 {
-  id: 'law_peace_accord_initiative',
-  name: 'Peace Accord Initiative',
+  id: 'law_market_open_1',
+  name: 'Open Markets Act',
   tier: 1,
-  branch: 'military',
+  category: 'economy',
+  law_type: 'Market',
   axis_vector: {
-    pacifist_militaristic: 0.4
+    spiritual_materialistic: 0.4
   },
-  law_tags: ['peace', 'diplomacy'],
+  law_tags: ['market', 'trade'],
   support_weights: {
-    population_incentive: 0.1,
-    security_incentive: 0.2,
-    economy_incentive: 0.1
+    economy_incentive: 0.5
   },
   phase_tags: {
-    DEBATE: ['peace', 'diplomacy', 'cooperation'],
-    FALLOUT: ['social', 'economic'],
-    VOTING: ['diplomacy', 'compromise']
+    DEBATE: ['market', 'trade'],
+    FALLOUT: ['economic'],
+    VOTING: ['economic']
   },
-  coalitionModifiers: {
-    army_maintenance_cost_modifier: 0.9, // 10% reduction
-    relations_strength_modifier: 1.075   // 7.5% boost
+  modifiers: {
+    trade_income: 150,
+    supply_efficiency: 0.05
+  },
+  immediate_effects: {
+    coalition_credits: 1500,
+    requisition: 200,
+    cohesion: 2
   }
 }
 ```
@@ -70,15 +74,16 @@ Not used in the new system.
 1. **Check Requirements**: Verify tier is unlocked (T1 always, T2/T3 require previous tier laws).
 2. **Check Cost**: Player must have 100 influence.
 3. **Deduct Cost**: Remove 100 influence from player.
-4. **Apply Effects**: Immediately apply coalitionModifiers to state.coalitionModifiers.
-5. **Mark Enacted**: Add law ID to state.enactedLaws array.
-6. **Update UI**: Refresh law availability and display active laws.
+4. **Replace Category**: If a law is already active in the same category, remove its ongoing modifiers.
+5. **Apply Effects**: Apply ongoing modifiers and immediate adoption effects.
+6. **Mark Enacted**: Store as the active law for that category and record history for tier unlocks.
+7. **Update UI**: Refresh law availability and display active laws.
 
 ### Tier Unlock Requirements
 
-- **T1**: Always available (6 laws per ideological axis, one per branch).
-- **T2**: Requires 2 enacted T1 laws.
-- **T3**: Requires 2 enacted T2 laws.
+- **T1**: Always available.
+- **T2**: Requires at least 1 enacted T1 law (any category, historical).
+- **T3**: Requires at least 1 enacted T2 law (any category, historical).
 
 ### Ideological Axes
 
