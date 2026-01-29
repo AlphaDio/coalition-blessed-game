@@ -888,7 +888,22 @@ export function isImprovementTierUnlocked(tier, state, empireId) {
  * Refresh improvement suggestions in state
  */
 export function refreshImprovementSuggestions(state, rng = Math.random) {
-  state.improvements.requests = generateImprovementSuggestions(state, rng);
+  if (!state.improvements) {
+    return;
+  }
+  const existing = state.improvements.requests || [];
+  const existingKeys = new Set(
+    existing.map(request => `${request.empireId || 'none'}:${request.id}`)
+  );
+  const additions = generateImprovementSuggestions(state, rng).filter(request => {
+    const key = `${request.empireId || 'none'}:${request.id}`;
+    if (existingKeys.has(key)) {
+      return false;
+    }
+    existingKeys.add(key);
+    return true;
+  });
+  state.improvements.requests = [...existing, ...additions];
 }
 
 /**

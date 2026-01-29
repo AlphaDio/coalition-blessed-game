@@ -18,7 +18,6 @@ import { canStartLaw } from './lawDefinitions.js';
 import { clamp, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { updateCoalitionColor } from './coalitionColor.js';
-import { refreshImprovementSuggestions } from './improvements/definitions.js';
 import { calculateLawReactions } from './reactions.js';
 import { applyHeroLawPressure, runHeroPassives, triggerHeroAbilities } from './heroes.js';
 
@@ -553,8 +552,6 @@ export function resolveLawProcess(lawProcess, state, rng) {
     const improvementRng = rng && typeof rng.random === 'function'
       ? () => rng.random()
       : (typeof rng === 'function' ? rng : Math.random);
-    refreshImprovementSuggestions(state, improvementRng);
-
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');
   }
