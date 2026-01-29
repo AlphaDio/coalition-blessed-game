@@ -1,4 +1,4 @@
----
+﻿---
 title: Heroes System v0.3
 status: implemented
 updated: 2026-01-29
@@ -32,7 +32,7 @@ Hero fields (see `src/game/types.js`):
 - `last_trigger_turn`, `cooldowns`
 - `modifiers` (kept for army-composition integration)
 
-## Budgets → Charge
+## Budgets -> Charge
 Per empire tick (after mandatory spending):
 1. **Hero siphon** scales with `sum(budget_share)` of remaining `budget_credits` (virtual).
 2. Each hero receives a share and converts credits to charge.
@@ -50,8 +50,8 @@ Implementation: `applyHeroBudgetSiphon()` in `src/game/heroes.js`.
 
 ## Law Phase Integration
 Per law process tick:
-- **Hero mismatch → Grievance**
-- **Empire mismatch → Heat**
+- **Hero mismatch -> Grievance**
+- **Empire mismatch -> Heat**
 Both are scaled by law context:
 ```
 unrestPressure = clamp((unrest - UNREST_THRESHOLD) / UNREST_SPAN, 0..1)
@@ -112,7 +112,7 @@ Used by:
 Each turn:
 - Heat decays (faster in good context).
 - Grievance decays slowly.
-- High heat can “bake” into grievance.
+- High heat can "bake" into grievance.
 - Popularity drifts with context, capped by grievance.
 
 Implementation: `tickHeroMeters()` in `src/game/heroes.js`.
@@ -139,14 +139,20 @@ Integrations:
 - `src/game/armyComposition.js` (hero modifiers compatibility)
 
 ## Recruitment Event (Staggered)
+Heroes are **unique, predefined characters** loaded from `modules/heroes/*.ds.yml`.
+Each empire currently has **5** unique hero definitions.
 If an empire has **no hero**, a recruitment event can fire after a **random delay**:
-- Delay range: **5–25 ticks** (per empire, rolled when the empire first becomes hero-less).
+- Delay range: **5-25 ticks** (per empire, rolled when the empire first becomes hero-less).
 - The system tracks `heroRecruitmentState[empireId]` with `{ missingTicks, delayTicks }`.
 - Once `missingTicks >= delayTicks`, a hero candidate event is generated.
+- Event offers **2 choices** from that empire's hero roster.
 
-Implementation: `buildHeroRecruitmentEvent()` in `src/game/heroes.js` and event routing in `src/game/events.js`.
+Implementation: `buildHeroRecruitmentEvent()` in `src/game/heroes.js`, roster loading in `src/game/content.js`,
+and event routing in `src/game/events.js`.
 
 ## Notes
 - No UI panel yet (can be added to info panel in clients if desired).
 - Law log lines include `Hero pressure`, `Hero Passive`, and `Hero Ability` for visibility.
+
+
 

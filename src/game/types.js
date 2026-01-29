@@ -432,9 +432,10 @@ export function createGameState(seed = 0) {
     scourgeFervor: 10,
     stockpiles: {
     },
-    empires: [],
-    armies: [],
+      empires: [],
+      armies: [],
       heroes: [],
+      heroRoster: [],
       heroRecruitmentState: {},
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,

@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire1_4"
+  name: "Envoy Cassian Roe"
+  description: "Coalition envoy known for calming unrest."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "federation", "diplomacy"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire1_4"
+    empire_id: "empire_1"
+    name: "Envoy Cassian Roe"
+    tagline: "Soft-spoken diplomat who cools volatility."
+    tags: ["political", "hero", "diplomatic", "federation"]
+    values:
+      authoritarian_liberal: 0.25
+      spiritual_materialistic: 0.6
+      natural_mechanical: 0.75
+      pacifist_militaristic: -0.05
+      stoicist_hedonistic: -0.3
+      essentialist_constructivist: 0.35
+    budget_share: 0.09
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"

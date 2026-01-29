@@ -1,4 +1,4 @@
----
+﻿---
 title: Heroes
 status: implemented
 updated: 2026-01-29
@@ -22,9 +22,9 @@ They are not armies; they act through **passives**, **signature abilities**, and
 - `meters`: `{ heat, grievance, popularity }`
 
 ## Budget Siphon (Virtual)
-Each tick, hero charge scales with a **virtual siphon** based on the empire’s remaining `budget_credits`.
+Each tick, hero charge scales with a **virtual siphon** based on the empire's remaining `budget_credits`.
 Credits are **not** deducted each tick; instead they accumulate in `siphon_bank` and are only spent when
-the hero’s ability fires. This keeps budgets intact while still “paying” the accumulated siphon on use.
+the hero's ability fires. This keeps budgets intact while still "paying" the accumulated siphon on use.
 
 ## Abilities
 Abilities auto-fire when:
@@ -34,7 +34,7 @@ Abilities auto-fire when:
 On trigger:
 - `charge` resets
 - cooldown applied
-- `siphon_bank` is deducted from the empire’s budget
+- `siphon_bank` is deducted from the empire's budget
 
 ## Passives
 Each hero has exactly one passive, defined by `(phase, cadence)`:
@@ -47,8 +47,12 @@ Hero/Empire alignment vs law values creates:
 - **Grievance** when the hero mismatches the law
 
 ## Recruitment Events (Staggered)
+Heroes are **unique per empire** and defined in `modules/heroes/*.ds.yml`.
+Each empire currently has **5** predefined heroes.
 If an empire has no hero, a recruitment event is triggered after a random delay:
-- **Delay range:** 5–25 ticks
+- **Delay range:** 5-25 ticks
 - Rolled per empire the first time it becomes hero-less
 
-The event offers 2–3 candidates with a short tagline for selection.
+The event offers **2 candidates** with a short tagline for selection.
+
+

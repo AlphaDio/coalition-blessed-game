@@ -1,7 +1,6 @@
 import { createEmpire, createArmy, createLaw, createEvent, createHero } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
-import { createHeroFromEmpire } from './heroes.js';
 
 const EVENT_EFFECT_RANGE_MULTIPLIER = 2;
 
@@ -188,7 +187,12 @@ export function createSampleContent(seed = 0) {
 
   const relations = buildEmpireRelations(empires);
 
-  const heroes = empires.map((empire, index) => createHeroFromEmpire(empire, index, rng.random.bind(rng)));
-  
-  return { empires, armies, laws, events, diplomacy: { relations }, heroes };
+  // Extract heroes from modules
+  const heroModules = getModulesByType(registry, 'hero');
+  const heroRoster = heroModules.map(entry => {
+    const moduleDoc = registry.modules[entry.id];
+    return moduleDoc.declares.hero_data;
+  });
+
+  return { empires, armies, laws, events, diplomacy: { relations }, heroes: [], heroRoster };
 }

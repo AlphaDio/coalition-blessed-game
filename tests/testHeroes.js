@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Test suite for hero system v0.3
@@ -46,11 +46,11 @@ let testsFailed = 0;
 function assert(condition, message) {
   if (condition) {
     testsPassed++;
-    console.log(`✓ ${message}`);
+    console.log(`[PASS] ${message}`);
     return true;
   } else {
     testsFailed++;
-    console.log(`✗ ${message}`);
+    console.log(`[FAIL] ${message}`);
     return false;
   }
 }
@@ -66,6 +66,7 @@ function createTestState(seed = 12345) {
   state.armies = content.armies;
   state.lawDefinitions = getSampleLawDefinitions();
   state.events = content.events || [];
+  state.heroRoster = content.heroRoster || [];
   state.powerSystemPolicy = createPowerSystemPolicy(
     'equal_council',
     'Equal Council Votes',
@@ -259,9 +260,8 @@ console.log('=== Test 8: Hero Recruitment Event ===');
     if (event) break;
   }
   assert(!!event, 'Recruitment event generated after stagger delay');
-
   assert(!!event, 'Recruitment event generated for empire without hero');
-  assert(event.choices.length >= 2 && event.choices.length <= 3, 'Recruitment event offers 2-3 candidates');
+  assert(event.choices.length === 2, 'Recruitment event offers 2 candidates');
 
   const result = handleHeroRecruitmentChoice(state, event, 0, rng.random.bind(rng));
   assert(result.success, 'Recruitment choice succeeds');
@@ -278,9 +278,10 @@ console.log(`Failed: ${testsFailed}`);
 console.log('============================================================');
 
 if (testsFailed === 0) {
-  console.log('✓ ALL TESTS PASSED');
+  console.log('[PASS] ALL TESTS PASSED');
 } else {
-  console.log('✗ SOME TESTS FAILED');
+  console.log('[FAIL] SOME TESTS FAILED');
   process.exit(1);
 }
 console.log('============================================================');
+

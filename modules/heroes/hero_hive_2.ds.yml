@@ -1,0 +1,36 @@
+module:
+  id: "hero_hive_2"
+  name: "Sporewright Venn"
+  description: "Fungal architect steering swarm logistics."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "swarm", "fungal"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_hive_2"
+    empire_id: "empire_hive"
+    name: "Sporewright Venn"
+    tagline: "Tactician who accelerates swarm legislation."
+    tags: ["political", "hero", "hive", "agrarian"]
+    values:
+      authoritarian_liberal: -0.9
+      spiritual_materialistic: 0.1
+      natural_mechanical: -0.6
+      pacifist_militaristic: 0.3
+      stoicist_hedonistic: -0.7
+      essentialist_constructivist: -0.8
+    budget_share: 0.1
+    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    passive:
+      phase: "DEBATE"
+      cadence: "OnTick"
+      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"

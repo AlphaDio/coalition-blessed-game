@@ -52,6 +52,8 @@ export class GameManager {
     this.state.armies = content.armies;
     this.state.laws = content.laws;
     this.state.events = content.events;
+    this.state.heroRoster = content.heroRoster || [];
+    this.state.heroes = content.heroes || [];
     this.state.diplomacy = content.diplomacy || { relations: {} };
 
     this.ensureDiplomacy();
@@ -148,6 +150,9 @@ export class GameManager {
     }
     if (force || !Array.isArray(this.state.heroes)) {
       this.state.heroes = [];
+    }
+    if (force || !Array.isArray(this.state.heroRoster)) {
+      this.state.heroRoster = [];
     }
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;

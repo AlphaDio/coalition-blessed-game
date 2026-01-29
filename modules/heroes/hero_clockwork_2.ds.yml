@@ -1,0 +1,36 @@
+module:
+  id: "hero_clockwork_2"
+  name: "Analyst Cipher V6"
+  description: "Predictive analyst who accelerates debate outcomes."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "collective", "analysis"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_clockwork_2"
+    empire_id: "empire_clockwork"
+    name: "Analyst Cipher V6"
+    tagline: "Statistical engine that advances policy quickly."
+    tags: ["political", "hero", "synthetic", "analysis"]
+    values:
+      authoritarian_liberal: 0.0
+      spiritual_materialistic: 0.95
+      natural_mechanical: 0.9
+      pacifist_militaristic: 0.2
+      stoicist_hedonistic: -0.1
+      essentialist_constructivist: 0.7
+    budget_share: 0.1
+    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    passive:
+      phase: "DEBATE"
+      cadence: "OnTick"
+      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"

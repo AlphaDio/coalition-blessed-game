@@ -3,7 +3,7 @@
  */
 
 import { clamp } from './cohesion.js';
-import { HERO_ABILITIES, HERO_PASSIVES, HERO_ARCHETYPES } from './heroDefinitions.js';
+import { HERO_ABILITIES, HERO_PASSIVES } from './heroDefinitions.js';
 import { createHero } from './types.js';
 import { getLogger } from '../modules/logger.js';
 
@@ -42,6 +42,7 @@ const HERO_CONSTANTS = {
 };
 
 export const HERO_RECRUIT_DELAY_RANGE = { min: 5, max: 25 };
+export const HERO_RECRUIT_CHOICE_COUNT = 2;
 
 function getLawValues(lawDef) {
   return lawDef.axis_vector || lawDef.values || {};
@@ -285,48 +286,6 @@ export function tickHeroCooldowns(state) {
   });
 }
 
-export function createHeroFromEmpire(empire, index = 0, rng = Math.random) {
-  const passiveList = Object.values(HERO_PASSIVES);
-  const abilityList = Object.values(HERO_ABILITIES);
-  const archetype = HERO_ARCHETYPES[index % HERO_ARCHETYPES.length] || null;
-  const passive = archetype ? HERO_PASSIVES[archetype.passive_id] : passiveList[index % passiveList.length];
-  const ability = archetype ? HERO_ABILITIES[archetype.ability_id] : abilityList[index % abilityList.length];
-  const jitter = () => (rng() * 0.2) - 0.1;
-  const values = {};
-  Object.keys(empire.values || {}).forEach(axis => {
-    values[axis] = clamp((empire.values[axis] || 0) + jitter(), -1, 1);
-  });
-
-  return createHero(
-    `HERO_${empire.id}_${index + 1}`,
-    empire.id,
-    `${empire.name} ${archetype?.title || 'Envoy'} ${index + 1}`,
-    {
-      tagline: archetype?.tagline || '',
-      tags: ['political', 'hero', ...(archetype?.tags || []), ...(empire.tags || [])],
-      values,
-      status: HERO_STATUS.ACTIVE,
-      budget_share: 0.1,
-      charge: 0,
-      ability_id: ability?.id || null,
-      passive: {
-        phase: passive?.phase || 'DEBATE',
-        cadence: passive?.cadence || 'OnStart',
-        passive_id: passive?.id || null
-      },
-      meters: {
-        heat: 0,
-        grievance: 0,
-        popularity: 50
-      },
-      siphon_bank: 0,
-      last_trigger_turn: -1,
-      cooldowns: { ability: 0 },
-      modifiers: {}
-    }
-  );
-}
-
 function getNextHeroIndex(state, empireId) {
   const existing = (state.heroes || []).filter(hero => getHeroEmpireId(hero) === empireId);
   return existing.length;
@@ -341,56 +300,49 @@ function shuffle(array, rng = Math.random) {
   return copy;
 }
 
-export function buildHeroCandidates(state, empire, rng = Math.random, count = 3) {
-  const archetypes = shuffle(HERO_ARCHETYPES, rng);
-  const candidates = [];
+export function buildHeroCandidates(state, empire, rng = Math.random, count = HERO_RECRUIT_CHOICE_COUNT) {
+  const roster = Array.isArray(state.heroRoster) ? state.heroRoster : [];
+  const available = roster.filter(def =>
+    def.empire_id === empire.id &&
+    !(state.heroes || []).some(hero => hero.id === def.id)
+  );
 
-  for (const archetype of archetypes) {
-    if (candidates.length >= count) break;
-    const passive = HERO_PASSIVES[archetype.passive_id];
-    const ability = HERO_ABILITIES[archetype.ability_id];
-    if (!passive || !ability) continue;
-
-    candidates.push({
-      empire_id: empire.id,
-      archetype_id: archetype.id,
-      name: `${empire.name} ${archetype.title}`,
-      tagline: archetype.tagline,
-      tags: ['political', 'hero', ...(archetype.tags || []), ...(empire.tags || [])],
-      ability_id: ability.id,
-      passive_id: passive.id,
-      passive_phase: passive.phase,
-      passive_cadence: passive.cadence
-    });
-  }
-
-  return candidates;
+  const shuffled = shuffle(available, rng);
+  return shuffled.slice(0, count).map(def => ({
+    ...def
+  }));
 }
 
 export function createHeroFromCandidate(state, empire, candidate, rng = Math.random) {
   const index = getNextHeroIndex(state, empire.id);
   const jitter = () => (rng() * 0.2) - 0.1;
   const values = {};
-  Object.keys(empire.values || {}).forEach(axis => {
-    values[axis] = clamp((empire.values[axis] || 0) + jitter(), -1, 1);
-  });
+  if (candidate.values && Object.keys(candidate.values).length > 0) {
+    Object.keys(candidate.values).forEach(axis => {
+      values[axis] = clamp(candidate.values[axis], -1, 1);
+    });
+  } else {
+    Object.keys(empire.values || {}).forEach(axis => {
+      values[axis] = clamp((empire.values[axis] || 0) + jitter(), -1, 1);
+    });
+  }
 
   return createHero(
-    `HERO_${empire.id}_${index + 1}`,
+    candidate.id || `HERO_${empire.id}_${index + 1}`,
     empire.id,
-    candidate.name,
+    candidate.name || `${empire.name} Envoy ${index + 1}`,
     {
       tagline: candidate.tagline || '',
       tags: candidate.tags || ['political', 'hero'],
       values,
       status: HERO_STATUS.ACTIVE,
-      budget_share: 0.1,
+      budget_share: candidate.budget_share ?? 0.1,
       charge: 0,
       ability_id: candidate.ability_id || null,
       passive: {
-        phase: candidate.passive_phase || 'DEBATE',
-        cadence: candidate.passive_cadence || 'OnStart',
-        passive_id: candidate.passive_id || null
+        phase: candidate.passive?.phase || candidate.passive_phase || 'DEBATE',
+        cadence: candidate.passive?.cadence || candidate.passive_cadence || 'OnStart',
+        passive_id: candidate.passive?.passive_id || candidate.passive_id || null
       },
       meters: {
         heat: 0,
@@ -447,9 +399,8 @@ export function buildHeroRecruitmentEvent(state, rng = Math.random) {
   if (eligibleEmpires.length === 0) return null;
 
   const empire = eligibleEmpires[Math.floor(rng() * eligibleEmpires.length)];
-  const candidateCount = Math.min(3, Math.max(2, HERO_ARCHETYPES.length));
-  const candidates = buildHeroCandidates(state, empire, rng, candidateCount);
-  if (candidates.length === 0) return null;
+  const candidates = buildHeroCandidates(state, empire, rng, HERO_RECRUIT_CHOICE_COUNT);
+  if (candidates.length < HERO_RECRUIT_CHOICE_COUNT) return null;
 
   return {
     id: `HERO_RECRUIT_${empire.id}_${state.turn ?? 0}`,
@@ -457,10 +408,10 @@ export function buildHeroRecruitmentEvent(state, rng = Math.random) {
     empire_id: empire.id,
     title: `Hero Candidates for ${empire.name}`,
     text: `${empire.name} lacks a hero. Choose a candidate to represent their interests.`,
-    choices: candidates.map(candidate => ({
-      text: `${candidate.name} — ${candidate.tagline}`,
-      hero_candidate: candidate
-    }))
+      choices: candidates.map(candidate => ({
+        text: `${candidate.name} - ${candidate.tagline}`,
+        hero_candidate: candidate
+      }))
   };
 }
 

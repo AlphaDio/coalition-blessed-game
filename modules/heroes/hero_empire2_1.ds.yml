@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire2_1"
+  name: "Caretaker Ilya Rowan"
+  description: "Steward of the Verdant biospheres."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "verdant", "biosphere"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire2_1"
+    empire_id: "empire_2"
+    name: "Caretaker Ilya Rowan"
+    tagline: "Gentle reformer who keeps growth steady."
+    tags: ["political", "hero", "biologic", "agrarian"]
+    values:
+      authoritarian_liberal: -0.2
+      spiritual_materialistic: -0.5
+      natural_mechanical: -0.8
+      pacifist_militaristic: -0.4
+      stoicist_hedonistic: 0.3
+      essentialist_constructivist: -0.6
+    budget_share: 0.1
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"

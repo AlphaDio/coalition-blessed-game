@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire3_4"
+  name: "Fleet Judge Elan Mora"
+  description: "Judicial officer who steady the Dominion vote."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "dominion", "judiciary"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire3_4"
+    empire_id: "empire_3"
+    name: "Fleet Judge Elan Mora"
+    tagline: "Rule-of-law envoy who disciplines the vote."
+    tags: ["political", "hero", "judiciary", "dominion"]
+    values:
+      authoritarian_liberal: 0.6
+      spiritual_materialistic: 0.2
+      natural_mechanical: 0.0
+      pacifist_militaristic: 0.4
+      stoicist_hedonistic: 0.3
+      essentialist_constructivist: 0.6
+    budget_share: 0.09
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"

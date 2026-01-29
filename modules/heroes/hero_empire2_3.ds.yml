@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire2_3"
+  name: "Warden Jorin Ash"
+  description: "Frontier warden guarding the colony charter."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "verdant", "frontier"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire2_3"
+    empire_id: "empire_2"
+    name: "Warden Jorin Ash"
+    tagline: "Hardy sentinel who unlocks emergency credits."
+    tags: ["political", "hero", "security", "agrarian"]
+    values:
+      authoritarian_liberal: 0.0
+      spiritual_materialistic: -0.4
+      natural_mechanical: -0.6
+      pacifist_militaristic: -0.1
+      stoicist_hedonistic: 0.1
+      essentialist_constructivist: -0.5
+    budget_share: 0.09
+    ability_id: "ABILITY_EMERGENCY_FUNDS"
+    passive:
+      phase: "FALLOUT"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"

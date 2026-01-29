@@ -4,33 +4,6 @@
 
 import { getLogger } from '../modules/logger.js';
 
-export const HERO_ARCHETYPES = [
-  {
-    id: 'ARCHETYPAL_DIPLOMAT',
-    title: 'Diplomat',
-    tagline: 'A patient negotiator who cools tempers while nudging consensus.',
-    tags: ['diplomatic', 'moderate'],
-    ability_id: 'ABILITY_PUBLIC_MANDATE',
-    passive_id: 'PASSIVE_VOTING_START_WHIP'
-  },
-  {
-    id: 'ARCHETYPAL_ORATOR',
-    title: 'Orator',
-    tagline: 'A firebrand speaker who accelerates debate momentum.',
-    tags: ['rhetoric', 'debate'],
-    ability_id: 'ABILITY_LEGISLATIVE_SURGE',
-    passive_id: 'PASSIVE_DEBATE_TICK_ORATOR'
-  },
-  {
-    id: 'ARCHETYPAL_PATRON',
-    title: 'Patron',
-    tagline: 'A political broker who keeps credits flowing in a crisis.',
-    tags: ['patronage', 'finance'],
-    ability_id: 'ABILITY_EMERGENCY_FUNDS',
-    passive_id: 'PASSIVE_FALLOUT_START_CREDIT_GRANT'
-  }
-];
-
 export const HERO_PASSIVES = {
   PASSIVE_FALLOUT_START_CREDIT_GRANT: {
     id: 'PASSIVE_FALLOUT_START_CREDIT_GRANT',

@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire1_3"
+  name: "Strategist Mira Holt"
+  description: "Systems analyst who converts policy into momentum."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "federation", "strategy"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire1_3"
+    empire_id: "empire_1"
+    name: "Strategist Mira Holt"
+    tagline: "Calm planner who turns debate into progress."
+    tags: ["political", "hero", "strategy", "federation"]
+    values:
+      authoritarian_liberal: 0.35
+      spiritual_materialistic: 0.65
+      natural_mechanical: 0.85
+      pacifist_militaristic: 0.15
+      stoicist_hedonistic: -0.25
+      essentialist_constructivist: 0.45
+    budget_share: 0.1
+    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    passive:
+      phase: "DEBATE"
+      cadence: "OnTick"
+      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"

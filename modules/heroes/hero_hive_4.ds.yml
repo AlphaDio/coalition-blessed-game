@@ -1,0 +1,36 @@
+module:
+  id: "hero_hive_4"
+  name: "Harbinger Silex"
+  description: "Swarm emissary who tempers unrest."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "swarm", "harbinger"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_hive_4"
+    empire_id: "empire_hive"
+    name: "Harbinger Silex"
+    tagline: "Unifier who cools the swarm's anger."
+    tags: ["political", "hero", "hive", "discipline"]
+    values:
+      authoritarian_liberal: -0.95
+      spiritual_materialistic: 0.25
+      natural_mechanical: -0.7
+      pacifist_militaristic: 0.5
+      stoicist_hedonistic: -0.8
+      essentialist_constructivist: -0.85
+    budget_share: 0.09
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"

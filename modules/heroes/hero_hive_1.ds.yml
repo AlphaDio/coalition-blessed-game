@@ -1,0 +1,36 @@
+module:
+  id: "hero_hive_1"
+  name: "Broodseer Kala"
+  description: "Swarm oracle who channels collective will."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "swarm", "oracle"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_hive_1"
+    empire_id: "empire_hive"
+    name: "Broodseer Kala"
+    tagline: "Hive visionary who consolidates mandate."
+    tags: ["political", "hero", "hive", "biologic"]
+    values:
+      authoritarian_liberal: -0.8
+      spiritual_materialistic: 0.3
+      natural_mechanical: -0.7
+      pacifist_militaristic: 0.5
+      stoicist_hedonistic: -0.6
+      essentialist_constructivist: -0.9
+    budget_share: 0.12
+    ability_id: "ABILITY_PUBLIC_MANDATE"
+    passive:
+      phase: "VOTING"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_VOTING_START_WHIP"

@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire1_2"
+  name: "Minister Orrin Vale"
+  description: "Economic minister skilled in consensus building."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "federation", "economy"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire1_2"
+    empire_id: "empire_1"
+    name: "Minister Orrin Vale"
+    tagline: "Budget hawk who keeps the assembly on message."
+    tags: ["political", "hero", "economic", "federation"]
+    values:
+      authoritarian_liberal: 0.2
+      spiritual_materialistic: 0.7
+      natural_mechanical: 0.8
+      pacifist_militaristic: 0.0
+      stoicist_hedonistic: -0.4
+      essentialist_constructivist: 0.3
+    budget_share: 0.1
+    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    passive:
+      phase: "DEBATE"
+      cadence: "OnTick"
+      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"

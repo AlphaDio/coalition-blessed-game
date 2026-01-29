@@ -1,0 +1,36 @@
+module:
+  id: "hero_empire1_5"
+  name: "Architect Selene Marr"
+  description: "Infrastructure visionary with deep assembly ties."
+  version: "1.0.0"
+  type: "hero"
+  category: "character"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "federation", "infrastructure"]
+  created_at: "2026-01-29T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_data:
+    id: "hero_empire1_5"
+    empire_id: "empire_1"
+    name: "Architect Selene Marr"
+    tagline: "Builder of consensus who unlocks emergency funds."
+    tags: ["political", "hero", "industrial", "federation"]
+    values:
+      authoritarian_liberal: 0.3
+      spiritual_materialistic: 0.8
+      natural_mechanical: 0.9
+      pacifist_militaristic: 0.1
+      stoicist_hedonistic: -0.2
+      essentialist_constructivist: 0.5
+    budget_share: 0.11
+    ability_id: "ABILITY_EMERGENCY_FUNDS"
+    passive:
+      phase: "FALLOUT"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"
