@@ -23,7 +23,8 @@ import {
   triggerHeroAbilities,
   tickHeroMeters,
   buildHeroRecruitmentEvent,
-  handleHeroRecruitmentChoice
+  handleHeroRecruitmentChoice,
+  HERO_RECRUIT_DELAY_RANGE
 } from './src/game/heroes.js';
 import { initializeLogger, LogLevel } from './src/modules/logger.js';
 
@@ -241,7 +242,23 @@ console.log('=== Test 8: Hero Recruitment Event ===');
   const state = createTestState();
   state.heroes = [];
   const rng = new DeterministicRNG(7);
-  const event = buildHeroRecruitmentEvent(state, rng.random.bind(rng));
+  let event = null;
+  let delayTicks = null;
+  for (let i = 0; i < HERO_RECRUIT_DELAY_RANGE.max + 5; i++) {
+    event = buildHeroRecruitmentEvent(state, rng.random.bind(rng));
+    if (delayTicks === null) {
+      const entry = state.heroRecruitmentState?.[state.empires[0].id];
+      if (entry) {
+        delayTicks = entry.delayTicks;
+        assert(
+          delayTicks >= HERO_RECRUIT_DELAY_RANGE.min && delayTicks <= HERO_RECRUIT_DELAY_RANGE.max,
+          'Recruitment delay is within configured range'
+        );
+      }
+    }
+    if (event) break;
+  }
+  assert(!!event, 'Recruitment event generated after stagger delay');
 
   assert(!!event, 'Recruitment event generated for empire without hero');
   assert(event.choices.length >= 2 && event.choices.length <= 3, 'Recruitment event offers 2-3 candidates');

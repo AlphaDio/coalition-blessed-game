@@ -41,6 +41,8 @@ const HERO_CONSTANTS = {
   AGGRAVATION_GRIEVANCE_DRIFT: 0.12
 };
 
+export const HERO_RECRUIT_DELAY_RANGE = { min: 5, max: 25 };
+
 function getLawValues(lawDef) {
   return lawDef.axis_vector || lawDef.values || {};
 }
@@ -407,12 +409,44 @@ export function buildHeroRecruitmentEvent(state, rng = Math.random) {
   if (!state.empires || state.empires.length === 0) return null;
   if (state.activeEvent) return null;
 
+  if (!state.heroRecruitmentState) {
+    state.heroRecruitmentState = {};
+  }
+
   const empiresWithoutHero = state.empires.filter(empire =>
     !(state.heroes || []).some(hero => getHeroEmpireId(hero) === empire.id)
   );
-  if (empiresWithoutHero.length === 0) return null;
+  const missingIds = new Set(empiresWithoutHero.map(empire => empire.id));
 
-  const empire = empiresWithoutHero[Math.floor(rng() * empiresWithoutHero.length)];
+  // Update missing counters
+  state.empires.forEach(empire => {
+    const entry = state.heroRecruitmentState[empire.id];
+    if (!missingIds.has(empire.id)) {
+      if (entry) delete state.heroRecruitmentState[empire.id];
+      return;
+    }
+    if (!entry) {
+      const delayTicks = Math.floor(rng() * (HERO_RECRUIT_DELAY_RANGE.max - HERO_RECRUIT_DELAY_RANGE.min + 1)) +
+        HERO_RECRUIT_DELAY_RANGE.min;
+      state.heroRecruitmentState[empire.id] = {
+        missingTicks: 1,
+        delayTicks,
+        lastSeenTurn: state.turn ?? 0
+      };
+    } else {
+      entry.missingTicks += 1;
+      entry.lastSeenTurn = state.turn ?? entry.lastSeenTurn;
+    }
+  });
+
+  const eligibleEmpires = empiresWithoutHero.filter(empire => {
+    const entry = state.heroRecruitmentState[empire.id];
+    return entry && entry.missingTicks >= entry.delayTicks;
+  });
+
+  if (eligibleEmpires.length === 0) return null;
+
+  const empire = eligibleEmpires[Math.floor(rng() * eligibleEmpires.length)];
   const candidateCount = Math.min(3, Math.max(2, HERO_ARCHETYPES.length));
   const candidates = buildHeroCandidates(state, empire, rng, candidateCount);
   if (candidates.length === 0) return null;

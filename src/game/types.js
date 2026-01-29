@@ -434,7 +434,8 @@ export function createGameState(seed = 0) {
     },
     empires: [],
     armies: [],
-    heroes: [],
+      heroes: [],
+      heroRecruitmentState: {},
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
     
