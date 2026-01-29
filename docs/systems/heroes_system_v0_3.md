@@ -84,6 +84,7 @@ Hero abilities trigger automatically when:
 After firing:
 - `charge` resets to 0
 - cooldown applied
+- **siphon_bank** credits are deducted from `budget_credits`
 
 Implementation: `triggerHeroAbilities()` in `src/game/heroes.js`.
 
@@ -136,6 +137,14 @@ Integrations:
 - `src/game/lawProcessManager.js` (passives + law pressure + ability trigger)
 - `src/game/turn.js` (hero meter tick, siphon, cooldowns, spillover)
 - `src/game/armyComposition.js` (hero modifiers compatibility)
+
+## Recruitment Event (Staggered)
+If an empire has **no hero**, a recruitment event can fire after a **random delay**:
+- Delay range: **5–25 ticks** (per empire, rolled when the empire first becomes hero-less).
+- The system tracks `heroRecruitmentState[empireId]` with `{ missingTicks, delayTicks }`.
+- Once `missingTicks >= delayTicks`, a hero candidate event is generated.
+
+Implementation: `buildHeroRecruitmentEvent()` in `src/game/heroes.js` and event routing in `src/game/events.js`.
 
 ## Notes
 - No UI panel yet (can be added to info panel in clients if desired).
