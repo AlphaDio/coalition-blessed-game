@@ -9,9 +9,8 @@ import { initializeMarket, loadEconomyConfig } from '../game/marketEconomy.js';
 import { DeterministicRNG } from '../modules/rng.js';
 import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
-import { enactLaw } from '../game/laws.js';
 import { handleEventChoice } from '../game/events.js';
-import { handleLawEventChoice } from '../game/lawProcessManager.js';
+import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import path from 'path';
@@ -249,7 +248,7 @@ export class GameManager {
    */
   enactLaw(lawId) {
     try {
-      const result = enactLaw(this.state, lawId);
+      const result = startLawProcess(this.state, lawId);
       if (result.success) {
         this.notifyStateChange();
       }

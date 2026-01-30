@@ -360,11 +360,11 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       
       const state = gameManager.getGameState();
       broadcastGameState(state);
-      broadcastNotification('law_enacted', { lawId, turn: state.turn });
+      broadcastNotification('law_started', { lawId, turn: state.turn });
       
       res.sendSuccess(state, {
         notification: {
-          type: 'law_enacted',
+          type: 'law_started',
           details: { lawId, turn: state.turn }
         }
       });

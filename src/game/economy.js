@@ -22,7 +22,9 @@ export function consumeRequisition(state) {
   
   if (requisition >= totalNeeded) {
     state.coalitionEconomy.requisition = requisition - totalNeeded;
-    logger.debug(`Requisition consumed: ${totalNeeded.toFixed(1)}, remaining=${state.coalitionEconomy.requisition.toFixed(1)}`);
+    const message = `Requisition consumed: ${totalNeeded.toFixed(1)}, remaining=${state.coalitionEconomy.requisition.toFixed(1)}`;
+    logger.info(message);
+    log.push(message);
   } else {
     // Shortage - allow requisition to go negative
     const hadRequisition = requisition;
@@ -38,7 +40,9 @@ export function consumeRequisition(state) {
     });
     
     logger.warn(`Requisition shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadRequisition.toFixed(1)}, shortage=${shortage.toFixed(1)}, requisition now: ${state.coalitionEconomy.requisition.toFixed(1)}`);
-    log.push(`Requisition shortage! Organizations and Aggravation affected.`);
+    const message = `Requisition shortage! Needed ${totalNeeded.toFixed(1)}, had ${hadRequisition.toFixed(1)}, shortage=${shortage.toFixed(1)}.`;
+    logger.info(message);
+    log.push(message);
   }
   
   return { log };

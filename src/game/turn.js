@@ -636,48 +636,88 @@ function processEmpireStockpileConsumption(state, log) {
           const increments = Math.floor(consumed / 100000);
           const populationIncrease = Math.floor(empire.stats.population * (effect.amount / 100) * increments);
           empire.stats.population += populationIncrease;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * effect.amount}%)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * effect.amount}%)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'army_fervor_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.fervorBonus = (army.fervorBonus || 0) + effect.amount;
           });
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} fervor bonus to ${armies.length} armies (until next scourge battle)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} fervor bonus to ${armies.length} armies (until next scourge battle)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'army_protection_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.protectionBonus = (army.protectionBonus || 0) + effect.amount;
           });
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} protection bonus to ${armies.length} armies (until next scourge battle)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} protection bonus to ${armies.length} armies (until next scourge battle)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'army_resolve_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.resolveBonus = (army.resolveBonus || 0) + effect.amount;
           });
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} resolve bonus to ${armies.length} armies (until next scourge battle)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} resolve bonus to ${armies.length} armies (until next scourge battle)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'law_progress_bonus') {
           state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + effect.amount;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} law progress bonus (until law enacted)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'research_speed_bonus') {
           empire.stats.researchSpeedBonus = (empire.stats.researchSpeedBonus || 0) + effect.amount;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} research speed bonus (permanent)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} research speed bonus (permanent)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'industrial_output_bonus') {
           state.coalitionModifiers.industrialOutputBonus = (state.coalitionModifiers.industrialOutputBonus || 0) + effect.amount;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} industrial output bonus (permanent)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} industrial output bonus (permanent)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'army_kill_rate_bonus') {
           const armies = state.armies.filter(a => a.empireId === empire.id);
           armies.forEach(army => {
             army.killRateBonus = (army.killRateBonus || 0) + effect.amount;
           });
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} kill rate bonus to ${armies.length} armies (until next scourge battle)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} kill rate bonus to ${armies.length} armies (until next scourge battle)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'empire_approval_bonus') {
           empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + effect.amount;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} approval bonus (until next scourge battle)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${effect.amount} approval bonus (until next scourge battle)`;
+            log.push(message);
+            logger.info(message);
+          }
         } else if (effect.type === 'coalition_construction_bonus') {
           const increments = Math.floor(consumed / threshold);
           const bonus = increments * effect.amount;
           state.coalitionConstruction = (state.coalitionConstruction || 0) + bonus;
-          log.push(`${empire.name} ${commodity}: consumed ${consumed}, +${bonus} coalition construction (permanent)`);
+          {
+            const message = `${empire.name} ${commodity}: consumed ${consumed}, +${bonus} coalition construction (permanent)`;
+            log.push(message);
+            logger.info(message);
+          }
         }
       }
     }
@@ -893,7 +933,11 @@ export function advanceTurn(state, rng = Math.random) {
        logParts.push(`+${Math.round(consumptionResult.creditsSpent)} credits`);
      }
      if (logParts.length > 0) {
-       log.push(`Coalition from consumption: ${logParts.join(', ')}`);
+       {
+         const message = `Coalition from consumption: ${logParts.join(', ')}`;
+         log.push(message);
+         logger.info(message);
+       }
      }
    }
 
