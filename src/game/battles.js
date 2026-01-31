@@ -321,6 +321,7 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
   // Mark as Scourge battle
   front.isScourgeBattle = true;
   front.participatingArmyIds = participatingArmies.map(a => a.id);
+  front.targetEmpireId = state.scourgeTargetEmpireId || null;
   
   const coalitionMP = Math.floor(coalitionArmy.mp.current);
   const scourgeMP = Math.floor(scourgeArmy.mp.current);

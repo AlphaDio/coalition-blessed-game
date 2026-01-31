@@ -1,7 +1,7 @@
 # Laws System
 
 ## Overview
-The law system manages multi-phase enactment (DEBATE, FALLOUT, VOTING) with weighted law events, empire stances, and vote tallying. Laws consume player influence to start and resolve over multiple turns.
+The law system manages multi-phase enactment (DEBATE, FALLOUT, VOTING) with weighted law events, empire stances, and vote tallying. Laws consume player influence to start and resolve over multiple turns. Laws are grouped into **Economy**, **Military**, and **Gouvernance** categories, with **one active law per category**. Enacting a new law in a category replaces the old one and removes its ongoing modifiers.
 
 ## Design Goals
 - Convert ideological alignment into political friction and momentum.
@@ -15,6 +15,7 @@ The law system manages multi-phase enactment (DEBATE, FALLOUT, VOTING) with weig
 - Each tick, the law process resolves a phase event (major + minor) and advances progress.
 - When VOTING completes, votes are tallied based on the power system policy.
 - Laws end as ENACTED or BURIED.
+- **On ENACTED**: existing law in the same category is replaced; immediate adoption rewards are applied.
 
 ## Empire Stances and Bias
 - Each empire gets a stance from value alignment against the law axis vector.
@@ -73,6 +74,7 @@ When `unrest >= 0.3`, each law tick applies negative externalities (scaled by le
 ## Law Modifiers
 - `tick_delay_multiplier` scales how quickly law ticks fire (lower is faster).
 - `enactment_chance_bonus` reduces the pass threshold during vote tallying.
+- Ongoing modifiers (trade income, industrial output, cohesion multiplier, supply efficiency, etc.) only persist while the law is the active one for its category.
 
 ## Data Flow
 - Inputs: law definition, empire values, current meters, RNG.

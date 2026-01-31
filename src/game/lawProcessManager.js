@@ -15,7 +15,7 @@ import {
   clampMeter
 } from './lawEngine.js';
 import { canStartLaw } from './lawDefinitions.js';
-import { clamp, clampApproval } from './cohesion.js';
+import { clamp, clampApproval, clampCohesion } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { updateCoalitionColor } from './coalitionColor.js';
 import { calculateLawReactions } from './reactions.js';
@@ -59,8 +59,8 @@ function filterLawLogs(logs) {
 function applyLawModifiers(lawDef, state) {
   const log = [];
   const modifiers = lawDef.modifiers || {};
-  
-   // Ensure coalitionModifiers exists
+
+  // Ensure coalitionModifiers exists
   if (!state.coalitionModifiers) {
     state.coalitionModifiers = {
       industrial_output: 0,
@@ -181,6 +181,100 @@ function applyLawModifiers(lawDef, state) {
   }
   
   return log;
+}
+
+function removeLawModifiers(lawDef, state) {
+  const modifiers = lawDef.modifiers || {};
+  if (!state.coalitionModifiers) {
+    return;
+  }
+
+  if (modifiers.empire_approval) {
+    state.coalitionModifiers.empire_approval -= modifiers.empire_approval;
+  }
+  if (modifiers.trade_income) {
+    state.coalitionModifiers.trade_income -= modifiers.trade_income;
+  }
+  if (modifiers.population_growth) {
+    state.coalitionModifiers.population_growth -= modifiers.population_growth;
+  }
+  if (modifiers.industrial_output) {
+    state.coalitionModifiers.industrial_output -= modifiers.industrial_output;
+  }
+  if (modifiers.research_speed) {
+    state.coalitionModifiers.research_speed -= modifiers.research_speed;
+  }
+  if (modifiers.supply_efficiency) {
+    state.coalitionModifiers.supply_efficiency -= modifiers.supply_efficiency;
+  }
+  if (modifiers.empire_production_multiplier) {
+    state.coalitionModifiers.empire_production_multiplier -= modifiers.empire_production_multiplier;
+  }
+  if (modifiers.cohesionModifier) {
+    if (modifiers.cohesionModifier !== 0) {
+      state.coalitionModifiers.cohesionModifier /= modifiers.cohesionModifier;
+    }
+  }
+  if (modifiers.army_maintenance_cost_modifier) {
+    if (modifiers.army_maintenance_cost_modifier !== 0) {
+      state.coalitionModifiers.army_maintenance_cost_modifier /= modifiers.army_maintenance_cost_modifier;
+    }
+  }
+  if (modifiers.relations_strength_modifier) {
+    if (modifiers.relations_strength_modifier !== 0) {
+      state.coalitionModifiers.relations_strength_modifier /= modifiers.relations_strength_modifier;
+    }
+  }
+  if (modifiers.army_organization) {
+    state.coalitionModifiers.army_organization -= modifiers.army_organization;
+    if (state.armies) {
+      state.armies.forEach(army => {
+        if (army.organization !== undefined) {
+          army.organization = Math.max(0, Math.min(100, army.organization - modifiers.army_organization));
+        }
+      });
+    }
+  }
+}
+
+function applyLawImmediateEffects(lawDef, state, log) {
+  const effects = lawDef.immediate_effects || {};
+  if (!effects || Object.keys(effects).length === 0) return;
+
+  if (effects.cohesion) {
+    const before = state.coalitionCohesion;
+    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + effects.cohesion);
+    log.push(`Cohesion: ${before.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
+  }
+
+  if (effects.coalition_credits) {
+    if (!state.coalitionEconomy) {
+      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0 };
+    }
+    state.coalitionEconomy.treasury_credits =
+      (state.coalitionEconomy.treasury_credits || 0) + effects.coalition_credits;
+    log.push(`Coalition credits: +${effects.coalition_credits}`);
+  }
+
+  if (effects.requisition) {
+    if (!state.coalitionEconomy) {
+      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0 };
+    }
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;
+    log.push(`Requisition: +${effects.requisition}`);
+  }
+
+  if (effects.influence) {
+    state.playerInfluence = (state.playerInfluence || 0) + effects.influence;
+    log.push(`Influence: +${effects.influence}`);
+  }
+
+  if (effects.empire_approval && state.empires) {
+    state.empires.forEach(empire => {
+      empire.approval = clampApproval(empire.approval + effects.empire_approval);
+    });
+    log.push(`Empire approval: +${effects.empire_approval} (immediate)`);
+  }
 }
 
 /**
@@ -447,7 +541,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
         // Check burial
         if (checkBurialRule(lawProcess, state)) {
           const logger = getLogger();
-          logger.warn(`Law BURIED: ${lawDef.name} (4 rejects)`);
+          logger.info(`Law BURIED: ${lawDef.name} (4 rejects)`);
           log.push(`\n*** LAW BURIED (4 rejects) ***`);
           return log;
         }
@@ -517,7 +611,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
     const logger = getLogger();
     const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
     const lawName = lawDef ? lawDef.name : lawProcess.lawId;
-    logger.info(`Law phase: ${lawName} → ${lawProcess.phase}`);
+    logger.info(`Law phase: ${lawName} -> ${lawProcess.phase}`);
     log.push(`\n>>> Phase advanced to: ${lawProcess.phase}`);
   }
 
@@ -534,11 +628,46 @@ export function resolveLawProcess(lawProcess, state, rng) {
       state.coalitionModifiers.lawProgressBonus = 0;
     }
 
-    // Add to enacted laws (removes from available options, unlocks higher tiers)
-    if (!state.enactedLaws) {
+    const category = lawDef.category || 'uncategorized';
+    if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
+      state.enactedLawsByCategory = {};
+    }
+    if (!Array.isArray(state.enactedLaws)) {
       state.enactedLaws = [];
     }
-    state.enactedLaws.push(lawProcess.lawId);
+    if (!Array.isArray(state.enactedLawsHistory)) {
+      state.enactedLawsHistory = [];
+    }
+    if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
+      state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+    }
+
+    const previousLawId = state.enactedLawsByCategory[category];
+    if (previousLawId && previousLawId !== lawProcess.lawId) {
+      const previousDef = state.lawDefinitions.find(l => l.id === previousLawId);
+      if (previousDef) {
+        removeLawModifiers(previousDef, state);
+        log.push(`Replaced ${previousDef.name} (${category})`);
+      }
+    }
+
+    state.enactedLawsByCategory[category] = lawProcess.lawId;
+    state.enactedLaws = Object.values(state.enactedLawsByCategory);
+    if (!state.enactedLawsHistory.includes(lawProcess.lawId)) {
+      state.enactedLawsHistory.push(lawProcess.lawId);
+    }
+    if (!Array.isArray(state.activeLaws)) {
+      state.activeLaws = [];
+    }
+    state.activeLaws = state.enactedLaws
+      .map(lawId => {
+        const def = state.lawDefinitions.find(l => l.id === lawId);
+        if (!def) return null;
+        return { lawId: def.id, category: def.category, modifiers: def.modifiers || {} };
+      })
+      .filter(Boolean);
+    if (lawDef.tier === 1) state.lawTierUnlocks[2] = true;
+    if (lawDef.tier === 2) state.lawTierUnlocks[3] = true;
 
     // Apply law modifiers to coalition
     const modifierLog = applyLawModifiers(lawDef, state);
@@ -546,6 +675,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
       log.push('Law effects applied:');
       modifierLog.forEach(msg => log.push(`  ${msg}`));
     }
+    applyLawImmediateEffects(lawDef, state, log);
 
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);
@@ -735,7 +865,7 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
     if (checkBurialRule(lawProcess, state)) {
       const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
       const lawName = lawDef ? lawDef.name : lawProcess.lawId;
-      logger.warn(`Law BURIED: ${lawName} (4 rejects)`);
+      logger.info(`Law BURIED: ${lawName} (4 rejects)`);
       log.push(`\n*** LAW BURIED (4 rejects) ***`);
       
       // Clear pending event

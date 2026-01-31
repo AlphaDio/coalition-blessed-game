@@ -145,6 +145,7 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   DESPERATE_PENALTY: -0.15,            // Penalty when Desperate
   MIN_CONFIDENCE_MODIFIER: 0.1,        // Minimum (very uncertain)
   MAX_CONFIDENCE_MODIFIER: 2.0,        // Maximum (very certain)
+  CONFIDENCE_DRIFT_TURNS: 30,          // Turns to drift toward baseline (1.0)
   
   // Uncertainty ranges based on confidence
   UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low

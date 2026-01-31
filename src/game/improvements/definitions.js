@@ -282,7 +282,7 @@ const CULTURAL_BRANCH = [
         capacity: 2,
         sustainmentCost: { plasma_fuel: 0.01, biomass: 0.15 },
         productionOutputs: { biomass: 0.05 },
-        modifiers: { population_growth: 1.5, empire_approval: 3 },
+        modifiers: { population_growth: 1.5, empire_approval: 3, hero_siphon_efficiency_add: 0.005 },
         tags: ['cultural', 'agriculture', 'social', 'food'],
         requisitionUpkeep: 1
       }
@@ -554,7 +554,7 @@ const RESOURCE_BRANCH = [
        suppliesCost: 140,
        build: 85,
        capacity: 2,
-        sustainmentCost: { plasma_fuel: 0.03 },
+        sustainmentCost: { plasma_fuel: 0.025 },
         productionOutputs: { super_alloys: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'production'],
@@ -580,24 +580,24 @@ const RESOURCE_BRANCH = [
      }
    ),
 
-   // T2: Advanced resource facilities - higher output
-   createTieredImprovementRequest(
-     'mycellium_grove',
-     'Mycellium Grove',
-     'Self-sustaining mycellium colony producing organic biomass',
-     1,
-     'resource',
-     {
-       suppliesCost: 60,
-       build: 60,
-       capacity: 2,
-       sustainmentCost: { genomes: 1 },
-       productionOutputs: { genomes: 3 },
-       modifiers: {},
-       tags: ['resource', 'passive', 'biologic'],
-       requisitionUpkeep: 1
-     }
-   ),
+   
+  //  createTieredImprovementRequest(
+  //    'mycellium_grove',
+  //    'Mycellium Grove',
+  //    'Self-sustaining mycellium colony producing organic biomass',
+  //    1,
+  //    'resource',
+  //    {
+  //      suppliesCost: 60,
+  //      build: 60,
+  //      capacity: 2,
+  //      sustainmentCost: { genomes: 1 },
+  //      productionOutputs: { genomes: 3 },
+  //      modifiers: {},
+  //      tags: ['resource', 'passive', 'biologic'],
+  //      requisitionUpkeep: 1
+  //    }
+  //  ),
 
    createTieredImprovementRequest(
      'nebulae_mining_initiatives',
@@ -610,12 +610,14 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { rare_gases: 0.3 },
+       productionOutputs: { rare_gases: 0.3, plasma_fuel: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'mining'],
        requisitionUpkeep: 1
      }
    ),
+
+   // T2: Advanced resource facilities - higher output
 
    // T2: Exotic matter facility - produces all three ultra-advanced commodities needed for Dark Matter Power Surge
    createTieredImprovementRequest(
@@ -628,7 +630,7 @@ const RESOURCE_BRANCH = [
        suppliesCost: 200,
        build: 250,
        capacity: 2,
-       sustainmentCost: { quantum_circuits: 0.25, genomes: 0.05, plasma_fuel: 0.15 },
+       sustainmentCost: { quantum_circuits: 0.05, genomes: 0.05, plasma_fuel: 0.15 },
        productionOutputs: { 
          wormhole_reactors: 0.4, 
          dark_matter: 0.0015, 

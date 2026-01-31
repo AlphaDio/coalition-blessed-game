@@ -20,7 +20,7 @@ export function calculateScourgePrediction(state, rng) {
     return createBlankPrediction();
   }
 
-  // Calculate the confidence modifier based on current game state
+  // Calculate target confidence modifier based on current game state
   const confidenceModifier = calculateConfidenceModifier(state);
 
   // Estimate when the next battle will occur
