@@ -21,18 +21,7 @@ export function calculateScourgePrediction(state, rng) {
   }
 
   // Calculate target confidence modifier based on current game state
-  const targetConfidence = calculateConfidenceModifier(state);
-  const previousConfidence = typeof state.scourgePrediction?.confidenceModifier === 'number'
-    ? state.scourgePrediction.confidenceModifier
-    : targetConfidence;
-  const driftTurns = Math.max(1, SCOURGE_PREDICTION_CONSTANTS.CONFIDENCE_DRIFT_TURNS || 30);
-  const confidenceModifier = Math.max(
-    SCOURGE_PREDICTION_CONSTANTS.MIN_CONFIDENCE_MODIFIER,
-    Math.min(
-      SCOURGE_PREDICTION_CONSTANTS.MAX_CONFIDENCE_MODIFIER,
-      previousConfidence + (targetConfidence - previousConfidence) * (1 / driftTurns)
-    )
-  );
+  const confidenceModifier = calculateConfidenceModifier(state);
 
   // Estimate when the next battle will occur
   const estimatedTurns = estimateTurnsToNextBattle(state, confidenceModifier, rng);

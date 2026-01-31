@@ -621,6 +621,7 @@ function replenishArmyManpower(state, activeBattles) {
  * @param {Function} log - Logging function
  */
 function processEmpireStockpileConsumption(state, log) {
+  const logger = getLogger();
   for (const empire of state.empires) {
     for (const rule of empire.consumptionRules) {
       const { commodity, threshold, effect } = rule;

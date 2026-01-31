@@ -282,7 +282,7 @@ const CULTURAL_BRANCH = [
         capacity: 2,
         sustainmentCost: { plasma_fuel: 0.01, biomass: 0.15 },
         productionOutputs: { biomass: 0.05 },
-        modifiers: { population_growth: 1.5, empire_approval: 3 },
+        modifiers: { population_growth: 1.5, empire_approval: 3, hero_siphon_efficiency_add: 0.005 },
         tags: ['cultural', 'agriculture', 'social', 'food'],
         requisitionUpkeep: 1
       }

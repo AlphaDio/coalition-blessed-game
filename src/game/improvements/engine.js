@@ -406,6 +406,49 @@ export function processImprovementSustainment(state, improvement) {
 
   const population = empire.stats?.population || 1;
 
+  const buyFromMarket = (commodity, qtyNeeded) => {
+    if (qtyNeeded <= 0) return 0;
+    const marketState = state.market?.[commodity];
+    const sellOffers = state.marketOrders?.sellOffers;
+    if (!marketState || !sellOffers || sellOffers.length === 0) return 0;
+
+    const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+    const availableSells = sellOffers
+      .filter(sell => sell.commodity === commodity && (sell.qty - (sell.filled_qty || 0)) > 0)
+      .filter(sell => (sell.ask_price || 0) <= maxPrice)
+      .sort((a, b) => (a.ask_price || 0) - (b.ask_price || 0));
+
+    let remaining = qtyNeeded;
+    for (const sell of availableSells) {
+      if (remaining <= 0) break;
+      const remainingQty = sell.qty - (sell.filled_qty || 0);
+      if (remainingQty <= 0) continue;
+
+      const price = sell.ask_price || marketState.price || 1;
+      const budget = Math.max(0, empire.budget_credits || 0);
+      const affordable = Math.floor(Math.min(remainingQty, remaining, budget / price));
+      if (affordable <= 0) continue;
+
+      const cost = affordable * price;
+      sell.filled_qty = (sell.filled_qty || 0) + affordable;
+      empire.budget_credits = budget - cost;
+
+      if (sell.owner_type === 'empire') {
+        const seller = state.empires.find(e => e.id === sell.owner_id);
+        if (seller) {
+          seller.budget_credits = (seller.budget_credits || 0) + cost;
+        }
+      } else if (sell.owner_type === 'coalition') {
+        if (!state.coalitionEconomy) state.coalitionEconomy = {};
+        state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + cost;
+      }
+
+      remaining -= affordable;
+    }
+
+    return qtyNeeded - remaining;
+  };
+
   for (const [commodity, qtyNeeded] of Object.entries(sustainmentNeeds)) {
     const scaledQty = Math.ceil(qtyNeeded * population);
     if (scaledQty <= 0) continue;
@@ -421,93 +464,98 @@ export function processImprovementSustainment(state, improvement) {
     // Calculate max stockpile capacity (10 ticks worth)
     const maxStockpile = Math.ceil(scaledQty * IMPROVEMENT_SUSTAINMENT_TICKS);
 
-    // Check if we need to consume from stockpile this tick
-    const currentStockpile = improvement.stockpile[commodity];
+    let remainingNeed = scaledQty;
 
-    // Try to consume from improvement's internal stockpile first
-    if (currentStockpile >= scaledQty) {
-      // Enough in stockpile - consume from it
-      improvement.stockpile[commodity] -= scaledQty;
-    } else {
-      // Not enough in stockpile, need to get from empire
-      const stockpileShortfall = scaledQty - currentStockpile;
-       let empireStockpile = empire.stockpiles[commodity] || 0;
-       if (commodity === 'requisition') {
-         empireStockpile = empire.budget_credits || 0;
-       }
+    // Try to fulfill from market first
+    if (commodity !== 'requisition') {
+      const purchased = buyFromMarket(commodity, remainingNeed);
+      remainingNeed -= purchased;
+    }
 
-       if (empireStockpile >= stockpileShortfall) {
-         // Empire has enough - consume what we need
-         if (commodity === 'requisition') {
-           empire.budget_credits -= stockpileShortfall;
-         } else {
-          empire.stockpiles[commodity] -= stockpileShortfall;
-        }
-        // Set stockpile to 0 (we used it all plus fresh resources)
+    // Then consume from improvement's internal stockpile
+    const currentStockpile = improvement.stockpile[commodity] || 0;
+    if (remainingNeed > 0) {
+      if (currentStockpile >= remainingNeed) {
+        improvement.stockpile[commodity] -= remainingNeed;
+        remainingNeed = 0;
+      } else {
         improvement.stockpile[commodity] = 0;
+        remainingNeed -= currentStockpile;
+      }
+    }
+    const stockpileAfterUse = improvement.stockpile[commodity] || 0;
+
+    // Then consume from empire stockpiles
+    if (remainingNeed > 0) {
+      let empireStockpile = empire.stockpiles[commodity] || 0;
+      if (commodity === 'requisition') {
+        empireStockpile = empire.budget_credits || 0;
+      }
+
+      if (empireStockpile >= remainingNeed) {
+        if (commodity === 'requisition') {
+          empire.budget_credits -= remainingNeed;
+        } else {
+          empire.stockpiles[commodity] -= remainingNeed;
+        }
+        const excessAvailable = empireStockpile - remainingNeed;
 
         // If we have room, try to top up the stockpile for future buffer
         // Only top up if empire has excess (at least 2 ticks worth extra)
-        const excessAvailable = empireStockpile - stockpileShortfall;
-        if (excessAvailable >= scaledQty * 2 && currentStockpile < maxStockpile) {
-          const amountToAdd = Math.min(maxStockpile - currentStockpile, excessAvailable - scaledQty);
+        if (excessAvailable >= scaledQty * 2 && stockpileAfterUse < maxStockpile) {
+          const amountToAdd = Math.min(maxStockpile - stockpileAfterUse, excessAvailable - scaledQty);
           if (amountToAdd > 0) {
-             // Transfer to improvement stockpile
-             if (commodity === 'requisition') {
-               empire.budget_credits -= amountToAdd;
-             } else {
+            if (commodity === 'requisition') {
+              empire.budget_credits -= amountToAdd;
+            } else {
               empire.stockpiles[commodity] -= amountToAdd;
             }
             improvement.stockpile[commodity] += amountToAdd;
           }
         }
+        remainingNeed = 0;
       } else {
-         // Empire doesn't have enough - use what they have and fail the rest
-         if (empireStockpile > 0) {
-           if (commodity === 'requisition') {
-             empire.budget_credits = 0;
-           } else {
-            empire.stockpiles[commodity] = 0;
-          }
-          // Partial consumption from stockpile
-          improvement.stockpile[commodity] = Math.max(0, currentStockpile - (stockpileShortfall - empireStockpile));
+        if (commodity === 'requisition') {
+          empire.budget_credits = 0;
         } else {
-          // Nothing available at all
-          improvement.stockpile[commodity] = 0;
+          empire.stockpiles[commodity] = 0;
         }
-
-        // Create market buy order if market exists
-        if (state.market && state.market[commodity]) {
-          const marketState = state.market[commodity];
-          const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
-
-          const buyOrder = {
-            id: `sustain_${orderIdCounter++}`,
-            owner_type: 'empire',
-            owner_id: empire.id,
-            commodity,
-            qty: stockpileShortfall - empireStockpile,
-            max_price: maxPrice,
-            priority: 800,
-            filled_qty: 0,
-            fee: 1,
-            tags: {
-              originator: improvement.id,
-              payer: empire.id,
-              beneficiary: improvement.id,
-              purpose: 'sustainment'
-            }
-          };
-
-          if (!state.marketOrders) {
-            state.marketOrders = { buyOrders: [], sellOffers: [] };
-          }
-          state.marketOrders.buyOrders.push(buyOrder);
-        }
-
-        allSatisfied = false;
-        shortages.push(commodity);
+        remainingNeed -= empireStockpile;
       }
+    }
+
+    if (remainingNeed > 0) {
+      // Create market buy order if market exists
+      if (state.market && state.market[commodity]) {
+        const marketState = state.market[commodity];
+        const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+
+        const buyOrder = {
+          id: `sustain_${orderIdCounter++}`,
+          owner_type: 'empire',
+          owner_id: empire.id,
+          commodity,
+          qty: remainingNeed,
+          max_price: maxPrice,
+          priority: 800,
+          filled_qty: 0,
+          fee: 1,
+          tags: {
+            originator: improvement.id,
+            payer: empire.id,
+            beneficiary: improvement.id,
+            purpose: 'sustainment'
+          }
+        };
+
+        if (!state.marketOrders) {
+          state.marketOrders = { buyOrders: [], sellOffers: [] };
+        }
+        state.marketOrders.buyOrders.push(buyOrder);
+      }
+
+      allSatisfied = false;
+      shortages.push(commodity);
     }
   }
 
@@ -559,7 +607,9 @@ export function processImprovementProduction(state, improvement) {
 
   // Process production outputs - accumulate in production bank
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
-    const scaledQty = Math.floor(qty * population);
+    const scaledQty = commodity === 'requisition'
+      ? Math.floor(qty)
+      : Math.floor(qty * population);
     if (scaledQty <= 0) continue;
 
     // Special handling for requisition - add directly to coalition economy (bypass bank)
@@ -675,6 +725,13 @@ export function releaseProductionFromBank(state, improvement) {
 export function applyImprovementModifiers(state) {
   const improvements = state.improvements;
 
+  // Reset per-empire improvement modifiers each tick
+  if (!improvements.empireModifiers) {
+    improvements.empireModifiers = {};
+  } else {
+    improvements.empireModifiers = {};
+  }
+
   // Collect all active improvement modifiers
   const activeImprovements = improvements.queue.filter(i => i.state === 'ACTIVE');
 
@@ -682,6 +739,10 @@ export function applyImprovementModifiers(state) {
   activeImprovements.forEach(improvement => {
     const empire = state.empires.find(e => e.id === improvement.empireId);
     if (!empire) return;
+
+    if (!improvements.empireModifiers[empire.id]) {
+      improvements.empireModifiers[empire.id] = {};
+    }
 
     // Apply stat modifiers
     for (const [stat, value] of Object.entries(improvement.modifiers)) {
@@ -727,6 +788,10 @@ export function applyImprovementModifiers(state) {
           state.improvements.maxTotalCapacity = IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY;
         }
         state.improvements.maxTotalCapacity += value;
+      } else if (stat === 'hero_siphon_efficiency_mult' || stat === 'hero_siphon_efficiency_add') {
+        // Store per-empire modifiers for hero siphon efficiency (applied in hero budget siphon)
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }
       // Other modifiers can be stored and applied elsewhere as needed
     }

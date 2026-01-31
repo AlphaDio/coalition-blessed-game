@@ -97,11 +97,23 @@ export function applyHeroBudgetSiphon(state, log) {
     const virtualSiphon = budget * Math.min(totalShare, 0.3);
     if (virtualSiphon <= 0) return;
 
+    const empireMods = state.improvements?.empireModifiers?.[empire.id] || {};
+    const globalMult = state.coalitionModifiers?.hero_siphon_efficiency_mult || 0;
+    const globalAdd = state.coalitionModifiers?.hero_siphon_efficiency_add || 0;
+    const empireMult = empireMods.hero_siphon_efficiency_mult || 0;
+    const empireAdd = empireMods.hero_siphon_efficiency_add || 0;
+    const efficiencyMult = globalMult + empireMult;
+    const efficiencyAdd = globalAdd + empireAdd;
+    const chargePerCredit = Math.max(
+      0,
+      (HERO_CONSTANTS.CHARGE_PER_CREDIT * (1 + efficiencyMult)) + efficiencyAdd
+    );
+
     heroes.forEach(hero => {
       const share = totalShare > 0 ? (hero.budget_share || 0) / totalShare : 0;
       const siphoned = virtualSiphon * share;
       const statusMultiplier = HERO_CONSTANTS.STATUS_CHARGE_MULTIPLIER[hero.status] ?? 1;
-      const chargeGain = siphoned * HERO_CONSTANTS.CHARGE_PER_CREDIT * statusMultiplier;
+      const chargeGain = siphoned * chargePerCredit * statusMultiplier;
       hero.charge = clamp((hero.charge || 0) + chargeGain, 0, HERO_CONSTANTS.ABILITY_CHARGE_MAX);
       hero.siphon_bank = (hero.siphon_bank || 0) + siphoned;
       const message = `Hero charge: ${hero.name} accumulates +${chargeGain.toFixed(1)} charge (virtual siphon ${Math.round(siphoned)} credits).`;

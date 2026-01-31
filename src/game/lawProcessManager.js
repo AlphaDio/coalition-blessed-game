@@ -541,7 +541,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
         // Check burial
         if (checkBurialRule(lawProcess, state)) {
           const logger = getLogger();
-          logger.warn(`Law BURIED: ${lawDef.name} (4 rejects)`);
+          logger.info(`Law BURIED: ${lawDef.name} (4 rejects)`);
           log.push(`\n*** LAW BURIED (4 rejects) ***`);
           return log;
         }
@@ -865,7 +865,7 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
     if (checkBurialRule(lawProcess, state)) {
       const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
       const lawName = lawDef ? lawDef.name : lawProcess.lawId;
-      logger.warn(`Law BURIED: ${lawName} (4 rejects)`);
+      logger.info(`Law BURIED: ${lawName} (4 rejects)`);
       log.push(`\n*** LAW BURIED (4 rejects) ***`);
       
       // Clear pending event

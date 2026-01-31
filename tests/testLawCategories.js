@@ -4,12 +4,12 @@
  * Test Law Categories + Tier Unlocks
  */
 
-import { createGameState, createLawProcess, createPowerSystemPolicy } from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { DeterministicRNG } from './src/modules/rng.js';
-import { resolveLawProcess } from './src/game/lawProcessManager.js';
-import { getSampleLawDefinitions, isTierUnlocked } from './src/game/lawDefinitions.js';
-import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { createGameState, createLawProcess, createPowerSystemPolicy } from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { DeterministicRNG } from '../src/modules/rng.js';
+import { resolveLawProcess } from '../src/game/lawProcessManager.js';
+import { getSampleLawDefinitions, isTierUnlocked } from '../src/game/lawDefinitions.js';
+import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 initializeLogger({
   level: LogLevel.ERROR,

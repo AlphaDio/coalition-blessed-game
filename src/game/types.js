@@ -487,6 +487,8 @@ export function createGameState(seed = 0) {
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0,
+      hero_siphon_efficiency_mult: 0,
+      hero_siphon_efficiency_add: 0,
       lawProgressBonus: 0,
       industrialOutputBonus: 0
     },
