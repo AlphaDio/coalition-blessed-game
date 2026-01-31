@@ -2,6 +2,7 @@ import { clampStat } from './cohesion.js';
 import { SCOURGE_MISSION_CONSTANTS } from './constants.js';
 import { applyOrUpdateModifier, adjustModifierSeverity, selectMissionModifier, createModifierFromTemplate } from './scourgeModifiers.js';
 import { getScourgeModifierTemplates } from './scourgeModifiers.js';
+import { getLogger } from '../modules/logger.js';
 
 const MISSION_SLIDER_VALUES = [-0.1, 0, 0.1, 0.2, 0.5];
 
@@ -207,6 +208,10 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       log.push(`Scourge attack is now imminent - prepare defenses!`);
     }
 
+    // Log mission effects at info level
+    const logger = getLogger();
+    log.forEach(entry => logger.info(entry));
+
     return { success: true, log };
   }
 
@@ -245,6 +250,11 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
     }
 
     log.push(`Deep mission complete - operatives returning to base`);
+    
+    // Log mission effects at info level
+    const logger = getLogger();
+    log.forEach(entry => logger.info(entry));
+    
     return { success: true, log };
   }
 

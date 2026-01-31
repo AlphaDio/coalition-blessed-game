@@ -1,6 +1,7 @@
 // Technology system - accrual, selection, and granting logic
 import { TECH_CONSTANTS } from './constants.js';
 import { GENERAL_TECHS, ALIGNED_TECHS, UNIQUE_TECHS, TECH_BY_ID } from './technologyDefinitions.js';
+import { getLogger } from '../modules/logger.js';
 
 /**
  * Calculate effective research speed for an empire
@@ -454,6 +455,10 @@ export function handleTechEventChoice(state, event, choiceIndex) {
   
   // Clear the tech event
   state.activeEvent = null;
+  
+  // Log tech choice effects at info level
+  const logger = getLogger();
+  log.forEach(entry => logger.info(entry));
   
   return { success: result.success, log };
 }

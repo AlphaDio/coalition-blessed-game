@@ -313,5 +313,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
   
   state.activeEvent = null;
   
+  // Log event choice effects at info level
+  log.forEach(entry => logger.info(entry));
+  
   return { success: true, log };
 }

@@ -890,7 +890,8 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
   lawProcess.pendingEvent = null;
   state.activeEvent = null;
   
-  logger.info(`Law event choice processed: ${event.name} - choice ${choiceIndex}`);
+  // Log law event effects at info level
+  log.forEach(entry => logger.info(entry));
   
   return { success: true, log: filterLawLogs(log) };
 }
