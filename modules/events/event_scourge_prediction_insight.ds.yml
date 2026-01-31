@@ -18,21 +18,27 @@ declares:
   event_data:
     id: "event_scourge_prediction_insight"
     name: "Strategic Insight into Scourge Patterns"
-    description: "After analyzing numerous Scourge engagements, our military analysts believe they have identified patterns in the enemy's decision-making. This knowledge could help predict their next moves."
+    description: "After months of analyzing Scourge engagements across multiple fronts, our military analysts have made a breakthrough. They believe they've identified repeating patterns in how the enemy coordinates attacks, selects targets, and deploys forces. This strategic insight could prove invaluable - but sharing it has political implications."
     choices:
-      - text: "Distribute insights widely (costs 80 requisition, major confidence boost)"
+      - text: "Coalition-Wide Briefing - Share with all member empires"
+        description: "Organize a formal intelligence briefing for all Coalition members. Expensive to coordinate but maximizes the benefit and improves relations across the board."
+        effects_summary: "Cost: 80 requisition | Prediction confidence: +40% | All empires: +2 approval"
         effects:
           coalitionEconomy:
             requisition: -80
           scourgePredictionConfidence: 0.4
           empireApproval:
             "@all": 2
-      - text: "Share selectively with wealthy allies (free, good confidence, reward strong partners)"
+      - text: "Priority Partners - Brief our strongest allies first"
+        description: "Share intelligence with the wealthiest empires who can best leverage it. Strengthens key partnerships while still improving our predictions."
+        effects_summary: "Cost: Free | Prediction confidence: +20% | Richest empires: +5 approval"
         effects:
           empireApproval:
             "@richest": 5
           scourgePredictionConfidence: 0.2
-      - text: "Classify for exclusive use (free, decent confidence but damage relations)"
+      - text: "Classified Intel - Restrict to Coalition command"
+        description: "Keep this breakthrough secret. Provides good predictive power but member empires will resent being left out of the loop."
+        effects_summary: "Cost: Free | Prediction confidence: +22% | All empires: -2 approval"
         effects:
           empireApproval:
             "@all": -2

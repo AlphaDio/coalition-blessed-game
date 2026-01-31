@@ -3,7 +3,7 @@ import { SCOURGE_MISSION_CONSTANTS } from './constants.js';
 import { applyOrUpdateModifier, adjustModifierSeverity, selectMissionModifier, createModifierFromTemplate } from './scourgeModifiers.js';
 import { getScourgeModifierTemplates } from './scourgeModifiers.js';
 
-const MISSION_SLIDER_VALUES = [-10, 0, 10, 25, 50];
+const MISSION_SLIDER_VALUES = [-0.1, 0, 0.1, 0.2, 0.5];
 
 const PRE_ATTACK_EFFECTS = {
   disrupt: { threatDelta: -3, severityDelta: -1, cost: 60 },
@@ -71,7 +71,7 @@ export function applyMissionSliderEffects(state, log = []) {
 export function buildPreAttackMissionEvent(state, rng = Math.random) {
   const modifier = selectMissionModifier(state, rng);
   const title = `MISSION: ${modifier.name}`;
-  const text = 'A pre-attack operation opportunity tied to a Scourge modifier.';
+  const text = `Coalition intelligence has identified an opportunity to influence the upcoming Scourge attack. We can strike at the capabilities of the Scourge to "${modifier.name}".`;
   return {
     id: 'EVT_MISSION_PRE_ATTACK',
     scope: 'SCOURGE_MISSION',
@@ -80,9 +80,24 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
     text,
     missionModifier: modifier,
     choices: [
-      { id: 'disrupt', text: 'Disrupt' },
-      { id: 'safe', text: 'Safe Route' },
-      { id: 'escalate', text: 'Escalate' }
+      {
+        id: 'disrupt',
+        text: 'Disrupt the Scourge',
+        description: 'Send saboteurs to weaken the Scourge. Reduces modifier severity and lowers Scourge threat, but requires significant resources.',
+        effects: 'Cost: 60 requisition | Threat: -3 | Modifier severity: -1'
+      },
+      {
+        id: 'safe',
+        text: 'Defensive Recon',
+        description: 'Deploy scouts to gather intelligence while maintaining safe distance. Increases modifier severity but provides valuable positioning data.',
+        effects: 'Cost: 90 requisition | Threat: +2 | Modifier severity: +1'
+      },
+      {
+        id: 'escalate',
+        text: 'Aggressive Engagement',
+        description: 'Launch a bold strike to seize resources and glory. High risk operation that emboldens the enemy but yields immediate rewards.',
+        effects: 'Gain: +60 requisition, +10 glory, +1 intel | Threat: +6 | Modifier severity: +2'
+      }
     ]
   };
 }
@@ -94,11 +109,26 @@ export function buildDeepMissionEvent(state, rng = Math.random) {
     scope: 'SCOURGE_MISSION',
     kind: 'DEEP',
     title: `DEEP MISSION: ${name}`,
-    text: 'A special operation opportunity. A smaller alternate source of Glory.',
+    text: `Operation "${name}" is ready for execution. Your elite operatives have infiltrated deep behind Scourge lines and await final orders. This covert mission offers a chance to weaken the enemy and earn glory for the Coalition through unconventional means.`,
     choices: [
-      { id: 'strike', text: 'Strike' },
-      { id: 'sabotage', text: 'Sabotage' },
-      { id: 'harvest', text: 'Harvest' }
+      {
+        id: 'strike',
+        text: 'Precision Strike',
+        description: 'Target Scourge command and logistics. Deals significant damage to enemy forces in the next attack, crippling their manpower.',
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL} glory | Next attack: Enemy loses ${Math.round(SCOURGE_MISSION_CONSTANTS.DEEP_STRIKE_MP_PCT * 100)}% manpower`
+      },
+      {
+        id: 'sabotage',
+        text: 'Sabotage Infrastructure',
+        description: 'Undermine Scourge capabilities by targeting their active modifiers. Reduces severity of one random Scourge modifier.',
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL} glory | Random modifier: -${SCOURGE_MISSION_CONSTANTS.DEEP_SABOTAGE_SEVERITY} severity`
+      },
+      {
+        id: 'harvest',
+        text: 'Resource Extraction',
+        description: 'Seize Scourge supplies and intelligence. Maximum resource gain but increases enemy alertness and aggression.',
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM} glory, +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL} requisition, +${SCOURGE_MISSION_CONSTANTS.DEEP_INTEL_SMALL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE}`
+      }
     ]
   };
 }
@@ -149,48 +179,72 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
 
     state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + effect.threatDelta);
 
+    log.push(`[PRE-ATTACK MISSION] Selected: ${choice.text || choice.id}`);
+
     if (effect.cost > 0) {
       applyRequisitionCost(state, effect.cost, log);
     }
 
-    if (choice.id === 'escalate') {
+    if (choice.id === 'disrupt') {
+      log.push(`Saboteurs weakened "${modifier.name}" - severity reduced by 1`);
+      log.push(`Coalition threat decreased by 3 (now ${Math.round(state.coalitionThreat)})`);
+    } else if (choice.id === 'safe') {
+      log.push(`Defensive reconnaissance complete - gained positioning data`);
+      log.push(`"${modifier.name}" severity increased by 1 due to delayed action`);
+      log.push(`Coalition threat increased by 2 (now ${Math.round(state.coalitionThreat)})`);
+    } else if (choice.id === 'escalate') {
       state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + 60;
+      log.push(`Aggressive engagement successful - seized enemy supplies`);
+      log.push(`Requisition gained: +60`);
       addIntel(state, 1, log);
-      addGlory(state, 10, log, 'Escalation Glory');
+      addGlory(state, 10, log, 'Escalation bonus');
+      log.push(`"${modifier.name}" severity increased by 2 - enemy is now more aggressive`);
+      log.push(`Coalition threat increased by 6 (now ${Math.round(state.coalitionThreat)})`);
     }
 
     if (state.pendingScourgeAttack) {
       state.pendingScourgeAttack.ready = true;
+      log.push(`Scourge attack is now imminent - prepare defenses!`);
     }
 
-    log.push(`Mission ${choice.id}: Threat ${effect.threatDelta >= 0 ? '+' : ''}${effect.threatDelta}`);
     return { success: true, log };
   }
 
   if (event.kind === 'DEEP') {
+    log.push(`[DEEP MISSION] Selected: ${choice.text || choice.id}`);
+
     if (choice.id === 'strike') {
       state.scourgeNextAttackManpowerDamagePct = SCOURGE_MISSION_CONSTANTS.DEEP_STRIKE_MP_PCT;
-      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL, log, 'Deep Mission Glory');
+      log.push(`Precision strike executed - Scourge command structure disrupted`);
+      log.push(`Next Scourge attack will suffer ${Math.round(SCOURGE_MISSION_CONSTANTS.DEEP_STRIKE_MP_PCT * 100)}% manpower losses`);
+      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL, log, 'Strike operation glory');
     } else if (choice.id === 'sabotage') {
       const modifiers = state.scourgeModifiers || [];
       if (modifiers.length > 0) {
         const target = modifiers[Math.floor(rng() * modifiers.length)];
+        log.push(`Sabotage operation targeted "${target.name}"`);
         const adjusted = adjustModifierSeverity(target, -SCOURGE_MISSION_CONSTANTS.DEEP_SABOTAGE_SEVERITY);
         applyOrUpdateModifier(state, adjusted);
+        log.push(`"${target.name}" severity reduced by ${SCOURGE_MISSION_CONSTANTS.DEEP_SABOTAGE_SEVERITY}`);
       } else {
         const template = getScourgeModifierTemplates()[0];
         const sabotage = createModifierFromTemplate(template, 1, 'n_attacks', 'deep_mission');
         sabotage.effects = [{ target: 'scourge.attack_power', op: 'mul', valuePerSeverity: -0.08, when: 'next_attack_only' }];
         applyOrUpdateModifier(state, sabotage);
+        log.push(`No active modifiers found - created weakening effect on next attack`);
       }
-      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL, log, 'Deep Mission Glory');
+      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_SMALL, log, 'Sabotage operation glory');
     } else if (choice.id === 'harvest') {
-      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM, log, 'Deep Mission Glory');
+      log.push(`Resource extraction complete - enemy supplies seized`);
+      addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM, log, 'Harvest operation glory');
       state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL;
+      log.push(`Requisition gained: +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL}`);
       addIntel(state, SCOURGE_MISSION_CONSTANTS.DEEP_INTEL_SMALL, log);
       state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE);
+      log.push(`Enemy alerted - Coalition threat increased by ${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE} (now ${Math.round(state.coalitionThreat)})`);
     }
 
+    log.push(`Deep mission complete - operatives returning to base`);
     return { success: true, log };
   }
 

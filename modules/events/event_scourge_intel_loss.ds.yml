@@ -18,21 +18,27 @@ declares:
   event_data:
     id: "event_scourge_intel_loss"
     name: "Lost Scout Team"
-    description: "A coalition reconnaissance team has been ambushed and eliminated by Scourge forces. Our intelligence gathering capabilities have been significantly weakened."
+    description: "Grim news from the front. An entire reconnaissance team - twelve veterans who'd survived countless missions - was ambushed and eliminated by Scourge forces. No survivors. Beyond the human cost, we've lost experienced scouts and the intelligence network they maintained. Our ability to predict Scourge movements has been compromised."
     choices:
-      - text: "Rapid rebuild with all available resources (costs 100 requisition, minimal intel loss, boost morale)"
+      - text: "Emergency Reconstruction - Spare no expense to rebuild"
+        description: "Immediately recruit and train replacement scouts, establish new observation posts, and honor the fallen with a proper memorial. Costly but minimizes capability loss and rallies the Coalition."
+        effects_summary: "Cost: 100 requisition | Prediction confidence: -12% (minimized) | Cohesion: +3"
         effects:
           coalitionEconomy:
             requisition: -100
           scourgePredictionConfidence: -0.12
           coalitionCohesion: 3
-      - text: "Request allied support (free, moderate intel loss, slight approval cost)"
+      - text: "Request Allied Volunteers - Ask empires to contribute scouts"
+        description: "Call upon member empires to temporarily assign their own scouts to Coalition service. Maintains capability but some empires resent the imposition."
+        effects_summary: "Cost: Free | Prediction confidence: -22% | All empires: -1 approval | Cohesion: +1"
         effects:
           empireApproval:
             "@all": -1
           scourgePredictionConfidence: -0.22
           coalitionCohesion: 1
-      - text: "Accept the loss peacefully (free, significant intel loss but maintain stability)"
+      - text: "Honor and Regroup - Accept losses, rebuild gradually"
+        description: "Hold a memorial service and allow time for organic rebuilding. Significant intelligence impact but avoids rushed decisions and maintains Coalition stability."
+        effects_summary: "Cost: Free | Prediction confidence: -35% | Cohesion: +2"
         effects:
           scourgePredictionConfidence: -0.35
           coalitionCohesion: 2

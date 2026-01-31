@@ -339,7 +339,7 @@ export class GameManager {
    * Set mission slider value
    */
   setMissionSlider(value) {
-    const allowed = [-10, 0, 10, 25, 50];
+    const allowed = [-0.1, 0, 0.1, 0.2, 0.5];
     if (!allowed.includes(value)) {
       return { success: false, error: 'Invalid mission slider value' };
     }

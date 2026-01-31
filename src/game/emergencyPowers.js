@@ -35,9 +35,12 @@ export function getEmergencyPowerDefinitions() {
   return POWER_DEFINITIONS;
 }
 
-function scaleByThreat(value, threat) {
-  const multiplier = 1 + (clampStat(threat || 0, 0, 100) / 200);
-  return value * multiplier;
+function scaleByThreat(value, state) {
+  const threat = clampStat(state?.coalitionThreat || 0, 0, 100);
+  const climateSlots = state?.threatClimate?.activeSlots || 0;
+  const threatMultiplier = 1 + (threat / 200);
+  const climateMultiplier = 1 + (climateSlots * 0.1);
+  return value * threatMultiplier * climateMultiplier;
 }
 
 export function canActivateEmergencyPower(state, powerId) {
@@ -68,11 +71,10 @@ export function activateEmergencyPower(state, powerId) {
     return { success: false, error: check.reason };
   }
 
-  const threat = state.coalitionThreat || 0;
-  const scaledDuration = Math.round(scaleByThreat(def.duration_ticks, threat));
+  const scaledDuration = Math.round(scaleByThreat(def.duration_ticks, state));
   const scaledEffects = (def.effects || []).map(effect => ({
     ...effect,
-    value: scaleByThreat(effect.value, threat)
+    value: scaleByThreat(effect.value, state)
   }));
 
   state.coalitionGlory = Math.max(0, (state.coalitionGlory || 0) - def.cost_glory);
