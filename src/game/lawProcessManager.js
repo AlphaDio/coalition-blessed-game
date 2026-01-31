@@ -30,7 +30,8 @@ function getLawProgressSpeedMultiplier(state) {
   const baseSpeed = 1.0;
   const modifierBonus = state.coalitionModifiers?.law_progress_speed || 0;
   const tempBonus = state.coalitionModifiers?.lawProgressBonus || 0;
-  return baseSpeed + modifierBonus + tempBonus;
+  const dynamicBonus = state.coalitionModifiers?.dynamic?.law_progress_speed_bonus || 0;
+  return baseSpeed + modifierBonus + tempBonus + dynamicBonus;
 }
 
 

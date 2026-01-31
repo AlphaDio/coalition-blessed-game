@@ -321,6 +321,8 @@ export function processImprovementsTick(state) {
   });
   
   effectiveConstruction = (effectiveConstruction + addModifier) * multModifier;
+  const dynamicBuildMult = state.coalitionModifiers?.dynamic?.improvement_build_speed_mult || 1.0;
+  effectiveConstruction *= dynamicBuildMult;
   const constructionValue = Math.max(0, effectiveConstruction);
 
    improvements.queue.forEach(improvement => {

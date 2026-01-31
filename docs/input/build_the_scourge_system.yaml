@@ -1,0 +1,736 @@
+version: "0.1.0"
+feature: "scourge_build_threat_missions"
+
+# =============================================================================
+# 1) CORE ENTITIES / METERS / CURRENCIES
+# =============================================================================
+state:
+  coalition:
+    cohesion:
+      type: "meter"
+      range: [0, 100]
+      tiers:
+        - id: "tier1"
+          name: "stable"
+          min: 67
+          max: 100
+        - id: "tier2"
+          name: "strained"
+          min: 34
+          max: 66
+        - id: "tier3"
+          name: "desperate"
+          min: 0
+          max: 33
+
+    threat:
+      type: "meter"
+      range: [0, 100]
+      description: "Global Scourge danger + comeback climate amplifier."
+
+    requisition:
+      type: "currency"
+      min: 0
+
+    glory:
+      type: "currency"
+      min: 0
+      description: "Earned mainly on Scourge victory; spent per-use on Emergency Powers."
+
+    prestige:
+      type: "score"
+      min: 0
+      description: "Cosmetic high score. Increases on Glory earned and/or spent."
+
+    mission_slider:
+      type: "enum"
+      values: [-10, 0, 10, 25, 50]
+      default: 0
+      description: "Percent of Requisition diverted to Mission Meter. -10 grants extra Requisition but increases Threat and reduces Glory."
+
+    mission_meter:
+      type: "meter"
+      range: [0, 100]
+      description: "Fills over time from Mission Slider; when full triggers Deep Mission event."
+      fill_source: "mission_slider"
+      on_full: "events.deep_mission_spawn"
+
+    intel:
+      type: "resource"
+      min: 0
+      description: "Optional utility resource. Can be used by rewards. UI-ready but not required for core loop."
+
+  scourge:
+    manpower:
+      type: "meter"
+      range: [0, 100]
+      description: "Persistent across the entire game. Does NOT reset to full each attack."
+    recovery_rate:
+      type: "stat"
+      min: 0
+      description: "Manpower replenishment per tick. Influenced by Threat and active modifiers."
+    attack_cadence:
+      type: "timer"
+      description: "Ticks until next Scourge attack."
+    modifiers:
+      type: "list"
+      item_schema: "schemas.scourge_modifier"
+
+# =============================================================================
+# 2) SCOURGE MODIFIERS (PERSISTENT BY DEFAULT)
+# =============================================================================
+schemas:
+  scourge_modifier:
+    id: "string"
+    name: "string"
+    category: ["assault", "recovery", "adaptation", "infiltration"]
+    severity:
+      type: "int"
+      range: [0, 5]
+    duration:
+      type: "enum"
+      values: ["persistent", "next_attack", "n_attacks"]
+      default: "persistent"
+    remaining_attacks:
+      type: "int"
+      optional: true
+    effects:
+      type: "list"
+      item_schema: "schemas.mod_effect"
+    source:
+      type: "enum"
+      values: ["mission_pre_attack", "deep_mission", "scripted", "other"]
+    notes:
+      type: "string"
+      optional: true
+
+  mod_effect:
+    target: ["scourge.attack_power", "scourge.recovery_rate", "coalition.cohesion", "coalition.requisition", "coalition.law_enact_speed", "coalition.improvement_build_speed", "coalition.requisition_gen"]
+    op: ["add", "mul", "set", "cap"]
+    value: "number"
+    when: ["always", "next_attack_only", "between_attacks_only"]
+
+# =============================================================================
+# 3) PRIMARY LOOP: PRE-ATTACK MISSION EVENT (EVERY SCOURGE ATTACK)
+# =============================================================================
+systems:
+  pre_attack_mission:
+    trigger:
+      when: "scourge.attack_cadence.reaches_zero"
+      timing: "before_attack_resolution"
+    behavior:
+      spawn_event: "events.mission_pre_attack_spawn"
+      requirements:
+        - "event_panel.available == true"
+
+events:
+  mission_pre_attack_spawn:
+    type: "event"
+    id: "EVT_MISSION_PRE_ATTACK"
+    title_template: "MISSION: {modifier_name}"
+    description_template: "A pre-attack operation opportunity tied to a Scourge modifier."
+    payload:
+      modifier_source_mode: ["new_modifier", "existing_modifier"]
+      modifier_selected:
+        selection: "weighted_random"
+        weights:
+          prefer_existing_when_many_modifiers: true
+          prefer_categories: ["assault", "recovery", "infiltration", "adaptation"]
+      modifier_default_duration: "persistent"
+    choices:
+      - id: "disrupt"
+        label: "Disrupt"
+        hotkey: "d"
+        summary_tokens:
+          - "Modifier ↓"
+          - "Threat ↓"
+          - "Cost: Req/Influence/Goods"
+        effects:
+          - ref: "effects.mission_disrupt"
+
+      - id: "safe"
+        label: "Safe Route"
+        hotkey: "s"
+        summary_tokens:
+          - "Modifier ↑ (small)"
+          - "Threat ↑ (small)"
+          - "Cost: higher than Disrupt"
+        effects:
+          - ref: "effects.mission_safe"
+
+      - id: "escalate"
+        label: "Escalate"
+        hotkey: "e"
+        summary_tokens:
+          - "Modifier ↑ (big)"
+          - "Threat ↑ (big)"
+          - "Reward: immediate help (+ win Glory potential)"
+        effects:
+          - ref: "effects.mission_escalate"
+
+effects:
+  mission_disrupt:
+    description: "Reduce selected modifier severity and reduce Threat at a resource cost."
+    params:
+      threat_delta: "tunable.small_negative"
+      modifier_severity_delta: "tunable.small_negative_to_medium_negative"
+      cost_domain: ["requisition", "influence", "goods"]
+      cost_amount: "tunable.medium"
+    apply:
+      - op: "meter.add"
+        target: "coalition.threat"
+        value: "{threat_delta}"
+      - op: "modifier.adjust_severity"
+        target: "event.modifier_selected"
+        value: "{modifier_severity_delta}"
+      - op: "pay_cost"
+        domain: "{cost_domain}"
+        amount: "{cost_amount}"
+      - op: "modifier.apply_or_update"
+        target: "scourge.modifiers"
+        modifier: "event.modifier_selected"
+
+  mission_safe:
+    description: "Slightly increase selected modifier and Threat; costs more than Disrupt."
+    params:
+      threat_delta: "tunable.small_positive"
+      modifier_severity_delta: "tunable.small_positive"
+      cost_domain: ["requisition"]
+      cost_amount: "tunable.high"
+    apply:
+      - op: "meter.add"
+        target: "coalition.threat"
+        value: "{threat_delta}"
+      - op: "modifier.adjust_severity"
+        target: "event.modifier_selected"
+        value: "{modifier_severity_delta}"
+      - op: "pay_cost"
+        domain: "{cost_domain}"
+        amount: "{cost_amount}"
+      - op: "modifier.apply_or_update"
+        target: "scourge.modifiers"
+        modifier: "event.modifier_selected"
+
+  mission_escalate:
+    description: "Significantly increase modifier and Threat; grants immediate help; increases win payout potential indirectly."
+    params:
+      threat_delta: "tunable.large_positive"
+      modifier_severity_delta: "tunable.medium_positive_to_large_positive"
+      reward_bundle:
+        - type: "requisition"
+          amount: "tunable.medium"
+        - type: "intel"
+          amount: "tunable.small"
+        - type: "glory"
+          amount: "tunable.small" # optional small immediate Glory; main Glory comes from win payout.
+    apply:
+      - op: "meter.add"
+        target: "coalition.threat"
+        value: "{threat_delta}"
+      - op: "modifier.adjust_severity"
+        target: "event.modifier_selected"
+        value: "{modifier_severity_delta}"
+      - op: "modifier.apply_or_update"
+        target: "scourge.modifiers"
+        modifier: "event.modifier_selected"
+      - op: "grant_bundle"
+        bundle: "{reward_bundle}"
+
+# =============================================================================
+# 4) THREAT CLIMATE: COMEBACK BONUSES (REQUIRES LOW COHESION)
+# =============================================================================
+systems:
+  threat_climate:
+    description: "High Threat + low Cohesion unlock up to 3 acceleration bonuses."
+    bonuses:
+      slots:
+        - id: "bonus_improvement_build_speed"
+          target: "coalition.improvement_build_speed"
+          op: "mul"
+          strength: "tunable.tiered"
+        - id: "bonus_law_enact_speed"
+          target: "coalition.law_enact_speed"
+          op: "mul"
+          strength: "tunable.tiered"
+        - id: "bonus_requisition_generation"
+          target: "coalition.requisition_gen"
+          op: "mul"
+          strength: "tunable.tiered"
+    activation_matrix:
+      # Each entry yields number of active bonus slots (1..3), applied in order of slots above.
+      # Only activates when Cohesion is in specified tier or worse.
+      # Entries are evaluated top-to-bottom; first match wins (so order matters: most restrictive first).
+      - when:
+          cohesion_tier_at_least: "tier3"
+          threat_at_least: "tunable.threat_threshold_3"
+        active_slots: 3
+      - when:
+          cohesion_tier_at_least: "tier3"
+          threat_at_least: "tunable.threat_threshold_2"
+        active_slots: 2
+      - when:
+          cohesion_tier_at_least: "tier2"
+          threat_at_least: "tunable.threat_threshold_1"
+        active_slots: 1
+    notes:
+      - "No climate bonuses in tier1 to avoid win-more."
+      - "Threat alone does not activate bonuses; low Cohesion required."
+
+# =============================================================================
+# 5) GLORY / PRESTIGE / SCOURGE WIN PAYOUT
+# =============================================================================
+systems:
+  glory_payout:
+    trigger:
+      when: "battle.ends"
+      if:
+        - "battle.enemy == scourge"
+        - "battle.result == win"
+    compute:
+      base: "tunable.glory_base_per_scourge_win"
+      threat_factor: "function.exponential_of_threat" # intentionally abstract; tuned in balancing.
+      modifier_factor: "function.severity_aggregate"    # optional: increases with persistent modifier severity.
+      payout: "base * threat_factor * modifier_factor"
+    apply:
+      - op: "currency.add"
+        target: "coalition.glory"
+        value: "{payout}"
+      - op: "score.add"
+        target: "coalition.prestige"
+        value: "function.prestige_from_glory_earned({payout})"
+
+  prestige_on_spend:
+    trigger:
+      when: "currency.spent"
+      if:
+        - "currency == coalition.glory"
+    apply:
+      - op: "score.add"
+        target: "coalition.prestige"
+        value: "function.prestige_from_glory_spent({spent_amount})"
+
+# =============================================================================
+# 6) EMERGENCY POWERS (PER-USE PURCHASE)
+# =============================================================================
+systems:
+  emergency_powers:
+    purchase_mode: "per_use"
+    scaling:
+      duration_scaled_by_threat: true
+      effect_scaled_by_threat: true
+    catalog:
+      - id: "EP_MOBILIZATION"
+        name: "Mobilization Surge"
+        cost_glory: "tunable.ep_cost_medium"
+        duration_ticks: "tunable.ep_base_duration"
+        effects:
+          - target: "coalition.requisition_gen"
+            op: "mul"
+            value: "tunable.ep_requisition_boost"
+      - id: "EP_WAR_INDUSTRY"
+        name: "War Industry Overdrive"
+        cost_glory: "tunable.ep_cost_medium_high"
+        duration_ticks: "tunable.ep_base_duration"
+        effects:
+          - target: "coalition.improvement_build_speed"
+            op: "mul"
+            value: "tunable.ep_build_speed_boost"
+      - id: "EP_MANDATE"
+        name: "Emergency Mandate"
+        cost_glory: "tunable.ep_cost_high"
+        duration_ticks: "tunable.ep_base_duration"
+        effects:
+          - target: "coalition.law_enact_speed"
+            op: "mul"
+            value: "tunable.ep_law_speed_boost"
+    activation:
+      action: "actions.activate_emergency_power"
+      constraints:
+        max_active: "tunable.ep_max_active" # can be 1 for simplicity.
+        stacking: "refresh_or_replace"       # choose: refresh duration or replace weaker instance.
+
+actions:
+  activate_emergency_power:
+    input:
+      power_id: "string"
+    validate:
+      - "coalition.glory >= emergency_powers.catalog[power_id].cost_glory"
+      - "active_emergency_powers.count < emergency_powers.activation.constraints.max_active"
+    apply:
+      - op: "currency.spend"
+        target: "coalition.glory"
+        value: "emergency_powers.catalog[{power_id}].cost_glory"
+      - op: "state.add_buff"
+        target: "coalition"
+        buff:
+          id: "{power_id}"
+          duration_ticks: "function.scale_duration_by_threat(emergency_powers.catalog[{power_id}].duration_ticks, coalition.threat)"
+          effects: "function.scale_effects_by_threat(emergency_powers.catalog[{power_id}].effects, coalition.threat)"
+
+# =============================================================================
+# 7) MISSION SLIDER + METER (INCLUDES -10 OPTION)
+# =============================================================================
+systems:
+  mission_slider_and_meter:
+    tick:
+      every: 1
+      apply:
+        - ref: "effects.mission_apply_slider_effects"
+
+effects:
+  mission_apply_slider_effects:
+    description: "On each tick, either divert requisition to mission meter or grant extra requisition at -10 with penalties."
+    params:
+      slider: "coalition.mission_slider"
+    branch:
+      when_slider_positive:
+        if: "{slider} in [10,25,50]"
+        apply:
+          - op: "currency.divert_percent"
+            from: "coalition.requisition"
+            to: "coalition.mission_meter"
+            percent: "{slider}"
+            meter_fill_scale: "tunable.mission_meter_per_requisition" # conversion from req to meter.
+      when_slider_zero:
+        if: "{slider} == 0"
+        apply: []
+      when_slider_negative:
+        if: "{slider} == -10"
+        apply:
+          - op: "currency.add_percent"
+            target: "coalition.requisition"
+            percent: 10
+          - op: "meter.add"
+            target: "coalition.threat"
+            value: "tunable.mission_negative_threat_increase"
+          - op: "state.add_debuff"
+            target: "coalition"
+            debuff:
+              id: "DEBUFF_GLORY_TAX"
+              duration_ticks: "tunable.mission_negative_glory_tax_duration"
+              effects:
+                - target: "coalition.glory_gain_multiplier"
+                  op: "mul"
+                  value: "tunable.mission_negative_glory_gain_mul" # < 1.0
+
+events:
+  deep_mission_spawn:
+    type: "event"
+    id: "EVT_DEEP_MISSION"
+    title_template: "DEEP MISSION: {operation_name}"
+    description_template: "A special operation opportunity. A smaller alternate source of Glory."
+    # Spawned by: coalition.mission_meter.on_full (see state definition)
+    payload:
+      operation_name: "generated"
+      choices_max: 3
+    on_open:
+      - op: "meter.set"
+        target: "coalition.mission_meter"
+        value: 0
+    choices:
+      - id: "strike"
+        label: "Strike"
+        hotkey: "1"
+        summary_tokens:
+          - "Direct hit to next attack"
+          - "Minor Glory"
+        effects:
+          - ref: "effects.deep_mission_strike"
+      - id: "sabotage"
+        label: "Sabotage"
+        hotkey: "2"
+        summary_tokens:
+          - "Cripple Scourge"
+          - "Minor Glory"
+        effects:
+          - ref: "effects.deep_mission_sabotage"
+      - id: "harvest"
+        label: "Harvest"
+        hotkey: "3"
+        summary_tokens:
+          - "Glory + help"
+          - "Possible small Threat ↑"
+        effects:
+          - ref: "effects.deep_mission_harvest"
+
+effects:
+  deep_mission_strike:
+    description: "Directly reduces Scourge capacity for the next attack (not persistent)."
+    params:
+      next_attack_manpower_damage_pct: "tunable.deep_strike_mp_pct"
+      glory_reward: "tunable.deep_glory_small"
+    apply:
+      - op: "scourge.next_attack.manpower_damage_pct"
+        value: "{next_attack_manpower_damage_pct}"
+      - op: "currency.add"
+        target: "coalition.glory"
+        value: "{glory_reward}"
+      - op: "score.add"
+        target: "coalition.prestige"
+        value: "function.prestige_from_glory_earned({glory_reward})"
+
+  deep_mission_sabotage:
+    description: "Applies a negative modifier to Scourge or mitigates an existing persistent modifier."
+    params:
+      mode: ["apply_negative_modifier", "mitigate_existing"]
+      glory_reward: "tunable.deep_glory_small"
+    apply:
+      - op: "scourge.apply_sabotage"
+        mode: "{mode}"
+        severity: "tunable.deep_sabotage_severity"
+      - op: "currency.add"
+        target: "coalition.glory"
+        value: "{glory_reward}"
+      - op: "score.add"
+        target: "coalition.prestige"
+        value: "function.prestige_from_glory_earned({glory_reward})"
+
+  deep_mission_harvest:
+    description: "Provides a moderate Glory reward plus a small aid; may raise Threat slightly."
+    params:
+      glory_reward: "tunable.deep_glory_medium"
+      threat_delta: "tunable.deep_harvest_threat_small_positive"
+      aid_bundle:
+        - type: "requisition"
+          amount: "tunable.deep_requisition_small"
+        - type: "intel"
+          amount: "tunable.deep_intel_small"
+    apply:
+      - op: "currency.add"
+        target: "coalition.glory"
+        value: "{glory_reward}"
+      - op: "score.add"
+        target: "coalition.prestige"
+        value: "function.prestige_from_glory_earned({glory_reward})"
+      - op: "meter.add"
+        target: "coalition.threat"
+        value: "{threat_delta}"
+      - op: "grant_bundle"
+        bundle: "{aid_bundle}"
+
+# =============================================================================
+# 8) SCOURGE ATTACKS + PERSISTENT MANPOWER / RECOVERY
+# =============================================================================
+systems:
+  scourge_persistence:
+    description: "Scourge replenishes between battles like Empires; no full reset per attack."
+    between_attacks_tick:
+      every: 1
+      apply:
+        - op: "scourge.recover_manpower"
+          amount: "function.scourge_recovery(scourge.recovery_rate, coalition.threat, scourge.modifiers)"
+    next_attack_strength:
+      compute:
+        base_strength: "function.from_manpower(scourge.manpower)"
+        modifier_strength: "function.from_modifiers(scourge.modifiers)"
+        threat_strength: "function.from_threat(coalition.threat)"
+        final_strength: "base_strength * modifier_strength * threat_strength"
+    modifier_expiry:
+      after_attack:
+        apply:
+          - op: "modifier.decrement_n_attacks"
+            target: "scourge.modifiers"
+          - op: "modifier.remove_expired"
+            target: "scourge.modifiers"
+
+# =============================================================================
+# 9) TUI UX SPEC (EVENT / ACTIONS / INFO PANELS)
+# =============================================================================
+ui:
+  layout:
+    panels:
+      - id: "event_panel"
+        role: "inbox"
+        supports_events: true
+      - id: "actions_panel"
+        role: "commands"
+        supports_views: true
+      - id: "info_panel"
+        role: "context"
+        supports_views: true
+
+  focus:
+    cycle_keys:
+      next: "Tab"
+      prev: "Shift+Tab"
+    order: ["event_panel", "actions_panel", "info_panel"]
+
+  event_panel:
+    rendering:
+      event_card:
+        header_fields:
+          - "title"
+          - "timing_hint"
+        snapshot_fields:
+          - "coalition.threat"
+          - "coalition.cohesion.tier"
+          - "scourge.manpower"
+        body_sections:
+          - "modifier_details"
+          - "choices"
+        choice_render:
+          show_hotkeys: true
+          show_delta_tokens: true
+          show_cost_reward_tokens: true
+    bindings:
+      on_event_select:
+        info_panel:
+          switch_view: "scourge_overview"
+          highlight:
+            - "event.modifier_selected"
+
+  actions_panel:
+    views:
+      - id: "core_actions"
+        name: "Core"
+      - id: "operations"
+        name: "Operations"
+        components:
+          - id: "mission_slider"
+            type: "step_slider"
+            label: "Mission Budget"
+            values: [-10, 0, 10, 25, 50]
+            bind: "coalition.mission_slider"
+            help_ref: "help.mission_slider"
+            render:
+              show_current_effects: true
+              show_delta_preview: true
+          - id: "mission_meter"
+            type: "progress_bar"
+            label: "Mission Meter"
+            bind: "coalition.mission_meter"
+          - id: "emergency_powers"
+            type: "list"
+            label: "Emergency Powers (per-use)"
+            items_from: "emergency_powers.catalog"
+            item_fields:
+              - "name"
+              - "cost_glory"
+              - "active_status"
+              - "remaining_duration"
+            actions:
+              - id: "activate"
+                key: "Enter"
+                dispatch: "actions.activate_emergency_power"
+                args_from_selection: ["power_id"]
+            help_ref: "help.emergency_powers"
+    view_switch_keys:
+      next_view: "]"
+      prev_view: "["
+
+  info_panel:
+    views:
+      - id: "default"
+        name: "Info"
+      - id: "scourge_overview"
+        name: "Scourge"
+        sections:
+          - id: "threat_climate"
+            title: "Threat & Climate"
+            fields:
+              - "coalition.threat"
+              - "coalition.cohesion.tier"
+              - "systems.threat_climate.active_slots"
+              - "systems.threat_climate.active_bonus_list"
+          - id: "next_attack_preview"
+            title: "Next Attack"
+            fields:
+              - "scourge.attack_cadence"
+              - "systems.scourge_persistence.next_attack_strength.final_strength (banded)"
+              - "scourge.modifiers (next_attack_applicable)"
+          - id: "scourge_forces"
+            title: "Scourge Forces"
+            fields:
+              - "scourge.manpower"
+              - "scourge.recovery_rate"
+              - "function.scourge_recovery_preview"
+          - id: "persistent_modifiers"
+            title: "Persistent Modifiers"
+            list_bind: "scourge.modifiers"
+            list_filter:
+              duration: "persistent"
+            list_fields:
+              - "name"
+              - "category"
+              - "severity"
+              - "duration"
+          - id: "glory_projection"
+            title: "Glory Projection"
+            dynamic:
+              source: "viewmodels.glory_projection"
+          - id: "mission_system"
+            title: "Missions"
+            fields:
+              - "coalition.mission_slider"
+              - "coalition.mission_meter"
+              - "coalition.glory"
+              - "coalition.prestige"
+    view_switch_keys:
+      next_view: "]"
+      prev_view: "["
+
+viewmodels:
+  glory_projection:
+    description: "Provides approximate Glory deltas based on highlighted choice or current state."
+    inputs:
+      - "coalition.threat"
+      - "coalition.cohesion.tier"
+      - "scourge.modifiers"
+      - "ui.selection_context" # mission choice / deep mission choice / emergency power highlight
+    outputs:
+      - "glory_on_win_estimate"
+      - "glory_multiplier_estimate"
+      - "notes"
+
+help:
+  mission_slider:
+    text:
+      - "Positive values divert Requisition into Mission Meter over time."
+      - "-10 grants extra Requisition now, but increases Threat and applies a temporary Glory gain tax."
+      - "When Mission Meter fills, a Deep Mission event appears (secondary Glory source)."
+  emergency_powers:
+    text:
+      - "Emergency Powers cost Glory per-use and apply timed buff states."
+      - "Higher Threat increases both duration and effect."
+
+# =============================================================================
+# 10) TUNABLES (NO FORMULAS LOCKED)
+# =============================================================================
+tunable:
+  threat_threshold_1: 35
+  threat_threshold_2: 60
+  threat_threshold_3: 80
+
+  glory_base_per_scourge_win: 100
+
+  ep_cost_medium: 120
+  ep_cost_medium_high: 180
+  ep_cost_high: 240
+  ep_base_duration: 400
+  ep_max_active: 1
+
+  mission_meter_per_requisition: 0.05
+  mission_negative_threat_increase: 2
+  mission_negative_glory_tax_duration: 600
+  mission_negative_glory_gain_mul: 0.85
+
+  deep_strike_mp_pct: 0.50
+  deep_sabotage_severity: 1
+  deep_glory_small: 40
+  deep_glory_medium: 80
+  deep_harvest_threat_small_positive: 2
+  deep_requisition_small: 60
+  deep_intel_small: 1
+
+# =============================================================================
+# 11) INTEGRATION NOTES (EXPECTED EXISTING SYSTEMS)
+# =============================================================================
+integration:
+  requires:
+    - "battle_system emits battle.ends with enemy==scourge and result==win"
+    - "event_system supports spawning EVT_MISSION_PRE_ATTACK and EVT_DEEP_MISSION"
+    - "tick_system calls systems.mission_slider_and_meter and systems.scourge_persistence"
+    - "laws and improvements have speed multipliers: coalition.law_enact_speed, coalition.improvement_build_speed"
+    - "economy supports coalition.requisition_gen (or equivalent periodic income hook)"
+  optional:
+    - "intel resource usage and UI preview"

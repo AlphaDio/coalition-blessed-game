@@ -1,8 +1,9 @@
-import { BATTLE_CONSTANTS } from './constants.js';
+import { BATTLE_CONSTANTS, SCOURGE_MISSION_CONSTANTS } from './constants.js';
 import { clampStat, clampCohesion, clampApproval } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { startBattle } from './frontBattles.js';
 import { createArmy } from './types.js';
+import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from './scourgeModifiers.js';
 
 export function calculateArmyPower(army) {
   if (!army) {
@@ -76,7 +77,18 @@ function createScourgeArmy(state, idSuffix) {
   const fervorMPBonus = state.scourgeFervor * 50;
   // Manpower increases exponentially as cohesion drops
   const cohesionMultiplier = Math.exp((100 - state.scourgeCohesion) / 25);
-  const totalMP = (baseMP + fervorMPBonus) * cohesionMultiplier;
+  const manpowerPct = Math.max(0, Math.min(100, state.scourgeManpower ?? 100)) / 100;
+  const missionDamagePct = Math.max(0, Math.min(1, state.scourgeNextAttackManpowerDamagePct || 0));
+  const totalMP = (baseMP + fervorMPBonus) * cohesionMultiplier * manpowerPct * (1 - missionDamagePct);
+  state.scourgeNextAttackManpowerDamagePct = 0;
+
+  const alwaysEffects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
+  const nextAttackEffects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'next_attack_only');
+  const attackPowerScale = Math.max(
+    0.1,
+    powerScale * (alwaysEffects.attackPowerMult * nextAttackEffects.attackPowerMult) +
+      (alwaysEffects.attackPowerAdd + nextAttackEffects.attackPowerAdd)
+  );
 
   const scourgeArmy = {
     id: scourgeId,
@@ -101,11 +113,11 @@ function createScourgeArmy(state, idSuffix) {
       max: 100
     },
     
-    dmgPerUnitMP: 0.95 * powerScale,
-    dmgPerTickMO: 2.2 * powerScale,
+    dmgPerUnitMP: 0.95 * attackPowerScale,
+    dmgPerTickMO: 2.2 * attackPowerScale,
     protection: 0.15,
     resolve: 0.25,
-    killRate: 0.09 * powerScale,
+    killRate: 0.09 * attackPowerScale,
     
     recoveryPool: 0,
     command: 40,
@@ -398,6 +410,17 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const prevScourgeCohesion = state.scourgeCohesion;
     state.scourgeCohesion = clampStat(state.scourgeCohesion - cohesionLoss, 0, 100);
     logger.info(`Scourge battle: Victory! Scourge Cohesion ${prevScourgeCohesion.toFixed(1)} -> ${state.scourgeCohesion.toFixed(1)} (-${cohesionLoss})`);
+
+    const threat = state.coalitionThreat || 0;
+    const totalSeverity = (state.scourgeModifiers || []).reduce((sum, mod) => sum + (mod.severity || 0), 0);
+    const threatFactor = 1 + Math.pow(threat / 100, 1.2);
+    const modifierFactor = 1 + totalSeverity * 0.05;
+    const basePayout = SCOURGE_MISSION_CONSTANTS.GLORY_BASE_PER_SCOURGE_WIN;
+    const gloryMultiplier = state.coalitionModifiers?.glory_gain_multiplier ?? 1.0;
+    const payout = basePayout * threatFactor * modifierFactor * gloryMultiplier;
+    state.coalitionGlory = (state.coalitionGlory || 0) + payout;
+    state.coalitionPrestige = (state.coalitionPrestige || 0) + Math.round(payout * 0.25);
+    log.push(`Glory gained: +${Math.round(payout)}`);
   } else {
     const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
     const prevCoalitionCohesion = state.coalitionCohesion;
@@ -431,6 +454,11 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   logger.info(`Scourge battle summary - ${scourgeSummary}`);
   log.push(coalitionSummary);
   log.push(scourgeSummary);
+
+  if (scourgeArmy.mp?.max) {
+    const manpowerPct = (scourgeRemaining / scourgeArmy.mp.max) * 100;
+    state.scourgeManpower = clampStat(manpowerPct, 0, 100);
+  }
   
   // Clean up temporary armies
   const combinedIndex = state.armies.findIndex(a => a.id === coalitionArmy.id);
@@ -439,6 +467,7 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   }
   
   removeScourgeForces(state);
+  expireScourgeModifiersAfterAttack(state);
   
   // Clear the Scourge target now that the battle has ended
   state.scourgeTargetEmpireId = null;

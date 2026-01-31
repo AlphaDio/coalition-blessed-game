@@ -22,6 +22,10 @@ import { calculateScourgePrediction } from './scourgePrediction.js';
 import { MARKET_CONSTANTS } from './constants.js';
 import { initializeTurnConsumptionTracking, recordConsumption, processConsumptionToRequisition } from './consumptionToRequisition.js';
 import { applyHeroBudgetSiphon, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters } from './heroes.js';
+import { applyMissionSliderEffects, buildPreAttackMissionEvent, maybeSpawnDeepMission } from './scourgeMissions.js';
+import { resetDynamicCoalitionModifiers, applyThreatClimateBonuses } from './scourgeThreat.js';
+import { collectScourgeModifierEffects } from './scourgeModifiers.js';
+import { tickEmergencyPowers, getActiveEmergencyPowerModifiers } from './emergencyPowers.js';
 
 const BASE_POPULATION_GROWTH_RATE = 0.001;
 const MIN_POPULATION = 1;
@@ -93,6 +97,68 @@ function applyEmergencyModifiers(state, modifiers, log) {
   // Note: Other modifiers (army_damage_multiplier, army_protection_bonus, 
   // industrial_output, research_speed, etc.) are read directly from 
   // getActiveEmergencyModifiers() in their respective systems
+}
+
+function applyDynamicScourgeModifierEffects(state, log) {
+  const effects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
+  if (!state.coalitionModifiers?.dynamic) {
+    resetDynamicCoalitionModifiers(state);
+  }
+
+  state.coalitionModifiers.dynamic.law_progress_speed_bonus += effects.lawProgressSpeedBonus;
+  state.coalitionModifiers.dynamic.improvement_build_speed_mult *= effects.improvementBuildSpeedMult;
+  state.coalitionModifiers.dynamic.requisition_gen_mult *= effects.requisitionGenMult;
+
+  if (effects.coalitionCohesionAdd) {
+    const prevCohesion = state.coalitionCohesion;
+    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + effects.coalitionCohesionAdd);
+    log.push(`Cohesion ${effects.coalitionCohesionAdd >= 0 ? '+' : ''}${effects.coalitionCohesionAdd.toFixed(2)} (Scourge pressure)`);
+    const logger = getLogger();
+    logger.debug(`Scourge modifier cohesion: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
+  }
+
+  if (effects.coalitionRequisitionAdd && state.coalitionEconomy) {
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.coalitionRequisitionAdd;
+  }
+}
+
+function applyEmergencyPowerDynamicModifiers(state) {
+  const modifiers = getActiveEmergencyPowerModifiers(state);
+  if (!state.coalitionModifiers?.dynamic) {
+    resetDynamicCoalitionModifiers(state);
+  }
+  state.coalitionModifiers.dynamic.requisition_gen_mult *= modifiers.requisitionGenMult;
+  state.coalitionModifiers.dynamic.improvement_build_speed_mult *= modifiers.improvementBuildSpeedMult;
+  state.coalitionModifiers.dynamic.law_progress_speed_bonus += modifiers.lawProgressSpeedBonus;
+}
+
+function tickScourgeRecovery(state) {
+  const threat = state.coalitionThreat || 0;
+  const baseRecovery = 0.6;
+  const threatMultiplier = 1 + (threat / 100);
+  const effects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'between_attacks_only');
+  const recovery = (baseRecovery * threatMultiplier + effects.recoveryRateAdd) * effects.recoveryRateMult;
+  state.scourgeRecoveryRate = recovery;
+  state.scourgeManpower = clampStat((state.scourgeManpower || 0) + recovery, 0, 100);
+}
+
+function resolvePendingScourgeAttack(state, rng, log, logger) {
+  const pending = state.pendingScourgeAttack;
+  if (!pending || !pending.ready) return false;
+
+  const participatingArmies = (pending.participatingArmyIds || [])
+    .map(id => state.armies.find(army => army.id === id))
+    .filter(Boolean);
+
+  if (participatingArmies.length > 0) {
+    const battleResult = startScourgeBattle(state, participatingArmies, rng);
+    log.push(...battleResult.log);
+  } else {
+    logger.warn('Pending Scourge battle had no available armies');
+  }
+
+  state.pendingScourgeAttack = null;
+  return true;
 }
 
 function applyBasePopulationGrowth(state) {
@@ -318,6 +384,9 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
     logger.debug('Scourge battle already active, skipping new battle trigger');
     return;
   }
+  if (state.activeEvent) {
+    return;
+  }
 
   const battleRoll = rng();
   if (battleRoll >= battleChance || state.armies.length === 0) {
@@ -378,6 +447,20 @@ function triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logg
       logger.info(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance.toFixed(3)}, ${participatingArmies.length} armies participating)`);
       logger.debug(`Scourge battle triggered (roll=${battleRoll.toFixed(3)} < ${battleChance}), ${participatingArmies.length} armies participating`);
       if (participatingArmies.length > 0) {
+        if (!state.activeEvent && !state.pendingScourgeAttack) {
+          state.pendingScourgeAttack = {
+            targetEmpireId: targetEmpire.id,
+            participatingArmyIds: participatingArmies.map(army => army.id),
+            ready: false,
+            createdAt: state.turn
+          };
+          const missionEvent = buildPreAttackMissionEvent(state, rng);
+          state.activeEvent = missionEvent;
+          log.push(`Event: ${missionEvent.title}`);
+          logger.info(`Pre-attack mission triggered: ${missionEvent.title}`);
+          return;
+        }
+
         const battleResult = startScourgeBattle(state, participatingArmies, rng);
         log.push(...battleResult.log);
         // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
@@ -751,6 +834,12 @@ export function advanceTurn(state, rng = Math.random) {
   const rngFn = (deterministicRng instanceof DeterministicRNG)
     ? () => deterministicRng.random()
     : deterministicRng;
+
+  resetDynamicCoalitionModifiers(state);
+  applyThreatClimateBonuses(state);
+  applyDynamicScourgeModifierEffects(state, log);
+  applyEmergencyPowerDynamicModifiers(state);
+  tickScourgeRecovery(state);
   
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
@@ -881,7 +970,7 @@ export function advanceTurn(state, rng = Math.random) {
         });
       }
 
-    // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
+  // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
   const emergencyResult = tickEmergencyLaws(state);
   if (emergencyResult.log && emergencyResult.log.length > 0) {
     log.push(...emergencyResult.log);
@@ -890,6 +979,11 @@ export function advanceTurn(state, rng = Math.random) {
   // Apply emergency law modifiers to game systems
   const emergencyModifiers = getActiveEmergencyModifiers(state);
   applyEmergencyModifiers(state, emergencyModifiers, log);
+
+  const expiredPowers = tickEmergencyPowers(state);
+  if (expiredPowers.length > 0) {
+    log.push(`Emergency powers expired: ${expiredPowers.join(', ')}`);
+  }
 
   // 3.3. Process technology accrual
   const empiresReachedTechThreshold = processTechAccrual(state);
@@ -921,7 +1015,8 @@ export function advanceTurn(state, rng = Math.random) {
    // Build consumption share rate modifiers from active laws/effects
    const consumptionModifiers = {
      multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier || 1.0,
-     additiveShare: state.coalitionModifiers?.consumptionShareBonus || 0
+     additiveShare: state.coalitionModifiers?.consumptionShareBonus || 0,
+     requisitionMultiplier: state.coalitionModifiers?.dynamic?.requisition_gen_mult || 1.0
    };
    
    const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers, state.empires);
@@ -942,13 +1037,23 @@ export function advanceTurn(state, rng = Math.random) {
      }
    }
 
+  applyMissionSliderEffects(state, log);
+  const deepMission = maybeSpawnDeepMission(state, rngFn);
+  if (deepMission) {
+    state.activeEvent = deepMission;
+    logger.info(`Deep mission triggered: ${deepMission.title}`);
+    log.push(`Event: ${deepMission.title}`);
+  }
+
    // 4. Update law cooldowns
   
   updateLawCooldowns(state);
   
   // 5. Check for events
-  const event = checkEvent(state, rng);
-  if (event) {
+  const event = (!state.pendingScourgeAttack || state.pendingScourgeAttack.ready)
+    ? checkEvent(state, rng)
+    : null;
+  if (event && !state.activeEvent) {
     // Only set as activeEvent if it has choices that require player input
       const eventTitle = getEventTitle(event);
       if (hasValidChoices(event)) {
@@ -964,6 +1069,9 @@ export function advanceTurn(state, rng = Math.random) {
   }
   
   // 5. Check for battles
+  if (!state.activeEvent) {
+    resolvePendingScourgeAttack(state, rng, log, logger);
+  }
   const activeBattles = handleBattlePhase(state, rng, log, logger);
 
   

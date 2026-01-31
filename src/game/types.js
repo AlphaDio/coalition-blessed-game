@@ -427,8 +427,21 @@ export function createBattleFront(id, leftArmyId, rightArmyId, battlefieldSize =
 export function createGameState(seed = 0) {
   return {
     coalitionCohesion: 75,
+    coalitionThreat: 0,
+    coalitionGlory: 0,
+    coalitionPrestige: 0,
+    coalitionIntel: 0,
+    missionSlider: 0,
+    missionMeter: 0,
     scourgeCohesion: 80,
     scourgeFervor: 10,
+    scourgeManpower: 100,
+    scourgeRecoveryRate: 1,
+    scourgeAttackCadence: 0,
+    scourgeModifiers: [],
+    scourgeNextAttackManpowerDamagePct: 0,
+    pendingScourgeAttack: null,
+    threatClimate: { activeSlots: 0, activeBonusList: [] },
     stockpiles: {
     },
       empires: [],
@@ -490,13 +503,21 @@ export function createGameState(seed = 0) {
       hero_siphon_efficiency_mult: 0,
       hero_siphon_efficiency_add: 0,
       lawProgressBonus: 0,
-      industrialOutputBonus: 0
+      industrialOutputBonus: 0,
+      law_progress_speed: 0,
+      glory_gain_multiplier: 1.0,
+      dynamic: {
+        law_progress_speed_bonus: 0,
+        improvement_build_speed_mult: 1.0,
+        requisition_gen_mult: 1.0
+      }
     },
-    
+
     // Emergency laws system - timed powerful modifiers with resource costs
     activeEmergencyLaws: [],     // Active emergency law instances
     emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
-    
+    activeEmergencyPowers: [],   // Active emergency power instances
+
     // Coalition economy system (requisition generation from empire consumption)
     coalitionEconomy: {
       requisition: 500, // Starting requisition for purchasing improvements
@@ -643,6 +664,64 @@ export function migrateGameState(state) {
   }
   if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
     state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+  }
+  if (state.coalitionThreat === undefined) {
+    state.coalitionThreat = 0;
+  }
+  if (state.coalitionGlory === undefined) {
+    state.coalitionGlory = 0;
+  }
+  if (state.coalitionPrestige === undefined) {
+    state.coalitionPrestige = 0;
+  }
+  if (state.coalitionIntel === undefined) {
+    state.coalitionIntel = 0;
+  }
+  if (state.missionSlider === undefined) {
+    state.missionSlider = 0;
+  }
+  if (state.missionMeter === undefined) {
+    state.missionMeter = 0;
+  }
+  if (state.scourgeManpower === undefined) {
+    state.scourgeManpower = 100;
+  }
+  if (state.scourgeRecoveryRate === undefined) {
+    state.scourgeRecoveryRate = 1;
+  }
+  if (state.scourgeAttackCadence === undefined) {
+    state.scourgeAttackCadence = 0;
+  }
+  if (state.scourgeNextAttackManpowerDamagePct === undefined) {
+    state.scourgeNextAttackManpowerDamagePct = 0;
+  }
+  if (!Array.isArray(state.scourgeModifiers)) {
+    state.scourgeModifiers = [];
+  }
+  if (state.pendingScourgeAttack === undefined) {
+    state.pendingScourgeAttack = null;
+  }
+  if (!state.threatClimate || typeof state.threatClimate !== 'object') {
+    state.threatClimate = { activeSlots: 0, activeBonusList: [] };
+  }
+  if (!Array.isArray(state.activeEmergencyPowers)) {
+    state.activeEmergencyPowers = [];
+  }
+  if (!state.coalitionModifiers) {
+    state.coalitionModifiers = {};
+  }
+  if (state.coalitionModifiers.glory_gain_multiplier === undefined) {
+    state.coalitionModifiers.glory_gain_multiplier = 1.0;
+  }
+  if (state.coalitionModifiers.law_progress_speed === undefined) {
+    state.coalitionModifiers.law_progress_speed = 0;
+  }
+  if (!state.coalitionModifiers.dynamic || typeof state.coalitionModifiers.dynamic !== 'object') {
+    state.coalitionModifiers.dynamic = {
+      law_progress_speed_bonus: 0,
+      improvement_build_speed_mult: 1.0,
+      requisition_gen_mult: 1.0
+    };
   }
   
   return state;

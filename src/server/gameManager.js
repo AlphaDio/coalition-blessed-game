@@ -13,6 +13,7 @@ import { handleEventChoice } from '../game/events.js';
 import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
+import { activateEmergencyPower } from '../game/emergencyPowers.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -317,6 +318,34 @@ export class GameManager {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Activate emergency power
+   */
+  activateEmergencyPower(powerId) {
+    try {
+      const result = activateEmergencyPower(this.state, powerId);
+      if (result.success) {
+        this.notifyStateChange();
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set mission slider value
+   */
+  setMissionSlider(value) {
+    const allowed = [-10, 0, 10, 25, 50];
+    if (!allowed.includes(value)) {
+      return { success: false, error: 'Invalid mission slider value' };
+    }
+    this.state.missionSlider = value;
+    this.notifyStateChange();
+    return { success: true };
   }
 
   /**
