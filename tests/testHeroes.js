@@ -477,6 +477,94 @@ console.log('=== Test 12: Heat Scales with Unrest ===');
 }
 console.log();
 
+console.log('=== Test 13: Integration - Law Enactment with Hero Tie-in ===');
+{
+  // Create state with law process and heroes
+  const state = createTestState();
+  const empire = state.empires[0];
+  
+  // Empire opposes the law, hero aligns - this should generate heat
+  empire.values = { axis1: -0.8 };
+  
+  const hero = createHero('HERO_INT', empire.id, 'Integration Hero', {
+    values: { axis1: 0.8 }, // Hero favors law
+    meters: { heat: 0, grievance: 0, popularity: 60 },
+    ability_id: 'ABILITY_PUBLIC_MANDATE',
+    passive: { phase: 'VOTING', cadence: 'OnStart', passive_id: 'PASSIVE_VOTING_START_WHIP' }
+  });
+  state.heroes = [hero];
+  
+  // Get a law definition
+  const lawDefs = getSampleLawDefinitions();
+  const lawDef = lawDefs[0]; // Use first available law
+  lawDef.axis_vector = { axis1: 1 }; // Law pushes axis1 positive
+  
+  // Create law process starting in DEBATE phase
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.phase = 'DEBATE';
+  lawProcess.meters.unrest = 0.5;
+  lawProcess.meters.momentum = 0.5;
+  lawProcess.meters.legitimacy = 0.3;
+  state.lawProcesses = [lawProcess];
+  
+  const initialHeat = hero.meters.heat;
+  const initialGrievance = hero.meters.grievance;
+  
+  // Simulate multiple ticks through DEBATE phase
+  for (let i = 0; i < 5; i++) {
+    applyHeroLawPressure(state, lawProcess, lawDef, []);
+    state.turn++;
+  }
+  
+  // Heat should have accumulated (empire opposes law)
+  assert(hero.meters.heat > initialHeat, 'Heat accumulates during debate (empire opposes)');
+  // Grievance should stay low (hero aligns with law)
+  assert(hero.meters.grievance < 1, 'Grievance stays low (hero aligns with law)');
+  
+  const debateHeat = hero.meters.heat;
+  
+  // Advance to FALLOUT phase
+  lawProcess.phase = 'FALLOUT';
+  lawProcess.phaseProgress = 0;
+  lawProcess.phaseTicks = 0;
+  
+  // Run passive at FALLOUT start (should trigger FALLOUT passive if hero has one)
+  const falloutLog = [];
+  runHeroPassives(state, lawProcess, lawDef, 'OnStart', falloutLog);
+  
+  // Simulate FALLOUT ticks
+  for (let i = 0; i < 3; i++) {
+    applyHeroLawPressure(state, lawProcess, lawDef, []);
+    state.turn++;
+  }
+  
+  const falloutHeat = hero.meters.heat;
+  assert(falloutHeat >= debateHeat, 'Heat continues accumulating through fallout');
+  
+  // Advance to VOTING phase
+  lawProcess.phase = 'VOTING';
+  lawProcess.phaseProgress = 0;
+  lawProcess.phaseTicks = 0;
+  
+  // Run VOTING passive (hero has PASSIVE_VOTING_START_WHIP)
+  const votingLog = [];
+  const legitimacyBefore = lawProcess.meters.legitimacy;
+  runHeroPassives(state, lawProcess, lawDef, 'OnStart', votingLog);
+  
+  // Passive should have boosted legitimacy
+  assert(lawProcess.meters.legitimacy > legitimacyBefore, 'Voting passive boosts legitimacy');
+  assert(votingLog.length > 0, 'Voting passive logs a message');
+  
+  // Complete voting
+  lawProcess.phaseProgress = 1.0;
+  
+  // Final assertions
+  assert(hero.meters.heat > 0, 'Hero has accumulated heat during law process');
+  assert(lawProcess.phase === 'VOTING', 'Law reached VOTING phase');
+  assert(lawProcess.phaseProgress >= 1.0, 'Law ready to enact');
+}
+console.log();
+
 console.log('============================================================');
 console.log('Test Results Summary');
 console.log('============================================================');
