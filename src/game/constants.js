@@ -423,7 +423,7 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} EP_COST_HIGH - EP cost for high-difficulty missions (240)
  * @property {number} EP_BASE_DURATION - Base duration for expedition point regeneration (400)
  * @property {number} EP_MAX_ACTIVE - Maximum concurrent active expeditions (1)
- * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.05)
+ * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.10)
  * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase from negative outcomes (+2)
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
  * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
@@ -446,7 +446,7 @@ export const SCOURGE_MISSION_CONSTANTS = {
   EP_COST_HIGH: 240,
   EP_BASE_DURATION: 400,
   EP_MAX_ACTIVE: 1,
-  MISSION_METER_PER_REQUISITION: 0.05,
+  MISSION_METER_PER_REQUISITION: 0.1, // 0.05 -> 0.10
   MISSION_NEGATIVE_THREAT_INCREASE: 2,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
   MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
