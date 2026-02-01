@@ -19,6 +19,7 @@ import { resolveAllLawProcesses } from '../src/game/lawProcessManager.js';
 import {
   applyHeroBudgetSiphon,
   applyHeroLawPressure,
+  applyHeroLawTension,
   runHeroPassives,
   triggerHeroAbilities,
   tickHeroMeters,
@@ -144,7 +145,29 @@ console.log('=== Test 3: Meter Calculations (Heat/Grievance) ===');
 }
 console.log();
 
-console.log('=== Test 4: Meter Drift and Popularity Cap ===');
+console.log('=== Test 4: Heat Drives Law Tension ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  const hero = createHero('HERO_1', empire.id, 'Tension Hero', {
+    values: { axis1: -1 },
+    meters: { heat: 80, grievance: 60, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawProcess = createLawProcess('LAW_TEST', state.turn);
+  lawProcess.meters.unrest = 0.2;
+  lawProcess.meters.reject_pressure = 0.1;
+
+  const log = [];
+  applyHeroLawTension(state, lawProcess, log);
+
+  assert(lawProcess.meters.unrest > 0.2, 'High heat increases law unrest');
+  assert(lawProcess.meters.reject_pressure > 0.1, 'High grievance increases reject pressure');
+}
+console.log();
+
+console.log('=== Test 5: Meter Drift and Popularity Cap ===');
 {
   const state = createTestState();
   state.coalitionCohesion = 80;
@@ -163,7 +186,7 @@ console.log('=== Test 4: Meter Drift and Popularity Cap ===');
 }
 console.log();
 
-console.log('=== Test 5: Passive Trigger ===');
+console.log('=== Test 6: Passive Trigger ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -184,7 +207,7 @@ console.log('=== Test 5: Passive Trigger ===');
 }
 console.log();
 
-console.log('=== Test 6: Ability Trigger + Siphon Bank Spend ===');
+console.log('=== Test 7: Ability Trigger + Siphon Bank Spend ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -210,7 +233,7 @@ console.log('=== Test 6: Ability Trigger + Siphon Bank Spend ===');
 }
 console.log();
 
-console.log('=== Test 7: Law Integration Hooks ===');
+console.log('=== Test 8: Law Integration Hooks ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -238,7 +261,7 @@ console.log('=== Test 7: Law Integration Hooks ===');
 }
 console.log();
 
-console.log('=== Test 8: Hero Recruitment Event ===');
+console.log('=== Test 9: Hero Recruitment Event ===');
 {
   const state = createTestState();
   state.heroes = [];
@@ -283,4 +306,3 @@ if (testsFailed === 0) {
   process.exit(1);
 }
 console.log('============================================================');
-
