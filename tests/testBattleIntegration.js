@@ -11,10 +11,10 @@
  * Note: Units have been removed from the game. Armies now manage manpower directly.
  */
 
-import { createGameState, createArmy, createEmpire } from './src/game/types.js';
-import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from './src/game/battles.js';
-import { simulateBattleTick, getActiveBattles } from './src/game/frontBattles.js';
-import { refreshArmyAggregates } from './src/game/armyComposition.js';
+import { createGameState, createArmy, createEmpire } from '../src/game/types.js';
+import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
+import { simulateBattleTick, getActiveBattles } from '../src/game/frontBattles.js';
+import { refreshArmyAggregates } from '../src/game/armyComposition.js';
 
 // Helper to create a full test state with empires and armies
 function createFullTestState(seed = 12345) {
