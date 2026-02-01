@@ -49,7 +49,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     traits,
     values: values,
     stats: {
-      population: Math.max(1, stats.population || 1000),
+      population: Math.max(1, stats.population ?? 1000),
       tech_rate_bonus: stats.tech_rate_bonus || 0,
       researchSpeedBonus: 0,
       approvalBonus: 0

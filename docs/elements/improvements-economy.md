@@ -234,8 +234,8 @@ Improvements are organized in tiers (T1, T2, T3) within branches:
   - Produces: genomes 0.03/tick
 
 - **Mycellium Grove**: Self-sustaining fungal colony cultivating organic biomass and genetic material through symbiotic growth
-  - Cost: 75 req, Build: 70 ticks, Capacity: 2, Upkeep: 1 req/turn
-  - Sustain: plasma_fuel 0.02
+  - Cost: 75 req, Build: 70 ticks, Capacity: 1, Upkeep: 1 req/turn
+  - Sustain: (none - self-sustaining)
   - Produces: biomass 0.04, genomes 0.02/tick
 
 #### T2: Advanced Facilities
