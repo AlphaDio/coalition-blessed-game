@@ -37,7 +37,11 @@ const HERO_CONSTANTS = {
     EXILED: 0
   },
   AGGRAVATION_HEAT_DRIFT: 0.08,
-  AGGRAVATION_GRIEVANCE_DRIFT: 0.12
+  AGGRAVATION_GRIEVANCE_DRIFT: 0.12,
+  LAW_HEAT_NEUTRAL: 20,
+  LAW_GRIEVANCE_NEUTRAL: 15,
+  LAW_UNREST_FROM_HEAT: 0.004,
+  LAW_REJECT_FROM_GRIEVANCE: 0.003
 };
 
 export const HERO_RECRUIT_DELAY_RANGE = { min: 5, max: 25 };
@@ -49,6 +53,16 @@ function getLawValues(lawDef) {
 
 function getHeroEmpireId(hero) {
   return hero.empireId || null;
+}
+
+function ensureHeroMeters(hero) {
+  if (!hero.meters) {
+    hero.meters = { heat: 0, grievance: 0, popularity: 50 };
+    return;
+  }
+  if (!Number.isFinite(hero.meters.heat)) hero.meters.heat = 0;
+  if (!Number.isFinite(hero.meters.grievance)) hero.meters.grievance = 0;
+  if (!Number.isFinite(hero.meters.popularity)) hero.meters.popularity = 50;
 }
 
 export function computeAlignmentScore(valuesA = {}, valuesB = {}) {
@@ -69,11 +83,13 @@ export function computeAlignmentScore(valuesA = {}, valuesB = {}) {
 }
 
 export function getPopularityCap(hero) {
+  ensureHeroMeters(hero);
   const cap = 100 - (hero.meters.grievance * HERO_CONSTANTS.POPULARITY_CAP_FACTOR);
   return clamp(cap, 10, 100);
 }
 
 export function getPopularityScalar(hero) {
+  ensureHeroMeters(hero);
   const cap = getPopularityCap(hero);
   const effectivePopularity = Math.min(hero.meters.popularity, cap);
   return clamp(0.3 + (effectivePopularity / 100) * 0.7, 0.3, 1.0);
@@ -141,6 +157,7 @@ export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
 
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
+    ensureHeroMeters(hero);
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
 
@@ -166,12 +183,51 @@ export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
   }
 }
 
+export function applyHeroLawTension(state, lawProcess, log) {
+  if (!state.heroes || state.heroes.length === 0) return;
+  if (!lawProcess || !lawProcess.meters) return;
+
+  const logger = getLogger();
+  const activeHeroes = state.heroes.filter(hero => hero.status !== HERO_STATUS.EXILED);
+  if (activeHeroes.length === 0) return;
+
+  let totalHeat = 0;
+  let totalGrievance = 0;
+  activeHeroes.forEach(hero => {
+    ensureHeroMeters(hero);
+    totalHeat += hero.meters.heat || 0;
+    totalGrievance += hero.meters.grievance || 0;
+  });
+
+  const avgHeat = totalHeat / activeHeroes.length;
+  const avgGrievance = totalGrievance / activeHeroes.length;
+  const heatPressure = clamp((avgHeat - HERO_CONSTANTS.LAW_HEAT_NEUTRAL) / 100, -1, 1);
+  const grievancePressure = clamp((avgGrievance - HERO_CONSTANTS.LAW_GRIEVANCE_NEUTRAL) / 100, -1, 1);
+
+  const unrestDelta = heatPressure * HERO_CONSTANTS.LAW_UNREST_FROM_HEAT;
+  const rejectDelta = grievancePressure * HERO_CONSTANTS.LAW_REJECT_FROM_GRIEVANCE;
+  if (unrestDelta === 0 && rejectDelta === 0) return;
+
+  const oldUnrest = lawProcess.meters.unrest || 0;
+  const oldReject = lawProcess.meters.reject_pressure || 0;
+  lawProcess.meters.unrest = clamp(oldUnrest + unrestDelta, 0, 1);
+  lawProcess.meters.reject_pressure = clamp(oldReject + rejectDelta, 0, 1);
+
+  if (Math.abs(unrestDelta) >= 0.001 || Math.abs(rejectDelta) >= 0.001) {
+    const message = `Hero sentiment: law unrest ${oldUnrest.toFixed(3)} → ${lawProcess.meters.unrest.toFixed(3)}, ` +
+      `reject pressure ${oldReject.toFixed(3)} → ${lawProcess.meters.reject_pressure.toFixed(3)}.`;
+    log.push(message);
+    logger.debug(message);
+  }
+}
+
 export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
   if (!state.heroes || state.heroes.length === 0) return;
   if (!state.empires || state.empires.length === 0) return;
 
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
+    ensureHeroMeters(hero);
     const passive = hero.passive || {};
     if (!passive.passive_id) return;
     if (passive.phase !== lawProcess.phase) return;
@@ -196,6 +252,7 @@ export function triggerHeroAbilities(state, lawProcess, log) {
 
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
+    ensureHeroMeters(hero);
     const abilityDef = HERO_ABILITIES[hero.ability_id];
     if (!abilityDef) return;
     if ((hero.cooldowns?.ability || 0) > 0) return;
@@ -232,6 +289,7 @@ export function tickHeroMeters(state, log) {
 
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
+    ensureHeroMeters(hero);
 
     // Heat decay
     const heatDecay = goodContext ? HERO_CONSTANTS.HEAT_DECAY_GOOD : HERO_CONSTANTS.HEAT_DECAY_BAD;
@@ -266,8 +324,14 @@ export function applyHeroSpillover(state, log) {
     const heroes = state.heroes.filter(hero => getHeroEmpireId(hero) === empire.id && hero.status !== HERO_STATUS.EXILED);
     if (heroes.length === 0) return;
 
-    const avgHeat = heroes.reduce((sum, hero) => sum + (hero.meters.heat || 0), 0) / heroes.length;
-    const avgGrievance = heroes.reduce((sum, hero) => sum + (hero.meters.grievance || 0), 0) / heroes.length;
+    const avgHeat = heroes.reduce((sum, hero) => {
+      ensureHeroMeters(hero);
+      return sum + (hero.meters.heat || 0);
+    }, 0) / heroes.length;
+    const avgGrievance = heroes.reduce((sum, hero) => {
+      ensureHeroMeters(hero);
+      return sum + (hero.meters.grievance || 0);
+    }, 0) / heroes.length;
 
     const aggravationDelta = (avgHeat / 100) * HERO_CONSTANTS.AGGRAVATION_HEAT_DRIFT +
       (avgGrievance / 100) * HERO_CONSTANTS.AGGRAVATION_GRIEVANCE_DRIFT;

@@ -19,11 +19,13 @@ import { resolveAllLawProcesses } from '../src/game/lawProcessManager.js';
 import {
   applyHeroBudgetSiphon,
   applyHeroLawPressure,
+  applyHeroLawTension,
   runHeroPassives,
   triggerHeroAbilities,
   tickHeroMeters,
   buildHeroRecruitmentEvent,
   handleHeroRecruitmentChoice,
+  computeAlignmentScore,
   HERO_RECRUIT_DELAY_RANGE
 } from '../src/game/heroes.js';
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
@@ -144,7 +146,29 @@ console.log('=== Test 3: Meter Calculations (Heat/Grievance) ===');
 }
 console.log();
 
-console.log('=== Test 4: Meter Drift and Popularity Cap ===');
+console.log('=== Test 4: Heat Drives Law Tension ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  const hero = createHero('HERO_1', empire.id, 'Tension Hero', {
+    values: { axis1: -1 },
+    meters: { heat: 80, grievance: 60, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawProcess = createLawProcess('LAW_TEST', state.turn);
+  lawProcess.meters.unrest = 0.2;
+  lawProcess.meters.reject_pressure = 0.1;
+
+  const log = [];
+  applyHeroLawTension(state, lawProcess, log);
+
+  assert(lawProcess.meters.unrest > 0.2, 'High heat increases law unrest');
+  assert(lawProcess.meters.reject_pressure > 0.1, 'High grievance increases reject pressure');
+}
+console.log();
+
+console.log('=== Test 5: Meter Drift and Popularity Cap ===');
 {
   const state = createTestState();
   state.coalitionCohesion = 80;
@@ -163,7 +187,7 @@ console.log('=== Test 4: Meter Drift and Popularity Cap ===');
 }
 console.log();
 
-console.log('=== Test 5: Passive Trigger ===');
+console.log('=== Test 6: Passive Trigger ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -184,7 +208,7 @@ console.log('=== Test 5: Passive Trigger ===');
 }
 console.log();
 
-console.log('=== Test 6: Ability Trigger + Siphon Bank Spend ===');
+console.log('=== Test 7: Ability Trigger + Siphon Bank Spend ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -210,7 +234,7 @@ console.log('=== Test 6: Ability Trigger + Siphon Bank Spend ===');
 }
 console.log();
 
-console.log('=== Test 7: Law Integration Hooks ===');
+console.log('=== Test 8: Law Integration Hooks ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
@@ -238,7 +262,7 @@ console.log('=== Test 7: Law Integration Hooks ===');
 }
 console.log();
 
-console.log('=== Test 8: Hero Recruitment Event ===');
+console.log('=== Test 9: Hero Recruitment Event ===');
 {
   const state = createTestState();
   state.heroes = [];
@@ -269,6 +293,278 @@ console.log('=== Test 8: Hero Recruitment Event ===');
 }
 console.log();
 
+console.log('=== Test 10a: Empire Opposes Law → Heat Increases ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  empire.values = { axis1: -1 }; // Empire opposes law
+  
+  const hero = createHero('HERO_1', empire.id, 'Test Hero', {
+    values: { axis1: 1 }, // Hero aligns with law
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.meters.unrest = 1;
+  lawProcess.meters.legitimacy = 0;
+
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+
+  assert(hero.meters.heat > 0, 'Heat increases when empire opposes');
+  assert(hero.meters.grievance === 0, 'Grievance unchanged when hero aligns');
+}
+console.log();
+
+console.log('=== Test 10b: Hero Opposes Law → Grievance Increases ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  empire.values = { axis1: 1 }; // Empire aligns with law
+  
+  const hero = createHero('HERO_1', empire.id, 'Test Hero', {
+    values: { axis1: -1 }, // Hero opposes law
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.meters.unrest = 1;
+  lawProcess.meters.legitimacy = 0;
+
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+
+  assert(hero.meters.heat === 0, 'Heat unchanged when empire aligns');
+  assert(hero.meters.grievance > 0, 'Grievance increases when hero opposes');
+}
+console.log();
+
+console.log('=== Test 10c: Both Align → No Meter Changes ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  empire.values = { axis1: 1 }; // Empire aligns
+  
+  const hero = createHero('HERO_1', empire.id, 'Test Hero', {
+    values: { axis1: 1 }, // Hero also aligns
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.meters.unrest = 1;
+  lawProcess.meters.legitimacy = 0;
+
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+
+  assert(hero.meters.heat === 0, 'Heat stays 0 when empire aligns');
+  assert(hero.meters.grievance === 0, 'Grievance stays 0 when hero aligns');
+}
+console.log();
+
+console.log('=== Test 10d: Both Oppose → Both Meters Increase ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  empire.values = { axis1: -1 }; // Empire opposes
+  
+  const hero = createHero('HERO_1', empire.id, 'Test Hero', {
+    values: { axis1: -1 }, // Hero also opposes
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [hero];
+
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.meters.unrest = 1;
+  lawProcess.meters.legitimacy = 0;
+
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+
+  assert(hero.meters.heat > 0, 'Heat increases when empire opposes');
+  assert(hero.meters.grievance > 0, 'Grievance increases when hero opposes');
+}
+console.log();
+
+console.log('=== Test 11: Heat Amplitude Scales with Axis Difference ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.meters.unrest = 1;
+  lawProcess.meters.legitimacy = 0;
+
+  // Small opposition: empire axis1 = 0 (neutral) vs law axis1 = 1
+  empire.values = { axis1: 0 };
+  const heroSmall = createHero('HERO_S', empire.id, 'Small', {
+    values: { axis1: 1 },
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [heroSmall];
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+  const heatSmall = heroSmall.meters.heat;
+
+  // Medium opposition: empire axis1 = -0.5 vs law axis1 = 1
+  empire.values = { axis1: -0.5 };
+  const heroMed = createHero('HERO_M', empire.id, 'Medium', {
+    values: { axis1: 1 },
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [heroMed];
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+  const heatMedium = heroMed.meters.heat;
+
+  // Max opposition: empire axis1 = -1 vs law axis1 = 1
+  empire.values = { axis1: -1 };
+  const heroMax = createHero('HERO_X', empire.id, 'Max', {
+    values: { axis1: 1 },
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [heroMax];
+  applyHeroLawPressure(state, lawProcess, lawDef, []);
+  const heatMax = heroMax.meters.heat;
+
+  // Verify scaling: small < medium < max
+  assert(heatSmall < heatMedium, `Small opposition (${heatSmall.toFixed(2)}) < Medium (${heatMedium.toFixed(2)})`);
+  assert(heatMedium < heatMax, `Medium opposition (${heatMedium.toFixed(2)}) < Max (${heatMax.toFixed(2)})`);
+  
+  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 2.0)
+  assert(approxEqual(heatMax, 2.0), `Max heat is ~2.0 (got ${heatMax.toFixed(2)})`);
+}
+console.log();
+
+console.log('=== Test 12: Heat Scales with Unrest ===');
+{
+  const state = createTestState();
+  const empire = state.empires[0];
+  empire.values = { axis1: -1 }; // Max opposition
+  
+  const lawDef = { id: 'LAW_TEST', axis_vector: { axis1: 1 } };
+
+  // Low unrest
+  const lawProcessLow = createLawProcess(lawDef.id, state.turn);
+  lawProcessLow.meters.unrest = 0.25;
+  lawProcessLow.meters.legitimacy = 0;
+  
+  const heroLow = createHero('HERO_L', empire.id, 'Low', {
+    values: { axis1: 1 },
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [heroLow];
+  applyHeroLawPressure(state, lawProcessLow, lawDef, []);
+  const heatLowUnrest = heroLow.meters.heat;
+
+  // High unrest
+  const lawProcessHigh = createLawProcess(lawDef.id, state.turn);
+  lawProcessHigh.meters.unrest = 1.0;
+  lawProcessHigh.meters.legitimacy = 0;
+  
+  const heroHigh = createHero('HERO_H', empire.id, 'High', {
+    values: { axis1: 1 },
+    meters: { heat: 0, grievance: 0, popularity: 50 }
+  });
+  state.heroes = [heroHigh];
+  applyHeroLawPressure(state, lawProcessHigh, lawDef, []);
+  const heatHighUnrest = heroHigh.meters.heat;
+
+  assert(heatLowUnrest < heatHighUnrest, `Low unrest heat (${heatLowUnrest.toFixed(2)}) < High unrest (${heatHighUnrest.toFixed(2)})`);
+  assert(approxEqual(heatHighUnrest / heatLowUnrest, 4.0), 'Heat scales 4x with 4x unrest');
+}
+console.log();
+
+console.log('=== Test 13: Integration - Law Enactment with Hero Tie-in ===');
+{
+  // Create state with law process and heroes
+  const state = createTestState();
+  const empire = state.empires[0];
+  
+  // Empire opposes the law, hero aligns - this should generate heat
+  empire.values = { axis1: -0.8 };
+  
+  const hero = createHero('HERO_INT', empire.id, 'Integration Hero', {
+    values: { axis1: 0.8 }, // Hero favors law
+    meters: { heat: 0, grievance: 0, popularity: 60 },
+    ability_id: 'ABILITY_PUBLIC_MANDATE',
+    passive: { phase: 'VOTING', cadence: 'OnStart', passive_id: 'PASSIVE_VOTING_START_WHIP' }
+  });
+  state.heroes = [hero];
+  
+  // Get a law definition
+  const lawDefs = getSampleLawDefinitions();
+  const lawDef = lawDefs[0]; // Use first available law
+  lawDef.axis_vector = { axis1: 1 }; // Law pushes axis1 positive
+  
+  // Create law process starting in DEBATE phase
+  const lawProcess = createLawProcess(lawDef.id, state.turn);
+  lawProcess.phase = 'DEBATE';
+  lawProcess.meters.unrest = 0.5;
+  lawProcess.meters.momentum = 0.5;
+  lawProcess.meters.legitimacy = 0.3;
+  state.lawProcesses = [lawProcess];
+  
+  const initialHeat = hero.meters.heat;
+  const initialGrievance = hero.meters.grievance;
+  
+  // Simulate multiple ticks through DEBATE phase
+  for (let i = 0; i < 5; i++) {
+    applyHeroLawPressure(state, lawProcess, lawDef, []);
+    state.turn++;
+  }
+  
+  // Heat should have accumulated (empire opposes law)
+  assert(hero.meters.heat > initialHeat, 'Heat accumulates during debate (empire opposes)');
+  // Grievance should stay low (hero aligns with law)
+  assert(hero.meters.grievance < 1, 'Grievance stays low (hero aligns with law)');
+  
+  const debateHeat = hero.meters.heat;
+  
+  // Advance to FALLOUT phase
+  lawProcess.phase = 'FALLOUT';
+  lawProcess.phaseProgress = 0;
+  lawProcess.phaseTicks = 0;
+  
+  // Run passive at FALLOUT start (should trigger FALLOUT passive if hero has one)
+  const falloutLog = [];
+  runHeroPassives(state, lawProcess, lawDef, 'OnStart', falloutLog);
+  
+  // Simulate FALLOUT ticks
+  for (let i = 0; i < 3; i++) {
+    applyHeroLawPressure(state, lawProcess, lawDef, []);
+    state.turn++;
+  }
+  
+  const falloutHeat = hero.meters.heat;
+  assert(falloutHeat >= debateHeat, 'Heat continues accumulating through fallout');
+  
+  // Advance to VOTING phase
+  lawProcess.phase = 'VOTING';
+  lawProcess.phaseProgress = 0;
+  lawProcess.phaseTicks = 0;
+  
+  // Run VOTING passive (hero has PASSIVE_VOTING_START_WHIP)
+  const votingLog = [];
+  const legitimacyBefore = lawProcess.meters.legitimacy;
+  runHeroPassives(state, lawProcess, lawDef, 'OnStart', votingLog);
+  
+  // Passive should have boosted legitimacy
+  assert(lawProcess.meters.legitimacy > legitimacyBefore, 'Voting passive boosts legitimacy');
+  assert(votingLog.length > 0, 'Voting passive logs a message');
+  
+  // Complete voting
+  lawProcess.phaseProgress = 1.0;
+  
+  // Final assertions
+  assert(hero.meters.heat > 0, 'Hero has accumulated heat during law process');
+  assert(lawProcess.phase === 'VOTING', 'Law reached VOTING phase');
+  assert(lawProcess.phaseProgress >= 1.0, 'Law ready to enact');
+}
+console.log();
+
 console.log('============================================================');
 console.log('Test Results Summary');
 console.log('============================================================');
@@ -283,4 +579,3 @@ if (testsFailed === 0) {
   process.exit(1);
 }
 console.log('============================================================');
-
