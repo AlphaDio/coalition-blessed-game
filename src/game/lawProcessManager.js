@@ -250,6 +250,14 @@ function removeLawModifiers(lawDef, state) {
       });
     }
   }
+  if (modifiers.consumptionShareMultiplier) {
+    if (modifiers.consumptionShareMultiplier !== 0) {
+      state.coalitionModifiers.consumptionShareMultiplier /= modifiers.consumptionShareMultiplier;
+    }
+  }
+  if (modifiers.consumptionShareBonus) {
+    state.coalitionModifiers.consumptionShareBonus -= modifiers.consumptionShareBonus;
+  }
 }
 
 function applyLawImmediateEffects(lawDef, state, log) {

@@ -192,12 +192,12 @@ export const REALTIME_CONSTANTS = {
 /**
  * Production efficiency modifiers for resource generation.
  * Applied as a multiplier to raw production values.
- * @property {number} BASE_EFFICIENCY - Default 1% efficiency (effectively divides production by 100)
+ * @property {number} BASE_EFFICIENCY - Default 10% efficiency (effectively divides production by 10)
  * @property {number} MIN_EFFICIENCY - Minimum efficiency floor (0.1%)
  * @property {number} MAX_EFFICIENCY - Maximum efficiency cap (100%)
  */
 export const PRODUCTION_EFFICIENCY_CONSTANTS = {
-  BASE_EFFICIENCY: 0.01,              // 1% base efficiency (99% nerf) - effectively divides production by 100
+  BASE_EFFICIENCY: 0.10,              // 10% base efficiency (90% nerf) - effectively divides production by 10
   MIN_EFFICIENCY: 0.001,              // Minimum efficiency floor (0.1%)
   MAX_EFFICIENCY: 1.0                 // Maximum efficiency cap (100%)
 };
@@ -228,7 +228,7 @@ export const RATIONING_CONSTANTS = {
  */
 export const GAME_INIT_CONSTANTS = {
   // Coalition economy starting values
-  INITIAL_REQUISITION: 500,
+  INITIAL_REQUISITION: 1000, // 500 -> 1000
   INITIAL_TREASURY_CREDITS: 10000,
   INITIAL_ALLOWANCE_CREDITS: 1000,
   
@@ -309,7 +309,7 @@ export const REACTION_CONSTANTS = {
 
 /**
  * Technology research system configuration.
- * @property {number} BASE_POINTS_PER_TICK - Base tech points gained each tick (100)
+ * @property {number} BASE_POINTS_PER_TICK - Base tech points gained each tick (200)
  * @property {number} INITIAL_THRESHOLD - Points needed for first tech unlock (25000)
  * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for subsequent techs (1.10)
  *                                          threshold = INITIAL_THRESHOLD * (n+1)^THRESHOLD_EXPONENT
@@ -317,7 +317,7 @@ export const REACTION_CONSTANTS = {
  * @property {number} TECH_CHOICES_COUNT - Number of tech options presented when unlocking (3)
  */
 export const TECH_CONSTANTS = {
-  BASE_POINTS_PER_TICK: 100,         // Base tech points gained per tick
+  BASE_POINTS_PER_TICK: 200,         // Base tech points gained per tick 100 -> 200
   INITIAL_THRESHOLD: 25000,          // First tech unlocks at ~500 ticks (50000 / 100)
   THRESHOLD_EXPONENT: 1.10,          // Polynomial exponent: threshold = initial * (n+1)^exp
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
@@ -373,13 +373,17 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
  * @property {number} CONVERSION_REQUISITION_MULTIPLIER - Multiplier for requisition from consumption (100x)
  * @property {number} ALLOWANCE_PER_TICK - Credits granted to coalition per tick (1000)
  * @property {number} ALLOWANCE_CAP_TICKS - Maximum stored allowance in ticks worth (4)
+ * @property {number} APPROVAL_SCALE_MIN - Requisition multiplier at 0 approval (50%)
+ * @property {number} APPROVAL_SCALE_MAX - Requisition multiplier at 100 approval (200%)
  */
 export const CONSUMPTION_REQUISITION_CONSTANTS = {
   CREDITS_PER_REQUISITION: 1000,                    // Conversion rate: 1000 credits = 1 requisition
   COALITION_CONSUMPTION_SHARE_BASE: 0.10,           // 10% - Base coalition share of consumption value
   CONVERSION_REQUISITION_MULTIPLIER: 100,            // 100x - Multiplier for requisition from consumption
   ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
-  ALLOWANCE_CAP_TICKS: 4                            // Maximum allowance (in ticks worth)
+  ALLOWANCE_CAP_TICKS: 4,                           // Maximum allowance (in ticks worth)
+  APPROVAL_SCALE_MIN: 0.5,                          // At 0 approval, contribute 50% requisition
+  APPROVAL_SCALE_MAX: 2.0                           // At 100 approval, contribute 200% requisition
 };
 
 /**

@@ -87,7 +87,7 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 110,
         build: 160,
         capacity: 2,
-        sustainmentCost: { biomass: 0.35 },
+        sustainmentCost: { biomass: 0.25 }, // 0.35 -> 0.25
         productionOutputs: { plasma_fuel: 0.8, requisition: 1.2 },
         modifiers: { industrial_output: 0.01 },
         tags: ['industrial', 'requisition', 'conversion', 'processing'],
@@ -591,7 +591,7 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { biomass: 0.04, genomes: 0.02 },
+       productionOutputs: { biomass: 0.05, genomes: 0.025 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic', 'organic'],
        requisitionUpkeep: 1

@@ -9,7 +9,7 @@
  */
 
 import { getLogger } from '../../modules/logger.js';
-import { IMPROVEMENTS_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS } from '../constants.js';
+import { IMPROVEMENTS_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
 import { createArmy } from '../types.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
@@ -406,6 +406,15 @@ export function processImprovementSustainment(state, improvement) {
 
   const population = empire.stats?.population || 1;
 
+  // Calculate effective rationing with modifiers (matches economyTick.js)
+  const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
+  const rationingAdd = state.coalitionModifiers?.rationing_add || 0;
+  const rationingMult = state.coalitionModifiers?.rationing_mult || 1.0;
+  const effectiveRationing = Math.max(
+    RATIONING_CONSTANTS.MIN_RATIONING,
+    Math.min(RATIONING_CONSTANTS.MAX_RATIONING, (baseRationing + rationingAdd) * rationingMult)
+  );
+
   const buyFromMarket = (commodity, qtyNeeded) => {
     if (qtyNeeded <= 0) return 0;
     const marketState = state.market?.[commodity];
@@ -450,7 +459,7 @@ export function processImprovementSustainment(state, improvement) {
   };
 
   for (const [commodity, qtyNeeded] of Object.entries(sustainmentNeeds)) {
-    const scaledQty = Math.ceil(qtyNeeded * population);
+    const scaledQty = Math.ceil(qtyNeeded * population * effectiveRationing);
     if (scaledQty <= 0) continue;
 
     // Initialize improvement stockpile for this commodity if needed

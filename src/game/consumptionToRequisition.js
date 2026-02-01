@@ -43,6 +43,14 @@ export const ALLOWANCE_CAP_TICKS = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_C
 export const ALLOWANCE_MAX = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS; // 4000
 
 /**
+ * Approval scaling for requisition contribution
+ * At 0 approval: contribute APPROVAL_SCALE_MIN (50%)
+ * At 100 approval: contribute APPROVAL_SCALE_MAX (200%)
+ */
+export const APPROVAL_SCALE_MIN = CONSUMPTION_REQUISITION_CONSTANTS.APPROVAL_SCALE_MIN;
+export const APPROVAL_SCALE_MAX = CONSUMPTION_REQUISITION_CONSTANTS.APPROVAL_SCALE_MAX;
+
+/**
  * Track consumption during a turn phase
  * @type {Object} Map of empireId -> { commodity -> quantity consumed }
  */
@@ -188,9 +196,11 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
     // Coalition receives a percentage of consumption value as requisition
     const coalitionValue = empireConsumptionValue * effectiveShareRate;
 
-    // Apply 10x multiplier and scale by empire's approval rating
-    // Approval ranges from 0-100, so this scales from 0% to 100% of the multiplied value
-    const approvalScale = (empire.approval || 0) / 100;
+    // Apply multiplier and scale by empire's approval rating
+    // Approval ranges from 0-100, scaling requisition contribution:
+    // At 0 approval: APPROVAL_SCALE_MIN (50%), at 100 approval: APPROVAL_SCALE_MAX (200%)
+    const approvalNormalized = (empire.approval || 0) / 100;
+    const approvalScale = APPROVAL_SCALE_MIN + approvalNormalized * (APPROVAL_SCALE_MAX - APPROVAL_SCALE_MIN);
     const scaledCoalitionValue = coalitionValue * CONVERSION_REQUISITION_MULTIPLIER * approvalScale;
 
     // Convert credits to requisition (1000 credits = 1 requisition)
@@ -218,7 +228,7 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
         `[${empire.name}] Consumption conversion: ${empireConsumptionValue.toFixed(2)} consumed value ` +
         `(${consumedCount} units) @ ${(effectiveShareRate * 100).toFixed(1)}% share ` +
         `-> ${coalitionValue.toFixed(2)} base credits ` +
-        `-> ${scaledCoalitionValue.toFixed(2)} credits (10x multiplier × ${(approvalScale * 100).toFixed(1)}% approval) ` +
+        `-> ${scaledCoalitionValue.toFixed(2)} credits (${CONVERSION_REQUISITION_MULTIPLIER}x multiplier × ${(approvalScale * 100).toFixed(0)}% approval scale) ` +
         `-> +${requisitionGained.toFixed(3)} requisition, +${creditsSpent.toFixed(0)} credits from allowance`
       );
     }

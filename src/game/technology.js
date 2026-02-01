@@ -282,11 +282,19 @@ function formatModifier(key, value) {
   // Percentage modifiers
   const percentageModifiers = [
     'research_speed', 'industrial_output', 'supply_efficiency', 
-    'market_efficiency', 'population_growth', 'energy_production'
+    'market_efficiency', 'population_growth', 'energy_production',
+    'consumptionShareBonus'
   ];
   
   if (percentageModifiers.includes(key)) {
     return `${sign}${(value * 100).toFixed(0)}% ${key.replace(/_/g, ' ')}`;
+  }
+  
+  // Multiplier modifiers (displayed as "×1.5 consumption share" etc.)
+  const multiplierModifiers = ['consumptionShareMultiplier'];
+  if (multiplierModifiers.includes(key)) {
+    const label = key.replace('Multiplier', '').replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+    return `×${value} ${label}`;
   }
   
   // Flat modifiers
