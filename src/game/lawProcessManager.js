@@ -19,7 +19,7 @@ import { clamp, clampApproval, clampCohesion } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { updateCoalitionColor } from './coalitionColor.js';
 import { calculateLawReactions } from './reactions.js';
-import { applyHeroLawPressure, runHeroPassives, triggerHeroAbilities } from './heroes.js';
+import { applyHeroLawPressure, applyHeroLawTension, runHeroPassives, triggerHeroAbilities } from './heroes.js';
 
 /**
  * Get the law progress speed multiplier from coalition modifiers
@@ -392,6 +392,7 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
 
   // Apply immediate hero pressure when the law starts
   applyHeroLawPressure(state, lawProcess, lawDef, log);
+  applyHeroLawTension(state, lawProcess, log);
   
   return { success: true, log };
 }
@@ -625,6 +626,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
     // Hero phase-tick passives + law pressure
     runHeroPassives(state, lawProcess, lawDef, 'OnTick', log);
     applyHeroLawPressure(state, lawProcess, lawDef, log);
+    applyHeroLawTension(state, lawProcess, log);
     triggerHeroAbilities(state, lawProcess, log);
 
     // Track phase progress for deadlock detection
@@ -649,6 +651,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
     // Apply immediate hero pressure when the law is enacted
     applyHeroLawPressure(state, lawProcess, lawDef, log);
+    applyHeroLawTension(state, lawProcess, log);
 
     lawProcess.phase = 'ENACTED';
 
