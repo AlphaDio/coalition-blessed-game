@@ -43,7 +43,7 @@ state.improvements.requests = getSampleImprovementRequests();
 state.empires.forEach(empire => {
   empire.stockpiles = {
     biomass: 500,
-    solid_ice: 500,
+    plasma_fuel: 500,
     super_alloys: 500,
     rare_gases: 200,
     genomes: 100,
@@ -185,7 +185,7 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 state.empires.forEach(empire => {
   empire.stockpiles = {
     biomass: 500,
-    solid_ice: 500,
+    plasma_fuel: 500,
     super_alloys: 500,
     rare_gases: 200,
     genomes: 100,

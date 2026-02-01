@@ -168,6 +168,7 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
 
   // Get effective share rate with modifiers
   const effectiveShareRate = calculateEffectiveShareRate(modifiers);
+  const requisitionMultiplier = modifiers.requisitionMultiplier || 1.0;
 
   let totalRequisitionGained = 0;
   let totalCreditsGranted = 0;
@@ -193,7 +194,13 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
     const scaledCoalitionValue = coalitionValue * CONVERSION_REQUISITION_MULTIPLIER * approvalScale;
 
     // Convert credits to requisition (1000 credits = 1 requisition)
-    const requisitionGained = scaledCoalitionValue / CREDITS_PER_REQUISITION;
+    let requisitionGained = (scaledCoalitionValue / CREDITS_PER_REQUISITION) * requisitionMultiplier;
+    
+    // Safeguard against NaN/Infinity to prevent game breaks
+    if (!Number.isFinite(requisitionGained)) {
+      logger.warn(`Invalid requisitionGained value (${requisitionGained}) for empire ${empire.name}, clamping to 0`);
+      requisitionGained = 0;
+    }
 
     coalitionEconomy.requisition += requisitionGained;
     totalRequisitionGained += requisitionGained;

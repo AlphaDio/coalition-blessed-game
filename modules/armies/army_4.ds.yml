@@ -23,12 +23,12 @@ declares:
     fervor: 65
     aggravation: 45
     command: 58
-    recovery: 58
-    manpower: 9000
-    dmgPerUnitMP: 1.1
+    recovery: 45
+    manpower: 5000
+    dmgPerUnitMP: 2.1
     dmgPerTickMO: 2.7
     protection: 0.20
-    resolve: 0.30
+    resolve: 0.35
     killRate: 0.12
     demands:
       needs:

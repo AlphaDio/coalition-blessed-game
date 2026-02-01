@@ -233,11 +233,12 @@ Improvements are organized in tiers (T1, T2, T3) within branches:
   - Sustain: biomass 0.01
   - Produces: genomes 0.03/tick
 
+- **Mycellium Grove**: Self-sustaining fungal colony cultivating organic biomass and genetic material through symbiotic growth
+  - Cost: 75 req, Build: 70 ticks, Capacity: 1, Upkeep: 1 req/turn
+  - Sustain: (none - self-sustaining)
+  - Produces: biomass 0.04, genomes 0.02/tick
+
 #### T2: Advanced Facilities
-- **Mycellium Grove**: Self-sustaining mycellium colony producing organic biomass
-  - Cost: 30 req, Build: 60 ticks, Capacity: 2, Upkeep: 1 req/turn
-  - Sustain: genomes 1
-  - Produces: genomes 3/tick
 
 - **Nebulae Mining Initiatives**: Automated mining initiatives extracting rare gases from nebulaes
   - Cost: 40 req, Build: 70 ticks, Capacity: 1, Upkeep: 1 req/turn

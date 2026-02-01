@@ -34,7 +34,6 @@ declares:
             relations_strength_modifier:
               value: 0.5
               duration: 10
-          coalitionCohesion: 5
       - text: "Create targeted alliances only (selective relations boost)"
         effects:
           empireRelations:

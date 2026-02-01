@@ -48,7 +48,6 @@ Each choice can modify:
   - unrest: Populace volatility (0..1)
   - polarization: Extremeness of positions (0..1)
   - legitimacy: Perceived validity (0..1)
-  - economy_shock: Economic disruption (0..1)
 
 ## Example Law Events
 

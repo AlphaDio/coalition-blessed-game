@@ -96,7 +96,6 @@ Successfully implemented a comprehensive Law Enactment system for the Coalition 
 - **unrest**: Populace volatility
 - **polarization**: Extremeness of positions
 - **legitimacy**: Perceived validity
-- **economy_shock**: Economic disruption
 
 ### ✅ Empire Stances
 - Calculated from ideological alignment (axis_vector dot product)

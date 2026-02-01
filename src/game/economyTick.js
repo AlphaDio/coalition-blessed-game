@@ -4,7 +4,7 @@
 
 import { getLogger } from '../modules/logger.js';
 import { DeterministicRNG } from '../modules/rng.js';
-import { COALITION_ECONOMY, MARKET_CONSTANTS } from './constants.js';
+import { MARKET_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS, RATIONING_CONSTANTS } from './constants.js';
 import {
   loadEconomyConfig,
   initializeMarket,
@@ -217,10 +217,19 @@ export function processEconomyTick(state) {
     const population = empire.stats?.population || 1;
     const empireMultiplier = empire.modifiers?.multiplication || 1.0;
     const productionMultiplier = (1 + (state.coalitionModifiers.empire_production_multiplier || 0)) * empireMultiplier;
+    
+    // Calculate effective production efficiency with modifiers
+    const baseEfficiency = PRODUCTION_EFFICIENCY_CONSTANTS.BASE_EFFICIENCY;
+    const efficiencyAdd = state.coalitionModifiers?.production_efficiency_add || 0;
+    const efficiencyMult = state.coalitionModifiers?.production_efficiency_mult || 1.0;
+    const effectiveEfficiency = Math.max(
+      PRODUCTION_EFFICIENCY_CONSTANTS.MIN_EFFICIENCY,
+      Math.min(PRODUCTION_EFFICIENCY_CONSTANTS.MAX_EFFICIENCY, (baseEfficiency + efficiencyAdd) * efficiencyMult)
+    );
 
      Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
        if (qty > 0) {
-          const modifiedQty = qty * population * productionMultiplier * (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
+          const modifiedQty = qty * population * productionMultiplier * effectiveEfficiency * (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
          const marketPrice = state.market[commodity]?.price || 1.0;
          const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT;
          
@@ -229,6 +238,15 @@ export function processEconomyTick(state) {
       });
    });
   
+  // Calculate effective rationing with modifiers (applies to all consumption)
+  const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
+  const rationingAdd = state.coalitionModifiers?.rationing_add || 0;
+  const rationingMult = state.coalitionModifiers?.rationing_mult || 1.0;
+  const effectiveRationing = Math.max(
+    RATIONING_CONSTANTS.MIN_RATIONING,
+    Math.min(RATIONING_CONSTANTS.MAX_RATIONING, (baseRationing + rationingAdd) * rationingMult)
+  );
+
   // Step 2: Emit buy orders for empire needs
   state.empires.forEach(empire => {
     if (!empire.needs || !empire.needs.per_pop) return;
@@ -239,7 +257,7 @@ export function processEconomyTick(state) {
     }
 
      Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
-        const totalNeeded = qtyPerPop * population;
+        const totalNeeded = qtyPerPop * population * effectiveRationing;
         if (totalNeeded > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
           const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM;
@@ -255,7 +273,7 @@ export function processEconomyTick(state) {
     const population = empire.stats?.population || 0;
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
-        const totalWanted = qtyPerPop * population;
+        const totalWanted = qtyPerPop * population * effectiveRationing;
         if (totalWanted > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
           const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM;
@@ -280,7 +298,7 @@ export function processEconomyTick(state) {
     
        // Create buy orders for all army needs (no direct stockpile consumption)
        Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
-         const totalNeeded = qtyPerManpower * manpower;
+         const totalNeeded = qtyPerManpower * manpower * effectiveRationing;
          
          if (totalNeeded > 0) {
            const marketPrice = state.market[commodity]?.price || 1.0;
@@ -292,7 +310,7 @@ export function processEconomyTick(state) {
        
        // Create buy orders for all army wants (no direct stockpile consumption)
        Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-         const totalWanted = qtyPerManpower * manpower;
+         const totalWanted = qtyPerManpower * manpower * effectiveRationing;
          
          if (totalWanted > 0) {
            const marketPrice = state.market[commodity]?.price || 1.0;
@@ -517,7 +535,8 @@ export function processEconomyTick(state) {
           // Apply growth only when bank reaches threshold
           if (empire.stats.population_growth_bank >= MARKET_CONSTANTS.POPULATION_GROWTH_BANK_THRESHOLD) {
             const bankedGrowth = Math.floor(empire.stats.population_growth_bank);
-            empire.stats.population = Math.max(0, currentPopulation + bankedGrowth);
+            // Ensure population never goes below 1 to prevent division by zero and game breaks
+            empire.stats.population = Math.max(1, currentPopulation + bankedGrowth);
             empire.stats.population_growth_bank -= bankedGrowth;
           }
         }

@@ -30,7 +30,8 @@ function getLawProgressSpeedMultiplier(state) {
   const baseSpeed = 1.0;
   const modifierBonus = state.coalitionModifiers?.law_progress_speed || 0;
   const tempBonus = state.coalitionModifiers?.lawProgressBonus || 0;
-  return baseSpeed + modifierBonus + tempBonus;
+  const dynamicBonus = state.coalitionModifiers?.dynamic?.law_progress_speed_bonus || 0;
+  return baseSpeed + modifierBonus + tempBonus + dynamicBonus;
 }
 
 
@@ -357,15 +358,18 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
   
   // Calculate initial empire stances
   calculateEmpireStances(lawProcess, lawDef, state);
-  
+
   // Add to active processes
   state.lawProcesses.push(lawProcess);
-  
+
   const log = [
     `Law process started: ${lawDef.name}`,
     `Influence spent: ${influenceCost} (remaining: ${state.playerInfluence})`,
     `Phase: ${lawProcess.phase}`
   ];
+
+  // Apply immediate hero pressure when the law starts
+  applyHeroLawPressure(state, lawProcess, lawDef, log);
   
   return { success: true, log };
 }
@@ -620,6 +624,9 @@ export function resolveLawProcess(lawProcess, state, rng) {
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
     const logger = getLogger();
     log.push('\n>>> VOTING phase complete, enacting law...');
+
+    // Apply immediate hero pressure when the law is enacted
+    applyHeroLawPressure(state, lawProcess, lawDef, log);
 
     lawProcess.phase = 'ENACTED';
 
@@ -889,7 +896,8 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
   lawProcess.pendingEvent = null;
   state.activeEvent = null;
   
-  logger.info(`Law event choice processed: ${event.name} - choice ${choiceIndex}`);
+  // Log law event effects at info level
+  log.forEach(entry => logger.info(entry));
   
   return { success: true, log: filterLawLogs(log) };
 }

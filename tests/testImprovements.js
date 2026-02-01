@@ -30,7 +30,7 @@ state.empires = [
   createEmpire('empire1', 'Test Empire 1', 50, {}, {}, { 
     budget_credits: 50000,
     stability: 60,
-    stockpiles: { biomass: 100, super_alloys: 50, solid_ice: 80 }
+    stockpiles: { biomass: 100, super_alloys: 50, plasma_fuel: 80 }
   }),
   createEmpire('empire2', 'Test Empire 2', 60, {}, {}, {
     budget_credits: 30000,
@@ -213,7 +213,7 @@ console.log('=== Test 9: Production Outputs ===');
 // Restore stockpiles to ensure an improvement is ACTIVE
 state.empires[0].stockpiles = { 
   biomass: 1000, 
-  solid_ice: 1000, 
+  plasma_fuel: 1000, 
   super_alloys: 1000,
   rare_gases: 1000,
   genomes: 1000,
@@ -248,7 +248,7 @@ state2.improvements = initializeImprovementsState();
 state2.improvements.requests = getAllImprovementRequests();
 state2.empires = [createEmpire('empire1', 'Test Empire', 50, {}, {}, {
   budget_credits: 50000,
-  stockpiles: { biomass: 100, super_alloys: 50, solid_ice: 80 }
+  stockpiles: { biomass: 100, super_alloys: 50, plasma_fuel: 80 }
  })];
 state2.coalitionEconomy.requisition = 1000;
 

@@ -7,6 +7,7 @@ import { getEventTitle, hasValidChoices } from '../utils/events.js';
 import { handleTechEventChoice } from './technology.js';
 import { boostScourgePredictionConfidence } from './scourgePrediction.js';
 import { buildHeroRecruitmentEvent, handleHeroRecruitmentChoice } from './heroes.js';
+import { handleMissionEventChoice } from './scourgeMissions.js';
 
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
@@ -133,6 +134,12 @@ export function handleEventChoice(state, eventId, choiceIndex) {
 
   if (event.scope === 'HERO_RECRUIT') {
     return handleHeroRecruitmentChoice(state, event, choiceIndex);
+  }
+
+  if (event.scope === 'SCOURGE_MISSION') {
+    const result = handleMissionEventChoice(state, event, choiceIndex);
+    state.activeEvent = null;
+    return result;
   }
   
   // Get resolved context for expanding effect targets
@@ -305,6 +312,9 @@ export function handleEventChoice(state, eventId, choiceIndex) {
   }
   
   state.activeEvent = null;
+  
+  // Log event choice effects at info level
+  log.forEach(entry => logger.info(entry));
   
   return { success: true, log };
 }

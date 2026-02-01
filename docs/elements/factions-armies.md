@@ -18,7 +18,7 @@ Industrial powerhouse spanning multiple star systems with advanced manufacturing
   - rare_gases: 0.005 units
 - **Needs per population**:
   - biomass: 0.05
-  - solid_ice: 0.03
+  - plasma_fuel: 0.03
 - **Wants per population**:
   - nano_machines: 0.0005
   - quantum_circuits: 0.0003
@@ -54,7 +54,7 @@ Biosphere engineers and agricultural supply hub focused on organic development.
   - genomes: 0.015 units
 - **Needs per population**:
   - super_alloys: 0.05
-  - solid_ice: 0.08
+  - plasma_fuel: 0.08
 - **Wants per population**:
   - psycho_implants: 0.0008
   - ancient_relics: 0.0002
@@ -74,7 +74,7 @@ Hyperspace crossroads with strategic military reach and advanced technology.
 - **Traits**: maritime
 - **Tags**: Maritime, Republic, Militaristic
 - **Production per tick**:
-  - solid_ice: 0.012 units
+  - plasma_fuel: 0.012 units
   - psycho_implants: 0.016 units
 - **Needs per population**:
   - biomass: 0.12
@@ -126,7 +126,7 @@ Hive-mind collective with massive biological throughput and unified consciousnes
   - ancient_relics: 0.002 units
 - **Needs per population**:
   - biomass: 0.025
-  - solid_ice: 0.002
+  - plasma_fuel: 0.002
 - **Wants per population**:
   - psycho_implants: 0.0001
   - nano_machines: 0.0005

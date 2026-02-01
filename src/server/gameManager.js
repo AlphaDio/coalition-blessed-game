@@ -10,9 +10,12 @@ import { DeterministicRNG } from '../modules/rng.js';
 import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
 import { handleEventChoice } from '../game/events.js';
+import { assignInitialHeroes } from '../game/heroes.js';
 import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
+import { activateEmergencyPower } from '../game/emergencyPowers.js';
+import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -69,6 +72,10 @@ export class GameManager {
     this.initializeImprovementsState();
     this.applyLawSystemDefaults(true);
 
+    // Assign initial heroes to each empire
+    const heroRng = new DeterministicRNG(seed);
+    assignInitialHeroes(this.state, heroRng.random.bind(heroRng));
+
     logger.debug(`Game initialized with seed: ${seed}`);
   }
 
@@ -88,9 +95,9 @@ export class GameManager {
       // Coalition economy now generates requisition from empire consumption
       // and credits from the allowance pool
       this.state.coalitionEconomy = {
-        requisition: 500,
-        treasury_credits: 10000,
-        allowance_credits: 1000
+        requisition: GAME_INIT_CONSTANTS.INITIAL_REQUISITION,
+        treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
+        allowance_credits: GAME_INIT_CONSTANTS.INITIAL_ALLOWANCE_CREDITS
       };
 
       logger.debug(`Economy initialized: ${commodities.length} commodities`);
@@ -105,7 +112,7 @@ export class GameManager {
   initializeImprovementsState() {
     try {
       this.state.improvements = initializeImprovementsState();
-      const improvementRng = new DeterministicRNG(this.state.rngSeed + 1000);
+      const improvementRng = new DeterministicRNG(this.state.rngSeed + GAME_INIT_CONSTANTS.RNG_OFFSET_IMPROVEMENTS);
       this.state.improvements.requests = generateImprovementSuggestions(
         this.state,
         improvementRng.random.bind(improvementRng)
@@ -140,15 +147,15 @@ export class GameManager {
         'Equal Council Votes',
         'equal_council',
         {
-          base_votes_per_empire: 1,
-          quorum_threshold: 0.5,
-          pass_threshold: 0.5
+          base_votes_per_empire: GAME_INIT_CONSTANTS.DEFAULT_BASE_VOTES_PER_EMPIRE,
+          quorum_threshold: GAME_INIT_CONSTANTS.DEFAULT_QUORUM_THRESHOLD,
+          pass_threshold: GAME_INIT_CONSTANTS.DEFAULT_PASS_THRESHOLD
         }
       );
     }
 
     if (force || typeof this.state.playerInfluence !== 'number') {
-      this.state.playerInfluence = 100;
+      this.state.playerInfluence = GAME_INIT_CONSTANTS.INITIAL_PLAYER_INFLUENCE;
     }
     if (force || typeof this.state.influenceProgress !== 'number') {
       this.state.influenceProgress = 0;
@@ -320,6 +327,33 @@ export class GameManager {
   }
 
   /**
+   * Activate emergency power
+   */
+  activateEmergencyPower(powerId) {
+    try {
+      const result = activateEmergencyPower(this.state, powerId);
+      if (result.success) {
+        this.notifyStateChange();
+      }
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set mission slider value
+   */
+  setMissionSlider(value) {
+    if (!MISSION_SLIDER_VALUES.includes(value)) {
+      return { success: false, error: `Invalid mission slider value. Allowed: ${MISSION_SLIDER_VALUES.join(', ')}` };
+    }
+    this.state.missionSlider = value;
+    this.notifyStateChange();
+    return { success: true };
+  }
+
+  /**
    * Manually advance one turn
    */
   advanceTurnManually() {
@@ -375,7 +409,10 @@ export class GameManager {
     };
 
     const gameSpeed = this.state.gameSpeed || 1;
-    const interval = Math.max(100, Math.min(10000, (2000) / gameSpeed)); // Min 100ms, max 10s
+    const interval = Math.max(
+      REALTIME_CONSTANTS.MIN_TICK_INTERVAL,
+      Math.min(REALTIME_CONSTANTS.MAX_TICK_INTERVAL, REALTIME_CONSTANTS.BASE_TICK_INTERVAL / gameSpeed)
+    );
     this.gameLoopInterval = setInterval(tick, interval);
     logger.debug(`Game loop started with interval ${interval}ms (speed: ${gameSpeed}x)`);
   }

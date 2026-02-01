@@ -580,24 +580,23 @@ const RESOURCE_BRANCH = [
      }
    ),
 
-   
-  //  createTieredImprovementRequest(
-  //    'mycellium_grove',
-  //    'Mycellium Grove',
-  //    'Self-sustaining mycellium colony producing organic biomass',
-  //    1,
-  //    'resource',
-  //    {
-  //      suppliesCost: 60,
-  //      build: 60,
-  //      capacity: 2,
-  //      sustainmentCost: { genomes: 1 },
-  //      productionOutputs: { genomes: 3 },
-  //      modifiers: {},
-  //      tags: ['resource', 'passive', 'biologic'],
-  //      requisitionUpkeep: 1
-  //    }
-  //  ),
+   createTieredImprovementRequest(
+     'mycellium_grove',
+     'Mycellium Grove',
+     'Self-sustaining fungal colony cultivating organic biomass and genetic material through symbiotic growth',
+     1,
+     'resource',
+     {
+       suppliesCost: 75,
+       build: 70,
+       capacity: 1,
+       sustainmentCost: { },
+       productionOutputs: { biomass: 0.04, genomes: 0.02 },
+       modifiers: {},
+       tags: ['resource', 'passive', 'biologic', 'organic'],
+       requisitionUpkeep: 1
+     }
+   ),
 
    createTieredImprovementRequest(
      'nebulae_mining_initiatives',

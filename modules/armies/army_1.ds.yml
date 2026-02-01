@@ -33,7 +33,7 @@ declares:
     demands:
       needs:
         super_alloys: 0.002
-        solid_ice: 0.0015
+        plasma_fuel: 0.0015
       wants:
         rare_gases: 0.001
     signatureCommodity: super_alloys

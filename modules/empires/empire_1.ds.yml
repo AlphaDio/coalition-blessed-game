@@ -36,11 +36,11 @@ declares:
       production:
         outputs_per_tick:
           super_alloys: 0.05
-          rare_gases: 0.005
+          rare_gases: 0.01
       needs:
         per_pop:
           biomass: 0.05
-          solid_ice: 0.03
+          plasma_fuel: 0.03
       wants:
         per_pop:
           nano_machines: 0.0005

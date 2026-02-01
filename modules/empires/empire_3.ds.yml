@@ -35,7 +35,7 @@ declares:
       tech_rate_bonus: 0.30
       production:
         outputs_per_tick:
-          solid_ice: 0.0625
+          plasma_fuel: 0.0625
           psycho_implants: 0.0005
       needs:
         per_pop:

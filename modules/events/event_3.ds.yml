@@ -38,5 +38,4 @@ declares:
         effects:
           empireApproval:
             "@all": -3
-          coalitionCohesion: 5
 

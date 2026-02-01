@@ -17,8 +17,7 @@ const HERO_STATUS = {
 const HERO_CONSTANTS = {
   HEAT_BASE: 2.0,
   GRIEVANCE_BASE: 1.2,
-  UNREST_THRESHOLD: 0.35,
-  UNREST_SPAN: 0.65,
+  // Unrest now acts as a magnifier (0..1) rather than a threshold gate.
   HEAT_DECAY_GOOD: 0.6,
   HEAT_DECAY_BAD: 0.2,
   GRIEVANCE_DECAY: 0.08,
@@ -130,14 +129,12 @@ export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
   const logger = getLogger();
 
   const lawValues = getLawValues(lawDef);
-  const unrest = lawProcess.meters?.unrest || 0;
+  const unrest = clamp(lawProcess.meters?.unrest || 0, 0, 1);
   const legitimacy = lawProcess.meters?.legitimacy || 0;
-  const unrestPressure = clamp((unrest - HERO_CONSTANTS.UNREST_THRESHOLD) / HERO_CONSTANTS.UNREST_SPAN, 0, 1);
+  const unrestPressure = unrest;
   const legitimacyDampener = 1 - (legitimacy * 0.7);
 
-  if (unrestPressure <= 0) {
-    return;
-  }
+  if (unrestPressure <= 0) return;
 
   let totalHeatDelta = 0;
   let totalGrievanceDelta = 0;
@@ -449,4 +446,58 @@ export function handleHeroRecruitmentChoice(state, event, choiceIndex, rng = Mat
   const log = [`Hero recruited: ${hero.name} for ${empire.name}.`];
   logger.info(log[0]);
   return { success: true, log };
+}
+
+/**
+ * Assign initial heroes to each empire at game start.
+ * Picks one random hero from the roster for each empire.
+ * @param {Object} state - Game state with empires and heroRoster
+ * @param {Function} rng - Random number generator
+ * @returns {Array} Log of assigned heroes
+ */
+export function assignInitialHeroes(state, rng = Math.random) {
+  const logger = getLogger();
+  const log = [];
+
+  if (!state.empires || state.empires.length === 0) {
+    logger.warn('No empires found - skipping initial hero assignment');
+    return log;
+  }
+
+  const roster = Array.isArray(state.heroRoster) ? state.heroRoster : [];
+  if (roster.length === 0) {
+    logger.warn('Hero roster is empty - skipping initial hero assignment');
+    return log;
+  }
+
+  state.heroes = state.heroes || [];
+
+  for (const empire of state.empires) {
+    // Skip if empire already has a hero
+    if (state.heroes.some(hero => getHeroEmpireId(hero) === empire.id)) {
+      continue;
+    }
+
+    // Find available heroes for this empire
+    const available = roster.filter(def =>
+      def.empireId === empire.id &&
+      !state.heroes.some(hero => hero.id === def.id)
+    );
+
+    if (available.length === 0) {
+      logger.warn(`No available heroes for empire ${empire.id}`);
+      continue;
+    }
+
+    // Pick a random hero from available candidates
+    const candidate = available[Math.floor(rng() * available.length)];
+    const hero = createHeroFromCandidate(state, empire, candidate, rng);
+    state.heroes.push(hero);
+
+    const msg = `Initial hero assigned: ${hero.name} for ${empire.name}`;
+    log.push(msg);
+    logger.info(msg);
+  }
+
+  return log;
 }
