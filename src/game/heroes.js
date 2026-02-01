@@ -69,17 +69,23 @@ export function computeAlignmentScore(valuesA = {}, valuesB = {}) {
   const axes = new Set([...Object.keys(valuesA || {}), ...Object.keys(valuesB || {})]);
   if (axes.size === 0) return 0;
 
-  let totalScore = 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
   axes.forEach(axis => {
     const a = Number.isFinite(valuesA[axis]) ? valuesA[axis] : 0;
     const b = Number.isFinite(valuesB[axis]) ? valuesB[axis] : 0;
-    const diff = Math.abs(a - b); // 0..2
-    const similarity = 1 - Math.min(1, diff / 2);
-    const score = (similarity * 2) - 1; // -1..1
-    totalScore += score;
+    dot += a * b;
+    normA += a * a;
+    normB += b * b;
   });
 
-  return totalScore / axes.size;
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  if (denom <= 0) return 0;
+
+  // Clamp to [-1, 1] in case of floating point drift.
+  return clamp(dot / denom, -1, 1);
 }
 
 export function getPopularityCap(hero) {
@@ -147,7 +153,7 @@ export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
   const lawValues = getLawValues(lawDef);
   const unrest = clamp(lawProcess.meters?.unrest || 0, 0, 1);
   const legitimacy = lawProcess.meters?.legitimacy || 0;
-  const unrestPressure = unrest;
+  const unrestPressure = Math.max(0.1, unrest);
   const legitimacyDampener = 1 - (legitimacy * 0.7);
 
   if (unrestPressure <= 0) return;
