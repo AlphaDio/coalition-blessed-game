@@ -31,6 +31,17 @@ export const MILLI_PER_UNIT_BY_TIER = {
 export const BATCH_SIZE_UNITS = 100;
 export const BATCH_BONUS_MILLI = 0;
 
+function createDefaultProcurement() {
+  const thetaPresets = {};
+  for (const commodityId of Object.keys(COMMODITY_DEFINITIONS)) {
+    thetaPresets[commodityId] = 'Balanced';
+  }
+  return {
+    spend_throttle: 0.8,
+    theta_preset_by_commodity: thetaPresets
+  };
+}
+
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
   return Object.entries(consumption).map(([commodity, rule]) => ({
@@ -528,6 +539,10 @@ export function createGameState(seed = 0) {
       requisition: 500, // Starting requisition for purchasing improvements
       treasury_credits: 10000, // Coalition treasury (long-term storage)
       allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
+      bank: 0,
+      stockpile_bank: {},
+      stockpile_ready: {},
+      procurement: createDefaultProcurement()
       // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
       // and credits from the allowance pool (up to allowance cap per tick)
       // Modifiable by multiplicativeShare and additiveShare modifiers

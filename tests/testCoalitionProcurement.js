@@ -104,9 +104,10 @@ function testSupplyConversion() {
    // Check results
    // biomass: 1500 >= BANK_THRESHOLD(1000), move to ready
    // super_alloys: 500 < BANK_THRESHOLD(1000), stays in bank
-   // From ready: convert 1500 biomass (15 batches of 100), gain 1500 * 10 = 15000 bank
-   // Initial bank was 0, total = 15000 bank (requisition stays at 500)
-   const expectedBank = 15000;
+   // From ready: convert 1500 biomass (15 batches of 100), base gain 1500 * 3 = 4500 bank
+   // Apply diminishing returns at 500 requisition: 1000 / (1000 + 500) = 0.666..., gain 3000
+   // Initial bank was 0, total = 3000 bank (requisition stays at 500)
+   const expectedBank = 3000;
    if (coalitionEconomy.bank !== expectedBank) {
      throw new Error(`Expected ${expectedBank} bank, got ${coalitionEconomy.bank}`);
    }
@@ -126,25 +127,25 @@ function testBankRollover() {
     const coalitionEconomy = state.coalitionEconomy;
     coalitionEconomy.requisition = 500;
 
-    // Add enough bank to trigger rollover (BANK_ROLLOVER_THRESHOLD = 50000)
-    coalitionEconomy.bank = 60000; // Should trigger 1 rollover
+    // Add enough bank to trigger rollover (BANK_ROLLOVER_THRESHOLD = 75000)
+    coalitionEconomy.bank = 80000; // Should trigger 1 rollover
 
     const config = loadEconomyConfig();
 
     // Execute rollover
     const added = processBankRollover(coalitionEconomy);
 
-    // Should have added 10 requisition (ROLLOVER_REQUISITION_MULTIPLIER = 10)
-    if (added !== 10) {
-        throw new Error(`Expected 10 requisition added, got ${added}`);
+    // Should have added 24 requisition (ROLLOVER_REQUISITION_MULTIPLIER = 24)
+    if (added !== 24) {
+        throw new Error(`Expected 24 requisition added, got ${added}`);
     }
 
-    if (coalitionEconomy.requisition !== 510) {
-        throw new Error(`Expected 510 requisition, got ${coalitionEconomy.requisition}`);
+    if (coalitionEconomy.requisition !== 524) {
+        throw new Error(`Expected 524 requisition, got ${coalitionEconomy.requisition}`);
     }
 
-    if (coalitionEconomy.bank !== 10000) { // 60000 - 50000
-        throw new Error(`Expected 10000 bank remaining, got ${coalitionEconomy.bank}`);
+    if (coalitionEconomy.bank !== 5000) { // 80000 - 75000
+        throw new Error(`Expected 5000 bank remaining, got ${coalitionEconomy.bank}`);
     }
 
     console.log('✓ Bank rollover test passed');
