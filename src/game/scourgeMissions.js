@@ -42,19 +42,30 @@ export function applyMissionSliderEffects(state, log = []) {
 
   if (slider > 0) {
     const requisition = state.coalitionEconomy.requisition || 0;
-    const diverted = requisition * (slider / 100);
-    state.coalitionEconomy.requisition = Math.max(0, requisition - diverted);
-    const meterGain = diverted * SCOURGE_MISSION_CONSTANTS.MISSION_METER_PER_REQUISITION;
-    const prevMeter = state.missionMeter || 0;
-    state.missionMeter = clampMeter(prevMeter + meterGain);
-    if (meterGain > 0.001) {
-      log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req)`);
+    // Only divert from positive requisition - negative requisition means nothing to divert
+    if (requisition > 0) {
+      const diverted = requisition * (slider / 100);
+      state.coalitionEconomy.requisition = requisition - diverted;
+      const meterGain = diverted * SCOURGE_MISSION_CONSTANTS.MISSION_METER_PER_REQUISITION;
+      const prevMeter = state.missionMeter || 0;
+      state.missionMeter = clampMeter(prevMeter + meterGain);
+      if (meterGain > 0.001) {
+        log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req)`);
+      }
     }
+    // If requisition is zero or negative, no diversion happens (nothing to divert)
   } else if (slider === -1) {
     // Negative slider: grants extra requisition but increases threat and reduces glory
+    // Only grant bonus if requisition is positive (no bonus when at zero or negative)
     const requisition = state.coalitionEconomy.requisition || 0;
-    const bonus = requisition * 0.01; // 1% bonus (matches slider value semantics)
-    state.coalitionEconomy.requisition = requisition + bonus;
+    const bonus = requisition > 0 ? requisition * 0.01 : 0; // 1% bonus only from positive requisition
+    if (bonus > 0) {
+      state.coalitionEconomy.requisition = requisition + bonus;
+      log.push(`Mission budget emergency: +${bonus.toFixed(2)} req, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
+    } else {
+      // Still apply threat/glory penalties even without bonus (cost of desperation)
+      log.push(`Mission budget emergency: No req to divert, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
+    }
     state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE);
     const taxValue = SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL - 1.0;
     applyTimedModifier(
@@ -63,7 +74,6 @@ export function applyMissionSliderEffects(state, log = []) {
       taxValue,
       SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_TAX_DURATION
     );
-    log.push(`Mission budget emergency: +${bonus.toFixed(2)} req, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
   }
 }
 
