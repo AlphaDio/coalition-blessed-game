@@ -362,14 +362,14 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
   // Add to active processes
   state.lawProcesses.push(lawProcess);
 
-  // Apply immediate hero pressure when the law starts
-  applyHeroLawPressure(state, lawProcess, lawDef, log);
-  
   const log = [
     `Law process started: ${lawDef.name}`,
     `Influence spent: ${influenceCost} (remaining: ${state.playerInfluence})`,
     `Phase: ${lawProcess.phase}`
   ];
+
+  // Apply immediate hero pressure when the law starts
+  applyHeroLawPressure(state, lawProcess, lawDef, log);
   
   return { success: true, log };
 }

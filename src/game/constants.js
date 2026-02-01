@@ -202,6 +202,9 @@ export const SCOURGE_MODIFIER_CONSTANTS = {
   LAW_SPEED_PER_SEVERITY: -0.03       // -3% coalition law enact speed per severity
 };
 
+// Mission slider allowed values - centralized for server validation, mission logic, and UI
+export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
+
 export const SCOURGE_MISSION_CONSTANTS = {
   THREAT_THRESHOLD_1: 35,
   THREAT_THRESHOLD_2: 60,

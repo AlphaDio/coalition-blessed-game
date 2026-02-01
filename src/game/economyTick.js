@@ -4,7 +4,7 @@
 
 import { getLogger } from '../modules/logger.js';
 import { DeterministicRNG } from '../modules/rng.js';
-import { COALITION_ECONOMY, MARKET_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS, RATIONING_CONSTANTS } from './constants.js';
+import { MARKET_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS, RATIONING_CONSTANTS } from './constants.js';
 import {
   loadEconomyConfig,
   initializeMarket,

@@ -1,10 +1,7 @@
-import { clampStat } from './cohesion.js';
-import { SCOURGE_MISSION_CONSTANTS, SCOURGE_MODIFIER_CONSTANTS } from './constants.js';
+import { SCOURGE_MISSION_CONSTANTS, SCOURGE_MODIFIER_CONSTANTS, MISSION_SLIDER_VALUES } from './constants.js';
 import { applyOrUpdateModifier, adjustModifierSeverity, selectMissionModifier, createModifierFromTemplate } from './scourgeModifiers.js';
 import { getScourgeModifierTemplates } from './scourgeModifiers.js';
 import { getLogger } from '../modules/logger.js';
-
-const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
 
 const PRE_ATTACK_EFFECTS = {
   disrupt: { threatDelta: -3, severityDelta: -1, cost: 60 },
@@ -53,9 +50,10 @@ export function applyMissionSliderEffects(state, log = []) {
     if (meterGain > 0.001) {
       log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req)`);
     }
-  } else if (slider === -10) {
+  } else if (slider === -1) {
+    // Negative slider: grants extra requisition but increases threat and reduces glory
     const requisition = state.coalitionEconomy.requisition || 0;
-    const bonus = requisition * 0.1;
+    const bonus = requisition * 0.01; // 1% bonus (matches slider value semantics)
     state.coalitionEconomy.requisition = requisition + bonus;
     state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE);
     const taxValue = SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL - 1.0;

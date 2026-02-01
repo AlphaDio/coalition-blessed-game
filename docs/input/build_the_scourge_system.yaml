@@ -44,9 +44,9 @@ state:
 
     mission_slider:
       type: "enum"
-      values: [-10, 0, 10, 25, 50]
+      values: [-1, 0, 1, 2, 5]
       default: 0
-      description: "Percent of Requisition diverted to Mission Meter. -10 grants extra Requisition but increases Threat and reduces Glory."
+      description: "Percent of Requisition diverted to Mission Meter. -1 grants extra Requisition but increases Threat and reduces Glory."
 
     mission_meter:
       type: "meter"
@@ -368,7 +368,7 @@ actions:
           effects: "function.scale_effects_by_threat(emergency_powers.catalog[{power_id}].effects, coalition.threat)"
 
 # =============================================================================
-# 7) MISSION SLIDER + METER (INCLUDES -10 OPTION)
+# 7) MISSION SLIDER + METER (INCLUDES -1 OPTION)
 # =============================================================================
 systems:
   mission_slider_and_meter:
@@ -379,12 +379,12 @@ systems:
 
 effects:
   mission_apply_slider_effects:
-    description: "On each tick, either divert requisition to mission meter or grant extra requisition at -10 with penalties."
+    description: "On each tick, either divert requisition to mission meter or grant extra requisition at -1 with penalties."
     params:
       slider: "coalition.mission_slider"
     branch:
       when_slider_positive:
-        if: "{slider} in [10,25,50]"
+        if: "{slider} in [1,2,5]"
         apply:
           - op: "currency.divert_percent"
             from: "coalition.requisition"
@@ -395,11 +395,11 @@ effects:
         if: "{slider} == 0"
         apply: []
       when_slider_negative:
-        if: "{slider} == -10"
+        if: "{slider} == -1"
         apply:
           - op: "currency.add_percent"
             target: "coalition.requisition"
-            percent: 10
+            percent: 1
           - op: "meter.add"
             target: "coalition.threat"
             value: "tunable.mission_negative_threat_increase"
@@ -589,7 +589,7 @@ ui:
           - id: "mission_slider"
             type: "step_slider"
             label: "Mission Budget"
-            values: [-10, 0, 10, 25, 50]
+            values: [-1, 0, 1, 2, 5]
             bind: "coalition.mission_slider"
             help_ref: "help.mission_slider"
             render:
@@ -686,7 +686,7 @@ help:
   mission_slider:
     text:
       - "Positive values divert Requisition into Mission Meter over time."
-      - "-10 grants extra Requisition now, but increases Threat and applies a temporary Glory gain tax."
+      - "-1 grants extra Requisition now, but increases Threat and applies a temporary Glory gain tax."
       - "When Mission Meter fills, a Deep Mission event appears (secondary Glory source)."
   emergency_powers:
     text:

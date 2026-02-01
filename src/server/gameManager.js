@@ -15,7 +15,7 @@ import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import { activateEmergencyPower } from '../game/emergencyPowers.js';
-import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS } from '../game/constants.js';
+import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -345,9 +345,8 @@ export class GameManager {
    * Set mission slider value
    */
   setMissionSlider(value) {
-    const allowed = [-1, 0, 1, 2, 5];
-    if (!allowed.includes(value)) {
-      return { success: false, error: 'Invalid mission slider value' };
+    if (!MISSION_SLIDER_VALUES.includes(value)) {
+      return { success: false, error: `Invalid mission slider value. Allowed: ${MISSION_SLIDER_VALUES.join(', ')}` };
     }
     this.state.missionSlider = value;
     this.notifyStateChange();
