@@ -184,10 +184,19 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   UNCERTAINTY_RANGE_HIGH: { min: 1, max: 3 }       // Narrow range
 };
 
+/**
+ * Consumption-to-requisition conversion and allowance system.
+ * Controls how empire consumption generates coalition requisition.
+ * @property {number} CREDITS_PER_REQUISITION - Conversion rate (1000 credits = 1 requisition)
+ * @property {number} COALITION_CONSUMPTION_SHARE_BASE - Coalition's share of consumption value (10%)
+ * @property {number} CONVERSION_REQUISITION_MULTIPLIER - Multiplier for requisition from consumption (100x)
+ * @property {number} ALLOWANCE_PER_TICK - Credits granted to coalition per tick (1000)
+ * @property {number} ALLOWANCE_CAP_TICKS - Maximum stored allowance in ticks worth (4)
+ */
 export const CONSUMPTION_REQUISITION_CONSTANTS = {
   CREDITS_PER_REQUISITION: 1000,                    // Conversion rate: 1000 credits = 1 requisition
   COALITION_CONSUMPTION_SHARE_BASE: 0.10,           // 10% - Base coalition share of consumption value
-  CONVERSION_REQUISITION_MULTIPLIER: 10,            // 10x - Multiplier for requisition from consumption
+  CONVERSION_REQUISITION_MULTIPLIER: 100,            // 100x - Multiplier for requisition from consumption
   ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
   ALLOWANCE_CAP_TICKS: 4                            // Maximum allowance (in ticks worth)
 };
