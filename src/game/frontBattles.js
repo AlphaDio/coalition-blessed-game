@@ -264,10 +264,10 @@ export function simulateBattleTick(front, worldState) {
   }
 
   const leftUnits = worldState.units
-    ? worldState.units.filter(unit => unit.armyId === leftArmy.id)
+    ? worldState.units.filter(unit => unit && unit.armyId === leftArmy.id)
     : [];
   const rightUnits = worldState.units
-    ? worldState.units.filter(unit => unit.armyId === rightArmy.id)
+    ? worldState.units.filter(unit => unit && unit.armyId === rightArmy.id)
     : [];
 
   if (leftUnits.length > 0) {

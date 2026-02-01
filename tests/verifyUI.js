@@ -5,10 +5,10 @@
  * Shows what would be displayed in the Active Fronts panel
  */
 
-import { createGameState } from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { startBattle, simulateBattleTick } from './src/game/frontBattles.js';
-import { refreshArmyAggregates } from './src/game/armyComposition.js';
+import { createGameState } from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { startBattle, simulateBattleTick } from '../src/game/frontBattles.js';
+import { refreshArmyAggregates } from '../src/game/armyComposition.js';
 
 
 // Initialize game state

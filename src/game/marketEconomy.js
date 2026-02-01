@@ -86,7 +86,7 @@ function getDefaultEconomyConfig() {
 /**
  * Create market state for a commodity
  */
-export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice = null) {
+export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice = null, priceRange = null) {
   const resolvedFloorPrice = floorPrice || initialPrice;
   return {
     commodity: commodityKey,
@@ -94,6 +94,7 @@ export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice =
     last_price: initialPrice,
     floor_price: resolvedFloorPrice,
     base_floor_price: resolvedFloorPrice,
+    price_range: priceRange || { min: initialPrice, max: initialPrice },
     demand_qty: 0,
     supply_qty: 0,
     buy_orders: [],
@@ -146,6 +147,7 @@ export function initializeMarket(commodities, rng = Math.random) {
     price_by_commodity: {},
     last_price_by_commodity: {},
     floor_price_by_commodity: {},
+    price_range_by_commodity: {},
     remaining_sell_offers_post_clear: []
   };
 
@@ -157,93 +159,19 @@ export function initializeMarket(commodities, rng = Math.random) {
     // Random initial price between 50% and 150% of floor for reasonable starting range
     const varianceFactor = 0.5 + rng() * 1.0; // 0.5 to 1.5
     const initialPrice = floorPrice * varianceFactor;
+    const priceRange = { min: floorPrice * 0.5, max: floorPrice * 1.5 };
 
-    const marketState = createMarketState(commodity.key, initialPrice, floorPrice);
+    const marketState = createMarketState(commodity.key, initialPrice, floorPrice, priceRange);
     market[commodity.key] = marketState;
 
     // Populate aggregate maps
     market.price_by_commodity[commodity.key] = initialPrice;
     market.last_price_by_commodity[commodity.key] = initialPrice;
     market.floor_price_by_commodity[commodity.key] = floorPrice;
+    market.price_range_by_commodity[commodity.key] = priceRange;
   });
 
   return market;
-}
-
-/**
- * Compute target price based on supply/demand ratio
- */
-export function computeTargetPrice(marketState, config) {
-  const { demand_qty, supply_qty, last_price } = marketState;
-  const { min_price, max_price, shortage_panic_cap } = config.pricing.params;
-  
-  if (supply_qty <= 0) {
-    // No supply - price spikes
-    return Math.min(max_price, last_price * shortage_panic_cap);
-  }
-  
-  const ratio = demand_qty / supply_qty;
-  const clampedRatio = Math.min(ratio, shortage_panic_cap);
-  
-  // Price moves proportionally to ratio (1.0 = balanced)
-  const targetPrice = last_price * clampedRatio;
-  
-  return Math.max(min_price, Math.min(max_price, targetPrice));
-}
-
-/**
- * Apply price smoothing and enforce floor price bounds
- */
-export function smoothPrice(marketState, targetPrice, config) {
-  const { smoothing_k } = config.pricing.params;
-  const smoothed = marketState.last_price * (1 - smoothing_k) + targetPrice * smoothing_k;
-  
-  // Enforce floor price bounds: 0% to 300% of floor price (0x to 3x)
-  // This allows prices to drop to zero (free) or rise up to 3x the floor
-  const floorPrice = marketState.floor_price || 1.0;
-  const minPrice = 0; // Allow prices to drop to zero
-  const maxPrice = floorPrice * 3.0; // Cap at 3x floor
-  
-  const boundedPrice = Math.max(minPrice, Math.min(maxPrice, smoothed));
-  
-  marketState.price = boundedPrice;
-  marketState.last_price = boundedPrice;
-  return boundedPrice;
-}
-
-/**
- * Get tier elasticity for a commodity
- */
-export function getTierElasticity(commodity, config) {
-  const tier = commodity.tier || 't1';
-  return config.pricing.tier_elasticity[tier] || 1.0;
-}
-
-/**
- * Update market prices for all commodities
- */
-export function updateMarketPrices(market, commodities, config) {
-  commodities.forEach(commodity => {
-    const marketState = market[commodity.key];
-    if (!marketState) return;
-
-    const targetPrice = computeTargetPrice(marketState, config);
-    const elasticity = getTierElasticity(commodity, config);
-
-    // Apply elasticity (higher elasticity = more price movement)
-    const adjustedTarget = marketState.last_price + (targetPrice - marketState.last_price) * elasticity;
-
-    smoothPrice(marketState, adjustedTarget, config);
-
-    // Update aggregate maps
-    market.price_by_commodity[commodity.key] = marketState.price;
-    market.last_price_by_commodity[commodity.key] = marketState.last_price;
-    market.floor_price_by_commodity[commodity.key] = marketState.floor_price;
-
-    // Update volatility index (simple: track price change magnitude)
-    const priceChange = Math.abs(marketState.price - marketState.last_price) / marketState.last_price;
-    marketState.volatility_index = marketState.volatility_index * 0.9 + priceChange * 0.1;
-  });
 }
 
 /**
@@ -359,7 +287,8 @@ export function executeMarketClearing(state, buyOrders, sellOffers) {
   // Clear market for each commodity
   for (const commodityKey of Object.keys(market)) {
     if (commodityKey === 'price_by_commodity' || commodityKey === 'last_price_by_commodity' ||
-        commodityKey === 'floor_price_by_commodity' || commodityKey === 'remaining_sell_offers_post_clear') {
+        commodityKey === 'floor_price_by_commodity' || commodityKey === 'price_range_by_commodity' ||
+        commodityKey === 'remaining_sell_offers_post_clear') {
       continue;
     }
 

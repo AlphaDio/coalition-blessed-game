@@ -6,17 +6,17 @@
  * to simulate various long-running scenarios efficiently
  */
 
-import { createGameState, createArmy, createEmpire } from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { advanceTurn } from './src/game/turn.js';
-import { refreshArmyAggregates } from './src/game/armyComposition.js';
-import { DeterministicRNG } from './src/modules/rng.js';
-import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
-import { createPowerSystemPolicy } from './src/game/types.js';
+import { createGameState, createArmy, createEmpire } from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { advanceTurn } from '../src/game/turn.js';
+import { refreshArmyAggregates } from '../src/game/armyComposition.js';
+import { DeterministicRNG } from '../src/modules/rng.js';
+import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
+import { createLawEvent, getAllLawEvents } from '../src/game/lawEventTemplates.js';
+import { createPowerSystemPolicy } from '../src/game/types.js';
 
-import { startLawProcess } from './src/game/lawProcessManager.js';
-import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { startLawProcess } from '../src/game/lawProcessManager.js';
+import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 // Initialize logger to suppress console output during tests
 initializeLogger({

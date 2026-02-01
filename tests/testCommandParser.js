@@ -2,9 +2,9 @@
 
 // Test script to verify the command parser functionality
 
-import { parseCommand } from './src/ui/commandParser.js';
-import { createGameState } from './src/game/types.js';
-import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
+import { parseCommand } from '../src/ui/commandParser.js';
+import { createGameState } from '../src/game/types.js';
+import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
 
 console.log('=== Command Parser Test ===\n');
 

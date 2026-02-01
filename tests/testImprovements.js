@@ -3,9 +3,9 @@
  * Validates deterministic behavior and proper integration
  */
 
-import { createGameState, createEmpire } from './src/game/types.js';
-import { initializeImprovementsState, getAllImprovementRequests, acceptImprovementRequest, cancelImprovement, processImprovementsTick } from './src/game/improvements/index.js';
-import { initializeLogger, LogLevel } from './src/modules/logger.js';
+import { createGameState, createEmpire } from '../src/game/types.js';
+import { initializeImprovementsState, getAllImprovementRequests, acceptImprovementRequest, cancelImprovement, processImprovementsTick } from '../src/game/improvements/index.js';
+import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 // Initialize logger with minimal output
 initializeLogger({

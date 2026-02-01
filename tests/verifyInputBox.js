@@ -2,7 +2,7 @@
 
 // Verification script to show the new UI structure with input box
 
-import { createUI } from './src/ui/renderer.js';
+import { createUI } from '../src/ui/renderer.js';
 import blessed from 'blessed';
 
 console.log('Creating UI to verify input box integration...\n');
