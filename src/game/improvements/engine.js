@@ -9,7 +9,7 @@
  */
 
 import { getLogger } from '../../modules/logger.js';
-import { IMPROVEMENTS_CONSTANTS } from '../constants.js';
+import { IMPROVEMENTS_CONSTANTS, PRODUCTION_EFFICIENCY_CONSTANTS } from '../constants.js';
 import { createArmy } from '../types.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
@@ -601,6 +601,15 @@ export function processImprovementProduction(state, improvement) {
   if (!empire) return { log };
 
   const population = empire.stats?.population || 1;
+  
+  // Calculate effective production efficiency with modifiers
+  const baseEfficiency = PRODUCTION_EFFICIENCY_CONSTANTS.BASE_EFFICIENCY;
+  const efficiencyAdd = state.coalitionModifiers?.production_efficiency_add || 0;
+  const efficiencyMult = state.coalitionModifiers?.production_efficiency_mult || 1.0;
+  const effectiveEfficiency = Math.max(
+    PRODUCTION_EFFICIENCY_CONSTANTS.MIN_EFFICIENCY,
+    Math.min(PRODUCTION_EFFICIENCY_CONSTANTS.MAX_EFFICIENCY, (baseEfficiency + efficiencyAdd) * efficiencyMult)
+  );
 
   // Initialize production bank if needed
   if (!improvement.productionBank) {
@@ -609,9 +618,11 @@ export function processImprovementProduction(state, improvement) {
 
   // Process production outputs - accumulate in production bank
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
+    // Apply production efficiency to base quantity before scaling
+    const efficiencyAdjustedQty = qty * effectiveEfficiency;
     const scaledQty = commodity === 'requisition'
-      ? Math.floor(qty)
-      : Math.floor(qty * population);
+      ? Math.floor(efficiencyAdjustedQty)
+      : Math.floor(efficiencyAdjustedQty * population);
     if (scaledQty <= 0) continue;
 
     // Special handling for requisition - add directly to coalition economy (bypass bank)
@@ -768,8 +779,9 @@ export function applyImprovementModifiers(state) {
           : 1;
         const growthRate = baseGrowth * biologicBoost;
         if (growthRate !== 0) {
-          const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
-          empire.stats.population = Math.max(0, Math.floor(currentPopulation * (1 + growthRate)));
+          const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 1;
+          // Ensure population never goes below 1 to prevent division by zero and game breaks
+          empire.stats.population = Math.max(1, Math.floor(currentPopulation * (1 + growthRate)));
         }
       } else if (stat === 'army_fervor') {
         // Apply fervor bonus to all armies of this empire (gradual boost per tick)

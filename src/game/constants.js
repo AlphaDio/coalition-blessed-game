@@ -85,11 +85,42 @@ export const EVENT_CONSTANTS = {
 };
 
 export const REALTIME_CONSTANTS = {
-  BASE_TICK_INTERVAL: 2500, // milliseconds per turn at normal speed (5 seconds)
+  BASE_TICK_INTERVAL: 2000, // milliseconds per turn at normal speed
   MIN_SPEED: 0.5, // slowest speed multiplier
   MAX_SPEED: 3, // fastest speed multiplier
   SPEED_STEP: 0.5, // speed adjustment increment
-  MIN_TICK_INTERVAL: 500 // minimum interval to prevent performance issues
+  MIN_TICK_INTERVAL: 100, // minimum interval to prevent performance issues
+  MAX_TICK_INTERVAL: 10000 // maximum interval cap
+};
+
+export const PRODUCTION_EFFICIENCY_CONSTANTS = {
+  BASE_EFFICIENCY: 0.01,              // 1% base efficiency (99% nerf) - effectively divides production by 100
+  MIN_EFFICIENCY: 0.001,              // Minimum efficiency floor (0.1%)
+  MAX_EFFICIENCY: 1.0                 // Maximum efficiency cap (100%)
+};
+
+export const RATIONING_CONSTANTS = {
+  BASE_RATIONING: 0.01,               // 1% base rationing (99% nerf) - effectively divides consumption by 100
+  MIN_RATIONING: 0.001,               // Minimum rationing floor (0.1%)
+  MAX_RATIONING: 1.0                  // Maximum rationing cap (100%)
+};
+
+export const GAME_INIT_CONSTANTS = {
+  // Coalition economy starting values
+  INITIAL_REQUISITION: 500,
+  INITIAL_TREASURY_CREDITS: 10000,
+  INITIAL_ALLOWANCE_CREDITS: 1000,
+  
+  // Player starting values
+  INITIAL_PLAYER_INFLUENCE: 100,
+  
+  // Voting system defaults
+  DEFAULT_BASE_VOTES_PER_EMPIRE: 1,
+  DEFAULT_QUORUM_THRESHOLD: 0.5,
+  DEFAULT_PASS_THRESHOLD: 0.5,
+  
+  // RNG seed offsets for deterministic subsystems
+  RNG_OFFSET_IMPROVEMENTS: 1000
 };
 
 export const VALUE_AXES = {
@@ -159,6 +190,16 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
   CONVERSION_REQUISITION_MULTIPLIER: 10,            // 10x - Multiplier for requisition from consumption
   ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
   ALLOWANCE_CAP_TICKS: 4                            // Maximum allowance (in ticks worth)
+};
+
+export const SCOURGE_MODIFIER_CONSTANTS = {
+  MIN_SEVERITY: 1,                    // Minimum severity for modifiers (also starting value)
+  // Note: No max severity - modifiers scale infinitely
+  
+  // Effect scaling per severity level (tuned for infinite scaling)
+  ATTACK_POWER_PER_SEVERITY: 0.04,    // +4% Scourge attack power per severity 8%->4%
+  RECOVERY_RATE_PER_SEVERITY: 0.05,   // +5% Scourge recovery rate per severity 10%->5%
+  LAW_SPEED_PER_SEVERITY: -0.03       // -3% coalition law enact speed per severity
 };
 
 export const SCOURGE_MISSION_CONSTANTS = {

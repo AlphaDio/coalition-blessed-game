@@ -435,7 +435,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const targetEmpire = state.empires.find(e => e.id === state.scourgeTargetEmpireId);
     if (targetEmpire) {
       const prevPop = targetEmpire.stats.population;
-      targetEmpire.stats.population = Math.floor(targetEmpire.stats.population * 0.9);
+      // Ensure population never goes below 1 to prevent division by zero and game breaks
+      targetEmpire.stats.population = Math.max(1, Math.floor(targetEmpire.stats.population * 0.9));
       const popLoss = prevPop - targetEmpire.stats.population;
       logger.debug(`Scourge battle: ${targetEmpire.name} population ${prevPop} -> ${targetEmpire.stats.population} (-${popLoss})`);
     }

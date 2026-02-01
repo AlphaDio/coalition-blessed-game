@@ -1,10 +1,10 @@
 import { clampStat } from './cohesion.js';
-import { SCOURGE_MISSION_CONSTANTS } from './constants.js';
+import { SCOURGE_MISSION_CONSTANTS, SCOURGE_MODIFIER_CONSTANTS } from './constants.js';
 import { applyOrUpdateModifier, adjustModifierSeverity, selectMissionModifier, createModifierFromTemplate } from './scourgeModifiers.js';
 import { getScourgeModifierTemplates } from './scourgeModifiers.js';
 import { getLogger } from '../modules/logger.js';
 
-const MISSION_SLIDER_VALUES = [-0.1, 0, 0.1, 0.2, 0.5];
+const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
 
 const PRE_ATTACK_EFFECTS = {
   disrupt: { threatDelta: -3, severityDelta: -1, cost: 60 },
@@ -234,7 +234,7 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       } else {
         const template = getScourgeModifierTemplates()[0];
         const sabotage = createModifierFromTemplate(template, 1, 'n_attacks', 'deep_mission');
-        sabotage.effects = [{ target: 'scourge.attack_power', op: 'mul', valuePerSeverity: -0.08, when: 'next_attack_only' }];
+        sabotage.effects = [{ target: 'scourge.attack_power', op: 'mul', valuePerSeverity: -SCOURGE_MODIFIER_CONSTANTS.ATTACK_POWER_PER_SEVERITY, when: 'next_attack_only' }];
         applyOrUpdateModifier(state, sabotage);
         log.push(`No active modifiers found - created weakening effect on next attack`);
       }

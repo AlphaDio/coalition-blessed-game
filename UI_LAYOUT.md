@@ -21,7 +21,7 @@
 │                         │                       │   Build: 10 turns    │
 │                         │                       │   Cap: 2 | Pot: 3    │
 │                         │                       │   Sustain: biomass:5 │
-│                         │                       │        solid_ice:3   │
+│                         │                       │        plasma_fuel:3   │
 │                         │                       │   Produces:          │
 │                         │                       │     super_alloys:+15 │
 │                         │                       │   Bonus:             │

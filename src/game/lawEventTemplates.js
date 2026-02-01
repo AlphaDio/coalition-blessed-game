@@ -750,7 +750,6 @@ export const FALLOUT_CHOICE_EVENTS = [
           progress: 0.05,
           meters: {
             legitimacy: 0.15,
-            economy_shock: -0.1,
             momentum: -0.05,
             unrest: -0.1
           }
@@ -762,7 +761,6 @@ export const FALLOUT_CHOICE_EVENTS = [
           progress: 0.25,
           meters: {
             momentum: 0.15,
-            economy_shock: 0.15,
             reject_pressure: 0.15,
             legitimacy: -0.1
           }

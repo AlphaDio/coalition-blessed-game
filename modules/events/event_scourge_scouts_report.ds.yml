@@ -31,15 +31,13 @@ declares:
             "@all": 5
       - text: "Share with Struggling Allies - Prioritize empires most in need"
         description: "Send detailed reports to our weakest member empires first. Builds goodwill with those who need help most while still improving our predictive capabilities."
-        effects_summary: "Cost: Free | Prediction confidence: +18% | Poorest empires: +5 approval | Cohesion: +1"
+        effects_summary: "Cost: Free | Prediction confidence: +18% | Poorest empires: +5 approval"
         effects:
           empireApproval:
             "@poorest": 5
           scourgePredictionConfidence: 0.18
-          coalitionCohesion: 1
       - text: "Internal Use Only - Classify the intelligence"
-        description: "Keep the findings within Coalition command. Avoids political complications and maintains unity, though provides less actionable intelligence."
-        effects_summary: "Cost: Free | Prediction confidence: +12% | Cohesion: +2"
+        description: "Keep the findings within Coalition command. Avoids political complications though provides less actionable intelligence."
+        effects_summary: "Cost: Free | Prediction confidence: +12%"
         effects:
           scourgePredictionConfidence: 0.12
-          coalitionCohesion: 2

@@ -1,6 +1,4 @@
-import { clampStat } from './cohesion.js';
-
-const MAX_SEVERITY = 5;
+import { SCOURGE_MODIFIER_CONSTANTS } from './constants.js';
 
 const DEFAULT_TEMPLATES = [
   {
@@ -8,7 +6,7 @@ const DEFAULT_TEMPLATES = [
     name: 'Overwhelming Assault',
     category: 'assault',
     effects: [
-      { target: 'scourge.attack_power', op: 'mul', valuePerSeverity: 0.08, when: 'always' }
+      { target: 'scourge.attack_power', op: 'mul', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.ATTACK_POWER_PER_SEVERITY, when: 'always' }
     ]
   },
   {
@@ -16,7 +14,7 @@ const DEFAULT_TEMPLATES = [
     name: 'Regenerative Swarm',
     category: 'recovery',
     effects: [
-      { target: 'scourge.recovery_rate', op: 'mul', valuePerSeverity: 0.10, when: 'always' }
+      { target: 'scourge.recovery_rate', op: 'mul', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.RECOVERY_RATE_PER_SEVERITY, when: 'always' }
     ]
   },
   {
@@ -24,15 +22,7 @@ const DEFAULT_TEMPLATES = [
     name: 'Adaptive Doctrine',
     category: 'adaptation',
     effects: [
-      { target: 'coalition.law_enact_speed', op: 'add', valuePerSeverity: -0.03, when: 'always' }
-    ]
-  },
-  {
-    id: 'mod_infiltration_shadow',
-    name: 'Shadow Infiltration',
-    category: 'infiltration',
-    effects: [
-      { target: 'coalition.requisition_gen', op: 'mul', valuePerSeverity: -0.05, when: 'always' }
+      { target: 'coalition.law_enact_speed', op: 'add', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.LAW_SPEED_PER_SEVERITY, when: 'always' }
     ]
   }
 ];
@@ -42,11 +32,12 @@ export function getScourgeModifierTemplates() {
 }
 
 export function createModifierFromTemplate(template, severity, duration = 'persistent', source = 'other') {
+  const minSeverity = SCOURGE_MODIFIER_CONSTANTS.MIN_SEVERITY;
   return {
     id: template.id,
     name: template.name,
     category: template.category,
-    severity: clampStat(severity, 0, MAX_SEVERITY),
+    severity: Math.max(minSeverity, severity), // No upper cap - scales infinitely
     duration,
     remaining_attacks: duration === 'n_attacks' ? 1 : undefined,
     effects: template.effects || [],
@@ -55,7 +46,9 @@ export function createModifierFromTemplate(template, severity, duration = 'persi
 }
 
 export function adjustModifierSeverity(modifier, delta) {
-  const nextSeverity = clampStat((modifier?.severity || 0) + delta, 0, MAX_SEVERITY);
+  const minSeverity = SCOURGE_MODIFIER_CONSTANTS.MIN_SEVERITY;
+  const currentSeverity = modifier?.severity || minSeverity;
+  const nextSeverity = Math.max(minSeverity, currentSeverity + delta); // No upper cap - scales infinitely
   return { ...modifier, severity: nextSeverity };
 }
 
@@ -64,8 +57,11 @@ export function applyOrUpdateModifier(state, modifier) {
     state.scourgeModifiers = [];
   }
 
+  const minSeverity = SCOURGE_MODIFIER_CONSTANTS.MIN_SEVERITY;
   const existingIndex = state.scourgeModifiers.findIndex(m => m.id === modifier.id);
-  if (modifier.severity <= 0) {
+  
+  // Remove modifier if severity drops below minimum
+  if (modifier.severity < minSeverity) {
     if (existingIndex >= 0) {
       state.scourgeModifiers.splice(existingIndex, 1);
     }
@@ -90,7 +86,8 @@ export function selectMissionModifier(state, rng = Math.random) {
   }
 
   const template = templates[Math.floor(rng() * templates.length)];
-  const severity = Math.max(1, Math.floor(rng() * 3) + 1);
+  const minSeverity = SCOURGE_MODIFIER_CONSTANTS.MIN_SEVERITY;
+  const severity = Math.max(minSeverity, Math.floor(rng() * 3) + 1);
   return createModifierFromTemplate(template, severity, 'persistent', 'mission_pre_attack');
 }
 
@@ -131,6 +128,7 @@ function applyEffectToAggregate(effect, severity, aggregate) {
 }
 
 export function collectScourgeModifierEffects(modifiers = [], when = 'always') {
+  const minSeverity = SCOURGE_MODIFIER_CONSTANTS.MIN_SEVERITY;
   const aggregate = {
     attackPowerMult: 1.0,
     attackPowerAdd: 0,
@@ -144,7 +142,7 @@ export function collectScourgeModifierEffects(modifiers = [], when = 'always') {
   };
 
   modifiers.forEach(mod => {
-    const severity = mod.severity || 0;
+    const severity = mod.severity || minSeverity;
     (mod.effects || []).forEach(effect => {
       if (effect.when && effect.when !== 'always' && effect.when !== when) {
         return;

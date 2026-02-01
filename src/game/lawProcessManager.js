@@ -358,9 +358,12 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
   
   // Calculate initial empire stances
   calculateEmpireStances(lawProcess, lawDef, state);
-  
+
   // Add to active processes
   state.lawProcesses.push(lawProcess);
+
+  // Apply immediate hero pressure when the law starts
+  applyHeroLawPressure(state, lawProcess, lawDef, log);
   
   const log = [
     `Law process started: ${lawDef.name}`,
@@ -621,6 +624,9 @@ export function resolveLawProcess(lawProcess, state, rng) {
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
     const logger = getLogger();
     log.push('\n>>> VOTING phase complete, enacting law...');
+
+    // Apply immediate hero pressure when the law is enacted
+    applyHeroLawPressure(state, lawProcess, lawDef, log);
 
     lawProcess.phase = 'ENACTED';
 

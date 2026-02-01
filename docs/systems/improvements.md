@@ -130,7 +130,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Cost: 200 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
-- Sustains: biomass:5, solid_ice:3
+- Sustains: biomass:5, plasma_fuel:3
 - Produces: super_alloys:15
 - Modifier: industrial_output +5%
 - Description: Galaxy-spanning industrial mega-structure harvesting stellar matter
@@ -165,7 +165,7 @@ These epic mega-structures and grand events represent the peak of civilization's
 - Cost: 180 Supplies
 - Build: 10 turns
 - Capacity: 2, Potency: 3
-- Sustains: solid_ice:4, rare_gases:2
+- Sustains: plasma_fuel:4, rare_gases:2
 - Modifiers: trade_income +500 credits/tick, market_efficiency +5%
 - Description: Hyperspatial marketplace where civilizations exchange wealth and wonders
 

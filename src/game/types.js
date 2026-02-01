@@ -49,7 +49,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     traits,
     values: values,
     stats: {
-      population: stats.population || 1000,
+      population: Math.max(1, stats.population || 1000),
       tech_rate_bonus: stats.tech_rate_bonus || 0,
       researchSpeedBonus: 0,
       approvalBonus: 0
@@ -315,8 +315,7 @@ export function createLawProcess(lawId, startTick = 0) {
       reject_pressure: 0.15, // 0..1, fragility/heat (lower = fewer REJECT events)
       unrest: 0.15, // 0..1, populace volatility
       polarization: 0.25, // 0..1, extremeness of empire positions
-      legitimacy: 0.75, // 0..1, perceived validity
-      economy_shock: 0.1 // 0..1, economic disruption
+      legitimacy: 0.75 // 0..1, perceived validity
     },
     
     // Per-empire snapshots
@@ -506,6 +505,12 @@ export function createGameState(seed = 0) {
       industrialOutputBonus: 0,
       law_progress_speed: 0,
       glory_gain_multiplier: 1.0,
+      // Production efficiency modifiers (affect base production efficiency)
+      production_efficiency_add: 0,    // Additive bonus to base efficiency (0.01 = +1%)
+      production_efficiency_mult: 1.0, // Multiplicative bonus to efficiency (1.5 = 50% more)
+      // Rationing modifiers (affect base consumption rationing)
+      rationing_add: 0,                // Additive bonus to base rationing (0.01 = +1%)
+      rationing_mult: 1.0,             // Multiplicative bonus to rationing (1.5 = 50% more consumption allowed)
       dynamic: {
         law_progress_speed_bonus: 0,
         improvement_build_speed_mult: 1.0,
