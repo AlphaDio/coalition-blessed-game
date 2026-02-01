@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_delegation_3"
+  name: "Federated Authority Treaty"
+  description: "Federated Authority Treaty"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "diplomacy"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_delegation_3"
+    name: "Federated Authority Treaty"
+    tier: 3
+    category: "governance"
+    law_type: "Delegation"
+    axis_vector:
+      authoritarian_liberal: 0.6
+    law_tags:
+      - "governance"
+      - "diplomacy"
+    support_weights:
+      population_incentive: 0.4
+      economy_incentive: 0.4
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "diplomacy"
+      FALLOUT:
+        - "political"
+      VOTING:
+        - "governance"
+    modifiers:
+      relations_strength_modifier: 1.2
+      trade_income: 150
+    immediate_effects:
+      coalition_credits: 3500
+      cohesion: 4

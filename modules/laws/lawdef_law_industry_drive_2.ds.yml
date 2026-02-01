@@ -1,0 +1,49 @@
+module:
+  id: "lawdef_law_industry_drive_2"
+  name: "Total Output Directive"
+  description: "Total Output Directive"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "industry"
+    - "production"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_industry_drive_2"
+    name: "Total Output Directive"
+    tier: 2
+    category: "economy"
+    law_type: "Industry"
+    axis_vector:
+      natural_mechanical: 0.5
+      spiritual_materialistic: 0.6
+    law_tags:
+      - "industry"
+      - "production"
+    support_weights:
+      economy_incentive: 0.7
+      security_incentive: 0.2
+    phase_tags:
+      DEBATE:
+        - "industry"
+        - "production"
+      FALLOUT:
+        - "economic"
+      VOTING:
+        - "economic"
+    modifiers:
+      industrial_output: 0.2
+      empire_production_multiplier: 0.1
+    immediate_effects:
+      coalition_credits: 2500
+      requisition: 500
+      cohesion: 2

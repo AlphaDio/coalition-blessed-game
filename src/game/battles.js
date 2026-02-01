@@ -4,6 +4,7 @@ import { getLogger } from '../modules/logger.js';
 import { startBattle } from './frontBattles.js';
 import { createArmy } from './types.js';
 import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from './scourgeModifiers.js';
+import { runHeroBattlePassives } from './heroes.js';
 
 export function calculateArmyPower(army) {
   if (!army) {
@@ -303,6 +304,13 @@ function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') 
  */
 export function startScourgeBattle(state, participatingArmies, rng = Math.random) {
   const logger = getLogger();
+  const log = [];
+  const participatingEmpireIds = [...new Set(participatingArmies.map(army => army.empireId))];
+  runHeroBattlePassives(state, {
+    phase: 'BATTLE',
+    type: 'SCOURGE',
+    participatingEmpireIds
+  }, 'OnStart', log);
   
   const armyDetails = participatingArmies.map(a => ({
     name: a.name,
@@ -344,7 +352,8 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
     scourgeMP: scourgeArmy.mp.current
   });
   
-  return { front, log: [`Scourge battle engaged! ${participatingArmies.length} armies vs The Scourge`] };
+  log.push(`Scourge battle engaged! ${participatingArmies.length} armies vs The Scourge`);
+  return { front, log };
 }
 
 /**

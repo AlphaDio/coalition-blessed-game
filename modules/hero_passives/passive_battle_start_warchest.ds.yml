@@ -1,0 +1,27 @@
+module:
+  id: "passive_battle_start_warchest"
+  name: "Battlefield Warchest"
+  description: "Grant credits when a Scourge battle begins."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "battle", "economy"]
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_BATTLE_START_WARCHEST"
+    phase: "BATTLE"
+    cadence: "OnStart"
+    description: "Grant credits when a Scourge battle begins."
+    effects:
+      - type: "grant_credits"
+        amount: 600
+        scale_by_popularity: true
+        log_message: "Hero Passive triggered: {hero} releases a warchest of {value} credits for {empire}."

@@ -1,0 +1,27 @@
+module:
+  id: "passive_scourge_battle_opening_salvo"
+  name: "Opening Salvo"
+  description: "Deal immediate damage to Scourge manpower at the start of battle."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "battle", "scourge"]
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_SCOURGE_BATTLE_OPENING_SALVO"
+    phase: "BATTLE"
+    cadence: "OnStart"
+    description: "Deal immediate damage to Scourge manpower at the start of battle."
+    effects:
+      - type: "scourge_manpower_damage_pct"
+        base_pct: 0.06
+        scale_by_popularity: true
+        log_message: "Hero Passive triggered: {hero} strikes early, reducing Scourge manpower by {percent}%."

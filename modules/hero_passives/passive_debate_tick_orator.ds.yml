@@ -1,0 +1,28 @@
+module:
+  id: "passive_debate_tick_orator"
+  name: "Debate Orator"
+  description: "Boost momentum slightly each debate tick if the law aligns with hero domain."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "debate", "momentum"]
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_DEBATE_TICK_ORATOR"
+    phase: "DEBATE"
+    cadence: "OnTick"
+    description: "Boost momentum slightly each debate tick if the law aligns with hero domain."
+    effects:
+      - type: "momentum_bonus_if_tag_match"
+        base_bonus: 0.02
+        scale_by_popularity: true
+        requires_tag_match: true
+        log_message: "Hero Passive triggered: {hero} orates (+{percent}% momentum)."

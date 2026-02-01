@@ -225,23 +225,185 @@ export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
   if (!state.heroes || state.heroes.length === 0) return;
   if (!state.empires || state.empires.length === 0) return;
 
+  const logger = getLogger();
+
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
     ensureHeroMeters(hero);
     const passive = hero.passive || {};
     if (!passive.passive_id) return;
-    if (passive.phase !== lawProcess.phase) return;
-    if (passive.cadence !== cadence) return;
 
     const definition = HERO_PASSIVES[passive.passive_id];
     if (!definition) return;
+
+    const { phase: passivePhase, cadence: passiveCadence } = getPassiveTrigger(passive, definition);
+    if (passivePhase !== lawProcess.phase) return;
+    if (passiveCadence !== cadence) return;
 
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
 
     const popularityScalar = getPopularityScalar(hero);
-    definition.apply({ hero, empire, lawProcess, lawDef, popularityScalar, log });
+    const effects = definition.effects || [];
+    effects.forEach(effect => {
+      applyHeroPassiveEffect(effect, {
+        hero,
+        empire,
+        state,
+        lawProcess,
+        lawDef,
+        popularityScalar,
+        log,
+        logger
+      });
+    });
   });
+}
+
+export function runHeroBattlePassives(state, battleContext, cadence, log) {
+  if (!state.heroes || state.heroes.length === 0) return;
+  if (!state.empires || state.empires.length === 0) return;
+
+  const logger = getLogger();
+  const activeEmpireIds = battleContext?.participatingEmpireIds || [];
+
+  state.heroes.forEach(hero => {
+    if (hero.status === HERO_STATUS.EXILED) return;
+    if (activeEmpireIds.length > 0 && !activeEmpireIds.includes(getHeroEmpireId(hero))) return;
+    ensureHeroMeters(hero);
+    const passive = hero.passive || {};
+    if (!passive.passive_id) return;
+
+    const definition = HERO_PASSIVES[passive.passive_id];
+    if (!definition) return;
+
+    const { phase: passivePhase, cadence: passiveCadence } = getPassiveTrigger(passive, definition);
+    if (passivePhase !== battleContext?.phase) return;
+    if (passiveCadence !== cadence) return;
+
+    const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
+    if (!empire) return;
+
+    const popularityScalar = getPopularityScalar(hero);
+    const effects = definition.effects || [];
+    effects.forEach(effect => {
+      applyHeroPassiveEffect(effect, {
+        hero,
+        empire,
+        state,
+        battleContext,
+        popularityScalar,
+        log,
+        logger
+      });
+    });
+  });
+}
+
+function getPassiveTrigger(passive, definition) {
+  return {
+    phase: passive.phase || definition.phase,
+    cadence: passive.cadence || definition.cadence
+  };
+}
+
+function applyHeroPassiveEffect(effect, context) {
+  if (!effect || typeof effect !== 'object') return;
+
+  const {
+    hero,
+    empire,
+    state,
+    lawProcess,
+    lawDef,
+    battleContext,
+    popularityScalar,
+    log,
+    logger
+  } = context;
+  const scaleByPopularity = effect.scale_by_popularity ? popularityScalar : 1;
+  const formatMessage = (template, values) => {
+    if (!template) return null;
+    return template.replace(/\{(\w+)\}/g, (match, key) => {
+      return values[key] ?? match;
+    });
+  };
+
+  switch (effect.type) {
+    case 'grant_credits': {
+      const baseGrant = Number(effect.amount || 0);
+      if (!Number.isFinite(baseGrant) || baseGrant === 0) return;
+      const grant = Math.round(baseGrant * scaleByPopularity);
+      if (!Number.isFinite(grant) || grant === 0) return;
+      empire.budget_credits = (empire.budget_credits || 0) + grant;
+      const message = formatMessage(effect.log_message, {
+        hero: hero.name,
+        empire: empire.name,
+        value: grant
+      });
+      if (message) {
+        log.push(message);
+        logger.debug(message);
+      }
+      return;
+    }
+    case 'momentum_bonus_if_tag_match': {
+      const lawTags = lawDef?.tags || lawDef?.law_tags || [];
+      const heroTags = hero.tags || [];
+      if (effect.requires_tag_match && !lawTags.some(tag => heroTags.includes(tag))) return;
+      const baseBonus = Number(effect.base_bonus || 0);
+      if (!Number.isFinite(baseBonus) || baseBonus === 0) return;
+      const bonus = baseBonus * scaleByPopularity;
+      if (!lawProcess?.meters || !Number.isFinite(bonus) || bonus === 0) return;
+      lawProcess.meters.momentum = Math.min(1, lawProcess.meters.momentum + bonus);
+      const message = formatMessage(effect.log_message, {
+        hero: hero.name,
+        percent: (bonus * 100).toFixed(1)
+      });
+      if (message) {
+        log.push(message);
+        logger.debug(message);
+      }
+      return;
+    }
+    case 'legitimacy_bonus': {
+      const baseBonus = Number(effect.base_bonus || 0);
+      if (!Number.isFinite(baseBonus) || baseBonus === 0) return;
+      const bonus = baseBonus * scaleByPopularity;
+      if (!lawProcess?.meters || !Number.isFinite(bonus) || bonus === 0) return;
+      lawProcess.meters.legitimacy = Math.min(1, lawProcess.meters.legitimacy + bonus);
+      const message = formatMessage(effect.log_message, {
+        hero: hero.name,
+        percent: (bonus * 100).toFixed(1)
+      });
+      if (message) {
+        log.push(message);
+        logger.debug(message);
+      }
+      return;
+    }
+    case 'scourge_manpower_damage_pct': {
+      if (!state) return;
+      if (battleContext?.type !== 'SCOURGE') return;
+      const basePct = Number(effect.base_pct || 0);
+      if (!Number.isFinite(basePct) || basePct === 0) return;
+      const pct = Math.max(0, basePct * scaleByPopularity);
+      if (!Number.isFinite(pct) || pct === 0) return;
+      const previous = state.scourgeNextAttackManpowerDamagePct || 0;
+      state.scourgeNextAttackManpowerDamagePct = Math.min(1, previous + pct);
+      const message = formatMessage(effect.log_message, {
+        hero: hero.name,
+        percent: (pct * 100).toFixed(1)
+      });
+      if (message) {
+        log.push(message);
+        logger.debug(message);
+      }
+      return;
+    }
+    default:
+      return;
+  }
 }
 
 export function triggerHeroAbilities(state, lawProcess, log) {

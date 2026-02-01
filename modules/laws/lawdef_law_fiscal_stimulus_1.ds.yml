@@ -1,0 +1,49 @@
+module:
+  id: "lawdef_law_fiscal_stimulus_1"
+  name: "Fiscal Stabilization Act"
+  description: "Fiscal Stabilization Act"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "fiscal"
+    - "stability"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_fiscal_stimulus_1"
+    name: "Fiscal Stabilization Act"
+    tier: 1
+    category: "economy"
+    law_type: "Fiscal"
+    axis_vector:
+      authoritarian_liberal: 0.2
+      stoicist_hedonistic: 0.2
+    law_tags:
+      - "fiscal"
+      - "stability"
+    support_weights:
+      economy_incentive: 0.4
+    phase_tags:
+      DEBATE:
+        - "fiscal"
+        - "stability"
+      FALLOUT:
+        - "economic"
+      VOTING:
+        - "economic"
+    modifiers:
+      trade_income: 100
+      empire_approval: 0.5
+    immediate_effects:
+      coalition_credits: 1500
+      requisition: 150
+      cohesion: 2
+      empire_approval: 1

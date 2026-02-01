@@ -2,54 +2,22 @@
  * Hero ability and passive definitions (v0.3)
  */
 
+import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { getLogger } from '../modules/logger.js';
 
-export const HERO_PASSIVES = {
-  PASSIVE_FALLOUT_START_CREDIT_GRANT: {
-    id: 'PASSIVE_FALLOUT_START_CREDIT_GRANT',
-    phase: 'FALLOUT',
-    cadence: 'OnStart',
-    description: 'Grant credits to the hero empire at the start of Fallout.',
-    apply({ hero, empire, popularityScalar, log }) {
-      const baseGrant = 1000;
-      const grant = Math.round(baseGrant * popularityScalar);
-      empire.budget_credits = (empire.budget_credits || 0) + grant;
-      const message = `Hero Passive triggered: ${hero.name} granted ${grant} credits to ${empire.name}.`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  },
-  PASSIVE_DEBATE_TICK_ORATOR: {
-    id: 'PASSIVE_DEBATE_TICK_ORATOR',
-    phase: 'DEBATE',
-    cadence: 'OnTick',
-    description: 'Boost momentum slightly each debate tick if the law aligns with hero domain.',
-    apply({ hero, lawProcess, lawDef, popularityScalar, log }) {
-      const lawTags = lawDef.tags || lawDef.law_tags || [];
-      const heroTags = hero.tags || [];
-      const matches = lawTags.some(tag => heroTags.includes(tag));
-      if (!matches) return;
-      const bonus = 0.02 * popularityScalar;
-      lawProcess.meters.momentum = Math.min(1, lawProcess.meters.momentum + bonus);
-      const message = `Hero Passive triggered: ${hero.name} orates (+${(bonus * 100).toFixed(1)}% momentum).`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  },
-  PASSIVE_VOTING_START_WHIP: {
-    id: 'PASSIVE_VOTING_START_WHIP',
-    phase: 'VOTING',
-    cadence: 'OnStart',
-    description: 'Nudge legitimacy upward at the start of voting.',
-    apply({ hero, lawProcess, popularityScalar, log }) {
-      const bonus = 0.03 * popularityScalar;
-      lawProcess.meters.legitimacy = Math.min(1, lawProcess.meters.legitimacy + bonus);
-      const message = `Hero Passive triggered: ${hero.name} rallies votes (+${(bonus * 100).toFixed(1)}% legitimacy).`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  }
-};
+function loadHeroPassives() {
+  const registry = createModuleRegistry();
+  const passiveModules = getModulesByType(registry, 'hero_passive');
+  return passiveModules.reduce((acc, entry) => {
+    const moduleDoc = registry.modules[entry.id];
+    const data = moduleDoc?.declares?.hero_passive_data;
+    if (!data?.id) return acc;
+    acc[data.id] = data;
+    return acc;
+  }, {});
+}
+
+export const HERO_PASSIVES = loadHeroPassives();
 
 export const HERO_ABILITIES = {
   ABILITY_PUBLIC_MANDATE: {

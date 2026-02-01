@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_bureaucracy_1"
+  name: "Administrative Standardization"
+  description: "Administrative Standardization"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "efficiency"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_bureaucracy_1"
+    name: "Administrative Standardization"
+    tier: 1
+    category: "governance"
+    law_type: "Bureaucracy"
+    axis_vector:
+      natural_mechanical: 0.3
+      spiritual_materialistic: 0.2
+    law_tags:
+      - "governance"
+      - "efficiency"
+    support_weights:
+      economy_incentive: 0.3
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "efficiency"
+      FALLOUT:
+        - "political"
+      VOTING:
+        - "governance"
+    modifiers:
+      research_speed: 0.08
+      supply_efficiency: 0.05
+    immediate_effects:
+      influence: 20
+      cohesion: 2

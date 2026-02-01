@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_bureaucracy_2"
+  name: "Central Coordination Office"
+  description: "Central Coordination Office"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "efficiency"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_bureaucracy_2"
+    name: "Central Coordination Office"
+    tier: 2
+    category: "governance"
+    law_type: "Bureaucracy"
+    axis_vector:
+      natural_mechanical: 0.5
+      spiritual_materialistic: 0.3
+    law_tags:
+      - "governance"
+      - "efficiency"
+    support_weights:
+      economy_incentive: 0.4
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "efficiency"
+      FALLOUT:
+        - "political"
+      VOTING:
+        - "governance"
+    modifiers:
+      research_speed: 0.16
+      supply_efficiency: 0.1
+    immediate_effects:
+      influence: 40
+      cohesion: 3
