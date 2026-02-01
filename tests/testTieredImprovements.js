@@ -5,13 +5,13 @@
  * Key difference from laws: each empire tracks tier progress independently.
  */
 
-import { createGameState, createEmpire } from './src/game/types.js';
+import { createGameState, createEmpire } from '../src/game/types.js';
 import {
   initializeImprovementsState,
   acceptImprovementRequest,
   processImprovementsTick,
   createImprovementRequest
-} from './src/game/improvements/index.js';
+} from '../src/game/improvements/index.js';
 import {
   IMPROVEMENT_TIER_REQUIREMENTS,
   TIERED_IMPROVEMENT_DEFINITIONS,
@@ -27,7 +27,7 @@ import {
   getEmpiresWithAccess,
   canCoalitionSuggest,
   refreshImprovementSuggestions
-} from './src/game/improvements/definitions.js';
+} from '../src/game/improvements/definitions.js';
 
 // Test counters
 let passed = 0;

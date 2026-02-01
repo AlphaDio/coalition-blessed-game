@@ -10,7 +10,6 @@ import {
   initializeMarket,
   createBuyOrder,
   createSellOffer,
-  updateMarketPrices,
   clearMarket,
   coalitionProcurement,
   computeArmyFulfillment
@@ -88,7 +87,7 @@ export function processEconomyTick(state) {
   
   /**
    * Find existing sell offer for owner+commodity and aggregate qty
-   * Returns updated offer with recalculated price and reset duration
+   * Returns updated offer with fixed market price and reset duration
    */
   function aggregateSellOffer(ownerType, ownerId, commodity, newQty, newPrice, priority) {
     // First check new orders created this tick
@@ -126,15 +125,8 @@ export function processEconomyTick(state) {
       return offer;
     }
     
-    // Calculate weighted average price
-    const existingRemaining = existing.qty - (existing.filled_qty || 0);
-    const existingValue = existingRemaining * existing.ask_price;
-    const newValue = newQty * newPrice;
-    const totalValue = existingValue + newValue;
-    const totalQty = existingRemaining + newQty;
-    
-    existing.ask_price = totalQty > 0 ? totalValue / totalQty : newPrice;
-    existing.qty = totalQty;
+    existing.ask_price = newPrice;
+    existing.qty = existing.qty + newQty;
     existing.duration = 0;
     
     // If from existing orders, move to sellOffers for this tick
@@ -148,7 +140,7 @@ export function processEconomyTick(state) {
   
   /**
    * Find existing buy order for owner+commodity+category and aggregate qty
-   * Returns updated order with recalculated price and reset duration
+   * Returns updated order with fixed market price and reset duration
    */
   function aggregateBuyOrder(ownerType, ownerId, commodity, newQty, newPrice, category, priority) {
     // First check new orders created this tick
@@ -190,15 +182,8 @@ export function processEconomyTick(state) {
       return order;
     }
     
-    // Calculate weighted average max_price
-    const existingRemaining = existing.qty - (existing.filled_qty || 0);
-    const existingValue = existingRemaining * existing.price;
-    const newValue = newQty * newPrice;
-    const totalValue = existingValue + newValue;
-    const totalQty = existingRemaining + newQty;
-    
-    existing.price = totalQty > 0 ? totalValue / totalQty : newPrice;
-    existing.qty = totalQty;
+    existing.max_price = newPrice;
+    existing.qty = existing.qty + newQty;
     existing.duration = 0;
     
     // If from existing orders, move to buyOrders for this tick
@@ -231,7 +216,7 @@ export function processEconomyTick(state) {
        if (qty > 0) {
           const modifiedQty = qty * population * productionMultiplier * effectiveEfficiency * (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
          const marketPrice = state.market[commodity]?.price || 1.0;
-         const askPrice = marketPrice * MARKET_CONSTANTS.SELL_PRICE_DISCOUNT;
+         const askPrice = marketPrice;
          
          const sellOffer = aggregateSellOffer('empire', empire.id, commodity, modifiedQty, askPrice, 0);
         }
@@ -260,7 +245,7 @@ export function processEconomyTick(state) {
         const totalNeeded = qtyPerPop * population * effectiveRationing;
         if (totalNeeded > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
-          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_NEEDS_PREMIUM;
+          const maxPrice = marketPrice;
           
            const buyOrder = aggregateBuyOrder('empire', empire.id, commodity, totalNeeded, maxPrice, 'needs', 1);
          }
@@ -276,7 +261,7 @@ export function processEconomyTick(state) {
         const totalWanted = qtyPerPop * population * effectiveRationing;
         if (totalWanted > 0) {
           const marketPrice = state.market[commodity]?.price || 1.0;
-          const maxPrice = marketPrice * MARKET_CONSTANTS.BUY_WANTS_PREMIUM;
+          const maxPrice = marketPrice;
           
             const buyOrder = aggregateBuyOrder('empire', empire.id, commodity, totalWanted, maxPrice, 'wants', 0);
          }
@@ -302,7 +287,7 @@ export function processEconomyTick(state) {
          
          if (totalNeeded > 0) {
            const marketPrice = state.market[commodity]?.price || 1.0;
-           const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_NEEDS_PREMIUM;
+           const maxPrice = marketPrice;
            
             const buyOrder = aggregateBuyOrder('army', army.id, commodity, totalNeeded, maxPrice, 'needs', 0);
          }
@@ -314,18 +299,13 @@ export function processEconomyTick(state) {
          
          if (totalWanted > 0) {
            const marketPrice = state.market[commodity]?.price || 1.0;
-           const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_WANTS_PREMIUM;
+           const maxPrice = marketPrice;
            
             const buyOrder = aggregateBuyOrder('army', army.id, commodity, totalWanted, maxPrice, 'wants', -1);
          }
        });
    });
   
-  // Step 4: Compute market target prices
-  updateMarketPrices(state.market, commodities, config);
-  
-
-
   // Apply empire order posting fees
   let allBuyOrders = buyOrders.concat(state.marketOrders?.buyOrders || []);
   let allSellOffers = sellOffers.concat(state.marketOrders?.sellOffers || []);
@@ -336,10 +316,6 @@ export function processEconomyTick(state) {
 
    allBuyOrders.forEach(order => {
      order.duration = (order.duration || 0) + 1;
-     
-     // Adaptive pricing: increase max_price slightly each tick (buy orders willing to pay more over time)
-      const PRICE_ADAPTATION_RATE = 0.005; // 0.5% per tick
-     order.max_price = (order.max_price || 1) * (1 + PRICE_ADAPTATION_RATE);
      
      if (order.duration >= order.max_duration) {
        expiredBuyOrders.push(order);
@@ -354,10 +330,6 @@ export function processEconomyTick(state) {
 
    allSellOffers.forEach(order => {
      order.duration = (order.duration || 0) + 1;
-     
-     // Adaptive pricing: decrease ask_price slightly each tick (sell orders willing to accept less over time)
-      const PRICE_ADAPTATION_RATE = 0.005; // 0.5% per tick
-     order.ask_price = (order.ask_price || 1) * (1 - PRICE_ADAPTATION_RATE);
      
      if (order.duration >= order.max_duration) {
        expiredSellOffers.push(order);

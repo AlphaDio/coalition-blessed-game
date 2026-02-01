@@ -74,7 +74,9 @@ function applyLawModifiers(lawDef, state) {
       empire_production_multiplier: 0,
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
-      relations_strength_modifier: 1.0
+      relations_strength_modifier: 1.0,
+      consumptionShareMultiplier: 1.0,
+      consumptionShareBonus: 0
     };
   }
   
@@ -154,6 +156,18 @@ function applyLawModifiers(lawDef, state) {
    if (modifiers.empire_production_multiplier) {
      state.coalitionModifiers.empire_production_multiplier += modifiers.empire_production_multiplier;
      log.push(`Empire production multiplier: +${(modifiers.empire_production_multiplier * 100).toFixed(0)}%`);
+   }
+
+   // Apply consumption share multiplier (increases coalition's share of empire consumption)
+   if (modifiers.consumptionShareMultiplier) {
+     state.coalitionModifiers.consumptionShareMultiplier = (state.coalitionModifiers.consumptionShareMultiplier || 1.0) * modifiers.consumptionShareMultiplier;
+     log.push(`Coalition consumption share: ×${modifiers.consumptionShareMultiplier} (now ${(state.coalitionModifiers.consumptionShareMultiplier * 100).toFixed(0)}%)`);
+   }
+
+   // Apply consumption share bonus (additive increase to coalition's share)
+   if (modifiers.consumptionShareBonus) {
+     state.coalitionModifiers.consumptionShareBonus = (state.coalitionModifiers.consumptionShareBonus || 0) + modifiers.consumptionShareBonus;
+     log.push(`Coalition consumption share: +${(modifiers.consumptionShareBonus * 100).toFixed(0)}%`);
    }
 
    // Apply immediate empire reactions based on law's axis vector

@@ -5,13 +5,13 @@
  * Runs the same seed twice and verifies identical outcomes
  */
 
-import { createGameState, createPowerSystemPolicy } from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { DeterministicRNG } from './src/modules/rng.js';
-import { refreshArmyAggregates } from './src/game/armyComposition.js';
-import { startLawProcess, resolveAllLawProcesses } from './src/game/lawProcessManager.js';
-import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { createLawEvent, getAllLawEvents } from './src/game/lawEventTemplates.js';
+import { createGameState, createPowerSystemPolicy } from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { DeterministicRNG } from '../src/modules/rng.js';
+import { refreshArmyAggregates } from '../src/game/armyComposition.js';
+import { startLawProcess, resolveAllLawProcesses } from '../src/game/lawProcessManager.js';
+import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
+import { createLawEvent, getAllLawEvents } from '../src/game/lawEventTemplates.js';
 
 
 function runSimulation(seed) {

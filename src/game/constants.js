@@ -1,11 +1,27 @@
 // Game constants - tunable numbers
 
+/**
+ * Coalition cohesion tier definitions.
+ * Cohesion represents the unity/stability of the coalition.
+ * Different tiers affect gameplay mechanics like event frequency and prediction accuracy.
+ * @property {Object} TIER_1 - Stable state (67-100), coalition functions well
+ * @property {Object} TIER_2 - Strained state (34-66), coalition under pressure
+ * @property {Object} TIER_3 - Desperate state (1-33), coalition near collapse
+ */
 export const COHESION_TIERS = {
   TIER_1: { min: 67, max: 100, name: 'Stable' },
   TIER_2: { min: 34, max: 66, name: 'Strained' },
   TIER_3: { min: 1, max: 33, name: 'Desperate' }
 };
 
+/**
+ * Initial game state values when starting a new game.
+ * @property {number} coalitionCohesion - Starting cohesion for the player coalition (0-100)
+ * @property {number} scourgeCohesion - Starting cohesion for the enemy Scourge faction
+ * @property {number} scourgeFervor - Starting fervor (aggression/morale) of the Scourge
+ * @property {Object} stockpiles - Initial resource stockpiles (empty at start)
+ * @property {number} turn - Starting turn number
+ */
 export const INITIAL_STATE = {
   coalitionCohesion: 75,
   scourgeCohesion: 80,
@@ -15,11 +31,29 @@ export const INITIAL_STATE = {
   turn: 1
 };
 
+/**
+ * Coalition-wide economy settings.
+ * @property {number} INITIAL_BUDGET - Starting coalition credits
+ * @property {number} BUDGET_PER_TICK - Credits passively gained each game tick
+ */
 export const COALITION_ECONOMY = {
   INITIAL_BUDGET: 5000,           // Starting coalition credits
   BUDGET_PER_TICK: 100            // Credits gained per tick
 };
 
+/**
+ * Market trading mechanics and price modifiers.
+ * Controls how empires and armies buy/sell resources on the market.
+ * @property {number} SELL_PRICE_DISCOUNT - Empires sell at 95% of market price (5% loss)
+ * @property {number} BUY_NEEDS_PREMIUM - Empires pay 10% above market for essential needs
+ * @property {number} BUY_WANTS_PREMIUM - Empires pay 5% above market for non-essential wants
+ * @property {number} ARMY_NEEDS_PREMIUM - Armies pay 20% above market for essential supplies
+ * @property {number} ARMY_WANTS_PREMIUM - Armies pay 15% above market for non-essential items
+ * @property {number} SURPLUS_RATIO_THRESHOLD - Sell surplus when stockpile exceeds 35% of capacity
+ * @property {number} SURPLUS_TARGET_RATIO - Target 70% stockpile ratio after selling
+ * @property {number} SURPLUS_KEEP_RATIO - Always keep at least 50% when selling surplus
+ * @property {number} POPULATION_GROWTH_BANK_THRESHOLD - Population grows by 1 when banked growth reaches 10
+ */
 export const MARKET_CONSTANTS = {
   SELL_PRICE_DISCOUNT: 0.95,      // Empires sell at 95% of market price
   BUY_NEEDS_PREMIUM: 1.1,         // Willing to pay 10% above market for needs
@@ -32,6 +66,14 @@ export const MARKET_CONSTANTS = {
   POPULATION_GROWTH_BANK_THRESHOLD: 10 // Population growth accumulates to this threshold before applying
 };
 
+/**
+ * Front battle damage calculation modifiers.
+ * Fervor and organization affect damage output in battles.
+ * @property {number} FERVOR_MIN - Base damage multiplier at 0 fervor (0.8x)
+ * @property {number} FERVOR_RANGE - Additional multiplier at 100 fervor (0.8 + 1.0 = 1.8x max)
+ * @property {number} ORG_MIN - Base damage multiplier at 0 organization (0.9x)
+ * @property {number} ORG_RANGE - Additional multiplier at 100 organization (0.9 + 0.2 = 1.1x max)
+ */
 export const FRONT_BATTLE_MODIFIERS = {
   FERVOR_MIN: 0.8,                // 0 fervor = 0.8x damage
   FERVOR_RANGE: 1.0,              // 100 fervor = 0.8 + 1.0 = 1.8x damage
@@ -39,6 +81,26 @@ export const FRONT_BATTLE_MODIFIERS = {
   ORG_RANGE: 0.2                  // 100 organization = 0.9 + 0.2 = 1.1x damage
 };
 
+/**
+ * Battle system configuration for combat between armies and the Scourge.
+ * @property {number} ARMY_POWER_ORG_WEIGHT - Weight of organization in army power calculation (60%)
+ * @property {number} ARMY_POWER_FERVOR_WEIGHT - Weight of fervor in army power calculation (40%)
+ * @property {number} SCOURGE_BASE_POWER - Base combat power of Scourge forces
+ * @property {number} SCOURGE_FERVOR_MULTIPLIER - Multiplier for Scourge fervor contribution to power
+ * @property {number} SCOURGE_RNG_RANGE - Random variance range (+/-) in Scourge power
+ * @property {number} SCOURGE_TURN_POWER_GROWTH - Percentage power growth per turn (0.15%)
+ * @property {number} SCOURGE_TURN_MP_GROWTH - Military power points gained by Scourge per turn
+ * @property {number} INSURRECTION_RNG_RANGE - Random variance range in insurrection battles
+ * @property {number} WIN_ORG_LOSS - Organization lost by winner after battle
+ * @property {number} WIN_FERVOR_GAIN - Fervor gained by winner after battle
+ * @property {number} LOSS_ORG_LOSS - Organization lost by loser after battle
+ * @property {number} LOSS_FERVOR_LOSS - Fervor lost by loser after battle
+ * @property {number} SCOURGE_WIN_COHESION_LOSS - Coalition cohesion lost when Scourge wins
+ * @property {number} SCOURGE_LOSS_COHESION_LOSS - Coalition cohesion lost even when Scourge loses
+ * @property {number} SCOURGE_WIN_APPROVAL_LOSS - Empire approval lost when Scourge wins
+ * @property {number} INSURRECTION_WIN_COHESION_LOSS - Cohesion lost when putting down insurrection
+ * @property {number} INSURRECTION_LOSS_COHESION_LOSS - Cohesion lost when insurrection succeeds
+ */
 export const BATTLE_CONSTANTS = {
   ARMY_POWER_ORG_WEIGHT: 0.6,
   ARMY_POWER_FERVOR_WEIGHT: 0.4,
@@ -60,6 +122,17 @@ export const BATTLE_CONSTANTS = {
   INSURRECTION_LOSS_COHESION_LOSS: 12
 };
 
+/**
+ * Economy tick calculations affecting organization, aggravation, and supplies.
+ * @property {number} ORG_PER_PERCENT_SHARE - Organization gained per 1% budget share
+ * @property {number} AGGRAVATION_REDUCTION_PER_PERCENT - Aggravation reduced per 1% budget share
+ * @property {number} UNDERFUNDED_ORG_DECAY - Organization decay when underfunded
+ * @property {number} UNDERFUNDED_AGGRAVATION_INCREASE - Aggravation increase when underfunded
+ * @property {number} SUPPLY_SHORTAGE_ORG_PENALTY - Organization penalty for supply shortages
+ * @property {number} SUPPLY_SHORTAGE_AGGRAVATION_INCREASE - Aggravation increase from supply shortage
+ * @property {number} SCOURGE_FERVOR_GROWTH - Percentage growth of Scourge fervor per tick (2%)
+ * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (250:1)
+ */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
   AGGRAVATION_REDUCTION_PER_PERCENT: 0.2,
@@ -69,21 +142,44 @@ export const ECONOMY_CONSTANTS = {
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
   SCOURGE_FERVOR_GROWTH: 0.02,
   NEGATIVE_REQUISITION_COHESION_DIVISOR: 250 // For every 250 req, lose 1 cohesion
-
 };
 
+/**
+ * Insurrection event thresholds and consequences.
+ * Insurrections occur when empire aggravation reaches critical levels.
+ * @property {number} THRESHOLD - Aggravation level that triggers insurrection (80+)
+ * @property {number} RESOLVED_FERVOR_DROP - Fervor reduction when insurrection is resolved
+ * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
+ */
 export const INSURRECTION_CONSTANTS = {
   THRESHOLD: 80,
   RESOLVED_FERVOR_DROP: 20,
   RESOLVED_APPROVAL_SHOCK: 15
 };
 
+/**
+ * Random event occurrence frequencies by cohesion tier.
+ * Lower cohesion = higher chance of random events occurring.
+ * @property {number} TIER_1_FREQUENCY - Event chance when Stable (5%)
+ * @property {number} TIER_2_FREQUENCY - Event chance when Strained (10%)
+ * @property {number} TIER_3_FREQUENCY - Event chance when Desperate (15%)
+ */
 export const EVENT_CONSTANTS = {
   TIER_1_FREQUENCY: 0.05,  // 5% chance (was 10%)
   TIER_2_FREQUENCY: 0.10,  // 10% chance (was 20%)
   TIER_3_FREQUENCY: 0.15   // 15% chance (was 30%)
 };
 
+/**
+ * Real-time game tick and speed configuration.
+ * Controls the pacing of the game simulation.
+ * @property {number} BASE_TICK_INTERVAL - Milliseconds per turn at 1x speed (2 seconds)
+ * @property {number} MIN_SPEED - Slowest speed multiplier (0.5x = 4 second ticks)
+ * @property {number} MAX_SPEED - Fastest speed multiplier (3x = ~667ms ticks)
+ * @property {number} SPEED_STEP - Increment when adjusting speed
+ * @property {number} MIN_TICK_INTERVAL - Fastest allowed tick in ms (performance floor)
+ * @property {number} MAX_TICK_INTERVAL - Slowest allowed tick in ms
+ */
 export const REALTIME_CONSTANTS = {
   BASE_TICK_INTERVAL: 2000, // milliseconds per turn at normal speed
   MIN_SPEED: 0.5, // slowest speed multiplier
@@ -93,18 +189,43 @@ export const REALTIME_CONSTANTS = {
   MAX_TICK_INTERVAL: 10000 // maximum interval cap
 };
 
+/**
+ * Production efficiency modifiers for resource generation.
+ * Applied as a multiplier to raw production values.
+ * @property {number} BASE_EFFICIENCY - Default 1% efficiency (effectively divides production by 100)
+ * @property {number} MIN_EFFICIENCY - Minimum efficiency floor (0.1%)
+ * @property {number} MAX_EFFICIENCY - Maximum efficiency cap (100%)
+ */
 export const PRODUCTION_EFFICIENCY_CONSTANTS = {
   BASE_EFFICIENCY: 0.01,              // 1% base efficiency (99% nerf) - effectively divides production by 100
   MIN_EFFICIENCY: 0.001,              // Minimum efficiency floor (0.1%)
   MAX_EFFICIENCY: 1.0                 // Maximum efficiency cap (100%)
 };
 
+/**
+ * Rationing modifiers for resource consumption.
+ * Applied as a multiplier to raw consumption values.
+ * @property {number} BASE_RATIONING - Default 10% rationing (effectively divides consumption by 10)
+ * @property {number} MIN_RATIONING - Minimum rationing floor (0.1%)
+ * @property {number} MAX_RATIONING - Maximum rationing cap (100%)
+ */
 export const RATIONING_CONSTANTS = {
-  BASE_RATIONING: 0.01,               // 1% base rationing (99% nerf) - effectively divides consumption by 100
+  BASE_RATIONING: 0.10,               // 10% base rationing (90% nerf) - effectively divides consumption by 10
   MIN_RATIONING: 0.001,               // Minimum rationing floor (0.1%)
   MAX_RATIONING: 1.0                  // Maximum rationing cap (100%)
 };
 
+/**
+ * Initial game setup values for new games.
+ * @property {number} INITIAL_REQUISITION - Starting requisition points for coalition procurement
+ * @property {number} INITIAL_TREASURY_CREDITS - Starting credits in coalition treasury
+ * @property {number} INITIAL_ALLOWANCE_CREDITS - Starting allowance credits for spending
+ * @property {number} INITIAL_PLAYER_INFLUENCE - Starting influence points for player actions
+ * @property {number} DEFAULT_BASE_VOTES_PER_EMPIRE - Base voting power per empire in law votes
+ * @property {number} DEFAULT_QUORUM_THRESHOLD - Fraction of votes needed for quorum (50%)
+ * @property {number} DEFAULT_PASS_THRESHOLD - Fraction of votes needed to pass law (50%)
+ * @property {number} RNG_OFFSET_IMPROVEMENTS - Seed offset for deterministic improvement RNG
+ */
 export const GAME_INIT_CONSTANTS = {
   // Coalition economy starting values
   INITIAL_REQUISITION: 500,
@@ -123,6 +244,17 @@ export const GAME_INIT_CONSTANTS = {
   RNG_OFFSET_IMPROVEMENTS: 1000
 };
 
+/**
+ * Political/philosophical value axes for empires.
+ * Each axis represents a spectrum of beliefs that affect empire behavior and reactions.
+ * Values range from -1 (first trait) to +1 (second trait).
+ * @property {string} AUTHORITARIAN_LIBERAL - Control vs freedom preference
+ * @property {string} SPIRITUAL_MATERIALISTIC - Faith vs pragmatism orientation
+ * @property {string} NATURAL_MECHANICAL - Organic vs technological preference
+ * @property {string} PACIFIST_MILITARISTIC - Peace vs war inclination
+ * @property {string} STOICIST_HEDONISTIC - Austerity vs pleasure values
+ * @property {string} ESSENTIALIST_CONSTRUCTIVIST - Fixed vs malleable identity beliefs
+ */
 export const VALUE_AXES = {
   AUTHORITARIAN_LIBERAL: 'authoritarian_liberal',
   SPIRITUAL_MATERIALISTIC: 'spiritual_materialistic',
@@ -132,6 +264,13 @@ export const VALUE_AXES = {
   ESSENTIALIST_CONSTRUCTIVIST: 'essentialist_constructivist'
 };
 
+/**
+ * Configuration for each value axis defining valid ranges.
+ * All axes use -1 to +1 range where:
+ *   -1 = strongly first trait (e.g., authoritarian)
+ *   +1 = strongly second trait (e.g., liberal)
+ *    0 = neutral/balanced
+ */
 export const AXES_CONFIG = {
   authoritarian_liberal: { min: -1, max: 1 },
   spiritual_materialistic: { min: -1, max: 1 },
@@ -141,6 +280,19 @@ export const AXES_CONFIG = {
   essentialist_constructivist: { min: -1, max: 1 }
 };
 
+/**
+ * Empire reaction thresholds and scaling factors.
+ * Reactions determine how empires respond to laws and events based on value alignment.
+ * @property {Object} THRESHOLDS - Score thresholds for reaction types
+ * @property {number} THRESHOLDS.LAUD - Score >= 0.60 triggers enthusiastic support
+ * @property {number} THRESHOLDS.APPROVE - Score >= 0.20 triggers approval
+ * @property {number} THRESHOLDS.NEUTRAL_BAND - Scores in [-0.20, +0.20] are neutral
+ * @property {number} THRESHOLDS.DISAPPROVE - Score <= -0.20 triggers disapproval
+ * @property {number} THRESHOLDS.DENOUNCE - Score <= -0.60 triggers strong opposition
+ * @property {Object} POWER_SCALING - Factors for calculating political pressure
+ * @property {number} POWER_SCALING.POP_EXPONENT - Population exponent for influence (sqrt)
+ * @property {number} POWER_SCALING.PRESSURE_LOG_DIVISOR - Normalizes pressure to ~0.2-1.5 range
+ */
 export const REACTION_CONSTANTS = {
   THRESHOLDS: {
     LAUD: 0.60,
@@ -155,6 +307,15 @@ export const REACTION_CONSTANTS = {
   }
 };
 
+/**
+ * Technology research system configuration.
+ * @property {number} BASE_POINTS_PER_TICK - Base tech points gained each tick (100)
+ * @property {number} INITIAL_THRESHOLD - Points needed for first tech unlock (25000)
+ * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for subsequent techs (1.10)
+ *                                          threshold = INITIAL_THRESHOLD * (n+1)^THRESHOLD_EXPONENT
+ * @property {number} BASE_RESEARCH_SPEED - Default research speed multiplier (1.0)
+ * @property {number} TECH_CHOICES_COUNT - Number of tech options presented when unlocking (3)
+ */
 export const TECH_CONSTANTS = {
   BASE_POINTS_PER_TICK: 100,         // Base tech points gained per tick
   INITIAL_THRESHOLD: 25000,          // First tech unlocks at ~500 ticks (50000 / 100)
@@ -163,11 +324,31 @@ export const TECH_CONSTANTS = {
   TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
 };
 
+/**
+ * Coalition improvement/building system configuration.
+ * @property {number} INITIAL_MAX_TOTAL_CAPACITY - Starting max improvement slots (6)
+ * @property {number} COALITION_CONSTRUCTION - Build progress added to all constructions per tick (4)
+ */
 export const IMPROVEMENTS_CONSTANTS = {
   INITIAL_MAX_TOTAL_CAPACITY: 6,     // Starting maximum total improvement capacity
   COALITION_CONSTRUCTION: 4          // Build progress added to ALL building improvements per tick
 };
 
+/**
+ * Scourge attack prediction system configuration.
+ * Controls how accurately the coalition can predict Scourge movements.
+ * @property {number} BASE_CONFIDENCE_MODIFIER - Default prediction certainty (1.0)
+ * @property {number} CONFIDENCE_PER_LEVEL - Modifier increase per intelligence tier (0.3)
+ * @property {number} STABLE_BONUS - Prediction bonus when coalition is Stable (+0.1)
+ * @property {number} STRAINED_PENALTY - Prediction penalty when Strained (-0.05)
+ * @property {number} DESPERATE_PENALTY - Prediction penalty when Desperate (-0.15)
+ * @property {number} MIN_CONFIDENCE_MODIFIER - Minimum confidence floor (0.1)
+ * @property {number} MAX_CONFIDENCE_MODIFIER - Maximum confidence cap (2.0)
+ * @property {number} CONFIDENCE_DRIFT_TURNS - Turns to drift back toward baseline (30)
+ * @property {Object} UNCERTAINTY_RANGE_LOW - Wide prediction range at low confidence (5-20 turns)
+ * @property {Object} UNCERTAINTY_RANGE_MEDIUM - Moderate range at medium confidence (2-8 turns)
+ * @property {Object} UNCERTAINTY_RANGE_HIGH - Narrow range at high confidence (1-3 turns)
+ */
 export const SCOURGE_PREDICTION_CONSTANTS = {
   BASE_CONFIDENCE_MODIFIER: 1.0,      // Default certainty level
   CONFIDENCE_PER_LEVEL: 0.3,           // Modifier increase per confidence tier improvement
@@ -201,6 +382,14 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
   ALLOWANCE_CAP_TICKS: 4                            // Maximum allowance (in ticks worth)
 };
 
+/**
+ * Scourge difficulty modifier scaling.
+ * Modifiers increase over time or through events, making the Scourge stronger.
+ * @property {number} MIN_SEVERITY - Minimum/starting severity level (1)
+ * @property {number} ATTACK_POWER_PER_SEVERITY - Scourge attack power bonus per severity (+4%)
+ * @property {number} RECOVERY_RATE_PER_SEVERITY - Scourge recovery speed bonus per severity (+5%)
+ * @property {number} LAW_SPEED_PER_SEVERITY - Coalition law enactment penalty per severity (-3%)
+ */
 export const SCOURGE_MODIFIER_CONSTANTS = {
   MIN_SEVERITY: 1,                    // Minimum severity for modifiers (also starting value)
   // Note: No max severity - modifiers scale infinitely
@@ -211,9 +400,38 @@ export const SCOURGE_MODIFIER_CONSTANTS = {
   LAW_SPEED_PER_SEVERITY: -0.03       // -3% coalition law enact speed per severity
 };
 
-// Mission slider allowed values - centralized for server validation, mission logic, and UI
+/**
+ * Valid slider values for mission allocation.
+ * Used by server validation, mission logic, and UI components.
+ * -1 = withdraw/oppose, 0 = neutral, 1/2/5 = increasing commitment levels
+ */
 export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
 
+/**
+ * Scourge mission system configuration.
+ * Controls deep strike missions, threat levels, and rewards.
+ * @property {number} THREAT_THRESHOLD_1 - First threat tier boundary (35)
+ * @property {number} THREAT_THRESHOLD_2 - Second threat tier boundary (60)
+ * @property {number} THREAT_THRESHOLD_3 - Third/highest threat tier boundary (80)
+ * @property {number} GLORY_BASE_PER_SCOURGE_WIN - Base glory earned for defeating Scourge (100)
+ * @property {number} EP_COST_MEDIUM - Expedition point cost for medium missions (120)
+ * @property {number} EP_COST_MEDIUM_HIGH - EP cost for medium-high missions (180)
+ * @property {number} EP_COST_HIGH - EP cost for high-difficulty missions (240)
+ * @property {number} EP_BASE_DURATION - Base duration for expedition point regeneration (400)
+ * @property {number} EP_MAX_ACTIVE - Maximum concurrent active expeditions (1)
+ * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.05)
+ * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase from negative outcomes (+2)
+ * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
+ * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
+ * @property {number} DEEP_STRIKE_MP_PCT - Military power percentage for deep strikes (50%)
+ * @property {number} DEEP_SABOTAGE_SEVERITY - Severity reduction from sabotage missions (1)
+ * @property {number} DEEP_GLORY_SMALL - Small glory reward (40)
+ * @property {number} DEEP_GLORY_MEDIUM - Medium glory reward (80)
+ * @property {number} DEEP_HARVEST_THREAT_SMALL_POSITIVE - Small threat increase from harvesting (+2)
+ * @property {number} DEEP_REQUISITION_SMALL - Small requisition reward (60)
+ * @property {number} DEEP_INTEL_SMALL - Small intel reward (1)
+ * @property {number[]} THREAT_CLIMATE_STRENGTHS - Threat modifier strengths by climate tier [0.08, 0.15, 0.25]
+ */
 export const SCOURGE_MISSION_CONSTANTS = {
   THREAT_THRESHOLD_1: 35,
   THREAT_THRESHOLD_2: 60,
@@ -237,4 +455,3 @@ export const SCOURGE_MISSION_CONSTANTS = {
   DEEP_INTEL_SMALL: 1,
   THREAT_CLIMATE_STRENGTHS: [0.08, 0.15, 0.25]
 };
-

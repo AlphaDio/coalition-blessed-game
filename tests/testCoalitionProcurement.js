@@ -7,10 +7,10 @@ console.log('Starting test file...');
  * Tests procurement algorithm, conversion logic, allowance mechanics, and market integration
  */
 
-import { createGameState } from './src/game/types.js';
-import { loadEconomyConfig } from './src/game/marketEconomy.js';
-import { refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, processBankRollover, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from './src/game/coalitionProcurement.js';
-import { DeterministicRNG } from './src/modules/rng.js';
+import { createGameState } from '../src/game/types.js';
+import { loadEconomyConfig } from '../src/game/marketEconomy.js';
+import { refillCoalitionAllowance, executeCoalitionProcurement, executeSupplyConversion, processBankRollover, ALLOWANCE_PER_TICK, ALLOWANCE_CAP_TICKS } from '../src/game/coalitionProcurement.js';
+import { DeterministicRNG } from '../src/modules/rng.js';
 
 function testProcurementAlgorithm() {
   console.log('Testing procurement algorithm...');

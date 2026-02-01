@@ -1,14 +1,14 @@
 // Test script to verify the new UI with active battles and laws
 
-import { createGameState } from './src/game/types.js';
-import { createSampleContent } from './src/game/content.js';
-import { refreshArmyAggregates } from './src/game/armyComposition.js';
-import { createUI, renderAll } from './src/ui/renderer.js';
-import { startBattle } from './src/game/frontBattles.js';
-import { startLawProcess } from './src/game/lawProcessManager.js';
-import { getSampleLawDefinitions } from './src/game/lawDefinitions.js';
-import { getAllLawEvents } from './src/game/lawEventTemplates.js';
-import { createPowerSystemPolicy } from './src/game/types.js';
+import { createGameState } from '../src/game/types.js';
+import { createSampleContent } from '../src/game/content.js';
+import { refreshArmyAggregates } from '../src/game/armyComposition.js';
+import { createUI, renderAll } from '../src/ui/renderer.js';
+import { startBattle } from '../src/game/frontBattles.js';
+import { startLawProcess } from '../src/game/lawProcessManager.js';
+import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
+import { getAllLawEvents } from '../src/game/lawEventTemplates.js';
+import { createPowerSystemPolicy } from '../src/game/types.js';
 
 // Initialize game state
 const state = createGameState(12345);

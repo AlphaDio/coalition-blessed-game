@@ -90,6 +90,14 @@ export function enactLaw(state, lawId) {
       state.coalitionModifiers.empire_production_multiplier += modifiers.empire_production_multiplier;
       log.push(`Empire production multiplier increased by +${(modifiers.empire_production_multiplier * 100).toFixed(0)}%`);
     }
+    if (modifiers.consumptionShareMultiplier) {
+      state.coalitionModifiers.consumptionShareMultiplier = (state.coalitionModifiers.consumptionShareMultiplier || 1.0) * modifiers.consumptionShareMultiplier;
+      log.push(`Coalition consumption share multiplied by ${modifiers.consumptionShareMultiplier}x`);
+    }
+    if (modifiers.consumptionShareBonus) {
+      state.coalitionModifiers.consumptionShareBonus = (state.coalitionModifiers.consumptionShareBonus || 0) + modifiers.consumptionShareBonus;
+      log.push(`Coalition consumption share increased by +${(modifiers.consumptionShareBonus * 100).toFixed(0)}%`);
+    }
 
    // Set cooldown
   law.currentCooldown = law.cooldown;

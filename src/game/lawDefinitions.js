@@ -71,7 +71,7 @@ const ECONOMY_LAWS = [
     2,
     'economy',
     'Market',
-    { spiritual_materialistic: 0.6, authoritarian_liberal: 0.1 },
+    { spiritual_materialistic: 0.6, authoritarian_liberal: 0.3 },
     ['market', 'trade'],
     { economy_incentive: 0.6 },
     { DEBATE: ['market', 'trade'], FALLOUT: ['economic'], VOTING: ['economic'] },
@@ -84,7 +84,7 @@ const ECONOMY_LAWS = [
     3,
     'economy',
     'Market',
-    { spiritual_materialistic: 0.8, authoritarian_liberal: 0.1 },
+    { spiritual_materialistic: 0.8, authoritarian_liberal: 0.5 },
     ['market', 'trade'],
     { economy_incentive: 0.8 },
     { DEBATE: ['market', 'trade'], FALLOUT: ['economic'], VOTING: ['economic'] },
@@ -172,6 +172,47 @@ const ECONOMY_LAWS = [
     { DEBATE: ['fiscal', 'stability'], FALLOUT: ['economic'], VOTING: ['economic'] },
     { trade_income: 350, empire_approval: 1.5 },
     { coalition_credits: 6000, requisition: 600, cohesion: 4, empire_approval: 3 }
+  ),
+
+  // Taxation Track - Increases coalition's share of empire consumption for requisition
+  createTieredLawDefinition(
+    'law_taxation_1',
+    'War Contribution Levy',
+    1,
+    'economy',
+    'Taxation',
+    { authoritarian_liberal: -0.3, stoicist_hedonistic: -0.2, pacifist_militaristic: 0.3 },
+    ['taxation', 'requisition', 'war'],
+    { economy_incentive: 0.3, security_incentive: 0.4 },
+    { DEBATE: ['taxation', 'war'], FALLOUT: ['economic'], VOTING: ['economic'] },
+    { consumptionShareMultiplier: 1.25, empire_approval: -0.3 },  // 10% -> 12.5% consumption share
+    { requisition: 200, cohesion: 1 }
+  ),
+  createTieredLawDefinition(
+    'law_taxation_2',
+    'Coalition Revenue Act',
+    2,
+    'economy',
+    'Taxation',
+    { authoritarian_liberal: -0.5, stoicist_hedonistic: -0.3, pacifist_militaristic: 0.4 },
+    ['taxation', 'requisition', 'war'],
+    { economy_incentive: 0.4, security_incentive: 0.5 },
+    { DEBATE: ['taxation', 'war'], FALLOUT: ['economic'], VOTING: ['economic'] },
+    { consumptionShareMultiplier: 1.5, empire_approval: -0.5 },   // 10% -> 15% consumption share
+    { requisition: 400, cohesion: 2 }
+  ),
+  createTieredLawDefinition(
+    'law_taxation_3',
+    'Total War Tithe',
+    3,
+    'economy',
+    'Taxation',
+    { authoritarian_liberal: -0.7, stoicist_hedonistic: -0.4, pacifist_militaristic: 0.6 },
+    ['taxation', 'requisition', 'war'],
+    { economy_incentive: 0.5, security_incentive: 0.7 },
+    { DEBATE: ['taxation', 'war'], FALLOUT: ['economic'], VOTING: ['economic'] },
+    { consumptionShareMultiplier: 2.0, empire_approval: -1.0 },   // 10% -> 20% consumption share (doubled)
+    { requisition: 800, cohesion: 3 }
   )
 ];
 

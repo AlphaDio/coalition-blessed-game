@@ -15,8 +15,6 @@ import { refreshArmyAggregates } from '../armyComposition.js';
 import { hasTag, empireHasTag } from '../../utils/tags.js';
 import { getTieredImprovementRequests, generateImprovementSuggestions, generateReplacementSuggestion, canStartImprovement } from './definitions.js';
 import {
-  SUSTAINMENT_MAX_PRICE_MULTIPLIER,
-  MARKET_SELL_PRICE_DISCOUNT,
   MODIFIER_ARMY_ORG_SCALE,
   MODIFIER_EMPIRE_APPROVAL_SCALE,
   POPULATION_GROWTH_SCALE,
@@ -414,7 +412,7 @@ export function processImprovementSustainment(state, improvement) {
     const sellOffers = state.marketOrders?.sellOffers;
     if (!marketState || !sellOffers || sellOffers.length === 0) return 0;
 
-    const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+    const maxPrice = marketState.price;
     const availableSells = sellOffers
       .filter(sell => sell.commodity === commodity && (sell.qty - (sell.filled_qty || 0)) > 0)
       .filter(sell => (sell.ask_price || 0) <= maxPrice)
@@ -530,7 +528,7 @@ export function processImprovementSustainment(state, improvement) {
       // Create market buy order if market exists
       if (state.market && state.market[commodity]) {
         const marketState = state.market[commodity];
-        const maxPrice = marketState.price * SUSTAINMENT_MAX_PRICE_MULTIPLIER;
+        const maxPrice = marketState.price;
 
         const buyOrder = {
           id: `sustain_${orderIdCounter++}`,
@@ -700,7 +698,7 @@ export function releaseProductionFromBank(state, improvement) {
     // Get market price for this commodity
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
-    const discountedPrice = sellPrice * MARKET_SELL_PRICE_DISCOUNT;
+    const discountedPrice = sellPrice;
 
     const sellOffer = {
       id: `prod_${orderIdCounter++}`,
