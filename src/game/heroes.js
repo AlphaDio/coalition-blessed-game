@@ -3,7 +3,14 @@
  */
 
 import { clamp } from './cohesion.js';
-import { HERO_ABILITIES, HERO_PASSIVES } from './heroDefinitions.js';
+import {
+  HERO_ABILITIES,
+  HERO_PASSIVES,
+  HERO_ABILITY_MODULE_IDS,
+  HERO_PASSIVE_MODULE_IDS,
+  HERO_MODULE_INTERPRETER,
+  HERO_MODULE_REGISTRY
+} from './heroDefinitions.js';
 import { createHero } from './types.js';
 import { getLogger } from '../modules/logger.js';
 
@@ -27,8 +34,7 @@ const HERO_CONSTANTS = {
   POPULARITY_RISE_GOOD: 0.5,
   POPULARITY_FALL_BAD: 0.6,
   POPULARITY_CAP_FACTOR: 0.5,
-  CHARGE_PER_CREDIT: 0.02,
-  ABILITY_CHARGE_MAX: 100,
+  CHARGE_PER_CREDIT: 0.2, // 0.02 -> 0.2
   ABILITY_MIN_CHARGE: 100,
   STATUS_CHARGE_MULTIPLIER: {
     ACTIVE: 1,
@@ -135,7 +141,9 @@ export function applyHeroBudgetSiphon(state, log) {
       const siphoned = virtualSiphon * share;
       const statusMultiplier = HERO_CONSTANTS.STATUS_CHARGE_MULTIPLIER[hero.status] ?? 1;
       const chargeGain = siphoned * chargePerCredit * statusMultiplier;
-      hero.charge = clamp((hero.charge || 0) + chargeGain, 0, HERO_CONSTANTS.ABILITY_CHARGE_MAX);
+      const abilityDef = HERO_ABILITIES[hero.ability_id];
+      const chargeMax = abilityDef?.chargeRequired ?? HERO_CONSTANTS.ABILITY_MIN_CHARGE;
+      hero.charge = clamp((hero.charge || 0) + chargeGain, 0, chargeMax);
       hero.siphon_bank = (hero.siphon_bank || 0) + siphoned;
       const message = `Hero charge: ${hero.name} accumulates +${chargeGain.toFixed(1)} charge (virtual siphon ${Math.round(siphoned)} credits).`;
       log.push(message);
@@ -250,6 +258,10 @@ export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
     if (!empire) return;
 
     const popularityScalar = getPopularityScalar(hero);
+    if (runHeroPassiveHook(definition, hero, empire, state, lawProcess, lawDef, null, popularityScalar, cadence, passivePhase, log, logger)) {
+      return;
+    }
+
     const effects = definition.effects || [];
     effects.forEach(effect => {
       applyHeroPassiveEffect(effect, {
@@ -291,6 +303,10 @@ export function runHeroBattlePassives(state, battleContext, cadence, log) {
     if (!empire) return;
 
     const popularityScalar = getPopularityScalar(hero);
+    if (runHeroPassiveHook(definition, hero, empire, state, null, null, battleContext, popularityScalar, cadence, passivePhase, log, logger)) {
+      return;
+    }
+
     const effects = definition.effects || [];
     effects.forEach(effect => {
       applyHeroPassiveEffect(effect, {
@@ -313,6 +329,258 @@ function getPassiveTrigger(passive, definition) {
   };
 }
 
+function buildPassiveScope(hero, empire, state, lawProcess, lawDef, battleContext, popularityScalar, cadence, phase) {
+  return {
+    hero,
+    empire,
+    state,
+    law_process: lawProcess,
+    law: lawDef,
+    battle: battleContext,
+    popularity_scalar: popularityScalar,
+    cadence,
+    phase,
+    hero_tags: hero?.tags || [],
+    empire_tags: empire?.tags || [],
+    law_tags: lawDef?.tags || lawDef?.law_tags || []
+  };
+}
+
+function runHeroPassiveHook(
+  definition,
+  hero,
+  empire,
+  state,
+  lawProcess,
+  lawDef,
+  battleContext,
+  popularityScalar,
+  cadence,
+  phase,
+  log,
+  logger
+) {
+  const moduleId = HERO_PASSIVE_MODULE_IDS[definition?.id];
+  if (!moduleId) return false;
+
+  const moduleDoc = HERO_MODULE_REGISTRY.modules?.[moduleId];
+  if (!moduleDoc?.hooks?.on_trigger?.logic) return false;
+
+  const scope = buildPassiveScope(hero, empire, state, lawProcess, lawDef, battleContext, popularityScalar, cadence, phase);
+  const context = { scope, vars: {} };
+
+  const result = HERO_MODULE_INTERPRETER.executeHook(moduleId, 'on_trigger', context);
+  if (!result?.actions || result.actions.length === 0) return true;
+
+  result.actions.forEach(action => {
+    applyHeroPassiveAction(action, {
+      hero,
+      empire,
+      state,
+      lawProcess,
+      lawDef,
+      battleContext,
+      popularityScalar,
+      log,
+      logger
+    });
+  });
+
+  return true;
+}
+
+function formatMessage(template, values) {
+  if (!template) return null;
+  return template.replace(/\{(\w+)\}/g, (match, key) => {
+    return values[key] ?? match;
+  });
+}
+
+function buildAbilityScope(hero, empire, state, lawProcess, popularityScalar) {
+  return {
+    hero,
+    empire,
+    state,
+    law_process: lawProcess,
+    popularity_scalar: popularityScalar,
+    hero_tags: hero?.tags || [],
+    empire_tags: empire?.tags || []
+  };
+}
+
+function runHeroAbilityHook(abilityDef, hero, empire, state, lawProcess, popularityScalar, log, logger) {
+  const moduleId = HERO_ABILITY_MODULE_IDS[abilityDef?.id];
+  if (!moduleId) return false;
+
+  const moduleDoc = HERO_MODULE_REGISTRY.modules?.[moduleId];
+  if (!moduleDoc?.hooks?.on_trigger?.logic) return false;
+
+  const scope = buildAbilityScope(hero, empire, state, lawProcess, popularityScalar);
+  const context = { scope, vars: {} };
+
+  const result = HERO_MODULE_INTERPRETER.executeHook(moduleId, 'on_trigger', context);
+  if (!result?.actions || result.actions.length === 0) return true;
+
+  result.actions.forEach(action => {
+    applyHeroAbilityAction(action, {
+      hero,
+      empire,
+      state,
+      lawProcess,
+      popularityScalar,
+      log,
+      logger
+    });
+  });
+
+  return true;
+}
+
+function applyHeroAbilityAction(action, context) {
+  if (!action || typeof action !== 'object') return;
+  const { type, args = {} } = action;
+
+  const {
+    hero,
+    empire,
+    state,
+    lawProcess,
+    log,
+    logger
+  } = context;
+
+  const amount = Number(args.amount ?? args.value ?? 0);
+  const logValues = {
+    hero: hero?.name,
+    empire: empire?.name,
+    value: Number.isFinite(amount) ? Math.round(amount) : 0,
+    amount: Number.isFinite(amount) ? amount : 0
+  };
+
+  switch (type) {
+    case 'adjust_hero_meter': {
+      if (!hero?.meters) return;
+      const meter = args.meter;
+      if (!meter || !Number.isFinite(amount) || amount === 0) return;
+      if (!['heat', 'grievance', 'popularity'].includes(meter)) return;
+      const current = Number(hero.meters[meter] || 0);
+      hero.meters[meter] = clamp(current + amount, 0, 100);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'add_law_progress': {
+      if (!lawProcess) return;
+      if (!Number.isFinite(amount) || amount === 0) return;
+      const before = lawProcess.phaseProgress || 0;
+      lawProcess.phaseProgress = clamp(before + amount, 0, 2.0);
+      const message = formatMessage(args.log_message, {
+        ...logValues,
+        before: Number.isFinite(before) ? before.toFixed(2) : '0.00',
+        after: Number.isFinite(lawProcess.phaseProgress) ? lawProcess.phaseProgress.toFixed(2) : '0.00'
+      });
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'grant_requisition': {
+      if (!state) return;
+      if (!Number.isFinite(amount) || amount === 0) return;
+      state.coalitionEconomy = state.coalitionEconomy || {};
+      state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + Math.round(amount);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    default:
+      return;
+  }
+}
+
+function applyHeroPassiveAction(action, context) {
+  if (!action || typeof action !== 'object') return;
+  const { type, args = {} } = action;
+
+  const {
+    hero,
+    empire,
+    state,
+    lawProcess,
+    battleContext,
+    log,
+    logger
+  } = context;
+
+  const amount = Number(args.amount ?? args.value ?? 0);
+  const percentValue = Number.isFinite(args.percent)
+    ? Number(args.percent)
+    : (Number.isFinite(amount) ? amount * 100 : 0);
+  const logValues = {
+    hero: hero?.name,
+    empire: empire?.name,
+    value: Number.isFinite(amount) ? Math.round(amount) : 0,
+    amount: Number.isFinite(amount) ? amount : 0,
+    percent: Number.isFinite(percentValue) ? percentValue.toFixed(1) : '0.0'
+  };
+
+  switch (type) {
+    case 'grant_credits': {
+      if (!empire || !Number.isFinite(amount) || amount === 0) return;
+      const grant = Math.round(amount);
+      if (grant === 0) return;
+      empire.budget_credits = (empire.budget_credits || 0) + grant;
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'add_law_momentum': {
+      if (!lawProcess?.meters || !Number.isFinite(amount) || amount === 0) return;
+      lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + amount, 0, 1);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'add_law_legitimacy': {
+      if (!lawProcess?.meters || !Number.isFinite(amount) || amount === 0) return;
+      lawProcess.meters.legitimacy = clamp((lawProcess.meters.legitimacy || 0) + amount, 0, 1);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'add_scourge_manpower_damage_pct': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      if (battleContext?.type !== 'SCOURGE') return;
+      const previous = state.scourgeNextAttackManpowerDamagePct || 0;
+      state.scourgeNextAttackManpowerDamagePct = clamp(previous + amount, 0, 1);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    default:
+      return;
+  }
+}
+
 function applyHeroPassiveEffect(effect, context) {
   if (!effect || typeof effect !== 'object') return;
 
@@ -328,12 +596,6 @@ function applyHeroPassiveEffect(effect, context) {
     logger
   } = context;
   const scaleByPopularity = effect.scale_by_popularity ? popularityScalar : 1;
-  const formatMessage = (template, values) => {
-    if (!template) return null;
-    return template.replace(/\{(\w+)\}/g, (match, key) => {
-      return values[key] ?? match;
-    });
-  };
 
   switch (effect.type) {
     case 'grant_credits': {
@@ -349,7 +611,7 @@ function applyHeroPassiveEffect(effect, context) {
       });
       if (message) {
         log.push(message);
-        logger.debug(message);
+        logger.info(message);
       }
       return;
     }
@@ -368,7 +630,7 @@ function applyHeroPassiveEffect(effect, context) {
       });
       if (message) {
         log.push(message);
-        logger.debug(message);
+        logger.info(message);
       }
       return;
     }
@@ -384,7 +646,7 @@ function applyHeroPassiveEffect(effect, context) {
       });
       if (message) {
         log.push(message);
-        logger.debug(message);
+        logger.info(message);
       }
       return;
     }
@@ -403,7 +665,7 @@ function applyHeroPassiveEffect(effect, context) {
       });
       if (message) {
         log.push(message);
-        logger.debug(message);
+        logger.info(message);
       }
       return;
     }
@@ -424,7 +686,8 @@ export function triggerHeroAbilities(state, lawProcess, log) {
     const abilityDef = HERO_ABILITIES[hero.ability_id];
     if (!abilityDef) return;
     if ((hero.cooldowns?.ability || 0) > 0) return;
-    if ((hero.charge || 0) < HERO_CONSTANTS.ABILITY_MIN_CHARGE) return;
+    const chargeRequired = abilityDef.chargeRequired ?? HERO_CONSTANTS.ABILITY_MIN_CHARGE;
+    if ((hero.charge || 0) < chargeRequired) return;
 
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
@@ -435,7 +698,11 @@ export function triggerHeroAbilities(state, lawProcess, log) {
     }
 
     const popularityScalar = getPopularityScalar(hero);
-    abilityDef.trigger({ hero, empire, lawProcess, popularityScalar, log });
+    if (runHeroAbilityHook(abilityDef, hero, empire, state, lawProcess, popularityScalar, log, logger)) {
+      // handled by hook
+    } else if (typeof abilityDef.trigger === 'function') {
+      abilityDef.trigger({ hero, empire, state, lawProcess, popularityScalar, log });
+    }
     hero.charge = 0;
     hero.cooldowns = hero.cooldowns || {};
     hero.cooldowns.ability = abilityDef.cooldown ?? 10;

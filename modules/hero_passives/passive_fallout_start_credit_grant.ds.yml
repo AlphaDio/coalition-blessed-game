@@ -20,8 +20,19 @@ declares:
     phase: "FALLOUT"
     cadence: "OnStart"
     description: "Grant credits to the hero empire at the start of Fallout."
-    effects:
-      - type: "grant_credits"
-        amount: 1000
-        scale_by_popularity: true
-        log_message: "Hero Passive triggered: {hero} granted {value} credits to {empire}."
+
+hooks:
+  on_trigger:
+    description: "Grant credits to the hero empire at the start of Fallout."
+    logic:
+      - set_variable:
+          varName: "grant"
+          value: "round(1000 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.grant > 0"
+          then:
+            - game_action:
+                action: "grant_credits"
+                args:
+                  amount: "vars.grant"
+                  log_message: "'Hero Passive triggered: {hero} granted {value} credits to {empire}.'"

@@ -20,9 +20,26 @@ declares:
     phase: "DEBATE"
     cadence: "OnTick"
     description: "Boost momentum slightly each debate tick if the law aligns with hero domain."
-    effects:
-      - type: "momentum_bonus_if_tag_match"
-        base_bonus: 0.02
-        scale_by_popularity: true
-        requires_tag_match: true
-        log_message: "Hero Passive triggered: {hero} orates (+{percent}% momentum)."
+
+hooks:
+  on_trigger:
+    description: "Apply momentum when hero and law tags intersect."
+    logic:
+      - set_variable:
+          varName: "has_match"
+          value: "intersects(scope.law_tags, scope.hero_tags)"
+      - if:
+          condition: "vars.has_match"
+          then:
+            - set_variable:
+                varName: "bonus"
+                value: "0.02 * scope.popularity_scalar"
+            - if:
+                condition: "vars.bonus > 0"
+                then:
+                  - game_action:
+                      action: "add_law_momentum"
+                      args:
+                        amount: "vars.bonus"
+                        percent: "vars.bonus * 100"
+                        log_message: "'Hero Passive triggered: {hero} orates (+{percent}% momentum).'"

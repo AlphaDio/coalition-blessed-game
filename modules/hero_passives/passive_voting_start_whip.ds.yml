@@ -20,8 +20,20 @@ declares:
     phase: "VOTING"
     cadence: "OnStart"
     description: "Nudge legitimacy upward at the start of voting."
-    effects:
-      - type: "legitimacy_bonus"
-        base_bonus: 0.03
-        scale_by_popularity: true
-        log_message: "Hero Passive triggered: {hero} rallies votes (+{percent}% legitimacy)."
+
+hooks:
+  on_trigger:
+    description: "Boost legitimacy at the start of voting."
+    logic:
+      - set_variable:
+          varName: "bonus"
+          value: "0.03 * scope.popularity_scalar"
+      - if:
+          condition: "vars.bonus > 0"
+          then:
+            - game_action:
+                action: "add_law_legitimacy"
+                args:
+                  amount: "vars.bonus"
+                  percent: "vars.bonus * 100"
+                  log_message: "'Hero Passive triggered: {hero} rallies votes (+{percent}% legitimacy).'"

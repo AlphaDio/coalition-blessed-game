@@ -20,8 +20,23 @@ declares:
     phase: "BATTLE"
     cadence: "OnStart"
     description: "Deal immediate damage to Scourge manpower at the start of battle."
-    effects:
-      - type: "scourge_manpower_damage_pct"
-        base_pct: 0.06
-        scale_by_popularity: true
-        log_message: "Hero Passive triggered: {hero} strikes early, reducing Scourge manpower by {percent}%."
+
+hooks:
+  on_trigger:
+    description: "Reduce scourge manpower at battle start."
+    logic:
+      - if:
+          condition: "scope.battle && scope.battle.type == 'SCOURGE'"
+          then:
+            - set_variable:
+                varName: "pct"
+                value: "0.06 * scope.popularity_scalar"
+            - if:
+                condition: "vars.pct > 0"
+                then:
+                  - game_action:
+                      action: "add_scourge_manpower_damage_pct"
+                      args:
+                        amount: "vars.pct"
+                        percent: "vars.pct * 100"
+                        log_message: "'Hero Passive triggered: {hero} strikes early, reducing Scourge manpower by {percent}%.'"
