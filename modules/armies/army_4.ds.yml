@@ -25,7 +25,7 @@ declares:
     command: 58
     recovery: 45
     manpower: 5000
-    dmgPerUnitMP: 2.1
+    dmgPerUnitMP: 2.1 # Highest damage per unit per MP in the game
     dmgPerTickMO: 2.7
     protection: 0.20
     resolve: 0.35

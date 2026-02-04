@@ -1,3 +1,9 @@
+# empire_clockwork.ds.yml
+
+# Has an army with high kill rate, this permits builds that rely on scaling kill rate exponentially
+# Relies on Sentient Cores to scale and power law-making
+# Relies on Wormhole Reactors to power their kill rate
+
 module:
   id: "empire_clockwork"
   name: "Quantum Collective"

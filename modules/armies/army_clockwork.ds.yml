@@ -29,7 +29,7 @@ declares:
     dmgPerTickMO: 2.8
     protection: 0.25
     resolve: 0.45
-    killRate: 0.25
+    killRate: 0.25 # Highest kill rate in the game
     demands:
       needs:
         quantum_circuits: 0.0015
