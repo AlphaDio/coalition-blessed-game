@@ -96,8 +96,8 @@ export function processEconomyTick(state) {
   // Step 6b: Save remaining valid orders to state.marketOrders
   saveMarketOrders(state, ordersToSave, validBuyOrders, validSellOffers, buyOrders, sellOffers);
 
-  // Coalition procurement
-  coalitionProcurement(state, config);
+  // Coalition procurement (market, sell offers with updated filled_qty, coalition state, config)
+  coalitionProcurement(state.market, validSellOffers, state.coalitionEconomy, config);
 
   // Step 7-8: Apply post-market updates
   applyPostMarketUpdates(state, config);

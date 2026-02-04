@@ -27,15 +27,11 @@ async function main() {
     logger.info(`Port: ${PORT}`);
     logger.info(`CORS Origin: ${CORS_ORIGIN}`);
     
-    const result = await createApiServer(PORT, CORS_ORIGIN);
+    const gameSeed = SEED !== undefined ? SEED : Math.floor(Math.random() * 1000000);
+    const result = await createApiServer(PORT, CORS_ORIGIN, gameSeed);
     const httpServer = result.httpServer;
     const gameManager = result.gameManager;
 
-    // Initialize game
-    const gameSeed = SEED !== undefined ? SEED : Math.floor(Math.random() * 1000000);
-    gameManager.newGame(gameSeed);
-    logger.info(`New game created with seed: ${gameSeed}`);
-    
     // Start the game loop (will respect paused state)
     gameManager.startGameLoop();
 
