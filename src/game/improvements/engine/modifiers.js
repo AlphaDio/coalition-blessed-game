@@ -84,6 +84,10 @@ export function applyImprovementModifiers(state) {
         // Store per-empire modifiers for hero siphon efficiency (applied in hero budget siphon)
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'supply_efficiency') {
+        // Reduces this empire's (and its armies') consumption; applied in ordersPhase via getEmpireSupplyEfficiency.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }
       // Other modifiers can be stored and applied elsewhere as needed
     }

@@ -13,7 +13,8 @@ import {
   emitEmpireNeedsOrders,
   emitEmpireWantsOrders,
   emitArmyOrders,
-  getEffectiveRationing
+  getEffectiveRationing,
+  getSupplyEfficiencyMultiplier
 } from './ordersPhase.js';
 import {
   applyOrderDurations,
@@ -67,15 +68,16 @@ export function processEconomyTick(state) {
   // Step 1: Compute empire production
   emitEmpireProduction(state, aggregateSellOffer);
 
-  // Calculate effective rationing with modifiers (applies to all consumption)
+  // Calculate effective rationing and supply efficiency (supply_efficiency reduces consumption)
   const effectiveRationing = getEffectiveRationing(state);
+  const supplyEfficiencyMultiplier = getSupplyEfficiencyMultiplier(state);
 
   // Step 2: Emit buy orders for empire needs/wants
-  emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationing);
-  emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationing);
+  emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier);
+  emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier);
 
   // Step 3: Emit buy orders for army needs/wants
-  emitArmyOrders(state, aggregateBuyOrder, effectiveRationing);
+  emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier);
 
   // Apply empire order posting fees
   const {

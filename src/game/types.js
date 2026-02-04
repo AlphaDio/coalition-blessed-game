@@ -68,7 +68,8 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     tags: tags,
     modifiers: {
       intensity: modifiers.intensity || 1.0,
-      axis_gates: modifiers.axis_gates || {}
+      axis_gates: modifiers.axis_gates || {},
+      supply_efficiency: modifiers.supply_efficiency || 0
     },
     // Economy fields
     budget_credits: stats.budget_credits || 10000,
