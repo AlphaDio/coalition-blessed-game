@@ -1,0 +1,39 @@
+module:
+  id: "passive_voting_start_whip"
+  name: "Voting Whip"
+  description: "Nudge legitimacy upward at the start of voting."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "voting", "legitimacy"]
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_VOTING_START_WHIP"
+    phase: "VOTING"
+    cadence: "OnStart"
+    description: "Nudge legitimacy upward at the start of voting."
+
+hooks:
+  on_trigger:
+    description: "Boost legitimacy at the start of voting."
+    logic:
+      - set_variable:
+          varName: "bonus"
+          value: "0.03 * scope.popularity_scalar"
+      - if:
+          condition: "vars.bonus > 0"
+          then:
+            - game_action:
+                action: "add_law_legitimacy"
+                args:
+                  amount: "vars.bonus"
+                  percent: "vars.bonus * 100"
+                  log_message: "'Hero Passive triggered: {hero} rallies votes (+{percent}% legitimacy).'"

@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_conscription_1"
+  name: "Selective Service Act"
+  description: "Selective Service Act"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "military"
+    - "conscription"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_conscription_1"
+    name: "Selective Service Act"
+    tier: 1
+    category: "military"
+    law_type: "Conscription"
+    axis_vector:
+      pacifist_militaristic: 0.6
+      authoritarian_liberal: -0.2
+    law_tags:
+      - "military"
+      - "conscription"
+    support_weights:
+      security_incentive: 0.7
+    phase_tags:
+      DEBATE:
+        - "security"
+        - "military"
+      FALLOUT:
+        - "social"
+      VOTING:
+        - "security"
+    modifiers:
+      supply_efficiency: 0.05
+      empire_approval: -0.5
+    immediate_effects:
+      requisition: 400
+      cohesion: 1

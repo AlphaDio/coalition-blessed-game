@@ -100,9 +100,8 @@ function testMoraleRefillsAfterBattle() {
   army2.mp.max = 500;
   army2.mo.current = 50; // Partially damaged morale
   
-  // Disable reinforcement and recovery to ensure battle actually ends
+  // Disable reinforcement so battle can end (no reserves joining during battle)
   army2.reinforcementRate = 0;
-  army2.recovery = 0;
   
   // Make army1 strong enough to win
   army1.dmgPerUnitMP = 50;
@@ -192,25 +191,24 @@ function testKillRatePermanentLosses() {
   // Disable army2 attack to avoid mutual damage
   army2.dmgPerUnitMP = 0;
   
-  // Disable recovery and reinforcement to get clean measurements
-  army2.recovery = 0;
+  // Disable reinforcement for clean measurements
   army2.reinforcementRate = 0;
   
   const front = startBattle(state, 'army1', 'army2', 1000);
   
   const initialPermanentLosses = front.permanentLosses.right;
   const initialMP = army2.mp.current;
-  const initialRecoveryPool = army2.recoveryPool;
+  const initialWoundedPool = army2.woundedPool ?? 0;
   
   simulateBattleTick(front, state);
   
   const totalDamage = initialMP - army2.mp.current;
   const permanentLosses = front.permanentLosses.right - initialPermanentLosses;
-  const temporaryDamage = army2.recoveryPool - initialRecoveryPool;
+  const temporaryDamage = (army2.woundedPool ?? 0) - initialWoundedPool;
   
   console.log('Total damage dealt:', totalDamage);
   console.log('Permanent losses:', permanentLosses);
-  console.log('Temporary damage (recovery pool):', temporaryDamage);
+  console.log('Temporary damage (wounded pool):', temporaryDamage);
   console.log('Sum (perm + temp):', permanentLosses + temporaryDamage);
   console.log('Kill rate ratio:', (permanentLosses / totalDamage).toFixed(2), '(expected ~0.20-0.28)');
   
@@ -226,76 +224,67 @@ function testKillRatePermanentLosses() {
 
 }
 
-// Test 5: Recovery pool mechanics
+// Test 5: Wounded pool mechanics (no during-battle recovery; wounded returned after battle)
 function testRecoveryPool() {
-  console.log('\n=== Test 5: Recovery pool mechanics ===');
+  console.log('\n=== Test 5: Wounded pool mechanics ===');
   
   const state = createTestState();
   const army1 = state.armies[0];
   const army2 = state.armies[1];
   
-  // Set army2's recovery stat LOW so pool accumulates
-  army2.recovery = 10; // Low recovery - only recover ~100 per tick with org modifier
-  army2.reinforcementRate = 0; // Disable reinforcement for this test
-  
-  // Disable army2's attack
+  army1.reinforcementRate = 0;
+  army2.reinforcementRate = 0;
   army2.dmgPerUnitMP = 0;
-  
+  const recoveryArmy1DamagePerUnitMP = army1.dmgPerUnitMP;
+
   const front = startBattle(state, 'army1', 'army2', 1000);
-  
   const initialMP = army2.mp.current;
-  
-  // Damage army2
+
   simulateBattleTick(front, state);
-  
+
   const mpAfterDamage = army2.mp.current;
-  const recoveryPoolAfterDamage = army2.recoveryPool;
+  const woundedPoolAfterDamage = army2.woundedPool ?? 0;
   const totalDamage = initialMP - mpAfterDamage;
   const permanentDamage = front.permanentLosses.right;
   const expectedTemporary = totalDamage - permanentDamage;
-  
-  console.log('Total damage:', totalDamage);
-  console.log('Permanent damage:', permanentDamage);
-  console.log('Expected temporary:', expectedTemporary);
-  console.log('Recovery pool after damage:', recoveryPoolAfterDamage);
-  console.log('Recovered this tick (pool reduced from expected):', expectedTemporary - recoveryPoolAfterDamage);
-  
-  if (recoveryPoolAfterDamage > 0) {
-    console.log('✓ Temporary damage added to recovery pool (some remains after partial recovery)');
-  } else {
-    console.log('✗ No temporary damage in recovery pool');
+
+  if (woundedPoolAfterDamage <= 0 && expectedTemporary > 0) {
+    console.log('✗ Temporary damage not in wounded pool');
     return false;
   }
-  
-  // Now stop dealing damage and let recovery happen
+  console.log('✓ Temporary damage added to wounded pool (wounded retired from battle)');
+
   army1.dmgPerUnitMP = 0;
-  const mpBeforeRecovery = army2.mp.current;
-  const poolBeforeRecovery = army2.recoveryPool;
-  
+  const mpBeforeTick = army2.mp.current;
+  const poolBeforeTick = army2.woundedPool ?? 0;
   simulateBattleTick(front, state);
+  const mpAfterTick = army2.mp.current;
+  const poolAfterTick = army2.woundedPool ?? 0;
   
-  const mpAfterRecovery = army2.mp.current;
-  const poolAfterRecovery = army2.recoveryPool;
-  
-  console.log('\nRecovery tick (no new damage):');
-  console.log('MP before recovery:', mpBeforeRecovery);
-  console.log('MP after recovery:', mpAfterRecovery);
-  console.log('Pool before recovery:', poolBeforeRecovery);
-  console.log('Pool after recovery:', poolAfterRecovery);
-  
-  const mpRecovered = mpAfterRecovery - mpBeforeRecovery;
-  const poolReduced = poolBeforeRecovery - poolAfterRecovery;
-  
-  console.log('MP recovered:', mpRecovered);
-  console.log('Pool reduced:', poolReduced);
-  
-  if (mpRecovered > 0 && poolReduced > 0 && Math.abs(mpRecovered - poolReduced) < 0.01) {
-    console.log('✓ Recovery pool converted to MP correctly');
-    return true;
-  } else {
-    console.log('✗ Recovery did not work properly');
+  if (mpAfterTick !== mpBeforeTick || Math.abs((poolAfterTick || 0) - (poolBeforeTick || 0)) > 0.01) {
+    console.log('✗ Wounded should not return to the line during battle (no during-battle recovery)');
     return false;
   }
+  console.log('✓ Wounded stay in pool during battle (no reinforcement from pool)');
+
+  army1.dmgPerUnitMP = recoveryArmy1DamagePerUnitMP;
+  
+  let endTicks = 0;
+  const maxEndTicks = 200;
+  while (front.state !== 'ENDED' && (army1.mp.current > 0 && army2.mp.current > 0) && endTicks < maxEndTicks) {
+    simulateBattleTick(front, state);
+    endTicks++;
+  }
+  if (front.state !== 'ENDED') {
+    console.log('✗ Battle did not end within ' + maxEndTicks + ' ticks');
+    return false;
+  }
+  if ((army1.woundedPool ?? 0) !== 0 || (army2.woundedPool ?? 0) !== 0) {
+    console.log('✗ Wounded pool should be 0 after battle (wounded returned to army)');
+    return false;
+  }
+  console.log('✓ Wounded returned to armies after battle');
+  return true;
 }
 
 // Test 6: collectArmiesInBattle tracks all active participants

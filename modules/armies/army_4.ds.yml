@@ -23,9 +23,10 @@ declares:
     fervor: 65
     aggravation: 45
     command: 58
-    recovery: 45
+    recoveryRate: 45
+    reinforcementRate: 80
     manpower: 5000
-    dmgPerUnitMP: 2.1
+    dmgPerUnitMP: 4.1 # Highest damage per unit per MP in the game
     dmgPerTickMO: 2.7
     protection: 0.20
     resolve: 0.35

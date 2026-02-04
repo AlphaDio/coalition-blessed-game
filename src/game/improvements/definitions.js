@@ -48,11 +48,11 @@ const INDUSTRIAL_BRANCH = [
       1,
       'industrial',
       {
-        suppliesCost: 200,
-        build: 240,
+        suppliesCost: 100,
+        build: 120,
         capacity: 2,
         sustainmentCost: { biomass: 0.3, plasma_fuel: 0.2 },
-        productionOutputs: { super_alloys: 0.008 },
+        productionOutputs: { super_alloys: 0.01 },
         modifiers: { industrial_output: 0.02 },
         tags: ['industrial', 'production', 'orbital'],
         requisitionUpkeep: 1
@@ -91,6 +91,24 @@ const INDUSTRIAL_BRANCH = [
         productionOutputs: { plasma_fuel: 0.8, requisition: 1.2 },
         modifiers: { industrial_output: 0.01 },
         tags: ['industrial', 'requisition', 'conversion', 'processing'],
+        requisitionUpkeep: 1
+      }
+    ),
+
+    createTieredImprovementRequest(
+      'nano_lattice_plant',
+      'Nano-Lattice Plant',
+      'Precision facility producing nano-machines for advanced systems',
+      1,
+      'industrial',
+      {
+        suppliesCost: 120,
+        build: 140,
+        capacity: 2,
+        sustainmentCost: { super_alloys: 0.15, plasma_fuel: 0.1 },
+        productionOutputs: { nano_machines: 0.03 },
+        modifiers: { supply_efficiency: 0.02 },
+        tags: ['industrial', 'production', 'nano', 'precision'],
         requisitionUpkeep: 1
       }
     ),
@@ -160,6 +178,24 @@ const RESEARCH_BRANCH = [
      }
    ),
 
+   createTieredImprovementRequest(
+     'circuit_synthesis_lab',
+     'Circuit Synthesis Lab',
+     'Facility producing quantum circuits for advanced computing and research applications',
+     1,
+     'research',
+     {
+       suppliesCost: 150,
+       build: 180,
+       capacity: 2,
+       sustainmentCost: { super_alloys: 0.2, rare_gases: 0.15 },
+       productionOutputs: { quantum_circuits: 0.015 },
+       modifiers: { research_speed: 0.05 },
+       tags: ['research', 'quantum', 'circuits', 'synthesis'],
+       requisitionUpkeep: 1
+     }
+   ),
+
    // T2: Advanced research
    createTieredImprovementRequest(
      'neural_network',
@@ -214,11 +250,11 @@ const MILITARY_BRANCH = [
       'military',
       {
         suppliesCost: 90,
-        build: 160,
+        build: 80,
         capacity: 2,
-        sustainmentCost: { biomass: 0.8 },
+        sustainmentCost: { biomass: 0.5 },
         productionOutputs: {},
-        modifiers: { army_organization: 1, army_fervor: 100 },
+        modifiers: { army_organization: 1, army_fervor: 1, army_damage_mult: 0.05 },
         tags: ['military', 'training', 'organization', 'fervor'],
         requisitionUpkeep: 1
       }
@@ -403,12 +439,12 @@ const SPIRITUAL_BRANCH = [
      1,
      'spiritual',
      {
-       suppliesCost: 160,
-       build: 200,
+       suppliesCost: 80,
+       build: 100,
        capacity: 2,
        sustainmentCost: { ancient_relics: 0.1, biomass: 0.2 },
        productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 300 },
+       modifiers: { army_fervor: 3 },
        tags: ['spiritual', 'morale', 'relics'],
        requisitionUpkeep: 1
      }
@@ -427,7 +463,7 @@ const SPIRITUAL_BRANCH = [
        capacity: 4,
         sustainmentCost: { ancient_relics: 0.3, psycho_implants: 0.2 },
         productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 600, cohesionModifier: 1.02 },
+       modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
        tags: ['mega_structure', 'spiritual', 'heritage', 'relics'],
        requisitionUpkeep: 6
      }
@@ -446,7 +482,7 @@ const SPIRITUAL_BRANCH = [
        capacity: 6,
         sustainmentCost: { ancient_relics: 0.5, psycho_implants: 0.3, sentient_cores: 0.1 },
         productionOutputs: { ancient_relics: 1 },
-       modifiers: { army_fervor: 1200, cohesionModifier: 1.05, empire_approval: 2 },
+       modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics'],
        requisitionUpkeep: 8
      }
@@ -464,17 +500,17 @@ const GOVERNANCE_BRANCH = [
      'administrative_hub',
      'Administrative Hub',
      'Centralized bureaucratic center streamlining coalition law processing and expanding improvement queue capacity',
-     1,
+     2,
      'governance',
      {
-       suppliesCost: 150,
-       build: 190,
+       suppliesCost: 75,
+       build: 95,
        capacity: 2,
        sustainmentCost: { sentient_cores: 0.1 },
        productionOutputs: {},
-       modifiers: { law_progress_speed: 0.03, improvement_queue_capacity: 1 },
+       modifiers: { law_progress_speed: 0.10, improvement_queue_capacity: 2 },
        tags: ['governance', 'administration'],
-       requisitionUpkeep: 1
+       requisitionUpkeep: 3
      }
    ),
 
@@ -483,17 +519,17 @@ const GOVERNANCE_BRANCH = [
      'council_spire',
      'Council Spire',
      'Magnificent assembly hall where sentient AI cores analyze and accelerate legislative proceedings',
-     2,
+     3,
      'governance',
      {
        suppliesCost: 400,
        build: 380,
        capacity: 4,
-       sustainmentCost: { sentient_cores: 0.2, quantum_circuits: 0.1 },
+       sustainmentCost: { sentient_cores: 0.20, quantum_circuits: 0.10 },
        productionOutputs: {},
-       modifiers: { law_progress_speed: 0.10, tick_delay_multiplier: 0.9 },
+       modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.50 },
        tags: ['mega_structure', 'governance', 'council', 'sentient'],
-       requisitionUpkeep: 3
+       requisitionUpkeep: 5
      }
    ),
 
@@ -508,9 +544,9 @@ const GOVERNANCE_BRANCH = [
        suppliesCost: 800,
        build: 700,
        capacity: 6,
-        sustainmentCost: { sentient_cores: 0.4, quantum_circuits: 0.2, psycho_implants: 0.2 },
+        sustainmentCost: { sentient_cores: 0.40, quantum_circuits: 0.20, psycho_implants: 0.20 },
         productionOutputs: { sentient_cores: 0.001 },
-       modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
+       modifiers: { law_progress_speed: 0.30, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
        tags: ['mega_structure', 'governance', 'transcendent', 'sentient'],
        requisitionUpkeep: 8
      }
@@ -572,9 +608,9 @@ const RESOURCE_BRANCH = [
        suppliesCost: 90,
        build: 85,
        capacity: 2,
-       sustainmentCost: { biomass: 0.01 },
-       productionOutputs: { genomes: 0.03 },
-       modifiers: {},
+       sustainmentCost: { biomass: 0.01, genomes: 0.03 },
+       productionOutputs: { genomes: 0.01 },
+       modifiers: { research_speed: 0.15 }, // 15% research speed bonus
        tags: ['resource', 'passive', 'research'],
        requisitionUpkeep: 1
      }
@@ -591,7 +627,7 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { biomass: 0.05, genomes: 0.025 },
+       productionOutputs: { biomass: 0.1, genomes: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic', 'organic'],
        requisitionUpkeep: 1

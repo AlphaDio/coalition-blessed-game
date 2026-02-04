@@ -2,97 +2,42 @@
  * Hero ability and passive definitions (v0.3)
  */
 
-import { getLogger } from '../modules/logger.js';
+import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
+import { DSInterpreter } from '../modules/interpreter.js';
 
-export const HERO_PASSIVES = {
-  PASSIVE_FALLOUT_START_CREDIT_GRANT: {
-    id: 'PASSIVE_FALLOUT_START_CREDIT_GRANT',
-    phase: 'FALLOUT',
-    cadence: 'OnStart',
-    description: 'Grant credits to the hero empire at the start of Fallout.',
-    apply({ hero, empire, popularityScalar, log }) {
-      const baseGrant = 1000;
-      const grant = Math.round(baseGrant * popularityScalar);
-      empire.budget_credits = (empire.budget_credits || 0) + grant;
-      const message = `Hero Passive triggered: ${hero.name} granted ${grant} credits to ${empire.name}.`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  },
-  PASSIVE_DEBATE_TICK_ORATOR: {
-    id: 'PASSIVE_DEBATE_TICK_ORATOR',
-    phase: 'DEBATE',
-    cadence: 'OnTick',
-    description: 'Boost momentum slightly each debate tick if the law aligns with hero domain.',
-    apply({ hero, lawProcess, lawDef, popularityScalar, log }) {
-      const lawTags = lawDef.tags || lawDef.law_tags || [];
-      const heroTags = hero.tags || [];
-      const matches = lawTags.some(tag => heroTags.includes(tag));
-      if (!matches) return;
-      const bonus = 0.02 * popularityScalar;
-      lawProcess.meters.momentum = Math.min(1, lawProcess.meters.momentum + bonus);
-      const message = `Hero Passive triggered: ${hero.name} orates (+${(bonus * 100).toFixed(1)}% momentum).`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  },
-  PASSIVE_VOTING_START_WHIP: {
-    id: 'PASSIVE_VOTING_START_WHIP',
-    phase: 'VOTING',
-    cadence: 'OnStart',
-    description: 'Nudge legitimacy upward at the start of voting.',
-    apply({ hero, lawProcess, popularityScalar, log }) {
-      const bonus = 0.03 * popularityScalar;
-      lawProcess.meters.legitimacy = Math.min(1, lawProcess.meters.legitimacy + bonus);
-      const message = `Hero Passive triggered: ${hero.name} rallies votes (+${(bonus * 100).toFixed(1)}% legitimacy).`;
-      log.push(message);
-      getLogger().debug(message);
-    }
-  }
-};
+const moduleRegistry = createModuleRegistry();
+const moduleInterpreter = new DSInterpreter(moduleRegistry);
 
-export const HERO_ABILITIES = {
-  ABILITY_PUBLIC_MANDATE: {
-    id: 'ABILITY_PUBLIC_MANDATE',
-    description: 'Convert popularity into short-term stability: reduce heat/grievance, boost popularity.',
-    cooldown: 10,
-    trigger({ hero, popularityScalar, log }) {
-      const heatReduction = 10 * popularityScalar;
-      const grievanceReduction = 6 * popularityScalar;
-      const popularityBoost = 4 * popularityScalar;
-      hero.meters.heat = Math.max(0, hero.meters.heat - heatReduction);
-      hero.meters.grievance = Math.max(0, hero.meters.grievance - grievanceReduction);
-      hero.meters.popularity = Math.min(100, hero.meters.popularity + popularityBoost);
-      const message = `Hero Ability: ${hero.name} invoked Public Mandate (heat -${heatReduction.toFixed(1)}, grievance -${grievanceReduction.toFixed(1)}).`;
-      log.push(message);
-      getLogger().info(message);
-    }
-  },
-  ABILITY_LEGISLATIVE_SURGE: {
-    id: 'ABILITY_LEGISLATIVE_SURGE',
-    description: 'Add immediate law phase progress if a law is active.',
-    cooldown: 12,
-    trigger({ hero, lawProcess, popularityScalar, log }) {
-      if (!lawProcess) return;
-      const bonus = 0.08 * popularityScalar;
-      const before = lawProcess.phaseProgress;
-      lawProcess.phaseProgress = Math.min(2.0, lawProcess.phaseProgress + bonus);
-      const message = `Hero Ability: ${hero.name} surged law progress ${before.toFixed(2)} -> ${lawProcess.phaseProgress.toFixed(2)}.`;
-      log.push(message);
-      getLogger().info(message);
-    }
-  },
-  ABILITY_EMERGENCY_FUNDS: {
-    id: 'ABILITY_EMERGENCY_FUNDS',
-    description: 'Inject credits into the hero empire.',
-    cooldown: 8,
-    trigger({ hero, empire, popularityScalar, log }) {
-      const baseGrant = 2000;
-      const grant = Math.round(baseGrant * popularityScalar);
-      empire.budget_credits = (empire.budget_credits || 0) + grant;
-      const message = `Hero Ability: ${hero.name} released ${grant} emergency credits for ${empire.name}.`;
-      log.push(message);
-      getLogger().info(message);
-    }
-  }
-};
+function loadHeroPassives(registry) {
+  const passiveModules = getModulesByType(registry, 'hero_passive');
+  return passiveModules.reduce((acc, entry) => {
+    const moduleDoc = registry.modules[entry.id];
+    const data = moduleDoc?.declares?.hero_passive_data;
+    if (!data?.id) return acc;
+    acc.passives[data.id] = data;
+    acc.moduleIds[data.id] = entry.id;
+    return acc;
+  }, { passives: {}, moduleIds: {} });
+}
+
+function loadHeroAbilities(registry) {
+  const abilityModules = getModulesByType(registry, 'hero_ability');
+  return abilityModules.reduce((acc, entry) => {
+    const moduleDoc = registry.modules[entry.id];
+    const data = moduleDoc?.declares?.hero_ability_data;
+    if (!data?.id) return acc;
+    acc.abilities[data.id] = data;
+    acc.moduleIds[data.id] = entry.id;
+    return acc;
+  }, { abilities: {}, moduleIds: {} });
+}
+
+const HERO_PASSIVE_INDEX = loadHeroPassives(moduleRegistry);
+const HERO_ABILITY_INDEX = loadHeroAbilities(moduleRegistry);
+
+export const HERO_PASSIVES = HERO_PASSIVE_INDEX.passives;
+export const HERO_PASSIVE_MODULE_IDS = HERO_PASSIVE_INDEX.moduleIds;
+export const HERO_ABILITIES = HERO_ABILITY_INDEX.abilities;
+export const HERO_ABILITY_MODULE_IDS = HERO_ABILITY_INDEX.moduleIds;
+export const HERO_MODULE_REGISTRY = moduleRegistry;
+export const HERO_MODULE_INTERPRETER = moduleInterpreter;

@@ -23,13 +23,14 @@ declares:
     fervor: 40
     aggravation: 30
     command: 70
-    recovery: 60
+    recoveryRate: 40
+    reinforcementRate: 20
     manpower: 8000
     dmgPerUnitMP: 1.2
     dmgPerTickMO: 2.8
     protection: 0.25
     resolve: 0.45
-    killRate: 0.25
+    killRate: 0.25 # Highest kill rate in the game
     demands:
       needs:
         quantum_circuits: 0.0015

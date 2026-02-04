@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_readiness_1"
+  name: "Rapid Response Charter"
+  description: "Rapid Response Charter"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "military"
+    - "readiness"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_readiness_1"
+    name: "Rapid Response Charter"
+    tier: 1
+    category: "military"
+    law_type: "Readiness"
+    axis_vector:
+      pacifist_militaristic: 0.5
+      stoicist_hedonistic: -0.2
+    law_tags:
+      - "military"
+      - "readiness"
+    support_weights:
+      security_incentive: 0.6
+    phase_tags:
+      DEBATE:
+        - "security"
+        - "military"
+      FALLOUT:
+        - "security"
+      VOTING:
+        - "security"
+    modifiers:
+      army_maintenance_cost_modifier: 0.9
+      cohesionModifier: 1.02
+    immediate_effects:
+      requisition: 300
+      cohesion: 2

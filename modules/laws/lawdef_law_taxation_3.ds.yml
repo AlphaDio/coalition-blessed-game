@@ -1,0 +1,51 @@
+module:
+  id: "lawdef_law_taxation_3"
+  name: "Total War Tithe"
+  description: "Total War Tithe"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "taxation"
+    - "requisition"
+    - "war"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_taxation_3"
+    name: "Total War Tithe"
+    tier: 3
+    category: "economy"
+    law_type: "Taxation"
+    axis_vector:
+      authoritarian_liberal: -0.7
+      stoicist_hedonistic: -0.4
+      pacifist_militaristic: 0.6
+    law_tags:
+      - "taxation"
+      - "requisition"
+      - "war"
+    support_weights:
+      economy_incentive: 0.5
+      security_incentive: 0.7
+    phase_tags:
+      DEBATE:
+        - "taxation"
+        - "war"
+      FALLOUT:
+        - "economic"
+      VOTING:
+        - "economic"
+    modifiers:
+      consumptionShareMultiplier: 2
+      empire_approval: -1
+    immediate_effects:
+      requisition: 800
+      cohesion: 3

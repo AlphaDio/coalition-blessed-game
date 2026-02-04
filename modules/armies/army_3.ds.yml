@@ -23,7 +23,8 @@ declares:
     fervor: 50
     aggravation: 55
     command: 48
-    recovery: 48
+    recoveryRate: 68
+    reinforcementRate: 40
     manpower: 12000
     dmgPerUnitMP: 0.95
     dmgPerTickMO: 2.3

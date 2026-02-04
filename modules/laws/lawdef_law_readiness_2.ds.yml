@@ -1,0 +1,48 @@
+module:
+  id: "lawdef_law_readiness_2"
+  name: "Fleet Readiness Mandate"
+  description: "Fleet Readiness Mandate"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "military"
+    - "readiness"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_readiness_2"
+    name: "Fleet Readiness Mandate"
+    tier: 2
+    category: "military"
+    law_type: "Readiness"
+    axis_vector:
+      pacifist_militaristic: 0.7
+      stoicist_hedonistic: -0.3
+    law_tags:
+      - "military"
+      - "readiness"
+    support_weights:
+      security_incentive: 0.8
+    phase_tags:
+      DEBATE:
+        - "security"
+        - "military"
+      FALLOUT:
+        - "security"
+      VOTING:
+        - "security"
+    modifiers:
+      army_maintenance_cost_modifier: 0.8
+      cohesionModifier: 1.05
+      supply_efficiency: 0.05
+    immediate_effects:
+      requisition: 600
+      cohesion: 3

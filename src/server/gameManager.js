@@ -40,7 +40,6 @@ export class GameManager {
     this.state = null;
     this.gameLoopInterval = null;
     this.stateChangeCallbacks = [];
-    this.initializeNewGame();
   }
 
   ensureHeroRoster(force = false) {

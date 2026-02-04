@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_delegation_1"
+  name: "Delegated Authority Pact"
+  description: "Delegated Authority Pact"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "diplomacy"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_delegation_1"
+    name: "Delegated Authority Pact"
+    tier: 1
+    category: "governance"
+    law_type: "Delegation"
+    axis_vector:
+      authoritarian_liberal: 0.4
+    law_tags:
+      - "governance"
+      - "diplomacy"
+    support_weights:
+      population_incentive: 0.2
+      economy_incentive: 0.2
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "diplomacy"
+      FALLOUT:
+        - "political"
+      VOTING:
+        - "governance"
+    modifiers:
+      relations_strength_modifier: 1.05
+      trade_income: 50
+    immediate_effects:
+      coalition_credits: 1000
+      cohesion: 2

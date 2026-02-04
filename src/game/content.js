@@ -107,7 +107,7 @@ export function createSampleContent(seed = 0) {
       data.organization,
       data.aggravation,
       data.command || 50,
-      data.recovery || 50,
+      data.recoveryRate ?? data.recovery ?? 50,
       manpower
     );
     // Apply any additional combat stats from module
@@ -124,6 +124,13 @@ export function createSampleContent(seed = 0) {
     if (data.signatureCommodity) {
       army.signatureCommodity = data.signatureCommodity;
       army.signatureThreshold = data.signatureThreshold || 100;
+    }
+    // reinforcementRate = reserves joining the line during battle; recovery/recoveryRate = fraction of wounded that return after battle (0-100)
+    if (typeof data.reinforcementRate === 'number' && !isNaN(data.reinforcementRate)) {
+      army.reinforcementRate = data.reinforcementRate;
+    }
+    if (typeof data.recoveryRate === 'number' && !isNaN(data.recoveryRate)) {
+      army.recoveryRate = data.recoveryRate;
     }
     return army;
   });

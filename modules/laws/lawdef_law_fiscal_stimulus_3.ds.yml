@@ -1,0 +1,49 @@
+module:
+  id: "lawdef_law_fiscal_stimulus_3"
+  name: "Unified Treasury Mandate"
+  description: "Unified Treasury Mandate"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "fiscal"
+    - "stability"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_fiscal_stimulus_3"
+    name: "Unified Treasury Mandate"
+    tier: 3
+    category: "economy"
+    law_type: "Fiscal"
+    axis_vector:
+      authoritarian_liberal: 0.4
+      stoicist_hedonistic: 0.4
+    law_tags:
+      - "fiscal"
+      - "stability"
+    support_weights:
+      economy_incentive: 0.8
+    phase_tags:
+      DEBATE:
+        - "fiscal"
+        - "stability"
+      FALLOUT:
+        - "economic"
+      VOTING:
+        - "economic"
+    modifiers:
+      trade_income: 350
+      empire_approval: 1.5
+    immediate_effects:
+      coalition_credits: 6000
+      requisition: 600
+      cohesion: 4
+      empire_approval: 3

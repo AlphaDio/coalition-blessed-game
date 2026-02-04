@@ -25,11 +25,6 @@ export class ExpressionEvaluator {
       return this.parseLiteral(expr);
     }
 
-    // Handle dot-path access
-    if (expr.includes('.')) {
-      return this.resolvePath(expr, context);
-    }
-
     // Handle function calls
     if (expr.includes('(') && expr.endsWith(')')) {
       return this.evaluateFunctionCall(expr, context);
@@ -304,6 +299,7 @@ export class ExpressionEvaluator {
     this.builtins.abs = (x) => Math.abs(x);
     this.builtins.pow = (base, exponent) => Math.pow(base, exponent);
     this.builtins.sqrt = (x) => Math.sqrt(x);
+    this.builtins.round = (x) => Math.round(x);
     this.builtins.cos = (angle) => Math.cos(angle);
     this.builtins.sin = (angle) => Math.sin(angle);
 
@@ -313,6 +309,11 @@ export class ExpressionEvaluator {
     // Array functions
     this.builtins.append = (arr, item) => [...(Array.isArray(arr) ? arr : []), item];
     this.builtins.range = (count) => Array.from({ length: Math.max(0, count) }, (_, i) => i);
+    this.builtins.includes = (arr, value) => Array.isArray(arr) ? arr.includes(value) : false;
+    this.builtins.intersects = (a, b) => {
+      if (!Array.isArray(a) || !Array.isArray(b)) return false;
+      return a.some(value => b.includes(value));
+    };
 
     // Time function (will be set by game context)
     this.builtins.current_time = () => Date.now();

@@ -31,6 +31,17 @@ export const MILLI_PER_UNIT_BY_TIER = {
 export const BATCH_SIZE_UNITS = 100;
 export const BATCH_BONUS_MILLI = 0;
 
+function createDefaultProcurement() {
+  const thetaPresets = {};
+  for (const commodityId of Object.keys(COMMODITY_DEFINITIONS)) {
+    thetaPresets[commodityId] = 'Balanced';
+  }
+  return {
+    spend_throttle: 0.8,
+    theta_preset_by_commodity: thetaPresets
+  };
+}
+
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
   return Object.entries(consumption).map(([commodity, rule]) => ({
@@ -57,7 +68,8 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     tags: tags,
     modifiers: {
       intensity: modifiers.intensity || 1.0,
-      axis_gates: modifiers.axis_gates || {}
+      axis_gates: modifiers.axis_gates || {},
+      supply_efficiency: modifiers.supply_efficiency || 0
     },
     // Economy fields
     budget_credits: stats.budget_credits || 10000,
@@ -134,10 +146,11 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     resolve: 0.3,
     killRate: 0.1,
     
-    // Sustain stats
-    recoveryPool: 0,
+    // Sustain stats: reinforcementRate = reserves joining during battle; recoveryRate = % of wounded that return after battle (0-100)
+    woundedPool: 0,
     command: initialCommand,
     recovery: initialRecovery,
+    recoveryRate: typeof initialRecovery === 'number' ? initialRecovery : 50,
     reinforcementRate: 100,
     
     // Replenishment modifiers
@@ -528,6 +541,10 @@ export function createGameState(seed = 0) {
       requisition: 500, // Starting requisition for purchasing improvements
       treasury_credits: 10000, // Coalition treasury (long-term storage)
       allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
+      bank: 0,
+      stockpile_bank: {},
+      stockpile_ready: {},
+      procurement: createDefaultProcurement()
       // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
       // and credits from the allowance pool (up to allowance cap per tick)
       // Modifiable by multiplicativeShare and additiveShare modifiers

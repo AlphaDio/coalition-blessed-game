@@ -50,7 +50,7 @@ async function loadAndCacheResources() {
   }
 }
 
-export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000') {
+export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000', seed = undefined) {
   const app = express();
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer });
@@ -60,7 +60,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   app.use(express.json());
   app.use(apiResponseMiddleware);
 
-  // Game manager instance
+  // Game manager instance (game is created in start sequence with seed, not in constructor)
   const gameManager = new GameManager();
 
   // Register state change callback to broadcast updates to all clients
@@ -933,6 +933,11 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   return new Promise(async (resolve) => {
     // Load resources at startup before accepting requests
     await loadAndCacheResources();
+
+    // Create game once with desired seed before accepting connections
+    const gameSeed = seed !== undefined ? seed : Math.floor(Math.random() * 1000000);
+    gameManager.newGame(gameSeed);
+    logger.info(`New game created with seed: ${gameSeed}`);
 
     httpServer.listen(port, () => {
       logger.debug(`API server listening on port ${port}`);

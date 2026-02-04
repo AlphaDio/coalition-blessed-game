@@ -1,0 +1,48 @@
+module:
+  id: "lawdef_law_market_open_2"
+  name: "Unified Exchange Protocol"
+  description: "Unified Exchange Protocol"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "market"
+    - "trade"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_market_open_2"
+    name: "Unified Exchange Protocol"
+    tier: 2
+    category: "economy"
+    law_type: "Market"
+    axis_vector:
+      spiritual_materialistic: 0.6
+      authoritarian_liberal: 0.3
+    law_tags:
+      - "market"
+      - "trade"
+    support_weights:
+      economy_incentive: 0.6
+    phase_tags:
+      DEBATE:
+        - "market"
+        - "trade"
+      FALLOUT:
+        - "economic"
+      VOTING:
+        - "economic"
+    modifiers:
+      trade_income: 300
+      supply_efficiency: 0.1
+    immediate_effects:
+      coalition_credits: 3000
+      requisition: 400
+      cohesion: 3

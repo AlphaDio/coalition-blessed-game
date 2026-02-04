@@ -1,0 +1,41 @@
+module:
+  id: "ability_legislative_surge"
+  name: "Legislative Surge"
+  description: "Add immediate law phase progress if a law is active."
+  version: "1.0.0"
+  type: "hero_ability"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "ability", "law"]
+  created_at: "2026-02-02T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_ability_data:
+    id: "ABILITY_LEGISLATIVE_SURGE"
+    description: "Add immediate law phase progress if a law is active."
+    chargeRequired: 150
+    cooldown: 12
+
+hooks:
+  on_trigger:
+    description: "Surge law progress based on popularity."
+    logic:
+      - if:
+          condition: "scope.law_process != null"
+          then:
+            - set_variable:
+                varName: "bonus"
+                value: "0.08 * scope.popularity_scalar"
+            - if:
+                condition: "vars.bonus > 0"
+                then:
+                  - game_action:
+                      action: "add_law_progress"
+                      args:
+                        amount: "vars.bonus"
+                        log_message: "'Hero Ability: {hero} surged law progress {before} -> {after}.'"

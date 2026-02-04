@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_bureaucracy_3"
+  name: "Unified Administrative Grid"
+  description: "Unified Administrative Grid"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "efficiency"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_bureaucracy_3"
+    name: "Unified Administrative Grid"
+    tier: 3
+    category: "governance"
+    law_type: "Bureaucracy"
+    axis_vector:
+      natural_mechanical: 0.7
+      spiritual_materialistic: 0.4
+    law_tags:
+      - "governance"
+      - "efficiency"
+    support_weights:
+      economy_incentive: 0.5
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "efficiency"
+      FALLOUT:
+        - "political"
+      VOTING:
+        - "governance"
+    modifiers:
+      research_speed: 0.25
+      supply_efficiency: 0.15
+    immediate_effects:
+      influence: 60
+      cohesion: 4

@@ -1,0 +1,47 @@
+module:
+  id: "lawdef_law_unity_3"
+  name: "Singular Council Doctrine"
+  description: "Singular Council Doctrine"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "governance"
+    - "unity"
+  created_at: "2026-02-01T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_unity_3"
+    name: "Singular Council Doctrine"
+    tier: 3
+    category: "governance"
+    law_type: "Unity"
+    axis_vector:
+      stoicist_hedonistic: -0.5
+      authoritarian_liberal: -0.3
+    law_tags:
+      - "governance"
+      - "unity"
+    support_weights:
+      population_incentive: 0.6
+    phase_tags:
+      DEBATE:
+        - "governance"
+        - "unity"
+      FALLOUT:
+        - "social"
+      VOTING:
+        - "governance"
+    modifiers:
+      cohesionModifier: 1.25
+      empire_approval: 2
+    immediate_effects:
+      cohesion: 6
+      empire_approval: 3
