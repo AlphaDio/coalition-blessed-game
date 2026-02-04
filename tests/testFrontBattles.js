@@ -235,6 +235,7 @@ function testRecoveryPool() {
   army1.reinforcementRate = 0;
   army2.reinforcementRate = 0;
   army2.dmgPerUnitMP = 0;
+  const recoveryArmy1DamagePerUnitMP = army1.dmgPerUnitMP;
 
   const front = startBattle(state, 'army1', 'army2', 1000);
   const initialMP = army2.mp.current;
@@ -265,12 +266,17 @@ function testRecoveryPool() {
     return false;
   }
   console.log('✓ Wounded stay in pool during battle (no reinforcement from pool)');
+
+  army1.dmgPerUnitMP = recoveryArmy1DamagePerUnitMP;
   
-  while (front.state !== 'ENDED' && (army1.mp.current > 0 && army2.mp.current > 0)) {
+  let endTicks = 0;
+  const maxEndTicks = 200;
+  while (front.state !== 'ENDED' && (army1.mp.current > 0 && army2.mp.current > 0) && endTicks < maxEndTicks) {
     simulateBattleTick(front, state);
+    endTicks++;
   }
   if (front.state !== 'ENDED') {
-    console.log('✗ Battle did not end');
+    console.log('✗ Battle did not end within ' + maxEndTicks + ' ticks');
     return false;
   }
   if ((army1.woundedPool ?? 0) !== 0 || (army2.woundedPool ?? 0) !== 0) {
