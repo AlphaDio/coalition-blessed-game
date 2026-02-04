@@ -572,9 +572,9 @@ const RESOURCE_BRANCH = [
        suppliesCost: 90,
        build: 85,
        capacity: 2,
-       sustainmentCost: { biomass: 0.01 },
-       productionOutputs: { genomes: 0.03 },
-       modifiers: {},
+       sustainmentCost: { biomass: 0.01, genomes: 0.03 },
+       productionOutputs: { genomes: 0.01 },
+       modifiers: { research_speed: 0.15 }, // 15% research speed bonus
        tags: ['resource', 'passive', 'research'],
        requisitionUpkeep: 1
      }
@@ -591,7 +591,7 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { biomass: 0.05, genomes: 0.025 },
+       productionOutputs: { biomass: 0.1, genomes: 0.05 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic', 'organic'],
        requisitionUpkeep: 1
