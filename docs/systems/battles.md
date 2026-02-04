@@ -22,7 +22,8 @@ The battle system simulates MP-based front battles with morale, reinforcement, a
 
 ## Damage Model
 - MP damage scales with engaged MP and per-unit damage.
-- Damage is split into **permanent loss** (kill rate) and **temporary loss** (wounded pool). Temporary losses go to `army.woundedPool` and do not re-enter the battle until it ends.
+- Damage is split into **permanent loss** (kill rate) and **temporary loss** (wounded pool). The **attacker's kill rate** sets this split: higher kill rate ⇒ the defender has more manpower destroyed and fewer wounded (less in wounded pool).
+- Temporary losses go to `army.woundedPool` and do not re-enter the battle until it ends.
 - Kill rate gains a fervor bonus up to +5% at max fervor.
 - Morale damage is applied separately and does not scale with battlefield width.
 
@@ -32,8 +33,8 @@ The battle system simulates MP-based front battles with morale, reinforcement, a
 - **Recovery (wounded)**: Wounded do not return during the battle; they stay in `woundedPool` and are added back to `mp.current` only when the battle ends (in `endBattle`).
 
 ## Army sustain stats
-- **reinforcementRate**: Reserves joining per tick (during battle: 10% of this). Default 100.
-- **recoveryRate** / **recovery**: Wounded-return rate. Wounded in the pool are returned up to `mp.max` when the battle ends.
+- **reinforcementRate**: Reserves joining per tick (during battle: 10% of this). Default 100. Set in module via `reinforcementRate`.
+- **recoveryRate** / **recovery**: Fraction (0–100) of wounded that successfully return after the battle; the rest are lost. Set in module via `recovery` or `recoveryRate`.
 
 ## Battle Lifecycle
 - Battles end when an army reaches 0 MP (shattered).

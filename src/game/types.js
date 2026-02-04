@@ -146,7 +146,7 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     resolve: 0.3,
     killRate: 0.1,
     
-    // Sustain stats: wounded = retired from battle, returned after; reinforcement = reserves join during battle
+    // Sustain stats: reinforcementRate = reserves joining during battle; recoveryRate = % of wounded that return after battle (0-100)
     woundedPool: 0,
     command: initialCommand,
     recovery: initialRecovery,

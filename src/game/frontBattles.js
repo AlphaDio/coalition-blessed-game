@@ -340,7 +340,8 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const effectiveProtection = Math.min(1, baseProtection + (defendingArmy.protectionBonus || 0));
   const finalMPDmg = modifiedMPDmg * (1 - effectiveProtection);
   
-  // Split into permanent and temporary
+  // Split into permanent and temporary: attacker's kill rate determines how much of the defender's
+  // losses are destroyed (permanent) vs wounded (temporary). Higher kill rate = more destroyed, less wounded.
   const effectiveKillRate = getEffectiveKillRate(attackingArmy);
   const permanentDmg = finalMPDmg * effectiveKillRate;
   const temporaryDmg = finalMPDmg - permanentDmg;
@@ -471,12 +472,14 @@ function endBattle(front, worldState, winnerSide) {
   const leftArmy = worldState.armies.find(a => a.id === front.leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === front.rightArmyId);
 
-  // Return wounded to each army (recovery: wounded retired during battle come back after)
+  // Return wounded to each army: recoveryRate (0-100) is the fraction of wounded that successfully return; rest are lost.
   const returnWounded = (army) => {
     if (!army || !army.mp) return 0;
     const pool = Math.max(0, army.woundedPool ?? 0);
     const space = Math.max(0, (army.mp.max ?? 0) - (army.mp.current ?? 0));
-    const returned = Math.min(pool, space);
+    const rate = (army.recoveryRate ?? army.recovery ?? 50) / 100;
+    const returnable = pool * Math.max(0, Math.min(1, rate));
+    const returned = Math.min(returnable, space);
     army.mp.current = (army.mp.current ?? 0) + returned;
     army.woundedPool = 0;
     return returned;
