@@ -22,7 +22,7 @@ export function triggerHeroAbilities(state, lawProcess, log) {
     const abilityDef = HERO_ABILITIES[hero.ability_id];
     if (!abilityDef) return;
     if ((hero.cooldowns?.ability || 0) > 0) return;
-    const chargeRequired = abilityDef.chargeRequired ?? HERO_CONSTANTS.ABILITY_MIN_CHARGE;
+    const chargeRequired = abilityDef.chargeRequired ?? HERO_CONSTANTS.ABILITY_DEFAULT_CHARGE;
     if ((hero.charge || 0) < chargeRequired) return;
 
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));

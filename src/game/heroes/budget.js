@@ -40,7 +40,7 @@ export function applyHeroBudgetSiphon(state, log) {
       const statusMultiplier = HERO_CONSTANTS.STATUS_CHARGE_MULTIPLIER[hero.status] ?? 1;
       const chargeGain = siphoned * chargePerCredit * statusMultiplier;
       const abilityDef = HERO_ABILITIES[hero.ability_id];
-      const chargeMax = abilityDef?.chargeRequired ?? HERO_CONSTANTS.ABILITY_MIN_CHARGE;
+      const chargeMax = abilityDef?.chargeRequired ?? HERO_CONSTANTS.ABILITY_DEFAULT_CHARGE;
       hero.charge = clamp((hero.charge || 0) + chargeGain, 0, chargeMax);
       hero.siphon_bank = (hero.siphon_bank || 0) + siphoned;
       const message = `Hero charge: ${hero.name} accumulates +${chargeGain.toFixed(1)} charge (virtual siphon ${Math.round(siphoned)} credits).`;
