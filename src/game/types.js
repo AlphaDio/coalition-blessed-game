@@ -146,10 +146,11 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     resolve: 0.3,
     killRate: 0.1,
     
-    // Sustain stats
-    recoveryPool: 0,
+    // Sustain stats: wounded = retired from battle, returned after; reinforcement = reserves join during battle
+    woundedPool: 0,
     command: initialCommand,
     recovery: initialRecovery,
+    recoveryRate: typeof initialRecovery === 'number' ? initialRecovery : 50,
     reinforcementRate: 100,
     
     // Replenishment modifiers

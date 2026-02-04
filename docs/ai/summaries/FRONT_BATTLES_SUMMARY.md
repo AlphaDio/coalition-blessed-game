@@ -17,9 +17,9 @@ Successfully implemented Front Battles as a complete engine module and UI panel 
   - `resolve`: 0.3 (MO damage resistance)
   - `killRate`: 0.1 (fraction of MP damage that becomes permanent)
 - **Sustain Stats**:
-  - `recoveryPool`: Temporary MP losses that can be recovered
-  - `recoveryRate`: 500 (fast MP recovery per tick)
-  - `reinforcementRate`: 100 (slower MP reinforcement per tick)
+  - `woundedPool`: Temporary (non-permanent) MP losses; wounded are retired from the battle and returned to the army only when the battle ends.
+  - `recoveryRate` / `recovery`: Wounded-return rate (used for combined armies; currently all wounded are returned at battle end).
+  - `reinforcementRate`: Reserves joining the line during the battle (default 100; in-battle rate is 10% of this).
 
 #### BattleFront Type (`src/game/types.js`)
 - `id`: Unique battle identifier
@@ -45,7 +45,7 @@ For each side attacking the other:
    - Apply modifiers: fervor (±20%), organization (±10%)
    - Apply protection resistance
    - Split: permanent = damage * killRate, temporary = damage - permanent
-   - Update MP and recovery pool, track permanent losses
+   - Update MP and wounded pool (temporary → woundedPool); track permanent losses. Wounded do not re-enter the fight during the battle.
 
 3. **Morale Damage** (NOT width-scaled)
    - Raw damage: `dmgPerTickMO` (constant per tick)
@@ -57,14 +57,13 @@ For each side attacking the other:
    - Only if `!moraleBroken[side]`
    - Regen: 0.5 + (organization/100 * 1.5) per tick
 
-5. **Recovery & Reinforcement**
-   - Recovery: Convert recovery pool → MP (fast, up to recoveryRate)
-   - Reinforcement: Add new MP from reserves (slower, up to reinforcementRate)
+5. **Reinforcement (during battle only)**
+   - Reinforcement: Add MP from reserves (up to reinforcementRate; in battle 10% of that). No during-battle return of wounded.
 
 6. **End Conditions**
-   - Battle ends when either side's MP ≤ 0
-   - On end: refill both armies' MO to max, reset broken flags
-   - Emit `battle_ended` event
+   - Battle ends when either side's MP ≤ 0 (shattered).
+   - On end: return each army's woundedPool to mp.current (capped by mp.max), clear woundedPool; refill both armies' MO to max, reset broken flags.
+   - Emit `battle_ended` event (includes woundedReturned, reinforcedMP).
 
 #### Helper Functions
 - `widthUtilization(org)`: Linear scaling 0-100% based on organization
@@ -109,7 +108,7 @@ All 5 tests passing:
 2. **Morale refills after battle ends**: Verifies MO restoration and flag reset
 3. **Battlefield size impacts MP damage**: Verifies larger field = more throughput
 4. **killRate creates permanent losses**: Verifies damage split (perm vs temp)
-5. **Recovery pool mechanics**: Verifies temporary damage recovery system
+5. **Wounded pool mechanics**: Verifies temporary damage → wounded pool during battle, no return until battle end; wounded returned to armies when battle ends
 
 ### 6. Verification Scripts
 

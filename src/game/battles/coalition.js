@@ -113,10 +113,11 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     resolve: useRawAverages ? (rawResolve / powerDivisor) : (totalResolve / powerDivisor),
     killRate: useRawAverages ? (rawKillRate / powerDivisor) : (totalKillRate / powerDivisor),
 
-    // Sustain stats
-    recoveryPool: 0,
+    // Sustain stats: recovery = wounded return after battle; reinforcement = reserves join during battle
+    woundedPool: 0,
     command: useRawAverages ? (rawCommand / powerDivisor) : (totalCommand / powerDivisor),
     recovery: useRawAverages ? (rawRecovery / powerDivisor) : (totalRecovery / powerDivisor),
+    recoveryRate: useRawAverages ? (rawRecovery / powerDivisor) : (totalRecovery / powerDivisor),
     reinforcementRate: useRawAverages ? (rawReinforcementRate / powerDivisor) : (totalReinforcementRate / powerDivisor),
 
     // Store reference to original armies for result distribution

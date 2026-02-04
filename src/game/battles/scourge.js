@@ -63,7 +63,7 @@ function createScourgeArmy(state, idSuffix) {
     resolve: 0.25,
     killRate: 0.09 * attackPowerScale,
 
-    recoveryPool: 0,
+    woundedPool: 0,
     command: 40,
     recovery: 40,
     reinforcementRate: 80
@@ -147,8 +147,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   // Calculate battle stats for summary
   const coalitionDestroyed = Math.floor(front.permanentLosses?.left || 0);
   const scourgeDestroyed = Math.floor(front.permanentLosses?.right || 0);
-  const coalitionRecovered = Math.floor(front.recoveredMP?.left || 0);
-  const scourgeRecovered = Math.floor(front.recoveredMP?.right || 0);
+  const coalitionWoundedReturned = Math.floor(front.woundedReturned?.left || 0);
+  const scourgeWoundedReturned = Math.floor(front.woundedReturned?.right || 0);
   const coalitionRemaining = Math.floor(coalitionArmy.mp.current);
   const scourgeRemaining = Math.floor(scourgeArmy.mp.current);
 
@@ -228,8 +228,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   }
 
   // Emit battle summary
-  const coalitionSummary = `Coalition: ${coalitionDestroyed} destroyed, ${coalitionRecovered} recovered, ${coalitionRemaining} remaining`;
-  const scourgeSummary = `Scourge: ${scourgeDestroyed} destroyed, ${scourgeRecovered} recovered, ${scourgeRemaining} remaining`;
+  const coalitionSummary = `Coalition: ${coalitionDestroyed} destroyed, ${coalitionWoundedReturned} recovered (wounded), ${coalitionRemaining} remaining`;
+  const scourgeSummary = `Scourge: ${scourgeDestroyed} destroyed, ${scourgeWoundedReturned} recovered (wounded), ${scourgeRemaining} remaining`;
   logger.info(`Scourge battle summary - ${coalitionSummary}`);
   logger.info(`Scourge battle summary - ${scourgeSummary}`);
   log.push(coalitionSummary);

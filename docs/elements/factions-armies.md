@@ -140,13 +140,17 @@ Hive-mind collective with massive biological throughput and unified consciousnes
 
 ## Armies in Play
 
+Army sustain stats:
+- **Recovery (recoveryRate)**: Wounded-return rate; temporary casualties go to the wounded pool and are added back to the army *after* the battle.
+- **Reinforcement (reinforcementRate)**: Reserves joining the line *during* the battle (default 100 if not set in module).
+
 ### 1st Stellar Battle Fleet (army_1)
 Elite federation fleet.
 - Empire: Stellar Federation
 - Organization: 70
 - Fervor: 60
 - Aggravation (supply need): 60
-- Recovery: 55
+- Recovery: 55 (wounded return after battle)
 
 ### 2nd Stellar Defense Fleet (army_2)
 Support fleet for defensive operations.
@@ -154,7 +158,7 @@ Support fleet for defensive operations.
 - Organization: 65
 - Fervor: 55
 - Aggravation (supply need): 50
-- Recovery: 52
+- Recovery: 52 (wounded return after battle)
 
 ### Verdant Planetary Guard (army_3)
 Ground defense force for the Verdant Colonies.
@@ -162,7 +166,7 @@ Ground defense force for the Verdant Colonies.
 - Organization: 60
 - Fervor: 50
 - Aggravation (supply need): 55
-- Recovery: 48
+- Recovery: 48 (wounded return after battle)
 
 ### Nexus Hyperspace Marines (army_4)
 Rapid-response strike marines.
@@ -170,7 +174,7 @@ Rapid-response strike marines.
 - Organization: 75
 - Fervor: 65
 - Aggravation (supply need): 45
-- Recovery: 58
+- Recovery: 58 (wounded return after battle)
 
 ## Content Sources
 - Empires: `modules/empires/*.ds.yml`

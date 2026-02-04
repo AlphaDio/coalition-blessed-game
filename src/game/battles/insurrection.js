@@ -91,8 +91,8 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   // Calculate battle stats for summary
   const loyalDestroyed = Math.floor(front.permanentLosses?.left || 0);
   const rebelliousDestroyed = Math.floor(front.permanentLosses?.right || 0);
-  const loyalRecovered = Math.floor(front.recoveredMP?.left || 0);
-  const rebelliousRecovered = Math.floor(front.recoveredMP?.right || 0);
+  const loyalWoundedReturned = Math.floor(front.woundedReturned?.left || 0);
+  const rebelliousWoundedReturned = Math.floor(front.woundedReturned?.right || 0);
   const loyalRemaining = Math.floor(loyalArmy.mp.current);
   const rebelliousRemaining = Math.floor(rebelliousArmy.mp.current);
 
@@ -167,8 +167,8 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   }
 
   // Emit battle summary
-  const loyalSummary = `Loyal Forces: ${loyalDestroyed} destroyed, ${loyalRecovered} recovered, ${loyalRemaining} remaining`;
-  const rebelliousSummary = `Rebellious Forces: ${rebelliousDestroyed} destroyed, ${rebelliousRecovered} recovered, ${rebelliousRemaining} remaining`;
+  const loyalSummary = `Loyal Forces: ${loyalDestroyed} destroyed, ${loyalWoundedReturned} recovered (wounded), ${loyalRemaining} remaining`;
+  const rebelliousSummary = `Rebellious Forces: ${rebelliousDestroyed} destroyed, ${rebelliousWoundedReturned} recovered (wounded), ${rebelliousRemaining} remaining`;
   logger.info(`Insurrection battle summary - ${loyalSummary}`);
   logger.info(`Insurrection battle summary - ${rebelliousSummary}`);
   log.push(loyalSummary);

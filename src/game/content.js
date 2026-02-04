@@ -125,6 +125,10 @@ export function createSampleContent(seed = 0) {
       army.signatureCommodity = data.signatureCommodity;
       army.signatureThreshold = data.signatureThreshold || 100;
     }
+    // recovery = recoveryRate (wounded return after battle); reinforcementRate = reserves join during battle
+    if (typeof data.reinforcementRate === 'number' && !isNaN(data.reinforcementRate)) {
+      army.reinforcementRate = data.reinforcementRate;
+    }
     return army;
   });
 

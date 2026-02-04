@@ -217,6 +217,14 @@ Recommended recovery values:
 
 ---
 
+## Later change: Reinforcement vs recovery (wounded)
+
+In a subsequent refactor, the semantics were clarified:
+- **Reinforcement**: Reserves joining the line *during* the battle (`reinforcementRate`). The old during-battle "recovery" (pool → MP) was renamed to reinforcement.
+- **Recovery (wounded)**: Temporary damage goes to `woundedPool`; wounded are retired from the battle and added back to the army *only when the battle ends*. Armies have both `reinforcementRate` and `recoveryRate`/`recovery`. See `docs/systems/battles.md` for current behavior.
+
+---
+
 ## Summary
 
 This refactoring successfully implements all requirements:
