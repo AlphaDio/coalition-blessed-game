@@ -18,6 +18,14 @@ const DEFAULT_TEMPLATES = [
     ]
   },
   {
+    id: 'mod_reinforcement_relentless',
+    name: 'Relentless Reserves',
+    category: 'reinforcement',
+    effects: [
+      { target: 'scourge.reinforcement_rate', op: 'mul', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.REINFORCEMENT_RATE_PER_SEVERITY, when: 'always' }
+    ]
+  },
+  {
     id: 'mod_adaptation_doctrine',
     name: 'Adaptive Doctrine',
     category: 'adaptation',
@@ -104,6 +112,10 @@ function applyEffectToAggregate(effect, severity, aggregate) {
       if (effect.op === 'mul') aggregate.recoveryRateMult *= (1 + value);
       else if (effect.op === 'add') aggregate.recoveryRateAdd += value;
       break;
+    case 'scourge.reinforcement_rate':
+      if (effect.op === 'mul') aggregate.reinforcementRateMult *= (1 + value);
+      else if (effect.op === 'add') aggregate.reinforcementRateAdd += value;
+      break;
     case 'coalition.cohesion':
       if (effect.op === 'add') aggregate.coalitionCohesionAdd += value;
       break;
@@ -134,6 +146,8 @@ export function collectScourgeModifierEffects(modifiers = [], when = 'always') {
     attackPowerAdd: 0,
     recoveryRateMult: 1.0,
     recoveryRateAdd: 0,
+    reinforcementRateMult: 1.0,
+    reinforcementRateAdd: 0,
     coalitionCohesionAdd: 0,
     coalitionRequisitionAdd: 0,
     lawProgressSpeedBonus: 0,

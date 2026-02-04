@@ -28,11 +28,22 @@ function createScourgeArmy(state, idSuffix) {
 
   const alwaysEffects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
   const nextAttackEffects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'next_attack_only');
+
   const attackPowerScale = Math.max(
     0.1,
     powerScale * (alwaysEffects.attackPowerMult * nextAttackEffects.attackPowerMult) +
       (alwaysEffects.attackPowerAdd + nextAttackEffects.attackPowerAdd)
   );
+
+  const baseRecoveryRate = 40;
+  const baseReinforcementRate = 80;
+  const recoveryRateMult = alwaysEffects.recoveryRateMult * (nextAttackEffects.recoveryRateMult ?? 1);
+  const recoveryRateAdd = (alwaysEffects.recoveryRateAdd ?? 0) + (nextAttackEffects.recoveryRateAdd ?? 0);
+  const reinforcementRateMult = alwaysEffects.reinforcementRateMult * (nextAttackEffects.reinforcementRateMult ?? 1);
+  const reinforcementRateAdd = (alwaysEffects.reinforcementRateAdd ?? 0) + (nextAttackEffects.reinforcementRateAdd ?? 0);
+
+  const recoveryRate = Math.max(0, Math.min(100, baseRecoveryRate * recoveryRateMult + recoveryRateAdd));
+  const reinforcementRate = Math.max(0, baseReinforcementRate * reinforcementRateMult + reinforcementRateAdd);
 
   const scourgeArmy = {
     id: scourgeId,
@@ -65,8 +76,9 @@ function createScourgeArmy(state, idSuffix) {
 
     woundedPool: 0,
     command: 40,
-    recovery: 40,
-    reinforcementRate: 80
+    recovery: recoveryRate,
+    recoveryRate,
+    reinforcementRate
   };
 
   state.armies.push(scourgeArmy);
