@@ -23,6 +23,11 @@ export function applyImprovementModifiers(state) {
     improvements.empireModifiers = {};
   }
 
+  // Reset coalition-wide improvement-derived values so we recompute from active improvements only (avoid per-tick accumulation)
+  if (!state.coalitionModifiers) state.coalitionModifiers = {};
+  state.coalitionModifiers.law_progress_speed = 0;
+  improvements.maxTotalCapacity = IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY;
+
   // Collect all active improvement modifiers
   const activeImprovements = improvements.queue.filter(i => i.state === 'ACTIVE');
 
@@ -69,16 +74,10 @@ export function applyImprovementModifiers(state) {
             army.fervor = Math.min(100, army.fervor + value / MODIFIER_ARMY_ORG_SCALE);
           });
       } else if (stat === 'law_progress_speed') {
-        // Store for use in law processing - accumulates to coalitionModifiers
-        if (!state.coalitionModifiers.law_progress_speed) {
-          state.coalitionModifiers.law_progress_speed = 0;
-        }
+        // Sum from active improvements (reset each tick above); used in lawProcess/progress.js
         state.coalitionModifiers.law_progress_speed += value;
       } else if (stat === 'improvement_queue_capacity') {
-        // Increase coalition improvement queue capacity
-        if (!state.improvements.maxTotalCapacity) {
-          state.improvements.maxTotalCapacity = IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY;
-        }
+        // Add to base capacity (reset each tick above); used in lifecycle for queue limit
         state.improvements.maxTotalCapacity += value;
       } else if (stat === 'hero_siphon_efficiency_mult' || stat === 'hero_siphon_efficiency_add') {
         // Store per-empire modifiers for hero siphon efficiency (applied in hero budget siphon)
@@ -86,6 +85,14 @@ export function applyImprovementModifiers(state) {
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'supply_efficiency') {
         // Reduces this empire's (and its armies') consumption; applied in ordersPhase via getEmpireSupplyEfficiency.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'army_damage_add') {
+        // Additive damage bonus for this empire's armies (added to dmgPerUnitMP / dmgPerTickMO); applied in frontBattles.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'army_damage_mult') {
+        // Multiplicative damage bonus for this empire's armies (e.g. 0.1 = +10%); applied in frontBattles.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }

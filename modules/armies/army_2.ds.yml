@@ -24,7 +24,7 @@ declares:
     aggravation: 50
     command: 52
     recoveryRate: 52
-    reinforcementRate: 100
+    reinforcementRate: 70
     manpower: 8000
     dmgPerUnitMP: 1.0
     dmgPerTickMO: 2.4

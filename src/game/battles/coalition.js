@@ -78,6 +78,24 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   const powerDivisor = totalPower > 0 ? totalPower : Math.max(1, participatingArmies.length);
   const useRawAverages = totalPower <= 0;
 
+  // Aggregate empire improvement damage modifiers (army_damage_add, army_damage_mult) from participating empires
+  const empireModifiers = state.improvements?.empireModifiers || {};
+  const participatingEmpireIds = [...new Set(participatingArmies.map(a => a.empireId).filter(Boolean))];
+  let coalitionDamageAdd = 0;
+  let coalitionDamageMultSum = 0;
+  let coalitionDamageMultCount = 0;
+  participatingEmpireIds.forEach(empireId => {
+    const mods = empireModifiers[empireId] || {};
+    if (Number.isFinite(mods.army_damage_add)) {
+      coalitionDamageAdd += mods.army_damage_add;
+    }
+    if (Number.isFinite(mods.army_damage_mult)) {
+      coalitionDamageMultSum += mods.army_damage_mult;
+      coalitionDamageMultCount += 1;
+    }
+  });
+  const coalitionDamageMult = coalitionDamageMultCount > 0 ? coalitionDamageMultSum / coalitionDamageMultCount : 0;
+
   // Ensure totalMaxMP is at least 1 to avoid division issues
   const safeTotalMaxMP = Math.max(1, totalMaxMP || 0);
   const safeTotalMP = Math.max(0, totalMP || 0);
@@ -119,6 +137,10 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     recovery: useRawAverages ? (rawRecovery / powerDivisor) : (totalRecovery / powerDivisor),
     recoveryRate: useRawAverages ? (rawRecovery / powerDivisor) : (totalRecovery / powerDivisor),
     reinforcementRate: useRawAverages ? (rawReinforcementRate / powerDivisor) : (totalReinforcementRate / powerDivisor),
+
+    // Empire damage modifiers (aggregated from participating empires; applied in frontBattles)
+    _empireDamageAdd: coalitionDamageAdd,
+    _empireDamageMult: coalitionDamageMult,
 
     // Store reference to original armies for result distribution
     _originalArmies: participatingArmies.map(a => ({

@@ -24,7 +24,7 @@ declares:
     aggravation: 45
     command: 58
     recoveryRate: 45
-    reinforcementRate: 100
+    reinforcementRate: 80
     manpower: 5000
     dmgPerUnitMP: 4.1 # Highest damage per unit per MP in the game
     dmgPerTickMO: 2.7

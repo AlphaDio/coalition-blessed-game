@@ -327,9 +327,21 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   }
   
   // 2. Calculate MP damage (width-scaled)
-  const dmgPerUnitMP = typeof attackingArmy.dmgPerUnitMP === 'number' && !isNaN(attackingArmy.dmgPerUnitMP) 
-    ? attackingArmy.dmgPerUnitMP 
+  const baseDmgPerUnitMP = typeof attackingArmy.dmgPerUnitMP === 'number' && !isNaN(attackingArmy.dmgPerUnitMP)
+    ? attackingArmy.dmgPerUnitMP
     : 1.0;
+  // Per-empire damage modifiers: from empireModifiers (single empire) or aggregated on combined army (_coalition)
+  const damageAdd = Number.isFinite(attackingArmy._empireDamageAdd)
+    ? attackingArmy._empireDamageAdd
+    : (Number.isFinite(worldState.improvements?.empireModifiers?.[attackingArmy.empireId]?.army_damage_add)
+      ? worldState.improvements.empireModifiers[attackingArmy.empireId].army_damage_add
+      : 0);
+  const damageMult = Number.isFinite(attackingArmy._empireDamageMult)
+    ? attackingArmy._empireDamageMult
+    : (Number.isFinite(worldState.improvements?.empireModifiers?.[attackingArmy.empireId]?.army_damage_mult)
+      ? worldState.improvements.empireModifiers[attackingArmy.empireId].army_damage_mult
+      : 0);
+  const dmgPerUnitMP = (baseDmgPerUnitMP + damageAdd) * (1 + damageMult);
   const rawMPDmg = engagedUnits * dmgPerUnitMP;
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
@@ -391,9 +403,10 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
     defendingArmy.mo = { current: 0, max: 100 };
   }
   
-  const dmgPerTickMO = typeof attackingArmy.dmgPerTickMO === 'number' && !isNaN(attackingArmy.dmgPerTickMO) 
-    ? attackingArmy.dmgPerTickMO 
+  const baseDmgPerTickMO = typeof attackingArmy.dmgPerTickMO === 'number' && !isNaN(attackingArmy.dmgPerTickMO)
+    ? attackingArmy.dmgPerTickMO
     : 2.5;
+  const dmgPerTickMO = (baseDmgPerTickMO + damageAdd) * (1 + damageMult);
   const rawMODmg = dmgPerTickMO;
   const modifiedMODmg = applyModifiers(rawMODmg, attackingArmy);
   
