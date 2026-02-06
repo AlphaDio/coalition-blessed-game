@@ -6,6 +6,7 @@ import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from
 import { runHeroBattlePassives } from '../heroes.js';
 import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
+import { getThreatScalar } from '../scourgeThreat.js';
 
 function removeScourgeForces(state) {
   if (state.armies) {
@@ -41,9 +42,17 @@ function createScourgeArmy(state, idSuffix) {
   const recoveryRateAdd = (alwaysEffects.recoveryRateAdd ?? 0) + (nextAttackEffects.recoveryRateAdd ?? 0);
   const reinforcementRateMult = alwaysEffects.reinforcementRateMult * (nextAttackEffects.reinforcementRateMult ?? 1);
   const reinforcementRateAdd = (alwaysEffects.reinforcementRateAdd ?? 0) + (nextAttackEffects.reinforcementRateAdd ?? 0);
+  const killRateMult = alwaysEffects.killRateMult * (nextAttackEffects.killRateMult ?? 1);
+  const killRateAdd = (alwaysEffects.killRateAdd ?? 0) + (nextAttackEffects.killRateAdd ?? 0);
+  const moDamageMult = alwaysEffects.moDamageMult * (nextAttackEffects.moDamageMult ?? 1);
+  const moDamageAdd = (alwaysEffects.moDamageAdd ?? 0) + (nextAttackEffects.moDamageAdd ?? 0);
 
   const recoveryRate = Math.max(0, Math.min(100, baseRecoveryRate * recoveryRateMult + recoveryRateAdd));
   const reinforcementRate = Math.max(0, baseReinforcementRate * reinforcementRateMult + reinforcementRateAdd);
+  const baseKillRate = 0.09 * attackPowerScale;
+  const killRate = Math.max(0.01, Math.min(1, (baseKillRate + killRateAdd) * killRateMult));
+  const baseDmgPerTickMO = 2.2 * attackPowerScale;
+  const dmgPerTickMO = Math.max(0.1, baseDmgPerTickMO * moDamageMult + moDamageAdd);
 
   const scourgeArmy = {
     id: scourgeId,
@@ -69,10 +78,10 @@ function createScourgeArmy(state, idSuffix) {
     },
 
     dmgPerUnitMP: 0.95 * attackPowerScale,
-    dmgPerTickMO: 2.2 * attackPowerScale,
+    dmgPerTickMO,
     protection: 0.15,
     resolve: 0.25,
-    killRate: 0.09 * attackPowerScale,
+    killRate,
 
     woundedPool: 0,
     command: 40,
@@ -202,7 +211,7 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     state.scourgeCohesion = clampStat(state.scourgeCohesion - cohesionLoss, 0, 100);
     logger.info(`Scourge battle: Victory! Scourge Cohesion ${prevScourgeCohesion.toFixed(1)} -> ${state.scourgeCohesion.toFixed(1)} (-${cohesionLoss})`);
 
-    const threat = state.coalitionThreat || 0;
+    const threat = getThreatScalar(state.coalitionThreat || 0);
     const totalSeverity = (state.scourgeModifiers || []).reduce((sum, mod) => sum + (mod.severity || 0), 0);
     const threatFactor = 1 + Math.pow(threat / 100, 1.2);
     const modifierFactor = 1 + totalSeverity * 0.05;
@@ -213,7 +222,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     state.coalitionPrestige = (state.coalitionPrestige || 0) + Math.round(payout * 0.25);
     log.push(`Glory gained: +${Math.round(payout)}`);
   } else {
-    const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
+    const lossRatio = Math.max(0, Math.min(1, coalitionMPLossRatio));
+    const cohesionLoss = Math.max(1, Math.round(BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS * lossRatio));
     const prevCoalitionCohesion = state.coalitionCohesion;
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
 

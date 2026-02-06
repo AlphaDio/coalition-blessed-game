@@ -391,6 +391,7 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
  * Modifiers increase over time or through events, making the Scourge stronger.
  * @property {number} MIN_SEVERITY - Minimum/starting severity level (1)
  * @property {number} ATTACK_POWER_PER_SEVERITY - Scourge attack power bonus per severity (+4%)
+ * @property {number} MO_DAMAGE_PER_SEVERITY - Scourge MO (morale) damage bonus per severity (+4%)
  * @property {number} RECOVERY_RATE_PER_SEVERITY - Scourge recovery (wounded return) bonus per severity (+5%)
  * @property {number} REINFORCEMENT_RATE_PER_SEVERITY - Scourge reinforcement (reserves during battle) bonus per severity (+5%)
  * @property {number} LAW_SPEED_PER_SEVERITY - Coalition law enactment penalty per severity (-3%)
@@ -401,6 +402,8 @@ export const SCOURGE_MODIFIER_CONSTANTS = {
 
   // Effect scaling per severity level (tuned for infinite scaling)
   ATTACK_POWER_PER_SEVERITY: 0.04,    // +4% Scourge attack power per severity
+  MO_DAMAGE_PER_SEVERITY: 0.04,       // +4% Scourge MO (morale) damage per severity
+  KILL_RATE_PER_SEVERITY: 0.03,       // +3% Scourge kill rate per severity
   RECOVERY_RATE_PER_SEVERITY: 0.05,   // +5% Scourge recovery rate (wounded return) per severity
   REINFORCEMENT_RATE_PER_SEVERITY: 0.05, // +5% Scourge reinforcement rate (reserves during battle) per severity
   LAW_SPEED_PER_SEVERITY: -0.03       // -3% coalition law enact speed per severity

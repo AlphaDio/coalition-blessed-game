@@ -10,6 +10,22 @@ const DEFAULT_TEMPLATES = [
     ]
   },
   {
+    id: 'mod_lethality_surge',
+    name: 'Lethality Surge',
+    category: 'lethality',
+    effects: [
+      { target: 'scourge.kill_rate', op: 'mul', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.KILL_RATE_PER_SEVERITY, when: 'always' }
+    ]
+  },
+  {
+    id: 'mod_shattering_assault',
+    name: 'Shattering Assault',
+    category: 'shattering',
+    effects: [
+      { target: 'scourge.mo_damage', op: 'mul', valuePerSeverity: SCOURGE_MODIFIER_CONSTANTS.MO_DAMAGE_PER_SEVERITY, when: 'always' }
+    ]
+  },
+  {
     id: 'mod_recovery_regeneration',
     name: 'Regenerative Swarm',
     category: 'recovery',
@@ -108,9 +124,17 @@ function applyEffectToAggregate(effect, severity, aggregate) {
       if (effect.op === 'mul') aggregate.attackPowerMult *= (1 + value);
       else if (effect.op === 'add') aggregate.attackPowerAdd += value;
       break;
+    case 'scourge.mo_damage':
+      if (effect.op === 'mul') aggregate.moDamageMult *= (1 + value);
+      else if (effect.op === 'add') aggregate.moDamageAdd += value;
+      break;
     case 'scourge.recovery_rate':
       if (effect.op === 'mul') aggregate.recoveryRateMult *= (1 + value);
       else if (effect.op === 'add') aggregate.recoveryRateAdd += value;
+      break;
+    case 'scourge.kill_rate':
+      if (effect.op === 'mul') aggregate.killRateMult *= (1 + value);
+      else if (effect.op === 'add') aggregate.killRateAdd += value;
       break;
     case 'scourge.reinforcement_rate':
       if (effect.op === 'mul') aggregate.reinforcementRateMult *= (1 + value);
@@ -144,8 +168,12 @@ export function collectScourgeModifierEffects(modifiers = [], when = 'always') {
   const aggregate = {
     attackPowerMult: 1.0,
     attackPowerAdd: 0,
+    moDamageMult: 1.0,
+    moDamageAdd: 0,
     recoveryRateMult: 1.0,
     recoveryRateAdd: 0,
+    killRateMult: 1.0,
+    killRateAdd: 0,
     reinforcementRateMult: 1.0,
     reinforcementRateAdd: 0,
     coalitionCohesionAdd: 0,

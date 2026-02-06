@@ -53,9 +53,12 @@ export function createImprovementRequest(id, name, description, {
  */
 export function createImprovement(requestId, empireId, startedAtTick, request) {
   const populationMultiplier = request.sustainmentCost ? Object.values(request.sustainmentCost).reduce((a, b) => a + b, 0) : 0;
+  const definitionId = request.definitionId || request.requestId || requestId;
+  const instanceId = request.id || `${definitionId}_${empireId}_${startedAtTick}`;
   return {
-    id: `${requestId}_${empireId}_${startedAtTick}`,
-    requestId,
+    id: instanceId,
+    requestId: definitionId,
+    definitionId,
     empireId,
     name: request.name,
     description: request.description,

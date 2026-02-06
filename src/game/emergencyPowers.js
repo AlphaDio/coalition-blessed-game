@@ -1,5 +1,5 @@
 import { SCOURGE_MISSION_CONSTANTS } from './constants.js';
-import { clampStat } from './cohesion.js';
+import { getThreatScalar } from './scourgeThreat.js';
 
 const POWER_DEFINITIONS = [
   {
@@ -36,7 +36,7 @@ export function getEmergencyPowerDefinitions() {
 }
 
 function scaleByThreat(value, state) {
-  const threat = clampStat(state?.coalitionThreat || 0, 0, 100);
+  const threat = getThreatScalar(state?.coalitionThreat || 0);
   const climateSlots = state?.threatClimate?.activeSlots || 0;
   const threatMultiplier = 1 + (threat / 200);
   const climateMultiplier = 1 + (climateSlots * 0.1);

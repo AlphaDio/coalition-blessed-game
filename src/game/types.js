@@ -508,10 +508,12 @@ export function createGameState(seed = 0) {
       empire_approval: 0,
       population_growth: 0,
       trade_income: 0,
+      market_efficiency: 0,
       empire_production_multiplier: 0,
       cohesionModifier: 1.0,
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0,
+      tick_delay_multiplier: 1.0,
       hero_siphon_efficiency_mult: 0,
       hero_siphon_efficiency_add: 0,
       lawProgressBonus: 0,
@@ -734,6 +736,12 @@ export function migrateGameState(state) {
   }
   if (state.coalitionModifiers.glory_gain_multiplier === undefined) {
     state.coalitionModifiers.glory_gain_multiplier = 1.0;
+  }
+  if (state.coalitionModifiers.market_efficiency === undefined) {
+    state.coalitionModifiers.market_efficiency = 0;
+  }
+  if (state.coalitionModifiers.tick_delay_multiplier === undefined) {
+    state.coalitionModifiers.tick_delay_multiplier = 1.0;
   }
   if (state.coalitionModifiers.law_progress_speed === undefined) {
     state.coalitionModifiers.law_progress_speed = 0;

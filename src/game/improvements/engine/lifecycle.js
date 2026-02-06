@@ -15,7 +15,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
 
   // Check tier requirements for this empire (if tier is defined)
   if (request.tier && request.tier > 1) {
-    const tierCheck = canStartImprovement(requestId, state, empireId);
+    const tierCheck = canStartImprovement(request.definitionId || request.id, state, empireId);
     if (!tierCheck.canStart) {
       return { success: false, error: tierCheck.reason, log: [] };
     }
@@ -54,7 +54,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   }
 
   // Create improvement instance
-  const improvement = createImprovement(requestId, empireId, state.turn, request);
+  const improvement = createImprovement(request.id, empireId, state.turn, request);
   improvements.queue.push(improvement);
 
   // Remove the request from the list

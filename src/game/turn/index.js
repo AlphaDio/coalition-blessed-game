@@ -7,8 +7,7 @@ import { checkEvent } from '../events.js';
 import { DeterministicRNG } from '../../modules/rng.js';
 import { getLogger } from '../../modules/logger.js';
 import { processImprovementsTick, applyImprovementModifiers, removeExpiredSuggestions } from '../improvements/index.js';
-import { getAllImprovementRequests } from '../improvements/definitions.js';
-import { createImprovementRequest } from '../improvements/engine.js';
+import { getAllImprovementRequests, createImprovementRequestInstance } from '../improvements/definitions.js';
 import { getEventTitle, hasValidChoices } from '../../utils/events.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { processTechAccrual, createTechEvent } from '../technology.js';
@@ -167,23 +166,15 @@ export function advanceTurn(state, rng = Math.random) {
           if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;
           if (def.requirements?.supplies && (state.coalitionEconomy?.requisition || 0) < def.requirements.supplies) return false;
           // Check if already requested or active
-          const existingRequest = state.improvements.requests.find(r => r.definitionId === def.id);
+          const existingRequest = state.improvements.requests.find(r => (r.definitionId || r.id) === def.id);
           if (existingRequest) return false;
-          const active = state.improvements.queue.find(q => q.definitionId === def.id);
+          const active = state.improvements.queue.find(q => (q.definitionId || q.requestId) === def.id);
           if (active) return false;
           return true;
         });
         if (availableDefinitions.length > 0) {
           const randomDef = availableDefinitions[Math.floor(rngFn() * availableDefinitions.length)];
-          const req = createImprovementRequest(randomDef.id, randomDef.name, randomDef.description, {
-            suppliesCost: randomDef.suppliesCost,
-            build: randomDef.build,
-            tier: randomDef.tier,
-            branch: randomDef.branch,
-            requirements: randomDef.requirements
-          });
-          req.empireId = empire.id;
-          req.requestedAt = state.turn;
+          const req = createImprovementRequestInstance(randomDef, empire.id, state.turn, rngFn);
           state.improvements.requests.push(req);
           log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
           logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);

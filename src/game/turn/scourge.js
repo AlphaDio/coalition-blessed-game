@@ -2,7 +2,7 @@ import { clampCohesion, clampStat } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { startScourgeBattle } from '../battles.js';
 import { collectScourgeModifierEffects } from '../scourgeModifiers.js';
-import { resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
+import { resetDynamicCoalitionModifiers, getThreatScalar } from '../scourgeThreat.js';
 
 export function applyDynamicScourgeModifierEffects(state, log) {
   const effects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
@@ -28,7 +28,7 @@ export function applyDynamicScourgeModifierEffects(state, log) {
 }
 
 export function tickScourgeRecovery(state) {
-  const threat = state.coalitionThreat || 0;
+  const threat = getThreatScalar(state.coalitionThreat || 0);
   const baseRecovery = 0.6;
   const threatMultiplier = 1 + (threat / 100);
   const effects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'between_attacks_only');

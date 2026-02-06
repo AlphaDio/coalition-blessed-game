@@ -73,14 +73,23 @@ export function releaseProductionFromBank(state, improvement) {
     state.marketOrders = { buyOrders: [], sellOffers: [] };
   }
 
-  // Calculate threshold based on improvement's production output per tick
+  // Calculate threshold based on improvement's production output per tick (efficiency-adjusted)
   const population = empire.stats?.population || 1;
   let thresholdValue = 0;
+
+  const baseEfficiency = PRODUCTION_EFFICIENCY_CONSTANTS.BASE_EFFICIENCY;
+  const efficiencyAdd = state.coalitionModifiers?.production_efficiency_add || 0;
+  const efficiencyMult = state.coalitionModifiers?.production_efficiency_mult || 1.0;
+  const effectiveEfficiency = Math.max(
+    PRODUCTION_EFFICIENCY_CONSTANTS.MIN_EFFICIENCY,
+    Math.min(PRODUCTION_EFFICIENCY_CONSTANTS.MAX_EFFICIENCY, (baseEfficiency + efficiencyAdd) * efficiencyMult)
+  );
 
   // Calculate what would be produced this tick (for threshold)
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs || {})) {
     if (commodity !== 'requisition') {
-      thresholdValue += Math.floor(qty * population);
+      const efficiencyAdjustedQty = qty * effectiveEfficiency;
+      thresholdValue += Math.floor(efficiencyAdjustedQty * population);
     }
   }
 

@@ -12,9 +12,16 @@ export function resetDynamicCoalitionModifiers(state) {
   state.coalitionModifiers.dynamic.requisition_gen_mult = 1.0;
 }
 
+export function getThreatScalar(threatValue) {
+  const threat = Math.max(0, threatValue || 0);
+  if (threat <= 0) return 0;
+  const normalized = Math.log1p(threat / 100);
+  return (normalized / Math.log(2)) * 100;
+}
+
 export function applyThreatClimateBonuses(state) {
   const tier = getCohesionTier(state.coalitionCohesion);
-  const threat = state.coalitionThreat || 0;
+  const threat = getThreatScalar(state.coalitionThreat || 0);
   const strengths = SCOURGE_MISSION_CONSTANTS.THREAT_CLIMATE_STRENGTHS;
   let activeSlots = 0;
 

@@ -34,6 +34,18 @@ export function createTieredImprovementRequest(id, name, description, tier, bran
   };
 }
 
+export function createImprovementRequestInstance(definition, empireId, turn, rng = Math.random) {
+  const definitionId = definition.definitionId || definition.id;
+  const instanceId = `req_${definitionId}_${empireId}_${turn}_${Math.floor(rng() * 1e6)}`;
+  return {
+    ...definition,
+    id: instanceId,
+    definitionId,
+    empireId,
+    requestedAt: turn
+  };
+}
+
 /**
  * INDUSTRIAL BRANCH
  * Focus: Production, manufacturing, resource extraction
@@ -500,7 +512,7 @@ const GOVERNANCE_BRANCH = [
      'administrative_hub',
      'Administrative Hub',
      'Centralized bureaucratic center streamlining coalition law processing and expanding improvement queue capacity',
-     2,
+     1,
      'governance',
      {
        suppliesCost: 75,
@@ -519,10 +531,10 @@ const GOVERNANCE_BRANCH = [
      'council_spire',
      'Council Spire',
      'Magnificent assembly hall where sentient AI cores analyze and accelerate legislative proceedings',
-     3,
+     2,
      'governance',
-     {
-       suppliesCost: 400,
+    {
+      suppliesCost: 400,
        build: 380,
        capacity: 4,
        sustainmentCost: { sentient_cores: 0.20, quantum_circuits: 0.10 },
@@ -758,6 +770,7 @@ export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
   const suggestions = [];
+  const turn = Number.isFinite(state.turn) ? state.turn : 0;
 
   // Count existing suggestions per empire
   const currentCounts = {};
@@ -780,11 +793,8 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
     
     // Take up to slotsNeeded suggestions
     const newSuggestions = available.slice(0, slotsNeeded);
-    newSuggestions.forEach(req => {
-      suggestions.push({
-        ...req,
-        empireId: empire.id
-      });
+    newSuggestions.forEach(def => {
+      suggestions.push(createImprovementRequestInstance(def, empire.id, turn, rng));
     });
   });
 
@@ -811,10 +821,8 @@ export function generateReplacementSuggestion(state, empireId, rng = Math.random
   }
 
   // Pick one and return it
-  const suggestion = {
-    ...available[0],
-    empireId: empireId
-  };
+  const turn = Number.isFinite(state.turn) ? state.turn : 0;
+  const suggestion = createImprovementRequestInstance(available[0], empireId, turn, rng);
 
   return suggestion;
 }

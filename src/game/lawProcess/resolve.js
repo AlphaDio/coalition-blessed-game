@@ -391,7 +391,8 @@ export function resolveAllLawProcesses(state, rng) {
     // Note: Uses active law process count as base to distribute events fairly
     // Each law gets a turn proportionally based on its delay multiplier
     const tickDelayMultiplier = lawDef.modifiers?.tick_delay_multiplier || 1.0;
-    const ticksNeeded = Math.max(1, Math.round(state.lawProcesses.length * tickDelayMultiplier));
+    const coalitionDelayMultiplier = state.coalitionModifiers?.tick_delay_multiplier || 1.0;
+    const ticksNeeded = Math.max(1, Math.round(state.lawProcesses.length * tickDelayMultiplier * coalitionDelayMultiplier));
 
     // Check if enough ticks have passed
     const shouldResolve = lawProcess.ticksSinceLastResolve >= ticksNeeded;

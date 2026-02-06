@@ -4,7 +4,7 @@ import { getScourgeModifierTemplates } from './scourgeModifiers.js';
 import { getLogger } from '../modules/logger.js';
 
 const PRE_ATTACK_EFFECTS = {
-  disrupt: { threatDelta: -3, severityDelta: -1, cost: 60 },
+  disrupt: { threatDelta: -3, severityDelta: 0, cost: 60 },  // 0 = do not increase (sabotage never reduces except Deep "Sabotage Infrastructure")
   safe: { threatDelta: 2, severityDelta: 1, cost: 90 },
   escalate: { threatDelta: 6, severityDelta: 2, cost: 0 }
 };
@@ -18,6 +18,10 @@ const DEEP_MISSION_NAMES = [
 
 function clampMeter(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
+}
+
+function clampThreat(value, min = 0) {
+  return Math.max(min, value);
 }
 
 function applyTimedModifier(state, key, value, duration) {
@@ -66,7 +70,7 @@ export function applyMissionSliderEffects(state, log = []) {
       // Still apply threat/glory penalties even without bonus (cost of desperation)
       log.push(`Mission budget emergency: No req to divert, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
     }
-    state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE);
+    state.coalitionThreat = clampThreat((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE);
     const taxValue = SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL - 1.0;
     applyTimedModifier(
       state,
@@ -92,8 +96,8 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
       {
         id: 'disrupt',
         text: 'Disrupt the Scourge',
-        description: 'Send saboteurs to weaken the Scourge. Reduces modifier severity and lowers Scourge threat, but requires significant resources.',
-        effects: 'Cost: 60 requisition | Threat: -3 | Modifier severity: -1'
+        description: 'Send saboteurs to delay the Scourge buildup. Prevents this modifier from increasing this attack, giving the Coalition time to catch up. Lowers Scourge threat but requires significant resources.',
+        effects: 'Cost: 60 requisition | Threat: -3 | Modifier: no increase this attack'
       },
       {
         id: 'safe',
@@ -186,7 +190,7 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
     const adjusted = adjustModifierSeverity(modifier, effect.severityDelta);
     applyOrUpdateModifier(state, adjusted);
 
-    state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + effect.threatDelta);
+    state.coalitionThreat = clampThreat((state.coalitionThreat || 0) + effect.threatDelta);
 
     log.push(`[PRE-ATTACK MISSION] Selected: ${choice.text || choice.id}`);
 
@@ -195,7 +199,7 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
     }
 
     if (choice.id === 'disrupt') {
-      log.push(`Saboteurs weakened "${modifier.name}" - severity reduced by 1`);
+      log.push(`Saboteurs delayed Scourge buildup - "${modifier.name}" did not increase (severity unchanged)`);
       log.push(`Coalition threat decreased by 3 (now ${Math.round(state.coalitionThreat)})`);
     } else if (choice.id === 'safe') {
       log.push(`Defensive reconnaissance complete - gained positioning data`);
@@ -253,7 +257,7 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL;
       log.push(`Requisition gained: +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL}`);
       addIntel(state, SCOURGE_MISSION_CONSTANTS.DEEP_INTEL_SMALL, log);
-      state.coalitionThreat = clampMeter((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE);
+      state.coalitionThreat = clampThreat((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE);
       log.push(`Enemy alerted - Coalition threat increased by ${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE} (now ${Math.round(state.coalitionThreat)})`);
     }
 

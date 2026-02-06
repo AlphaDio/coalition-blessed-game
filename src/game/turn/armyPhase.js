@@ -56,14 +56,13 @@ export function replenishArmyManpower(state, activeBattles) {
 
   const armiesInBattle = collectArmiesInBattle(activeBattles);
 
-  const regularArmies = state.armies.filter(army =>
-    isRegularArmy(army) && !armiesInBattle.has(army.id)
-  );
+  const regularArmies = state.armies.filter(isRegularArmy);
+  const replenishingArmies = regularArmies.filter(army => !armiesInBattle.has(army.id));
 
   // Build empire lookup map
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
 
-  regularArmies.forEach(army => {
+  replenishingArmies.forEach(army => {
     // Skip if already at max
     if (army.mp.current >= army.mp.max) return;
 
@@ -131,27 +130,32 @@ export function replenishArmyManpower(state, activeBattles) {
     if (replenished > 50) {
       logger.debug(`Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP (fervor: ${army.fervor.toFixed(0)}, pop: ${population.toFixed(0)}, rate: ${effectiveRate.toFixed(0)})`);
     }
+  });
 
-    // Check signature commodity for bonus manpower
-    if (army.signatureCommodity && army.signatureThreshold > 0) {
-      const stockpile = empire.stockpiles || {};
-      const available = stockpile[army.signatureCommodity] || 0;
+  // Check signature commodity for bonus manpower (every tick, regardless of MP status or battle state)
+  regularArmies.forEach(army => {
+    if (!army.signatureCommodity || army.signatureThreshold <= 0) return;
 
-      if (available >= army.signatureThreshold) {
-        // Consume ALL of the signature commodity and convert to manpower
-        // Conversion rate: 100 manpower per threshold amount
-        const conversionRate = 100;
-        const manpowerGained = Math.floor(available / army.signatureThreshold) * conversionRate;
-        stockpile[army.signatureCommodity] = 0;
-        army.manpower += manpowerGained;
-        army.mp.max = army.manpower;
-        army.mp.current = Math.min(army.mp.current + manpowerGained, army.mp.max);
+    const empire = empireMap.get(army.empireId);
+    if (!empire) return;
 
-        // Track consumption for coalition requisition generation
-        recordConsumption(army.signatureCommodity, available);
+    const stockpile = empire.stockpiles || {};
+    const available = stockpile[army.signatureCommodity] || 0;
 
-        logger.debug(`Signature commodity trigger: ${army.name} consumed ${available} ${army.signatureCommodity} for +${manpowerGained} manpower`);
-      }
+    if (available >= army.signatureThreshold) {
+      // Consume ALL of the signature commodity and convert to manpower
+      // Conversion rate: 100 manpower per threshold amount
+      const conversionRate = 100;
+      const manpowerGained = Math.floor(available / army.signatureThreshold) * conversionRate;
+      stockpile[army.signatureCommodity] = 0;
+      army.manpower += manpowerGained;
+      army.mp.max = army.manpower;
+      army.mp.current = Math.min(army.mp.current + manpowerGained, army.mp.max);
+
+      // Track consumption for coalition requisition generation
+      recordConsumption(army.signatureCommodity, available);
+
+      logger.debug(`Signature commodity trigger: ${army.name} consumed ${available} ${army.signatureCommodity} for +${manpowerGained} manpower`);
     }
   });
 }

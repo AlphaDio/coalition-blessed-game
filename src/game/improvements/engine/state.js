@@ -1,3 +1,4 @@
+import { IMPROVEMENTS_CONSTANTS } from '../../constants.js';
 import { getTieredImprovementRequests, generateImprovementSuggestions } from '../definitions.js';
 
 export const SUGGESTION_MAX_DURATION = 45; // ticks before a suggestion expires
@@ -12,7 +13,7 @@ export function initializeImprovementsState() {
     completed: [], // Archive of completed/removed improvements
 
     // Capacity limit (applies only to BUILDING improvements)
-    maxTotalCapacity: 4,
+    maxTotalCapacity: IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY,
 
     // Current utilization (BUILDING only)
     currentCapacity: 0
@@ -35,7 +36,7 @@ export function initializeImprovementSuggestions(state, rng = Math.random) {
       requests: [],
       queue: [],
       completed: [],
-      maxTotalCapacity: 10,
+      maxTotalCapacity: IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY,
       currentCapacity: 0
     };
   }
@@ -54,8 +55,11 @@ export function removeExpiredSuggestions(state) {
     r.requestedAt && (state.turn - r.requestedAt) > SUGGESTION_MAX_DURATION
   );
 
-  const expiredIds = new Set(expiredRequests.map(r => r.id));
-  state.improvements.requests = state.improvements.requests.filter(r => !expiredIds.has(r.id));
+  const expiredKeys = new Set(expiredRequests.map(r => `${r.empireId || 'none'}:${r.id}`));
+  state.improvements.requests = state.improvements.requests.filter(r => {
+    const key = `${r.empireId || 'none'}:${r.id}`;
+    return !expiredKeys.has(key);
+  });
 
   return expiredRequests.length;
 }

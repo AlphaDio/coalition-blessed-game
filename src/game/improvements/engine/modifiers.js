@@ -28,6 +28,37 @@ export function applyImprovementModifiers(state) {
   state.coalitionModifiers.law_progress_speed = 0;
   improvements.maxTotalCapacity = IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY;
 
+  if (!improvements.coalitionModifierCache) {
+    improvements.coalitionModifierCache = {
+      industrial_output: 0,
+      market_efficiency: 0,
+      cohesionModifier: 1.0,
+      tick_delay_multiplier: 1.0
+    };
+  }
+
+  const cache = improvements.coalitionModifierCache;
+  if (!Number.isFinite(state.coalitionModifiers.industrial_output)) state.coalitionModifiers.industrial_output = 0;
+  if (!Number.isFinite(state.coalitionModifiers.market_efficiency)) state.coalitionModifiers.market_efficiency = 0;
+  if (!Number.isFinite(state.coalitionModifiers.cohesionModifier)) state.coalitionModifiers.cohesionModifier = 1.0;
+  if (!Number.isFinite(state.coalitionModifiers.tick_delay_multiplier)) state.coalitionModifiers.tick_delay_multiplier = 1.0;
+
+  if (cache.industrial_output) state.coalitionModifiers.industrial_output -= cache.industrial_output;
+  if (cache.market_efficiency) state.coalitionModifiers.market_efficiency -= cache.market_efficiency;
+  if (cache.cohesionModifier && cache.cohesionModifier !== 0) {
+    state.coalitionModifiers.cohesionModifier /= cache.cohesionModifier;
+  }
+  if (cache.tick_delay_multiplier && cache.tick_delay_multiplier !== 0) {
+    state.coalitionModifiers.tick_delay_multiplier /= cache.tick_delay_multiplier;
+  }
+
+  const newCache = {
+    industrial_output: 0,
+    market_efficiency: 0,
+    cohesionModifier: 1.0,
+    tick_delay_multiplier: 1.0
+  };
+
   // Collect all active improvement modifiers
   const activeImprovements = improvements.queue.filter(i => i.state === 'ACTIVE');
 
@@ -79,6 +110,17 @@ export function applyImprovementModifiers(state) {
       } else if (stat === 'improvement_queue_capacity') {
         // Add to base capacity (reset each tick above); used in lifecycle for queue limit
         state.improvements.maxTotalCapacity += value;
+      } else if (stat === 'industrial_output') {
+        newCache.industrial_output += value;
+      } else if (stat === 'market_efficiency') {
+        newCache.market_efficiency += value;
+      } else if (stat === 'cohesionModifier') {
+        newCache.cohesionModifier *= value;
+      } else if (stat === 'tick_delay_multiplier') {
+        newCache.tick_delay_multiplier *= value;
+      } else if (stat === 'research_speed') {
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'hero_siphon_efficiency_mult' || stat === 'hero_siphon_efficiency_add') {
         // Store per-empire modifiers for hero siphon efficiency (applied in hero budget siphon)
         improvements.empireModifiers[empire.id][stat] =
@@ -99,6 +141,17 @@ export function applyImprovementModifiers(state) {
       // Other modifiers can be stored and applied elsewhere as needed
     }
   });
+
+  if (newCache.industrial_output) state.coalitionModifiers.industrial_output += newCache.industrial_output;
+  if (newCache.market_efficiency) state.coalitionModifiers.market_efficiency += newCache.market_efficiency;
+  if (newCache.cohesionModifier && newCache.cohesionModifier !== 0) {
+    state.coalitionModifiers.cohesionModifier *= newCache.cohesionModifier;
+  }
+  if (newCache.tick_delay_multiplier && newCache.tick_delay_multiplier !== 0) {
+    state.coalitionModifiers.tick_delay_multiplier *= newCache.tick_delay_multiplier;
+  }
+
+  improvements.coalitionModifierCache = newCache;
 
   return { success: true };
 }
