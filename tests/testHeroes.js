@@ -434,8 +434,8 @@ console.log('=== Test 11: Heat Amplitude Scales with Axis Difference ===');
   assert(heatSmall < heatMax, `Small opposition (${heatSmall.toFixed(2)}) < Max (${heatMax.toFixed(2)})`);
   assert(heatMedium <= heatMax, `Medium opposition (${heatMedium.toFixed(2)}) <= Max (${heatMax.toFixed(2)})`);
 
-  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 24.0)
-  assert(approxEqual(heatMax, 24.0), `Max heat is ~24.0 (got ${heatMax.toFixed(2)})`);
+  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 2.4)
+  assert(approxEqual(heatMax, 2.4), `Max heat is ~2.4 (got ${heatMax.toFixed(2)})`);
 }
 console.log();
 

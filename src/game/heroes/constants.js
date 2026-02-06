@@ -6,8 +6,8 @@ export const HERO_STATUS = {
 };
 
 export const HERO_CONSTANTS = {
-  HEAT_BASE: 24.0,
-  GRIEVANCE_BASE: 16.0,
+  HEAT_BASE: 2.4,
+  GRIEVANCE_BASE: 1.6,
   // Unrest now acts as a magnifier (0..1) rather than a threshold gate.
   HEAT_DECAY_GOOD: 0.35,
   HEAT_DECAY_BAD: 0.1,
