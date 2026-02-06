@@ -1,10 +1,12 @@
 import { createLawProcess } from '../types.js';
 import {
   applyEventEffects,
+  applyUnrestExternalities,
   buildLawContext,
   checkBurialRule,
   checkPhaseAdvancement,
   filterEligibleEvents,
+  getAdjustedVoteThreshold,
   MAX_PHASE_PROGRESS,
   pickEvents
 } from '../lawEngine.js';
@@ -15,7 +17,7 @@ import { updateCoalitionColor } from '../coalitionColor.js';
 import {
   applyHeroLawPressure,
   applyHeroLawTension,
-  runHeroPassives,
+  triggerHeroPassives,
   triggerHeroAbilities
 } from '../heroes.js';
 import { filterLawLogs } from './logs.js';
@@ -23,6 +25,7 @@ import { getLawProgressSpeedMultiplier } from './progress.js';
 import { applyLawImmediateEffects, applyLawModifiers, removeLawModifiers } from './modifiers.js';
 import { calculateEmpireStances } from './stances.js';
 import { getLawEvents } from './events.js';
+import { tallyVotes } from './voting.js';
 
 /**
  * Start a new law process
@@ -103,6 +106,9 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     `Phase: ${lawProcess.phase}`
   ];
 
+  triggerHeroPassives(state, 'LAW_PROCESS_STARTED', { lawProcess, lawDef }, log);
+  triggerHeroPassives(state, 'LAW_PHASE_STARTED', { phase: lawProcess.phase, lawProcess, lawDef }, log);
+
   // Apply immediate hero pressure when the law starts
   applyHeroLawPressure(state, lawProcess, lawDef, log);
   applyHeroLawTension(state, lawProcess, log);
@@ -138,10 +144,6 @@ export function resolveLawProcess(lawProcess, state, rng) {
   }
 
   log.push(`\n=== Resolving Law: ${lawDef.name} (Phase: ${lawProcess.phase}) ===`);
-
-  if (lawProcess.phaseTicks === 0) {
-    runHeroPassives(state, lawProcess, lawDef, 'OnStart', log);
-  }
 
   // Build context
   const context = buildLawContext(lawProcess, lawDef, state);
@@ -251,11 +253,18 @@ export function resolveLawProcess(lawProcess, state, rng) {
     lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) - 0.03, 0, 1);
   }
 
-  // Hero phase-tick passives + law pressure
-  runHeroPassives(state, lawProcess, lawDef, 'OnTick', log);
+  // Hero pressure and abilities
   applyHeroLawPressure(state, lawProcess, lawDef, log);
   applyHeroLawTension(state, lawProcess, log);
   triggerHeroAbilities(state, lawProcess, log);
+
+  const unrestEffects = applyUnrestExternalities(lawProcess, state);
+  if (unrestEffects.cohesionLoss > 0 || unrestEffects.approvalLoss > 0 || unrestEffects.insurrectionRisk > 0) {
+    log.push(
+      `Unrest externality: cohesion -${unrestEffects.cohesionLoss}, ` +
+      `approval -${unrestEffects.approvalLoss}, aggravation +${unrestEffects.insurrectionRisk}.`
+    );
+  }
 
   // Track phase progress for deadlock detection
   lawProcess.phaseTicks += 1;
@@ -269,16 +278,53 @@ export function resolveLawProcess(lawProcess, state, rng) {
     const lawName = lawDef ? lawDef.name : lawProcess.lawId;
     logger.info(`Law phase: ${lawName} -> ${lawProcess.phase}`);
     log.push(`\n>>> Phase advanced to: ${lawProcess.phase}`);
+    triggerHeroPassives(state, 'LAW_PHASE_STARTED', {
+      phase: lawProcess.phase,
+      lawProcess,
+      lawDef
+    }, log);
   }
 
   // Check if VOTING completed
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
     const logger = getLogger();
-    log.push('\n>>> VOTING phase complete, enacting law...');
+    log.push('\n>>> VOTING phase complete, tallying votes...');
 
     // Apply immediate hero pressure when the law is enacted
     applyHeroLawPressure(state, lawProcess, lawDef, log);
     applyHeroLawTension(state, lawProcess, log);
+
+    const baseThreshold = state.powerSystemPolicy?.config?.pass_threshold || 0.5;
+    const legitimacyThreshold = getAdjustedVoteThreshold(lawProcess, baseThreshold);
+    const enactmentBonus = lawDef?.modifiers?.enactment_chance_bonus || 0;
+    const finalThreshold = clamp(legitimacyThreshold - enactmentBonus, 0, 1);
+
+    const tally = tallyVotes(lawProcess, state, {
+      passThresholdOverride: finalThreshold
+    });
+    log.push(...tally.log);
+
+    if (!tally.passed) {
+      lawProcess.rejects += 1;
+      log.push(`\n>>> VOTE FAILED (${lawProcess.rejects}/4 rejects)`);
+
+      if (checkBurialRule(lawProcess, state)) {
+        logger.info(`Law BURIED: ${lawDef.name} (4 rejects, failed vote)`);
+        log.push('\n*** LAW BURIED (failed vote) ***');
+        return log;
+      }
+
+      // Failed votes escalate tension and force another cycle before a retry.
+      lawProcess.phase = 'FALLOUT';
+      lawProcess.phaseProgress = 0;
+      lawProcess.phaseTicks = 0;
+      lawProcess.stallTicks = 0;
+      lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) + 0.12, 0, 1);
+      lawProcess.meters.unrest = clamp((lawProcess.meters.unrest || 0) + 0.08, 0, 1);
+      lawProcess.meters.legitimacy = clamp((lawProcess.meters.legitimacy || 0) - 0.1, 0, 1);
+      log.push('Vote fallout: phase reset to FALLOUT with increased reject pressure/unrest.');
+      return log;
+    }
 
     lawProcess.phase = 'ENACTED';
 
@@ -338,6 +384,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
 
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);
+    triggerHeroPassives(state, 'LAW_ENACTED', { lawProcess, lawDef }, log);
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');
   }

@@ -229,8 +229,8 @@ console.log('=== Test 7: Ability Trigger + Siphon Bank Spend ===');
   assert(hero.cooldowns.ability > 0, 'Ability cooldown applied');
   assert(empire.budget_credits === 200, 'Siphon bank deducted from budget on ability');
   assert(hero.siphon_bank === 0, 'Siphon bank reset after ability');
-  assert(hero.meters.heat < 20, 'Ability reduces heat');
-  assert(hero.meters.grievance < 10, 'Ability reduces grievance');
+  assert(hero.meters.heat > 20, 'Ability increases heat as political backlash tradeoff');
+  assert(approxEqual(hero.meters.grievance, 10), 'Ability no longer auto-cleanses grievance');
   assert(hero.meters.popularity > 50, 'Ability increases popularity');
 }
 console.log();
@@ -434,8 +434,8 @@ console.log('=== Test 11: Heat Amplitude Scales with Axis Difference ===');
   assert(heatSmall < heatMax, `Small opposition (${heatSmall.toFixed(2)}) < Max (${heatMax.toFixed(2)})`);
   assert(heatMedium <= heatMax, `Medium opposition (${heatMedium.toFixed(2)}) <= Max (${heatMax.toFixed(2)})`);
 
-  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 20.0)
-  assert(approxEqual(heatMax, 20.0), `Max heat is ~20.0 (got ${heatMax.toFixed(2)})`);
+  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 24.0)
+  assert(approxEqual(heatMax, 24.0), `Max heat is ~24.0 (got ${heatMax.toFixed(2)})`);
 }
 console.log();
 

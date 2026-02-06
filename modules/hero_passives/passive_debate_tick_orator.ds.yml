@@ -1,39 +1,37 @@
 module:
   id: "passive_debate_tick_orator"
-  name: "Debate Orator"
-  description: "Boost momentum slightly each debate tick if the law aligns with hero domain."
-  version: "1.0.0"
+  name: "Groundbreaking Orator"
+  description: "When an empire starts an improvement, this hero can spin it into law momentum."
+  version: "1.1.0"
   type: "hero_passive"
   category: "hero"
   dependencies: []
 
 metadata:
   author: "Coalition Team"
-  tags: ["hero", "passive", "debate", "momentum"]
-  created_at: "2026-02-01T00:00:00Z"
+  tags: ["hero", "passive", "improvement", "momentum"]
+  created_at: "2026-02-06T00:00:00Z"
 
 schema_version: "0.1"
 
 declares:
   hero_passive_data:
     id: "PASSIVE_DEBATE_TICK_ORATOR"
-    phase: "DEBATE"
-    cadence: "OnTick"
-    description: "Boost momentum slightly each debate tick if the law aligns with hero domain."
+    description: "Trigger on improvement start and convert momentum into law pressure."
+    trigger:
+      type: "IMPROVEMENT_STARTED"
+      require_empire_match: true
 
 hooks:
   on_trigger:
-    description: "Apply momentum when hero and law tags intersect."
+    description: "Apply momentum when an improvement starts in the hero's empire."
     logic:
-      - set_variable:
-          varName: "has_match"
-          value: "intersects(scope.law_tags, scope.hero_tags)"
       - if:
-          condition: "vars.has_match"
+          condition: "scope.law_process != null"
           then:
             - set_variable:
                 varName: "bonus"
-                value: "0.02 * scope.popularity_scalar"
+                value: "0.035 * scope.popularity_scalar"
             - if:
                 condition: "vars.bonus > 0"
                 then:
@@ -42,4 +40,15 @@ hooks:
                       args:
                         amount: "vars.bonus"
                         percent: "vars.bonus * 100"
-                        log_message: "'Hero Passive triggered: {hero} orates (+{percent}% momentum).'"
+                        log_message: "'Hero Passive triggered: {hero} reframed the project as coalition momentum (+{percent}%).'"
+      - set_variable:
+          varName: "grant"
+          value: "round(250 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.grant > 0"
+          then:
+            - game_action:
+                action: "grant_credits"
+                args:
+                  amount: "vars.grant"
+                  log_message: "'Hero Passive triggered: {hero} leveraged construction buzz for {value} credits in {empire}.'"

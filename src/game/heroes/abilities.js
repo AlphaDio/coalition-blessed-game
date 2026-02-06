@@ -139,6 +139,25 @@ function applyHeroAbilityAction(action, context) {
       }
       return;
     }
+    case 'add_law_meter': {
+      if (!lawProcess?.meters) return;
+      const meter = args.meter;
+      if (!meter || !Number.isFinite(amount) || amount === 0) return;
+      if (!['momentum', 'reject_pressure', 'unrest', 'polarization', 'legitimacy'].includes(meter)) return;
+      const before = Number(lawProcess.meters[meter] || 0);
+      lawProcess.meters[meter] = clamp(before + amount, 0, 1);
+      const message = formatMessage(args.log_message, {
+        ...logValues,
+        meter,
+        before: before.toFixed(3),
+        after: Number(lawProcess.meters[meter]).toFixed(3)
+      });
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
     case 'add_law_progress': {
       if (!lawProcess) return;
       if (!Number.isFinite(amount) || amount === 0) return;

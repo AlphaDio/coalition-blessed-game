@@ -33,5 +33,5 @@ declares:
     passive:
       phase: "FALLOUT"
       cadence: "OnStart"
-      passive_id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"
+      passive_id: "PASSIVE_BATTLE_START_WARCHEST"
 

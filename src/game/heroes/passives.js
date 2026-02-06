@@ -10,7 +10,16 @@ import { HERO_STATUS } from './constants.js';
 import { formatMessage } from './helpers.js';
 import { ensureHeroMeters, getHeroEmpireId, getPopularityScalar } from './utils.js';
 
-export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
+const LAW_PHASES = new Set(['DEBATE', 'FALLOUT', 'VOTING']);
+
+/**
+ * Generic passive dispatcher. New passive behavior should be wired through this function.
+ * @param {Object} state - Game state
+ * @param {string} triggerType - Passive trigger type
+ * @param {Object} payload - Trigger payload
+ * @param {Array} log - Output log array
+ */
+export function triggerHeroPassives(state, triggerType, payload = {}, log = []) {
   if (!state.heroes || state.heroes.length === 0) return;
   if (!state.empires || state.empires.length === 0) return;
 
@@ -19,21 +28,39 @@ export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
   state.heroes.forEach(hero => {
     if (hero.status === HERO_STATUS.EXILED) return;
     ensureHeroMeters(hero);
+
     const passive = hero.passive || {};
     if (!passive.passive_id) return;
 
     const definition = HERO_PASSIVES[passive.passive_id];
     if (!definition) return;
 
-    const { phase: passivePhase, cadence: passiveCadence } = getPassiveTrigger(passive, definition);
-    if (passivePhase !== lawProcess.phase) return;
-    if (passiveCadence !== cadence) return;
+    const trigger = resolvePassiveTrigger(passive, definition);
+    if (!shouldTriggerPassive(trigger, triggerType, payload, getHeroEmpireId(hero))) return;
 
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
 
     const popularityScalar = getPopularityScalar(hero);
-    if (runHeroPassiveHook(definition, hero, empire, state, lawProcess, lawDef, null, popularityScalar, cadence, passivePhase, log, logger)) {
+    const lawProcess = payload.lawProcess || payload.law_process || null;
+    const lawDef = payload.lawDef || payload.law || null;
+    const battleContext = payload.battleContext || payload.battle || null;
+
+    if (runHeroPassiveHook(
+      definition,
+      hero,
+      empire,
+      state,
+      lawProcess,
+      lawDef,
+      battleContext,
+      popularityScalar,
+      triggerType,
+      trigger,
+      payload,
+      log,
+      logger
+    )) {
       return;
     }
 
@@ -45,49 +72,6 @@ export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
         state,
         lawProcess,
         lawDef,
-        popularityScalar,
-        log,
-        logger
-      });
-    });
-  });
-}
-
-export function runHeroBattlePassives(state, battleContext, cadence, log) {
-  if (!state.heroes || state.heroes.length === 0) return;
-  if (!state.empires || state.empires.length === 0) return;
-
-  const logger = getLogger();
-  const activeEmpireIds = battleContext?.participatingEmpireIds || [];
-
-  state.heroes.forEach(hero => {
-    if (hero.status === HERO_STATUS.EXILED) return;
-    if (activeEmpireIds.length > 0 && !activeEmpireIds.includes(getHeroEmpireId(hero))) return;
-    ensureHeroMeters(hero);
-    const passive = hero.passive || {};
-    if (!passive.passive_id) return;
-
-    const definition = HERO_PASSIVES[passive.passive_id];
-    if (!definition) return;
-
-    const { phase: passivePhase, cadence: passiveCadence } = getPassiveTrigger(passive, definition);
-    if (passivePhase !== battleContext?.phase) return;
-    if (passiveCadence !== cadence) return;
-
-    const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
-    if (!empire) return;
-
-    const popularityScalar = getPopularityScalar(hero);
-    if (runHeroPassiveHook(definition, hero, empire, state, null, null, battleContext, popularityScalar, cadence, passivePhase, log, logger)) {
-      return;
-    }
-
-    const effects = definition.effects || [];
-    effects.forEach(effect => {
-      applyHeroPassiveEffect(effect, {
-        hero,
-        empire,
-        state,
         battleContext,
         popularityScalar,
         log,
@@ -97,14 +81,120 @@ export function runHeroBattlePassives(state, battleContext, cadence, log) {
   });
 }
 
-function getPassiveTrigger(passive, definition) {
-  return {
-    phase: passive.phase || definition.phase,
-    cadence: passive.cadence || definition.cadence
-  };
+/**
+ * Legacy wrapper retained for compatibility with existing callers.
+ */
+export function runHeroPassives(state, lawProcess, lawDef, cadence, log) {
+  if (!lawProcess) return;
+  if (cadence === 'OnStart') {
+    triggerHeroPassives(state, 'LAW_PHASE_STARTED', {
+      phase: lawProcess.phase,
+      lawProcess,
+      lawDef
+    }, log);
+    return;
+  }
+  if (cadence === 'OnTick') {
+    triggerHeroPassives(state, 'LAW_TICK', {
+      phase: lawProcess.phase,
+      lawProcess,
+      lawDef
+    }, log);
+  }
 }
 
-function buildPassiveScope(hero, empire, state, lawProcess, lawDef, battleContext, popularityScalar, cadence, phase) {
+/**
+ * Legacy wrapper retained for compatibility with existing callers.
+ */
+export function runHeroBattlePassives(state, battleContext, cadence, log) {
+  if (cadence !== 'OnStart') return;
+  triggerHeroPassives(state, 'BATTLE_STARTED', {
+    ...battleContext,
+    battleContext
+  }, log);
+}
+
+function resolvePassiveTrigger(passive, definition) {
+  const baseTrigger = (definition && typeof definition.trigger === 'object')
+    ? { ...definition.trigger }
+    : null;
+  const overrideTrigger = (passive && typeof passive.trigger === 'object')
+    ? { ...passive.trigger }
+    : null;
+
+  if (baseTrigger || overrideTrigger) {
+    return {
+      ...(baseTrigger || {}),
+      ...(overrideTrigger || {})
+    };
+  }
+
+  const phase = passive.phase || definition.phase;
+  const cadence = passive.cadence || definition.cadence;
+
+  if (phase === 'BATTLE' && cadence === 'OnStart') {
+    return {
+      type: 'BATTLE_STARTED',
+      battle_type: 'SCOURGE'
+    };
+  }
+  if (cadence === 'OnStart' && LAW_PHASES.has(phase)) {
+    return {
+      type: 'LAW_PHASE_STARTED',
+      phase
+    };
+  }
+  if (cadence === 'OnTick' && LAW_PHASES.has(phase)) {
+    return {
+      type: 'LAW_TICK',
+      phase
+    };
+  }
+
+  return { type: null };
+}
+
+function shouldTriggerPassive(trigger, triggerType, payload, heroEmpireId) {
+  if (!trigger?.type || trigger.type !== triggerType) return false;
+
+  switch (triggerType) {
+    case 'LAW_PHASE_STARTED':
+    case 'LAW_TICK':
+      if (trigger.phase && payload.phase !== trigger.phase) return false;
+      return true;
+    case 'BATTLE_STARTED':
+      if (trigger.battle_type && payload.type && trigger.battle_type !== payload.type) return false;
+      if (Array.isArray(payload.participatingEmpireIds) && payload.participatingEmpireIds.length > 0) {
+        return payload.participatingEmpireIds.includes(heroEmpireId);
+      }
+      return true;
+    case 'TECH_UNLOCKED':
+    case 'IMPROVEMENT_STARTED':
+    case 'IMPROVEMENT_COMPLETED': {
+      const requireEmpireMatch = trigger.require_empire_match !== false;
+      if (!requireEmpireMatch) return true;
+      return !payload.empireId || payload.empireId === heroEmpireId;
+    }
+    case 'LAW_PROCESS_STARTED':
+    case 'LAW_ENACTED':
+      return true;
+    default:
+      return true;
+  }
+}
+
+function buildPassiveScope(
+  hero,
+  empire,
+  state,
+  lawProcess,
+  lawDef,
+  battleContext,
+  popularityScalar,
+  triggerType,
+  trigger,
+  payload
+) {
   return {
     hero,
     empire,
@@ -112,9 +202,11 @@ function buildPassiveScope(hero, empire, state, lawProcess, lawDef, battleContex
     law_process: lawProcess,
     law: lawDef,
     battle: battleContext,
+    trigger_type: triggerType,
+    trigger_payload: payload,
+    trigger,
     popularity_scalar: popularityScalar,
-    cadence,
-    phase,
+    phase: payload?.phase || trigger?.phase || lawProcess?.phase || null,
     hero_tags: hero?.tags || [],
     empire_tags: empire?.tags || [],
     law_tags: lawDef?.tags || lawDef?.law_tags || []
@@ -130,8 +222,9 @@ function runHeroPassiveHook(
   lawDef,
   battleContext,
   popularityScalar,
-  cadence,
-  phase,
+  triggerType,
+  trigger,
+  payload,
   log,
   logger
 ) {
@@ -141,7 +234,18 @@ function runHeroPassiveHook(
   const moduleDoc = HERO_MODULE_REGISTRY.modules?.[moduleId];
   if (!moduleDoc?.hooks?.on_trigger?.logic) return false;
 
-  const scope = buildPassiveScope(hero, empire, state, lawProcess, lawDef, battleContext, popularityScalar, cadence, phase);
+  const scope = buildPassiveScope(
+    hero,
+    empire,
+    state,
+    lawProcess,
+    lawDef,
+    battleContext,
+    popularityScalar,
+    triggerType,
+    trigger,
+    payload
+  );
   const context = { scope, vars: {} };
 
   const result = HERO_MODULE_INTERPRETER.executeHook(moduleId, 'on_trigger', context);

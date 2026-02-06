@@ -6,7 +6,7 @@ export {
 } from './utils.js';
 export { applyHeroBudgetSiphon } from './budget.js';
 export { applyHeroLawPressure, applyHeroLawTension } from './law.js';
-export { runHeroPassives, runHeroBattlePassives } from './passives.js';
+export { triggerHeroPassives, runHeroPassives, runHeroBattlePassives } from './passives.js';
 export { triggerHeroAbilities, tickHeroCooldowns } from './abilities.js';
 export { tickHeroMeters, applyHeroSpillover } from './meters.js';
 export {

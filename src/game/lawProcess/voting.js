@@ -1,19 +1,26 @@
 /**
- * Tally votes for a law
+ * Tally votes for a law.
  * @param {Object} lawProcess - Law process
  * @param {Object} state - Game state
+ * @param {Object} options - Optional tally overrides
  * @returns {Object} Tally result with passed flag and log
  */
-export function tallyVotes(lawProcess, state) {
+export function tallyVotes(lawProcess, state, options = {}) {
   const log = [];
   const policy = state.powerSystemPolicy;
+  const passThresholdOverride = Number.isFinite(options.passThresholdOverride)
+    ? options.passThresholdOverride
+    : null;
+  const quorumThresholdOverride = Number.isFinite(options.quorumThresholdOverride)
+    ? options.quorumThresholdOverride
+    : null;
 
   if (!policy) {
     log.push('ERROR: No power system policy defined');
     return { passed: false, log };
   }
 
-  // Get law definition to check for enactment bonus
+  // Keep existing law enactment bonus behavior unless caller provides explicit threshold.
   const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
   const enactmentBonus = lawDef?.modifiers?.enactment_chance_bonus || 0;
 
@@ -26,11 +33,9 @@ export function tallyVotes(lawProcess, state) {
     const stance = lawProcess.empireStances[empire.id];
     if (!stance) return;
 
-    // Calculate votes for this empire
     const votes = calculateEmpireVotes(empire, policy, state);
     totalVotes += votes;
 
-    // Apply vote intent
     if (stance.vote_intent === 'support') {
       supportVotes += votes;
     } else if (stance.vote_intent === 'oppose') {
@@ -42,34 +47,46 @@ export function tallyVotes(lawProcess, state) {
     log.push(`  ${empire.name}: ${stance.vote_intent} (${votes} votes)`);
   });
 
-  const quorumNeeded = totalVotes * policy.config.quorum_threshold;
-  // Apply enactment bonus by reducing the threshold needed
+  const quorumThreshold = quorumThresholdOverride ?? policy.config.quorum_threshold;
+  const quorumNeeded = totalVotes * quorumThreshold;
   const basePassThreshold = policy.config.pass_threshold;
-  const adjustedPassThreshold = Math.max(0, basePassThreshold - enactmentBonus);
-  const votesNeeded = totalVotes * adjustedPassThreshold;
+  const passThreshold = passThresholdOverride ?? Math.max(0, basePassThreshold - enactmentBonus);
+  const votesNeeded = totalVotes * passThreshold;
   const totalCast = supportVotes + opposeVotes;
 
-  log.push(`\nVote Tally:`);
+  log.push('\nVote Tally:');
   log.push(`  Support: ${supportVotes}`);
   log.push(`  Oppose: ${opposeVotes}`);
   log.push(`  Abstain: ${abstainVotes}`);
-  log.push(`  Quorum: ${totalCast}/${quorumNeeded.toFixed(1)} ${totalCast >= quorumNeeded ? 'âœ“' : 'âœ—'}`);
+  log.push(`  Quorum: ${totalCast}/${quorumNeeded.toFixed(1)} ${totalCast >= quorumNeeded ? '[PASS]' : '[FAIL]'}`);
 
-  if (enactmentBonus > 0) {
-    const adjustedPercentage = (adjustedPassThreshold * 100).toFixed(0);
-    const bonusPercentage = (enactmentBonus * 100).toFixed(0);
-    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${adjustedPercentage}% with +${bonusPercentage}% bonus) ${supportVotes >= votesNeeded ? 'âœ“' : 'âœ—'}`);
+  if (passThresholdOverride !== null) {
+    const pct = (passThreshold * 100).toFixed(0);
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${pct}% adjusted) ${supportVotes >= votesNeeded ? '[PASS]' : '[FAIL]'}`);
+  } else if (enactmentBonus > 0) {
+    const pct = (passThreshold * 100).toFixed(0);
+    const bonusPct = (enactmentBonus * 100).toFixed(0);
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} (${pct}% with +${bonusPct}% bonus) ${supportVotes >= votesNeeded ? '[PASS]' : '[FAIL]'}`);
   } else {
-    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? 'âœ“' : 'âœ—'}`);
+    log.push(`  Pass threshold: ${supportVotes}/${votesNeeded.toFixed(1)} ${supportVotes >= votesNeeded ? '[PASS]' : '[FAIL]'}`);
   }
 
   const passed = totalCast >= quorumNeeded && supportVotes >= votesNeeded;
 
-  return { passed, log, supportVotes, opposeVotes, abstainVotes };
+  return {
+    passed,
+    log,
+    supportVotes,
+    opposeVotes,
+    abstainVotes,
+    totalVotes,
+    quorumThreshold,
+    passThreshold
+  };
 }
 
 /**
- * Calculate votes for an empire based on power system
+ * Calculate votes for an empire based on power system.
  * @param {Object} empire - Empire
  * @param {Object} policy - Power system policy
  * @param {Object} state - Game state
@@ -79,11 +96,9 @@ export function calculateEmpireVotes(empire, policy, state) {
   let votes = policy.config.base_votes_per_empire || 1;
 
   if (policy.type === 'pressure_weighted') {
-    // Votes increase with population
     const pressure = empire.stats.population || 1000;
     votes += Math.floor(pressure * policy.config.pressure_multiplier);
   } else if (policy.type === 'hegemonic') {
-    // Top empire by population gets bonus
     const maxPopulation = Math.max(...state.empires.map(e => e.stats.population || 1000));
     if (empire.stats.population === maxPopulation) {
       votes += policy.config.hegemonic_bonus || 0;

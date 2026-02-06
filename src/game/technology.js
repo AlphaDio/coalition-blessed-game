@@ -2,6 +2,7 @@
 import { TECH_CONSTANTS } from './constants.js';
 import { GENERAL_TECHS, ALIGNED_TECHS, UNIQUE_TECHS, TECH_BY_ID } from './technologyDefinitions.js';
 import { getLogger } from '../modules/logger.js';
+import { triggerHeroPassives } from './heroes.js';
 
 /**
  * Calculate effective research speed for an empire
@@ -457,6 +458,20 @@ export function handleTechEventChoice(state, event, choiceIndex) {
         .join(', ');
       log.push(`Immediate effects: ${effectStrings}`);
     }
+
+    const activeLawProcess = (state.lawProcesses || []).find(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED') || null;
+    const activeLawDef = activeLawProcess
+      ? state.lawDefinitions?.find(def => def.id === activeLawProcess.lawId) || null
+      : null;
+
+    triggerHeroPassives(state, 'TECH_UNLOCKED', {
+      empireId: empire.id,
+      techId,
+      techName: result.techName,
+      tech: TECH_BY_ID[techId] || null,
+      lawProcess: activeLawProcess,
+      lawDef: activeLawDef
+    }, log);
   } else {
     log.push(`Failed to grant technology: ${result.error}`);
   }

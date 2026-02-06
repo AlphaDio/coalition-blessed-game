@@ -12,8 +12,8 @@ export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
   const lawValues = getLawValues(lawDef);
   const unrest = clamp(lawProcess.meters?.unrest || 0, 0, 1);
   const legitimacy = lawProcess.meters?.legitimacy || 0;
-  const unrestPressure = Math.max(0.1, unrest);
-  const legitimacyDampener = 1 - (legitimacy * 0.7);
+  const unrestPressure = Math.max(0.2, unrest);
+  const legitimacyDampener = 1 - (legitimacy * 0.55);
 
   if (unrestPressure <= 0) return;
 
@@ -66,8 +66,16 @@ export function applyHeroLawTension(state, lawProcess, log) {
 
   const avgHeat = totalHeat / activeHeroes.length;
   const avgGrievance = totalGrievance / activeHeroes.length;
-  const heatPressure = clamp((avgHeat - HERO_CONSTANTS.LAW_HEAT_NEUTRAL) / 100, -1, 1);
-  const grievancePressure = clamp((avgGrievance - HERO_CONSTANTS.LAW_GRIEVANCE_NEUTRAL) / 100, -1, 1);
+  const heatPressure = clamp(
+    (avgHeat - HERO_CONSTANTS.LAW_HEAT_NEUTRAL) / HERO_CONSTANTS.LAW_HEAT_PRESSURE_SPAN,
+    -1,
+    1
+  );
+  const grievancePressure = clamp(
+    (avgGrievance - HERO_CONSTANTS.LAW_GRIEVANCE_NEUTRAL) / HERO_CONSTANTS.LAW_GRIEVANCE_PRESSURE_SPAN,
+    -1,
+    1
+  );
 
   const unrestDelta = heatPressure * HERO_CONSTANTS.LAW_UNREST_FROM_HEAT;
   const rejectDelta = grievancePressure * HERO_CONSTANTS.LAW_REJECT_FROM_GRIEVANCE;
@@ -79,8 +87,8 @@ export function applyHeroLawTension(state, lawProcess, log) {
   lawProcess.meters.reject_pressure = clamp(oldReject + rejectDelta, 0, 1);
 
   if (Math.abs(unrestDelta) >= 0.001 || Math.abs(rejectDelta) >= 0.001) {
-    const message = `Hero sentiment: law unrest ${oldUnrest.toFixed(3)} â†’ ${lawProcess.meters.unrest.toFixed(3)}, ` +
-      `reject pressure ${oldReject.toFixed(3)} â†’ ${lawProcess.meters.reject_pressure.toFixed(3)}.`;
+    const message = `Hero sentiment: law unrest ${oldUnrest.toFixed(3)} -> ${lawProcess.meters.unrest.toFixed(3)}, ` +
+      `reject pressure ${oldReject.toFixed(3)} -> ${lawProcess.meters.reject_pressure.toFixed(3)}.`;
     log.push(message);
     logger.debug(message);
   }

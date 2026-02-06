@@ -1,6 +1,7 @@
 import { getLogger } from '../../../modules/logger.js';
 import { createImprovement } from './core.js';
 import { canStartImprovement, generateReplacementSuggestion } from '../definitions.js';
+import { triggerHeroPassives } from '../../heroes.js';
 
 /**
  * Accept an improvement request (start building)
@@ -56,6 +57,17 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   // Create improvement instance
   const improvement = createImprovement(request.id, empireId, state.turn, request);
   improvements.queue.push(improvement);
+  const activeLawProcess = (state.lawProcesses || []).find(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED') || null;
+  const activeLawDef = activeLawProcess
+    ? state.lawDefinitions?.find(def => def.id === activeLawProcess.lawId) || null
+    : null;
+  const passiveLog = [];
+  triggerHeroPassives(state, 'IMPROVEMENT_STARTED', {
+    empireId,
+    improvement,
+    lawProcess: activeLawProcess,
+    lawDef: activeLawDef
+  }, passiveLog);
 
   // Remove the request from the list
   const requestIdx = state.improvements.requests.findIndex(r => r.id === requestId);
@@ -75,7 +87,10 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   return {
     success: true,
     improvement,
-    log: [`{green-fg}Started:{/green-fg} ${improvement.name} (requisition: ${request.suppliesCost}, T${improvement.tier})`]
+    log: [
+      `{green-fg}Started:{/green-fg} ${improvement.name} (requisition: ${request.suppliesCost}, T${improvement.tier})`,
+      ...passiveLog
+    ]
   };
 }
 

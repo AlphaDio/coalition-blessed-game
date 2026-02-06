@@ -33,5 +33,5 @@ declares:
     passive:
       phase: "DEBATE"
       cadence: "OnTick"
-      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"
+      passive_id: "PASSIVE_SCOURGE_BATTLE_OPENING_SALVO"
 

@@ -1,33 +1,34 @@
 module:
   id: "passive_fallout_start_credit_grant"
-  name: "Fallout Credit Grant"
-  description: "Grant credits to the hero empire at the start of Fallout."
-  version: "1.0.0"
+  name: "Breakthrough Dividend"
+  description: "Convert home-empire tech breakthroughs into political capital."
+  version: "1.1.0"
   type: "hero_passive"
   category: "hero"
   dependencies: []
 
 metadata:
   author: "Coalition Team"
-  tags: ["hero", "passive", "economy", "fallout"]
-  created_at: "2026-02-01T00:00:00Z"
+  tags: ["hero", "passive", "tech", "economy"]
+  created_at: "2026-02-06T00:00:00Z"
 
 schema_version: "0.1"
 
 declares:
   hero_passive_data:
     id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"
-    phase: "FALLOUT"
-    cadence: "OnStart"
-    description: "Grant credits to the hero empire at the start of Fallout."
+    description: "Grant credits when this hero's empire receives a technology."
+    trigger:
+      type: "TECH_UNLOCKED"
+      require_empire_match: true
 
 hooks:
   on_trigger:
-    description: "Grant credits to the hero empire at the start of Fallout."
+    description: "Grant budget and optionally support an active law when a tech unlock lands."
     logic:
       - set_variable:
           varName: "grant"
-          value: "round(1000 * scope.popularity_scalar)"
+          value: "round(900 * scope.popularity_scalar)"
       - if:
           condition: "vars.grant > 0"
           then:
@@ -35,4 +36,19 @@ hooks:
                 action: "grant_credits"
                 args:
                   amount: "vars.grant"
-                  log_message: "'Hero Passive triggered: {hero} granted {value} credits to {empire}.'"
+                  log_message: "'Hero Passive triggered: {hero} converted a breakthrough into {value} credits for {empire}.'"
+      - if:
+          condition: "scope.law_process != null"
+          then:
+            - set_variable:
+                varName: "legitimacy_bonus"
+                value: "0.02 * scope.popularity_scalar"
+            - if:
+                condition: "vars.legitimacy_bonus > 0"
+                then:
+                  - game_action:
+                      action: "add_law_legitimacy"
+                      args:
+                        amount: "vars.legitimacy_bonus"
+                        percent: "vars.legitimacy_bonus * 100"
+                        log_message: "'Hero Passive triggered: {hero} framed the breakthrough as evidence (+{percent}% legitimacy).'"
