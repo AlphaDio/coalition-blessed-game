@@ -3,6 +3,11 @@ import { RATIONING_CONSTANTS } from '../../constants.js';
 import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../economyTick/ordersPhase.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
 import { nextOrderId } from './orderIds.js';
+import { createBuyOrder } from '../../marketEconomy.js';
+
+const SUSTAINMENT_ORDER_PRIORITY = 800;
+const SUSTAINMENT_ORDER_MAX_DURATION = 6;
+const SUSTAINMENT_BACKLOG_TICKS = IMPROVEMENT_SUSTAINMENT_TICKS * 2;
 
 /**
  * Process sustainment for an improvement
@@ -42,38 +47,6 @@ export function processImprovementSustainment(state, improvement) {
   const empireEff = getEmpireSupplyEfficiency(empire, state);
   const empireMult = Math.max(0, 1 - empireEff);
 
-  const buyFromMarket = (commodity, qtyNeeded) => {
-    if (qtyNeeded <= 0) return 0;
-    const marketState = state.market?.[commodity];
-    const sellOffers = state.marketOrders?.sellOffers;
-    if (!marketState || !sellOffers || sellOffers.length === 0) return 0;
-
-    const maxPrice = marketState.price;
-    const availableSells = sellOffers
-      .filter(sell => sell.commodity === commodity && (sell.qty - (sell.filled_qty || 0)) > 0)
-      .filter(sell => (sell.ask_price || 0) <= maxPrice)
-      .sort((a, b) => (a.ask_price || 0) - (b.ask_price || 0));
-
-    let remaining = qtyNeeded;
-    for (const sell of availableSells) {
-      if (remaining <= 0) break;
-      const remainingQty = sell.qty - (sell.filled_qty || 0);
-      if (remainingQty <= 0) continue;
-
-      const price = sell.ask_price || marketState.price || 1;
-      const budget = Math.max(0, empire.budget_credits || 0);
-      const affordable = Math.floor(Math.min(remainingQty, remaining, budget / price));
-      if (affordable <= 0) continue;
-
-      // Deduct from empire credits and reduce sell offer quantity
-      empire.budget_credits -= affordable * price;
-      sell.filled_qty = (sell.filled_qty || 0) + affordable;
-      remaining -= affordable;
-    }
-
-    return qtyNeeded - remaining;
-  };
-
   for (const [commodity, qty] of Object.entries(sustainmentNeeds)) {
     const needed = Math.ceil(qty * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult);
 
@@ -105,14 +78,6 @@ export function processImprovementSustainment(state, improvement) {
       } else {
         empire.stockpiles[commodity] = 0;
         remainingNeed -= empireStockpile;
-      }
-    }
-
-    // Attempt to buy remaining from market if possible
-    if (remainingNeed > 0) {
-      const bought = buyFromMarket(commodity, remainingNeed);
-      if (bought > 0) {
-        remainingNeed -= bought;
       }
     }
 
@@ -150,28 +115,57 @@ export function processImprovementSustainment(state, improvement) {
         const marketState = state.market[commodity];
         const maxPrice = marketState.price;
 
-        const buyOrder = {
-          id: nextOrderId('sustain'),
-          owner_type: 'empire',
-          owner_id: empire.id,
-          commodity,
-          qty: remainingNeed,
-          max_price: maxPrice,
-          priority: 800,
-          filled_qty: 0,
-          fee: 1,
-          tags: {
+        if (!state.marketOrders) {
+          state.marketOrders = { buyOrders: [], sellOffers: [] };
+        }
+
+        const existing = state.marketOrders.buyOrders.find(order =>
+          order.owner_type === 'empire' &&
+          order.owner_id === empire.id &&
+          order.commodity === commodity &&
+          order.tags?.purpose === 'sustainment' &&
+          order.tags?.originator === improvement.id &&
+          (order.filled_qty || 0) < order.qty
+        );
+
+        const backlogCap = Math.max(needed, Math.ceil(needed * SUSTAINMENT_BACKLOG_TICKS));
+
+        if (existing) {
+          const existingFilled = Math.max(0, existing.filled_qty || 0);
+          const existingOutstanding = Math.max(0, existing.qty - existingFilled);
+          const cappedOutstanding = Math.min(existingOutstanding, backlogCap);
+          const room = Math.max(0, backlogCap - cappedOutstanding);
+          const queuedNow = Math.min(remainingNeed, room);
+
+          // Clamp legacy oversized orders and only add demand up to backlog cap.
+          existing.qty = existingFilled + cappedOutstanding + queuedNow;
+          existing.max_price = maxPrice;
+          existing.priority = Math.max(existing.priority || 0, SUSTAINMENT_ORDER_PRIORITY);
+          existing.category = 'needs';
+          existing.duration = 0;
+          existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : SUSTAINMENT_ORDER_MAX_DURATION;
+        } else {
+          const initialQty = Math.min(remainingNeed, backlogCap);
+          const buyOrder = createBuyOrder(
+            nextOrderId('sustain'),
+            'empire',
+            empire.id,
+            commodity,
+            initialQty,
+            maxPrice,
+            SUSTAINMENT_ORDER_PRIORITY,
+            SUSTAINMENT_ORDER_MAX_DURATION
+          );
+          buyOrder.category = 'needs';
+          buyOrder.fee = 1;
+          buyOrder.tags = {
             originator: improvement.id,
             payer: empire.id,
             beneficiary: improvement.id,
             purpose: 'sustainment'
-          }
-        };
-
-        if (!state.marketOrders) {
-          state.marketOrders = { buyOrders: [], sellOffers: [] };
+          };
+          state.marketOrders.buyOrders.push(buyOrder);
         }
-        state.marketOrders.buyOrders.push(buyOrder);
       }
 
       allSatisfied = false;

@@ -148,7 +148,7 @@ export function evaluateTriggers(triggers, context) {
  * METER PRIMARY EFFECTS (decoupled):
  * - Momentum: boosts APPROVE/ADVANCE events (positive progress)
  * - Reject_Pressure: boosts REJECT/STALL events (negative progress, hard rejects)
- * - Legitimacy: no direct weight effect (affects unrest consequences + vote threshold)
+ * - Legitimacy: no direct weight effect (affects unrest consequences)
  * - Unrest: boosts EXTERNALITY events (negative spillover)
  * 
  * @param {Object} event - Event template
@@ -189,7 +189,7 @@ export function computeEventWeight(event, context) {
 // - Momentum: boosts APPROVE/ADVANCE only
 // - Reject_Pressure: boosts REJECT/STALL only  
 // - Unrest: boosts EXTERNALITY only
-// - Legitimacy: affects unrest consequences + vote threshold (see applyUnrestExternalities)
+// - Legitimacy: affects unrest consequences (see applyUnrestExternalities)
 
 /**
  * Pick events using seeded weighted random selection
@@ -335,21 +335,6 @@ export function getLegitimacyUnrestReduction(lawProcess) {
   const legitimacy = lawProcess.meters.legitimacy || 0.5;
   // High legitimacy (1.0) = 0.3x unrest damage, Low legitimacy (0) = 1.0x
   return 1.0 - (legitimacy * 0.7);
-}
-
-/**
- * LEGITIMACY: Vote threshold reduction
- * Higher legitimacy reduces the required vote threshold to pass.
- * 
- * @param {Object} lawProcess - Current law process
- * @param {number} baseThreshold - Base threshold (e.g. 0.5 = simple majority)
- * @returns {number} Adjusted threshold
- */
-export function getAdjustedVoteThreshold(lawProcess, baseThreshold = 0.5) {
-  const legitimacy = lawProcess.meters.legitimacy || 0.5;
-  // High legitimacy (1.0) reduces threshold by 0.15, low (0) adds 0.05
-  const adjustment = 0.05 - (legitimacy * 0.2);
-  return clamp(baseThreshold + adjustment, 0.35, 0.65);
 }
 
 /**

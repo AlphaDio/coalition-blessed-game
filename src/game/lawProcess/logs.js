@@ -9,13 +9,6 @@ const LAW_UI_LOG_KEYWORDS = [
   'Hero sentiment',
   'Hero Ability',
   'Unrest externality',
-  'Vote Tally',
-  'Support:',
-  'Oppose:',
-  'Abstain:',
-  'Quorum:',
-  'Pass threshold:',
-  'VOTE FAILED',
   'ERROR'
 ];
 

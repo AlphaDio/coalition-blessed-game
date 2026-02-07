@@ -10,8 +10,9 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
 
   allBuyOrders.forEach(order => {
     order.duration = (order.duration || 0) + 1;
+    const maxDuration = Number.isFinite(order.max_duration) ? order.max_duration : 3;
 
-    if (order.duration >= order.max_duration) {
+    if (order.duration > maxDuration) {
       expiredBuyOrders.push(order);
     } else {
       validBuyOrders.push(order);
@@ -24,8 +25,9 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
 
   allSellOffers.forEach(order => {
     order.duration = (order.duration || 0) + 1;
+    const maxDuration = Number.isFinite(order.max_duration) ? order.max_duration : 3;
 
-    if (order.duration >= order.max_duration) {
+    if (order.duration > maxDuration) {
       expiredSellOffers.push(order);
     } else {
       validSellOffers.push(order);
@@ -143,19 +145,6 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
       }
     });
 
-    // Apply leftovers to stockpiles
-    clearResult.unfilledSells.forEach(sell => {
-      if (sell.owner_type === 'empire') {
-        const empire = state.empires.find(e => e.id === sell.owner_id);
-        if (empire) {
-          if (!empire.stockpiles) empire.stockpiles = {};
-          const remaining = sell.qty - sell.filled_qty;
-          if (remaining > 0) {
-            empire.stockpiles[sell.commodity] = (empire.stockpiles[sell.commodity] || 0) + remaining;
-          }
-        }
-      }
-    });
   });
 
   return allTrades;

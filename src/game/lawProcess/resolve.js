@@ -6,7 +6,6 @@ import {
   checkBurialRule,
   checkPhaseAdvancement,
   filterEligibleEvents,
-  getAdjustedVoteThreshold,
   MAX_PHASE_PROGRESS,
   pickEvents
 } from '../lawEngine.js';
@@ -25,7 +24,6 @@ import { getLawProgressSpeedMultiplier } from './progress.js';
 import { applyLawImmediateEffects, applyLawModifiers, removeLawModifiers } from './modifiers.js';
 import { calculateEmpireStances } from './stances.js';
 import { getLawEvents } from './events.js';
-import { tallyVotes } from './voting.js';
 
 /**
  * Start a new law process
@@ -288,43 +286,11 @@ export function resolveLawProcess(lawProcess, state, rng) {
   // Check if VOTING completed
   if (lawProcess.phase === 'VOTING' && lawProcess.phaseProgress >= 1.0) {
     const logger = getLogger();
-    log.push('\n>>> VOTING phase complete, tallying votes...');
+    log.push('\n>>> VOTING phase complete, enacting law...');
 
     // Apply immediate hero pressure when the law is enacted
     applyHeroLawPressure(state, lawProcess, lawDef, log);
     applyHeroLawTension(state, lawProcess, log);
-
-    const baseThreshold = state.powerSystemPolicy?.config?.pass_threshold || 0.5;
-    const legitimacyThreshold = getAdjustedVoteThreshold(lawProcess, baseThreshold);
-    const enactmentBonus = lawDef?.modifiers?.enactment_chance_bonus || 0;
-    const finalThreshold = clamp(legitimacyThreshold - enactmentBonus, 0, 1);
-
-    const tally = tallyVotes(lawProcess, state, {
-      passThresholdOverride: finalThreshold
-    });
-    log.push(...tally.log);
-
-    if (!tally.passed) {
-      lawProcess.rejects += 1;
-      log.push(`\n>>> VOTE FAILED (${lawProcess.rejects}/4 rejects)`);
-
-      if (checkBurialRule(lawProcess, state)) {
-        logger.info(`Law BURIED: ${lawDef.name} (4 rejects, failed vote)`);
-        log.push('\n*** LAW BURIED (failed vote) ***');
-        return log;
-      }
-
-      // Failed votes escalate tension and force another cycle before a retry.
-      lawProcess.phase = 'FALLOUT';
-      lawProcess.phaseProgress = 0;
-      lawProcess.phaseTicks = 0;
-      lawProcess.stallTicks = 0;
-      lawProcess.meters.reject_pressure = clamp((lawProcess.meters.reject_pressure || 0) + 0.12, 0, 1);
-      lawProcess.meters.unrest = clamp((lawProcess.meters.unrest || 0) + 0.08, 0, 1);
-      lawProcess.meters.legitimacy = clamp((lawProcess.meters.legitimacy || 0) - 0.1, 0, 1);
-      log.push('Vote fallout: phase reset to FALLOUT with increased reject pressure/unrest.');
-      return log;
-    }
 
     lawProcess.phase = 'ENACTED';
 
