@@ -1,47 +1,6 @@
 // Type definitions and initializers
 import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS } from './constants.js';
 
-// Coalition procurement constants
-export const THETA_PRESETS = {
-  Scavenge: 0.80,
-  Frugal: 0.90,
-  Balanced: 1.00,
-  Assertive: 1.10,
-  Emergency: 1.25
-};
-
-export const COMMODITY_DEFINITIONS = {
-  biomass: { tier: 'T1' },
-  plasma_fuel: { tier: 'T1' },
-  super_alloys: { tier: 'T2' },
-  rare_gases: { tier: 'T2' },
-  quantum_circuits: { tier: 'T3' },
-  genomes: { tier: 'T3' },
-  psycho_implants: { tier: 'T4' },
-  ancient_relics: { tier: 'T4' }
-};
-
-export const MILLI_PER_UNIT_BY_TIER = {
-  T1: 3,
-  T2: 6,
-  T3: 15,
-  T4: 30
-};
-
-export const BATCH_SIZE_UNITS = 100;
-export const BATCH_BONUS_MILLI = 0;
-
-function createDefaultProcurement() {
-  const thetaPresets = {};
-  for (const commodityId of Object.keys(COMMODITY_DEFINITIONS)) {
-    thetaPresets[commodityId] = 'Balanced';
-  }
-  return {
-    spend_throttle: 0.8,
-    theta_preset_by_commodity: thetaPresets
-  };
-}
-
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
   return Object.entries(consumption).map(([commodity, rule]) => ({
@@ -83,8 +42,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
       per_pop: stats.wants?.per_pop || {}
     },
     allocation: {
-      surplus_to_armies_ratio: stats.allocation?.surplus_to_armies_ratio || 0.35,
-      military_procurement_bias: stats.allocation?.military_procurement_bias || 0.15
+      surplus_to_armies_ratio: stats.allocation?.surplus_to_armies_ratio || 0.35
     },
     stockpiles: stats.stockpiles || {},
     consumptionRules: parseConsumptionRules(stats.consumption),
@@ -156,10 +114,9 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     // Replenishment modifiers
     replenishmentMultiplier: 1.0,  // Multiplicative modifier (e.g., 1.2 = +20%)
     replenishmentBonus: 0,          // Additive modifier (added after all multipliers)
-    
-    // Signature commodity for reinforcement (consumed from empire stockpile)
-    signatureCommodity: null,
-    signatureThreshold: 0
+    recruitmentBank: 0,             // Fractional capacity growth from sustained supply fulfillment
+
+    // Reinforcement scaling is market-driven via needs/wants fulfillment.
   };
 }
 
@@ -543,10 +500,7 @@ export function createGameState(seed = 0) {
       requisition: 500, // Starting requisition for purchasing improvements
       treasury_credits: 10000, // Coalition treasury (long-term storage)
       allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
-      bank: 0,
-      stockpile_bank: {},
-      stockpile_ready: {},
-      procurement: createDefaultProcurement()
+      bank: 0
       // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
       // and credits from the allowance pool (up to allowance cap per tick)
       // Modifiable by multiplicativeShare and additiveShare modifiers
@@ -752,6 +706,24 @@ export function migrateGameState(state) {
       improvement_build_speed_mult: 1.0,
       requisition_gen_mult: 1.0
     };
+  }
+
+  if (state.improvements && typeof state.improvements === 'object') {
+    if (!state.improvements.pendingSustainmentDemand || typeof state.improvements.pendingSustainmentDemand !== 'object') {
+      state.improvements.pendingSustainmentDemand = {};
+    }
+    if (!state.improvements.pendingSustainmentNeedsByImprovement || typeof state.improvements.pendingSustainmentNeedsByImprovement !== 'object') {
+      state.improvements.pendingSustainmentNeedsByImprovement = {};
+    }
+    if (!state.improvements.fulfilledSustainmentReceipts || typeof state.improvements.fulfilledSustainmentReceipts !== 'object') {
+      state.improvements.fulfilledSustainmentReceipts = {};
+    }
+    if (state.improvements.sustainmentCycleTurn === undefined) {
+      state.improvements.sustainmentCycleTurn = null;
+    }
+    if (state.improvements.sustainmentResolvedTurn === undefined) {
+      state.improvements.sustainmentResolvedTurn = null;
+    }
   }
   
   return state;

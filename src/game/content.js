@@ -120,11 +120,6 @@ export function createSampleContent(seed = 0) {
     if (data.demands) {
       army.demands = data.demands;
     }
-    // Apply signature commodity for reinforcement
-    if (data.signatureCommodity) {
-      army.signatureCommodity = data.signatureCommodity;
-      army.signatureThreshold = data.signatureThreshold || 100;
-    }
     // reinforcementRate = reserves joining the line during battle; recovery/recoveryRate = fraction of wounded that return after battle (0-100)
     if (typeof data.reinforcementRate === 'number' && !isNaN(data.reinforcementRate)) {
       army.reinforcementRate = data.reinforcementRate;

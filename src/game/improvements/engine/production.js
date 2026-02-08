@@ -73,6 +73,40 @@ export function releaseProductionFromBank(state, improvement) {
     state.marketOrders = { buyOrders: [], sellOffers: [] };
   }
 
+  const upsertEmpireSellOrder = (empireId, commodity, qty, askPrice) => {
+    const existing = state.marketOrders.sellOffers.find(order =>
+      order.owner_type === 'empire' &&
+      order.owner_id === empireId &&
+      order.commodity === commodity &&
+      (order.filled_qty || 0) < order.qty
+    );
+
+    if (existing) {
+      existing.qty += qty;
+      existing.ask_price = askPrice;
+      existing.priority = Math.max(existing.priority || 0, 100);
+      existing.duration = 0;
+      existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
+      return existing;
+    }
+
+    const sellOffer = {
+      id: nextOrderId('prod'),
+      owner_type: 'empire',
+      owner_id: empireId,
+      commodity,
+      qty,
+      ask_price: askPrice,
+      filled_qty: 0,
+      priority: 100,
+      fee: 0,
+      duration: 0,
+      max_duration: 1000000
+    };
+    state.marketOrders.sellOffers.push(sellOffer);
+    return sellOffer;
+  };
+
   // Calculate threshold based on improvement's production output per tick (efficiency-adjusted)
   const population = empire.stats?.population || 1;
   let thresholdValue = 0;
@@ -122,25 +156,7 @@ export function releaseProductionFromBank(state, improvement) {
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     const discountedPrice = sellPrice;
 
-    const sellOffer = {
-      id: nextOrderId('prod'),
-      owner_type: 'empire',
-      owner_id: empire.id,
-      commodity,
-      qty: qty,
-      ask_price: discountedPrice,
-      filled_qty: 0,
-      priority: 100, // Normal priority
-      fee: 0,
-      tags: {
-        originator: improvement.id,
-        producer: improvement.id,
-        beneficiary: empire.id,
-        purpose: 'production'
-      }
-    };
-
-    state.marketOrders.sellOffers.push(sellOffer);
+    upsertEmpireSellOrder(empire.id, commodity, qty, discountedPrice);
     // Log "Produced" when releasing to market
     log.push(`{blue-fg}Produced:{/blue-fg} ${qty} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
     logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qty} ${commodity} to market.`);

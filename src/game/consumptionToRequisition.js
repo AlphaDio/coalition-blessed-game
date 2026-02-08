@@ -2,7 +2,7 @@
  * Consumption-Based Requisition System
  *
  * Converts empire commodity consumption directly into coalition requisition and credits.
- * When empires consume commodities from their stockpiles, the coalition receives:
+ * When empires consume commodities from accumulated market sell orders, the coalition receives:
  * - Requisition based on consumption value (share rate × consumption value / 1000)
  * - Credits from the coalition allowance (up to the allowance cap per tick)
  *

@@ -16,7 +16,14 @@ export function initializeImprovementsState() {
     maxTotalCapacity: IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY,
 
     // Current utilization (BUILDING only)
-    currentCapacity: 0
+    currentCapacity: 0,
+
+    // Sustainment ledgers (market-pooled sustainment model)
+    pendingSustainmentDemand: {},
+    pendingSustainmentNeedsByImprovement: {},
+    fulfilledSustainmentReceipts: {},
+    sustainmentCycleTurn: null,
+    sustainmentResolvedTurn: null
   };
 }
 
@@ -37,7 +44,12 @@ export function initializeImprovementSuggestions(state, rng = Math.random) {
       queue: [],
       completed: [],
       maxTotalCapacity: IMPROVEMENTS_CONSTANTS.INITIAL_MAX_TOTAL_CAPACITY,
-      currentCapacity: 0
+      currentCapacity: 0,
+      pendingSustainmentDemand: {},
+      pendingSustainmentNeedsByImprovement: {},
+      fulfilledSustainmentReceipts: {},
+      sustainmentCycleTurn: null,
+      sustainmentResolvedTurn: null
     };
   }
   state.improvements.requests = generateImprovementSuggestions(state, rng);

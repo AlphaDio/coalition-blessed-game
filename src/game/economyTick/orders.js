@@ -11,6 +11,7 @@ export function createOrderAggregator(state) {
   // Load existing orders for aggregation (but don't add to arrays yet)
   const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
   const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+  const hasPurposeTag = (order) => !!order?.tags?.purpose;
 
   /**
    * Find existing sell offer for owner+commodity and aggregate qty
@@ -45,7 +46,10 @@ export function createOrderAggregator(state) {
         ask_price: newPrice,
         priority,
         filled_qty: 0,
-        fee: 0
+        fee: 0,
+        // Sell-side resource accumulation is market-centered and persistent.
+        max_duration: 1000000,
+        duration: 0
       };
       sellOffers.push(offer);
       ordersToSave.add(offer);
@@ -55,6 +59,7 @@ export function createOrderAggregator(state) {
     existing.ask_price = newPrice;
     existing.qty = existing.qty + newQty;
     existing.duration = 0;
+    existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
 
     // If from existing orders, move to sellOffers for this tick
     if (!sellOffers.includes(existing)) {
@@ -76,6 +81,7 @@ export function createOrderAggregator(state) {
       o.owner_id === ownerId &&
       o.commodity === commodity &&
       o.category === category &&
+      !hasPurposeTag(o) &&
       (o.filled_qty || 0) < o.qty
     );
 
@@ -86,6 +92,7 @@ export function createOrderAggregator(state) {
         o.owner_id === ownerId &&
         o.commodity === commodity &&
         o.category === category &&
+        !hasPurposeTag(o) &&
         (o.filled_qty || 0) < o.qty
       );
     }

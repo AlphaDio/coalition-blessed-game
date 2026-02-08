@@ -1,7 +1,39 @@
 import { clampStat } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
-import { recordConsumption } from '../consumptionToRequisition.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function averageFulfillment(fulfillmentMap, fallback = 1) {
+  const values = Object.values(fulfillmentMap || {}).filter(value => Number.isFinite(value));
+  if (values.length === 0) return fallback;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function getArmySupplySignals(army) {
+  const needsDemandCount = Object.keys(army.demands?.needs || {}).length;
+  const wantsDemandCount = Object.keys(army.demands?.wants || {}).length;
+  const needsFallback = needsDemandCount > 0 ? 0 : 1;
+  const wantsFallback = wantsDemandCount > 0 ? 0 : 1;
+
+  const needsFulfillment = averageFulfillment(army.supply_state?.needs_fulfillment, needsFallback);
+  const wantsFulfillment = averageFulfillment(army.supply_state?.wants_fulfillment, wantsFallback);
+
+  // Needs are mandatory for replacement throughput. Wants only provide upside.
+  const replenishmentMultiplier = clamp((0.15 + (needsFulfillment * 0.85)) + Math.max(0, wantsFulfillment - 0.7) * 0.4, 0.05, 1.35);
+
+  // Capacity growth only starts once needs are reliably met.
+  const growthSignal = Math.max(0, needsFulfillment - 0.85) + (Math.max(0, wantsFulfillment - 0.75) * 0.5);
+
+  return {
+    needsFulfillment,
+    wantsFulfillment,
+    replenishmentMultiplier,
+    growthSignal
+  };
+}
 
 /**
  * Recover organization for all armies
@@ -109,10 +141,17 @@ export function replenishArmyManpower(state, activeBattles) {
       populationModifier = 2.0;
     }
 
+    const supplySignals = getArmySupplySignals(army);
+
     // Calculate effective replenishment rate
     // Apply multiplicative modifier (default 1.0)
     const replenishmentMultiplier = army.replenishmentMultiplier || 1.0;
-    let effectiveRate = baseRate * fervorModifier * populationModifier * replenishmentMultiplier;
+    let effectiveRate =
+      baseRate *
+      fervorModifier *
+      populationModifier *
+      replenishmentMultiplier *
+      supplySignals.replenishmentMultiplier;
 
     // Apply additive bonus (default 0)
     const replenishmentBonus = army.replenishmentBonus || 0;
@@ -121,42 +160,34 @@ export function replenishArmyManpower(state, activeBattles) {
     // Ensure rate is non-negative
     effectiveRate = Math.max(0, effectiveRate);
 
+    // Resource-backed force growth: sustained fulfillment expands MP capacity over time.
+    const capacityGrowthBase = baseRate * populationModifier * replenishmentMultiplier;
+    const maxGrowthPerTick = Math.max(5, (army.mp.max || 0) * 0.004);
+    const capacityGrowth = Math.min(maxGrowthPerTick, capacityGrowthBase * supplySignals.growthSignal * 0.08);
+    if (capacityGrowth > 0) {
+      army.recruitmentBank = (army.recruitmentBank || 0) + capacityGrowth;
+      const capacityDelta = Math.floor(army.recruitmentBank);
+      if (capacityDelta > 0) {
+        army.recruitmentBank -= capacityDelta;
+        army.mp.max += capacityDelta;
+        army.manpower = Math.max(army.manpower || 0, army.mp.max);
+      }
+    }
+
     // Apply replenishment
     const spaceAvailable = army.mp.max - army.mp.current;
     const replenished = Math.min(effectiveRate, spaceAvailable);
     army.mp.current += replenished;
 
     // Debug logging for significant replenishment
-    if (replenished > 50) {
-      logger.debug(`Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP (fervor: ${army.fervor.toFixed(0)}, pop: ${population.toFixed(0)}, rate: ${effectiveRate.toFixed(0)})`);
+    if (replenished > 50 || capacityGrowth > 2) {
+      logger.debug(
+        `Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP` +
+        ` (needs ${(supplySignals.needsFulfillment * 100).toFixed(0)}%, wants ${(supplySignals.wantsFulfillment * 100).toFixed(0)}%,` +
+        ` rate ${effectiveRate.toFixed(0)}, cap ${Math.floor(army.mp.max)})`
+      );
     }
   });
 
-  // Check signature commodity for bonus manpower (every tick, regardless of MP status or battle state)
-  regularArmies.forEach(army => {
-    if (!army.signatureCommodity || army.signatureThreshold <= 0) return;
-
-    const empire = empireMap.get(army.empireId);
-    if (!empire) return;
-
-    const stockpile = empire.stockpiles || {};
-    const available = stockpile[army.signatureCommodity] || 0;
-
-    if (available >= army.signatureThreshold) {
-      // Consume ALL of the signature commodity and convert to manpower
-      // Conversion rate: 100 manpower per threshold amount
-      const conversionRate = 100;
-      const manpowerGained = Math.floor(available / army.signatureThreshold) * conversionRate;
-      stockpile[army.signatureCommodity] = 0;
-      army.manpower += manpowerGained;
-      army.mp.max = army.manpower;
-      army.mp.current = Math.min(army.mp.current + manpowerGained, army.mp.max);
-
-      // Track consumption for coalition requisition generation
-      recordConsumption(army.signatureCommodity, available);
-
-      logger.debug(`Signature commodity trigger: ${army.name} consumed ${available} ${army.signatureCommodity} for +${manpowerGained} manpower`);
-    }
-  });
 }
 

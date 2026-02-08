@@ -6,7 +6,12 @@ import { updateLawCooldowns } from '../laws.js';
 import { checkEvent } from '../events.js';
 import { DeterministicRNG } from '../../modules/rng.js';
 import { getLogger } from '../../modules/logger.js';
-import { processImprovementsTick, applyImprovementModifiers, removeExpiredSuggestions } from '../improvements/index.js';
+import {
+  processImprovementsTick,
+  applyImprovementModifiers,
+  removeExpiredSuggestions,
+  processImprovementSustainmentPostMarket
+} from '../improvements/index.js';
 import { getAllImprovementRequests, createImprovementRequestInstance } from '../improvements/definitions.js';
 import { getEventTitle, hasValidChoices } from '../../utils/events.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
@@ -65,13 +70,7 @@ export function advanceTurn(state, rng = Math.random) {
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
 
-  // 2. Process economy tick (market economy system)
-  handleEconomyTick(state, log, logger);
-
-  // 2.5. Refresh army stats from units after economy
-  refreshArmyAggregates(state);
-
-  // 3. Process improvements tick
+  // 2. Process improvements before market clearing so their orders can trade this turn.
   if (state.improvements) {
     const improvementResult = processImprovementsTick(state);
     if (improvementResult.log && improvementResult.log.length > 0) {
@@ -82,12 +81,26 @@ export function advanceTurn(state, rng = Math.random) {
     applyImprovementModifiers(state);
   }
 
-  // 3.2. Hero budget siphon, cooldowns, and meter drift
+  // 3. Process economy tick (market economy system)
+  handleEconomyTick(state, log, logger);
+
+  // 3.1. Resolve improvement sustainment after market clearing so same-turn fills count.
+  if (state.improvements) {
+    const sustainmentResult = processImprovementSustainmentPostMarket(state);
+    if (sustainmentResult.log && sustainmentResult.log.length > 0) {
+      log.push(...sustainmentResult.log);
+    }
+  }
+
+  // 3.5. Refresh army stats from units after economy
+  refreshArmyAggregates(state);
+
+  // 4. Hero budget siphon, cooldowns, and meter drift
   applyHeroBudgetSiphon(state, log);
   tickHeroCooldowns(state);
   tickHeroMeters(state, log);
 
-  // 3.5. Apply cohesion penalty for negative requisition
+  // 4.5. Apply cohesion penalty for negative requisition
   const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
   if (cohesionPenaltyResult.log && cohesionPenaltyResult.log.length > 0) {
     log.push(...cohesionPenaltyResult.log);
@@ -99,7 +112,7 @@ export function advanceTurn(state, rng = Math.random) {
     logger.debug(`Removed ${expiredCount} expired improvement suggestions`);
   }
 
-  // 3.1. Empire improvement suggestions with queue cycling
+  // Empire improvement suggestions with queue cycling
   // Suggest when an empire has started/completed an improvement, or randomly for empires with no activity
   // Uses queue cycling to maintain a reasonable suggestion queue size
   if (state.empires && state.improvements) {
@@ -183,7 +196,7 @@ export function advanceTurn(state, rng = Math.random) {
     });
   }
 
-  // 3.1. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
+  // 3.2. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
   const emergencyResult = tickEmergencyLaws(state);
   if (emergencyResult.log && emergencyResult.log.length > 0) {
     log.push(...emergencyResult.log);
@@ -198,7 +211,7 @@ export function advanceTurn(state, rng = Math.random) {
     log.push(`Emergency powers expired: ${expiredPowers.join(', ')}`);
   }
 
-  // 3.3. Process technology accrual
+  // 3.4. Process technology accrual
   const empiresReachedTechThreshold = processTechAccrual(state);
   if (empiresReachedTechThreshold.length > 0 && !state.activeEvent) {
     // Create tech event for the first empire that reached threshold
@@ -215,16 +228,16 @@ export function advanceTurn(state, rng = Math.random) {
     }
   }
 
-  // 3.5. Apply baseline population growth
+  // 3.6. Apply baseline population growth
   applyBasePopulationGrowth(state);
 
-  // 3.6. Initialize consumption tracking for requisition generation
+  // 3.7. Initialize consumption tracking for requisition generation
   initializeTurnConsumptionTracking();
 
-  // 3.7. Process empire stockpile consumption
+  // 3.8. Process empire consumption upgrades from accumulated sell orders
   processEmpireStockpileConsumption(state, log);
 
-  // 3.8. Convert tracked consumption to coalition requisition and credits
+  // 3.9. Convert tracked consumption to coalition requisition and credits
   // Build consumption share rate modifiers from active laws/effects
   const consumptionModifiers = {
     multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier || 1.0,

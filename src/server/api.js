@@ -9,7 +9,6 @@ import yaml from 'js-yaml';
 import { getLogger, LogLevel, LogLevelNames } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
 import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
-import { BANK_THRESHOLD } from '../game/coalitionProcurement.js';
 import { getEmergencyPowerDefinitions } from '../game/emergencyPowers.js';
 import { 
   apiResponseMiddleware,
@@ -905,20 +904,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       res.sendError(
         ErrorCodes.INTERNAL_SERVER_ERROR,
         'Failed to fetch resource definitions',
-        { originalError: error.message }
-      );
-    }
-  });
-
-  // Get procurement constants
-  app.get('/api/game/definitions/procurement', (req, res) => {
-    try {
-      res.sendSuccess({ bankThreshold: BANK_THRESHOLD });
-    } catch (error) {
-      logger.error('Failed to fetch procurement definitions:', error);
-      res.sendError(
-        ErrorCodes.INTERNAL_SERVER_ERROR,
-        'Failed to fetch procurement definitions',
         { originalError: error.message }
       );
     }

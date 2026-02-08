@@ -87,8 +87,11 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     armyGrant: request.armyGrant || null,
     manpowerGrant: request.manpowerGrant || null,
 
-    // Stockpile for sustainment buffer (10 ticks worth)
+    // Legacy field retained for save compatibility; no longer used as empire stockpile.
     stockpile: {},
+    // Legacy per-improvement sustainment buffer retained for save compatibility.
+    // Active sustainment now uses pooled empire-level market receipts.
+    sustainmentBuffer: {},
     maxStockpile: populationMultiplier > 0 ? populationMultiplier * IMPROVEMENT_SUSTAINMENT_TICKS : 0,
 
     // Production bank (accumulates before releasing to market)

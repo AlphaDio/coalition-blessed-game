@@ -217,7 +217,7 @@ export const RATIONING_CONSTANTS = {
 
 /**
  * Initial game setup values for new games.
- * @property {number} INITIAL_REQUISITION - Starting requisition points for coalition procurement
+ * @property {number} INITIAL_REQUISITION - Starting requisition points for coalition operations
  * @property {number} INITIAL_TREASURY_CREDITS - Starting credits in coalition treasury
  * @property {number} INITIAL_ALLOWANCE_CREDITS - Starting allowance credits for spending
  * @property {number} INITIAL_PLAYER_INFLUENCE - Starting influence points for player actions
@@ -330,7 +330,7 @@ export const TECH_CONSTANTS = {
  * @property {number} COALITION_CONSTRUCTION - Build progress added to all constructions per tick (4)
  */
 export const IMPROVEMENTS_CONSTANTS = {
-  INITIAL_MAX_TOTAL_CAPACITY: 6,     // Starting maximum total improvement capacity
+  INITIAL_MAX_TOTAL_CAPACITY: 4,     // Starting maximum total improvement capacity 6 -> 4
   COALITION_CONSTRUCTION: 4          // Build progress added to ALL building improvements per tick
 };
 
@@ -357,7 +357,7 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   DESPERATE_PENALTY: -0.15,            // Penalty when Desperate
   MIN_CONFIDENCE_MODIFIER: 0.1,        // Minimum (very uncertain)
   MAX_CONFIDENCE_MODIFIER: 2.0,        // Maximum (very certain)
-  CONFIDENCE_DRIFT_TURNS: 30,          // Turns to drift toward baseline (1.0)
+  CONFIDENCE_DRIFT_TURNS: 60,          // Turns to drift toward baseline (1.0) 30 -> 60
   
   // Uncertainty ranges based on confidence
   UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low

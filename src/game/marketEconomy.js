@@ -4,7 +4,6 @@
  */
 
 import { getLogger } from '../modules/logger.js';
-import { getCommodityTier, loadEconomySystemConfig } from '../utils/fileLoader.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -49,26 +48,6 @@ function getDefaultEconomyConfig() {
         t2: 1.0,
         t3: 1.6,
         t4: 2.4
-      }
-    },
-    coalition: {
-      procurement: {
-        enabled: true,
-        budget_credits_per_tick: 100,
-        default_priority_by_tier: {
-          t1: "-10%",
-          t2: "10%",
-          t3: "50%",
-          t4: "90%"
-        },
-        stockpile_priority_levels: {
-          "-90%": { theta: 0.10 },
-          "-50%": { theta: 0.50 },
-          "-10%": { theta: 0.90 },
-          "10%": { theta: 1.10 },
-          "50%": { theta: 1.50 },
-          "90%": { theta: 1.90 }
-        }
       }
     },
     fulfillment_and_performance: {
@@ -304,74 +283,6 @@ export function executeMarketClearing(state, buyOrders, sellOffers) {
   market.remaining_sell_offers_post_clear = remainingSellOffers;
 
   return results;
-}
-
-/**
- * Coalition procurement: buy goods for coalition stockpiles
- */
-export function coalitionProcurement(market, sellOffers, coalitionState, config) {
-  if (!config.coalition.procurement.enabled) {
-    return { purchases: [], spent: 0 };
-  }
-  
-  const budget = coalitionState.budget_credits || config.coalition.procurement.budget_credits_per_tick;
-  const priorityLevels = config.coalition.procurement.stockpile_priority_levels;
-  const defaultPriorities = config.coalition.procurement.default_priority_by_tier;
-  const perCommodityPriority = coalitionState.per_commodity_priority || {};
-  
-  const purchases = [];
-  let spent = 0;
-  
-  // Get available sell offers sorted by price
-  const availableSells = sellOffers
-    .filter(sell => sell.filled_qty < sell.qty && sell.owner_type !== 'coalition')
-    .sort((a, b) => a.ask_price - b.ask_price);
-  
-  for (const sell of availableSells) {
-    if (spent >= budget) break;
-    
-    const marketState = market[sell.commodity];
-    if (!marketState) continue;
-    
-    // Determine priority threshold
-    const commodityPriority = perCommodityPriority[sell.commodity];
-    const tier = getCommodityTier(sell.commodity);
-    const priorityKey = commodityPriority || defaultPriorities[tier] || "10%";
-    const theta = priorityLevels[priorityKey]?.theta || 1.0;
-    
-    const thresholdPrice = marketState.price * theta;
-    
-    if (sell.ask_price <= thresholdPrice) {
-      const available = sell.qty - sell.filled_qty;
-      const cost = sell.ask_price * available;
-      const canAfford = Math.min(available, (budget - spent) / sell.ask_price);
-      
-      if (canAfford > 0) {
-        const purchaseQty = Math.floor(canAfford);
-        const purchaseCost = purchaseQty * sell.ask_price;
-        
-        sell.filled_qty += purchaseQty;
-        spent += purchaseCost;
-        
-        // Add to coalition stockpiles
-        if (!coalitionState.stockpiles) {
-          coalitionState.stockpiles = {};
-        }
-        coalitionState.stockpiles[sell.commodity] = (coalitionState.stockpiles[sell.commodity] || 0) + purchaseQty;
-        
-        purchases.push({
-          commodity: sell.commodity,
-          qty: purchaseQty,
-          price: sell.ask_price,
-          cost: purchaseCost
-        });
-      }
-    }
-  }
-  
-  coalitionState.budget_credits = (coalitionState.budget_credits || 0) - spent;
-  
-  return { purchases, spent };
 }
 
 /**

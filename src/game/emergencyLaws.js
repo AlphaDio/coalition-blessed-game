@@ -10,6 +10,7 @@
   */
 
 import { getLogger } from '../modules/logger.js';
+import { getCommodityReserveQty, consumeCommodityReserve } from './marketOrderReserves.js';
 
 /**
  * Emergency law definitions
@@ -243,12 +244,11 @@ export function canActivateEmergencyLaw(lawId, state) {
       return { canActivate: false, reason: `Insufficient requisition (need ${costs.requisition}/tick)` };
     }
   
-  // Check commodities (from coalition economy stockpiles)
-  const coalitionStockpiles = state.coalitionEconomy?.stockpiles || {};
+  // Check commodities from market sell-order reserves.
   for (const [commodity, qty] of Object.entries(costs.commodities || {})) {
-    const available = coalitionStockpiles[commodity] || 0;
+    const available = getCommodityReserveQty(state, commodity);
     if (available < qty) {
-      return { canActivate: false, reason: `Insufficient ${commodity} (need ${qty}/tick, have ${available})` };
+      return { canActivate: false, reason: `Insufficient ${commodity} reserves (need ${qty}/tick, have ${available})` };
     }
   }
   
@@ -331,14 +331,13 @@ export function tickEmergencyLaws(state) {
       shortageReason = `requisition shortage (need ${costs.requisition}, have ${currentRequisition})`;
     }
     
-    // Check commodities
-    const coalitionStockpiles = state.coalitionEconomy?.stockpiles || {};
+    // Check commodities in market reserves.
     if (canAfford && costs.commodities) {
       for (const [commodity, qty] of Object.entries(costs.commodities)) {
-        const available = coalitionStockpiles[commodity] || 0;
+        const available = getCommodityReserveQty(state, commodity);
         if (available < qty) {
           canAfford = false;
-          shortageReason = `${commodity} shortage (need ${qty}, have ${available})`;
+          shortageReason = `${commodity} reserve shortage (need ${qty}, have ${available})`;
           break;
         }
       }
@@ -366,7 +365,7 @@ export function tickEmergencyLaws(state) {
      activeLaw.resourcesConsumed.requisition += costs.requisition;
     
     for (const [commodity, qty] of Object.entries(costs.commodities || {})) {
-      coalitionStockpiles[commodity] -= qty;
+      consumeCommodityReserve(state, commodity, qty);
       if (!activeLaw.resourcesConsumed.commodities[commodity]) {
         activeLaw.resourcesConsumed.commodities[commodity] = 0;
       }

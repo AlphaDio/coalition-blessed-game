@@ -1,6 +1,9 @@
 import { getLogger } from '../../../modules/logger.js';
 import { releaseProductionFromBank, processImprovementProduction } from './production.js';
-import { processImprovementSustainment } from './sustainment.js';
+import {
+  processImprovementSustainmentPreMarket,
+  finalizeImprovementSustainmentPreMarket
+} from './sustainment.js';
 import { grantImprovementUnits } from './modifiers.js';
 
 /**
@@ -80,8 +83,8 @@ export function processImprovementsTick(state) {
         }
       }
 
-      // Process sustainment
-      const sustainmentResult = processImprovementSustainment(state, improvement);
+      // Queue sustainment demand before economy clear; post-market resolution runs later in turn flow.
+      const sustainmentResult = processImprovementSustainmentPreMarket(state, improvement);
       log.push(...sustainmentResult.log);
 
       // Process production (only if ACTIVE) - accumulates in productionBank
@@ -91,6 +94,8 @@ export function processImprovementsTick(state) {
       }
     }
   });
+
+  finalizeImprovementSustainmentPreMarket(state);
 
   return { log };
 }
