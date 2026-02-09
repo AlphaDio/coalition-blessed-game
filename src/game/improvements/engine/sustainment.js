@@ -1,13 +1,21 @@
 import { getLogger } from '../../../modules/logger.js';
 import { RATIONING_CONSTANTS } from '../../constants.js';
 import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../economyTick/ordersPhase.js';
-import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
+import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
 import { nextOrderId } from './orderIds.js';
 import { createBuyOrder } from '../../marketEconomy.js';
 
 const SUSTAINMENT_ORDER_PRIORITY = 800;
 const SUSTAINMENT_ORDER_MAX_DURATION = 6;
 export const IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE = 'improvement_sustainment_pool';
+const QUANTITY_PRECISION = 1000;
+const QUANTITY_EPSILON = 1 / QUANTITY_PRECISION;
+
+function normalizeQty(value) {
+  if (!Number.isFinite(value)) return 0;
+  const rounded = Math.round(value * QUANTITY_PRECISION) / QUANTITY_PRECISION;
+  return rounded > QUANTITY_EPSILON ? rounded : 0;
+}
 
 function ensureSustainmentLedgers(state) {
   if (!state.improvements) {
@@ -40,18 +48,20 @@ function getLedgerValue(state, ledgerKey, empireId, commodity) {
 
 function setLedgerValue(state, ledgerKey, empireId, commodity, value) {
   const ledger = getEmpireLedger(state, ledgerKey, empireId);
-  if (value > 0) {
-    ledger[commodity] = value;
+  const normalized = normalizeQty(value);
+  if (normalized > 0) {
+    ledger[commodity] = normalized;
   } else {
     delete ledger[commodity];
   }
 }
 
 function addLedgerValue(state, ledgerKey, empireId, commodity, value) {
-  if (value <= 0) return 0;
-  const nextValue = getLedgerValue(state, ledgerKey, empireId, commodity) + value;
+  const normalized = normalizeQty(value);
+  if (normalized <= 0) return 0;
+  const nextValue = getLedgerValue(state, ledgerKey, empireId, commodity) + normalized;
   setLedgerValue(state, ledgerKey, empireId, commodity, nextValue);
-  return nextValue;
+  return normalizeQty(nextValue);
 }
 
 function beginSustainmentCycle(state) {
@@ -67,13 +77,14 @@ function beginSustainmentCycle(state) {
 }
 
 function consumeRequisition(state, amount) {
-  if (amount <= 0) return 0;
+  const normalized = normalizeQty(amount);
+  if (normalized <= 0) return 0;
   if (!state.coalitionEconomy) {
     state.coalitionEconomy = { requisition: 0 };
   }
-  const available = state.coalitionEconomy.requisition || 0;
-  const used = Math.min(available, amount);
-  state.coalitionEconomy.requisition = available - used;
+  const available = Number.isFinite(state.coalitionEconomy.requisition) ? state.coalitionEconomy.requisition : 0;
+  const used = normalizeQty(Math.min(available, normalized));
+  state.coalitionEconomy.requisition = normalizeQty(available - used);
   return used;
 }
 
@@ -82,11 +93,12 @@ export function creditSustainmentReceipts(state, empireId, commodity, qty) {
 }
 
 function consumeSustainmentReceipts(state, empireId, commodity, qty) {
-  if (qty <= 0) return 0;
+  const normalized = normalizeQty(qty);
+  if (normalized <= 0) return 0;
   const available = getLedgerValue(state, 'fulfilledSustainmentReceipts', empireId, commodity);
-  const used = Math.min(available, qty);
+  const used = normalizeQty(Math.min(available, normalized));
   if (used > 0) {
-    setLedgerValue(state, 'fulfilledSustainmentReceipts', empireId, commodity, available - used);
+    setLedgerValue(state, 'fulfilledSustainmentReceipts', empireId, commodity, normalizeQty(available - used));
   }
   return used;
 }
@@ -103,11 +115,18 @@ function calculateImprovementNeed(state, empire, qtyPerPopulation) {
   const supplyEfficiencyMultiplier = getSupplyEfficiencyMultiplier(state);
   const empireEff = getEmpireSupplyEfficiency(empire, state);
   const empireMult = Math.max(0, 1 - empireEff);
-  return Math.ceil(qtyPerPopulation * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult);
+  const rawNeed = qtyPerPopulation
+    * population
+    * effectiveRationing
+    * IMPROVEMENT_SUSTAINMENT_SCALE
+    * supplyEfficiencyMultiplier
+    * empireMult;
+  return normalizeQty(rawNeed);
 }
 
 function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
-  if (addedDemand <= 0) return;
+  const demandToAdd = normalizeQty(addedDemand);
+  if (demandToAdd <= 0) return;
   if (!state.market || !state.market[commodity]) return;
 
   if (!state.marketOrders) {
@@ -126,7 +145,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
   );
 
   if (existing) {
-    existing.qty += addedDemand;
+    existing.qty = normalizeQty(existing.qty + demandToAdd);
     existing.max_price = maxPrice;
     existing.priority = Math.max(existing.priority || 0, SUSTAINMENT_ORDER_PRIORITY);
     existing.category = 'needs';
@@ -149,7 +168,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
     'empire',
     empireId,
     commodity,
-    addedDemand,
+    demandToAdd,
     maxPrice,
     SUSTAINMENT_ORDER_PRIORITY,
     SUSTAINMENT_ORDER_MAX_DURATION
@@ -187,6 +206,8 @@ export function finalizeImprovementSustainmentPreMarket(state) {
         ? order.max_duration
         : SUSTAINMENT_ORDER_MAX_DURATION;
       order.fee = Number.isFinite(order.fee) ? order.fee : 1;
+      order.qty = normalizeQty(order.qty);
+      order.filled_qty = normalizeQty(order.filled_qty || 0);
       order.tags = {
         ...(order.tags || {}),
         purpose: IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE,

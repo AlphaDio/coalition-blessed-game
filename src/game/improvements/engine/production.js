@@ -2,6 +2,15 @@ import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
 import { nextOrderId } from './orderIds.js';
 
+const QUANTITY_PRECISION = 1000;
+const QUANTITY_EPSILON = 1 / QUANTITY_PRECISION;
+
+function normalizeQty(value) {
+  if (!Number.isFinite(value)) return 0;
+  const rounded = Math.round(value * QUANTITY_PRECISION) / QUANTITY_PRECISION;
+  return rounded > QUANTITY_EPSILON ? rounded : 0;
+}
+
 /**
  * Process production outputs for an improvement
  * Accumulates in production bank, held until threshold is met
@@ -32,9 +41,11 @@ export function processImprovementProduction(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
     // Apply production efficiency to base quantity before scaling
     const efficiencyAdjustedQty = qty * effectiveEfficiency;
-    const scaledQty = commodity === 'requisition'
-      ? Math.floor(efficiencyAdjustedQty)
-      : Math.floor(efficiencyAdjustedQty * population);
+    const scaledQty = normalizeQty(
+      commodity === 'requisition'
+        ? efficiencyAdjustedQty
+        : efficiencyAdjustedQty * population
+    );
     if (scaledQty <= 0) continue;
 
     // Special handling for requisition - add directly to coalition economy (bypass bank)
@@ -45,13 +56,13 @@ export function processImprovementProduction(state, improvement) {
       if (!state.coalitionEconomy.requisition) {
         state.coalitionEconomy.requisition = 0;
       }
-      state.coalitionEconomy.requisition += scaledQty;
-      log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty} ${commodity} -> coalition economy (direct)`);
+      state.coalitionEconomy.requisition = normalizeQty((state.coalitionEconomy.requisition || 0) + scaledQty);
+      log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty.toFixed(3)} ${commodity} -> coalition economy (direct)`);
       continue;
     }
 
     // Accumulate commodity in production bank (no log - only log when released)
-    improvement.productionBank[commodity] = (improvement.productionBank[commodity] || 0) + scaledQty;
+    improvement.productionBank[commodity] = normalizeQty((improvement.productionBank[commodity] || 0) + scaledQty);
   }
 
   return { log };
@@ -74,6 +85,8 @@ export function releaseProductionFromBank(state, improvement) {
   }
 
   const upsertEmpireSellOrder = (empireId, commodity, qty, askPrice) => {
+    const normalizedQty = normalizeQty(qty);
+    if (normalizedQty <= 0) return null;
     const existing = state.marketOrders.sellOffers.find(order =>
       order.owner_type === 'empire' &&
       order.owner_id === empireId &&
@@ -82,7 +95,7 @@ export function releaseProductionFromBank(state, improvement) {
     );
 
     if (existing) {
-      existing.qty += qty;
+      existing.qty = normalizeQty(existing.qty + normalizedQty);
       existing.ask_price = askPrice;
       existing.priority = Math.max(existing.priority || 0, 100);
       existing.duration = 0;
@@ -95,7 +108,7 @@ export function releaseProductionFromBank(state, improvement) {
       owner_type: 'empire',
       owner_id: empireId,
       commodity,
-      qty,
+      qty: normalizedQty,
       ask_price: askPrice,
       filled_qty: 0,
       priority: 100,
@@ -123,12 +136,12 @@ export function releaseProductionFromBank(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs || {})) {
     if (commodity !== 'requisition') {
       const efficiencyAdjustedQty = qty * effectiveEfficiency;
-      thresholdValue += Math.floor(efficiencyAdjustedQty * population);
+      thresholdValue += efficiencyAdjustedQty * population;
     }
   }
 
   // Apply the threshold multiplier
-  const threshold = thresholdValue * (improvement.productionBankThreshold || 1);
+  const threshold = normalizeQty(thresholdValue * (improvement.productionBankThreshold || 1));
 
   // Check if total accumulated production meets threshold
   let totalAccumulated = 0;
@@ -156,10 +169,11 @@ export function releaseProductionFromBank(state, improvement) {
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     const discountedPrice = sellPrice;
 
-    upsertEmpireSellOrder(empire.id, commodity, qty, discountedPrice);
+    const sellOrder = upsertEmpireSellOrder(empire.id, commodity, qty, discountedPrice);
+    if (!sellOrder) continue;
     // Log "Produced" when releasing to market
-    log.push(`{blue-fg}Produced:{/blue-fg} ${qty} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
-    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qty} ${commodity} to market.`);
+    log.push(`{blue-fg}Produced:{/blue-fg} ${normalizeQty(qty).toFixed(3)} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
+    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${normalizeQty(qty).toFixed(3)} ${commodity} to market.`);
 
     // Clear from bank after releasing
     improvement.productionBank[commodity] = 0;

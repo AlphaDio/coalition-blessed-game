@@ -11,8 +11,8 @@
  */
 
 import { createImprovementRequest } from './engine.js';
-// Define-level sustainment is expressed in base units (1, 2, 3...).
-// Runtime uses these values directly as per-pop sustainment units.
+// Define-level sustainment is expressed in tame units (e.g. 1-5 for T1, decimals allowed).
+// Runtime scales these values with population and a sustainment scale constant.
 
 /**
  * Tier unlock requirements (per empire)
@@ -65,8 +65,8 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 100,
         build: 120,
         capacity: 2,
-        sustainmentCost: { biomass: 30, plasma_fuel: 20 },
-        productionOutputs: { super_alloys: 0.03 },
+        sustainmentCost: { biomass: 3, plasma_fuel: 2 },
+        productionOutputs: { super_alloys: 0.02 },
         modifiers: { industrial_output: 0.02 },
         tags: ['industrial', 'production', 'orbital'],
         requisitionUpkeep: 1
@@ -83,8 +83,8 @@ const INDUSTRIAL_BRANCH = [
        suppliesCost: 160,
        build: 200,
        capacity: 2,
-        sustainmentCost: { plasma_fuel: 10 },
-        productionOutputs: { rare_gases: 0.06, plasma_fuel: 0.04 },
+        sustainmentCost: { plasma_fuel: 2 },
+        productionOutputs: { rare_gases: 0.025, plasma_fuel: 0.015 },
         modifiers: {},
        tags: ['industrial', 'mining', 'automated'],
        requisitionUpkeep: 1
@@ -101,8 +101,8 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 110,
         build: 160,
         capacity: 2,
-        sustainmentCost: { biomass: 25 }, // 0.35 -> 0.25
-        productionOutputs: { plasma_fuel: 0.4, requisition: 12 },
+        sustainmentCost: { biomass: 2.5 },
+        productionOutputs: { plasma_fuel: 0.08, requisition: 6 },
         modifiers: { industrial_output: 0.01 },
         tags: ['industrial', 'requisition', 'conversion', 'processing'],
         requisitionUpkeep: 1
@@ -119,8 +119,8 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 120,
         build: 140,
         capacity: 2,
-        sustainmentCost: { super_alloys: 15, plasma_fuel: 10 },
-        productionOutputs: { nano_machines: 0.05 },
+        sustainmentCost: { super_alloys: 3, plasma_fuel: 2 },
+        productionOutputs: { nano_machines: 0.02 },
         modifiers: { supply_efficiency: 0.02 },
         tags: ['industrial', 'production', 'nano', 'precision'],
         requisitionUpkeep: 1
@@ -139,8 +139,8 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 360,
         build: 360,
         capacity: 2,
-        sustainmentCost: { super_alloys: 30, rare_gases: 20 },
-        productionOutputs: { quantum_circuits: 0.08 },
+        sustainmentCost: { super_alloys: 5, rare_gases: 4 },
+        productionOutputs: { quantum_circuits: 0.04 },
         modifiers: {},
         tags: ['industrial', 'fabrication', 'quantum'],
         requisitionUpkeep: 6
@@ -158,8 +158,8 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 1000,
         build: 800,
         capacity: 6,
-        sustainmentCost: { quantum_circuits: 20, super_alloys: 80 },
-        productionOutputs: { dark_matter: 0.01, quantum_circuits: 0.12 },
+        sustainmentCost: { quantum_circuits: 8, super_alloys: 10 },
+        productionOutputs: { dark_matter: 0.004, quantum_circuits: 0.06 },
         modifiers: { industrial_output: 0.1, coalition_construction_mult: 0.2 },
         tags: ['mega_structure', 'industrial', 'energy', 'transcendent'],
         requisitionUpkeep: 8
@@ -184,7 +184,7 @@ const RESEARCH_BRANCH = [
        suppliesCost: 180,
        build: 220,
        capacity: 2,
-       sustainmentCost: { rare_gases: 20 },
+       sustainmentCost: { rare_gases: 2, plasma_fuel: 1 },
        productionOutputs: {},
        modifiers: { research_speed: 0.15 },
        tags: ['research', 'facility'],
@@ -202,8 +202,8 @@ const RESEARCH_BRANCH = [
        suppliesCost: 150,
        build: 180,
        capacity: 2,
-       sustainmentCost: { super_alloys: 20, rare_gases: 15 },
-       productionOutputs: { quantum_circuits: 0.03 },
+       sustainmentCost: { super_alloys: 2, rare_gases: 2 },
+       productionOutputs: { quantum_circuits: 0.015 },
        modifiers: { research_speed: 0.05 },
        tags: ['research', 'quantum', 'circuits', 'synthesis'],
        requisitionUpkeep: 1
@@ -221,7 +221,7 @@ const RESEARCH_BRANCH = [
        suppliesCost: 320,
        build: 320,
        capacity: 4,
-       sustainmentCost: { rare_gases: 40, quantum_circuits: 10 },
+       sustainmentCost: { rare_gases: 4, quantum_circuits: 3 },
        productionOutputs: {},
        modifiers: { research_speed: 0.3 },
        tags: ['research', 'computing', 'neural'],
@@ -240,8 +240,8 @@ const RESEARCH_BRANCH = [
        suppliesCost: 600,
        build: 600,
        capacity: 6,
-        sustainmentCost: { rare_gases: 60, quantum_circuits: 20, genomes: 20 },
-        productionOutputs: { rare_gases: 0.12 },
+        sustainmentCost: { rare_gases: 5, quantum_circuits: 4, genomes: 4 },
+        productionOutputs: { rare_gases: 0.04 },
        modifiers: { research_speed: 0.5 },
         tags: ['mega_structure', 'research', 'knowledge', 'transcendent'],
         requisitionUpkeep: 8
@@ -266,7 +266,7 @@ const MILITARY_BRANCH = [
         suppliesCost: 90,
         build: 80,
         capacity: 2,
-        sustainmentCost: { biomass: 50 },
+        sustainmentCost: { biomass: 4, plasma_fuel: 1 },
         productionOutputs: {},
         modifiers: { army_organization: 1, army_fervor: 1, army_damage_mult: 0.05 },
         tags: ['military', 'training', 'organization', 'fervor'],
@@ -285,7 +285,7 @@ const MILITARY_BRANCH = [
        suppliesCost: 300,
        build: 300,
        capacity: 2,
-       sustainmentCost: { super_alloys: 30 },
+       sustainmentCost: { super_alloys: 5, biomass: 2 },
        productionOutputs: {},
        modifiers: { army_organization: 3, supply_efficiency: 0.08 },
        tags: ['mega_structure', 'military', 'coordination'],
@@ -304,7 +304,7 @@ const MILITARY_BRANCH = [
        suppliesCost: 800,
        build: 700,
        capacity: 6,
-       sustainmentCost: { super_alloys: 40, quantum_circuits: 20 },
+       sustainmentCost: { super_alloys: 8, quantum_circuits: 5 },
        productionOutputs: {},
        modifiers: { army_organization: 5, supply_efficiency: 0.12 },
        tags: ['mega_structure', 'military', 'fortress', 'transcendent'],
@@ -330,8 +330,8 @@ const CULTURAL_BRANCH = [
         suppliesCost: 50,
         build: 100,
         capacity: 2,
-        sustainmentCost: { plasma_fuel: 1, biomass: 15 },
-        productionOutputs: { biomass: 0.06 },
+        sustainmentCost: { plasma_fuel: 2, biomass: 3 },
+        productionOutputs: { biomass: 0.03 },
         modifiers: { population_growth: 1.5, empire_approval: 3, hero_siphon_efficiency_add: 0.005 },
         tags: ['cultural', 'agriculture', 'social', 'food'],
         requisitionUpkeep: 1
@@ -349,8 +349,8 @@ const CULTURAL_BRANCH = [
        suppliesCost: 500,
        build: 160,
        capacity: 4,
-        sustainmentCost: { genomes: 20, psycho_implants: 10 },
-        productionOutputs: { genomes: 0.03 },
+        sustainmentCost: { genomes: 3, psycho_implants: 3, biomass: 2 },
+        productionOutputs: { genomes: 0.015 },
        modifiers: { population_growth: 4, empire_approval: 5 },
        tags: ['mega_structure', 'cultural', 'celebration', 'biologic'],
        requisitionUpkeep: 6
@@ -368,8 +368,8 @@ const CULTURAL_BRANCH = [
        suppliesCost: 700,
        build: 480,
        capacity: 6,
-        sustainmentCost: { genomes: 30, psycho_implants: 20 },
-        productionOutputs: { genomes: 0.06, psycho_implants: 0.15 },
+        sustainmentCost: { genomes: 5, psycho_implants: 4, ancient_relics: 2 },
+        productionOutputs: { genomes: 0.03, psycho_implants: 0.06 },
        modifiers: { population_growth: 8, empire_approval: 10 },
        tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic'],
        requisitionUpkeep: 8
@@ -392,7 +392,7 @@ const ECONOMIC_BRANCH = [
        suppliesCost: 170,
        build: 210,
        capacity: 2,
-       sustainmentCost: { plasma_fuel: 20 },
+       sustainmentCost: { plasma_fuel: 2, super_alloys: 1 },
        productionOutputs: {},
        modifiers: { trade_income: 20 },
       tags: ['economic', 'trade'],
@@ -411,7 +411,7 @@ const ECONOMIC_BRANCH = [
       suppliesCost: 360,
       build: 360,
       capacity: 2,
-      sustainmentCost: { plasma_fuel: 40 },
+      sustainmentCost: { plasma_fuel: 4, rare_gases: 2 },
       productionOutputs: {},
       modifiers: { trade_income: 100, market_efficiency: 0.05 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace'],
@@ -430,7 +430,7 @@ const ECONOMIC_BRANCH = [
       suppliesCost: 900,
       build: 750,
       capacity: 6,
-      sustainmentCost: { quantum_circuits: 30, psycho_implants: 50, sentient_cores: 40 },
+      sustainmentCost: { quantum_circuits: 5, psycho_implants: 6, sentient_cores: 6 },
       productionOutputs: {},
        modifiers: { market_efficiency: 0.3 },
        tags: ['mega_structure', 'economic', 'wealth', 'transcendent'],
@@ -456,8 +456,8 @@ const SPIRITUAL_BRANCH = [
        suppliesCost: 80,
        build: 100,
        capacity: 2,
-       sustainmentCost: { ancient_relics: 10, biomass: 20 },
-       productionOutputs: { ancient_relics: 0.25 },
+       sustainmentCost: { biomass: 2, plasma_fuel: 1 },
+       productionOutputs: { ancient_relics: 0.03 },
        modifiers: { army_fervor: 3 },
        tags: ['spiritual', 'morale', 'relics'],
        requisitionUpkeep: 1
@@ -475,8 +475,8 @@ const SPIRITUAL_BRANCH = [
        suppliesCost: 360,
        build: 350,
        capacity: 4,
-        sustainmentCost: { ancient_relics: 30, psycho_implants: 20 },
-        productionOutputs: { ancient_relics: 0.4 },
+        sustainmentCost: { ancient_relics: 3, psycho_implants: 3 },
+        productionOutputs: { ancient_relics: 0.05 },
        modifiers: { army_fervor: 6, cohesionModifier: 1.02 },
        tags: ['mega_structure', 'spiritual', 'heritage', 'relics'],
        requisitionUpkeep: 6
@@ -494,8 +494,8 @@ const SPIRITUAL_BRANCH = [
        suppliesCost: 700,
        build: 650,
        capacity: 6,
-        sustainmentCost: { ancient_relics: 50, psycho_implants: 30, sentient_cores: 10 },
-        productionOutputs: { ancient_relics: 0.6 },
+        sustainmentCost: { ancient_relics: 5, psycho_implants: 4, sentient_cores: 3 },
+        productionOutputs: { ancient_relics: 0.08 },
        modifiers: { army_fervor: 12, cohesionModifier: 1.05, empire_approval: 2 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics'],
        requisitionUpkeep: 8
@@ -520,7 +520,7 @@ const GOVERNANCE_BRANCH = [
        suppliesCost: 75,
        build: 95,
        capacity: 2,
-       sustainmentCost: { sentient_cores: 10 },
+       sustainmentCost: { super_alloys: 2, plasma_fuel: 1 },
        productionOutputs: {},
        modifiers: { law_progress_speed: 0.10, improvement_queue_capacity: 2 },
        tags: ['governance', 'administration'],
@@ -539,7 +539,7 @@ const GOVERNANCE_BRANCH = [
       suppliesCost: 400,
        build: 380,
        capacity: 4,
-       sustainmentCost: { sentient_cores: 20, quantum_circuits: 10 },
+       sustainmentCost: { sentient_cores: 3, quantum_circuits: 2, rare_gases: 2 },
        productionOutputs: {},
        modifiers: { law_progress_speed: 0.20, tick_delay_multiplier: 0.50 },
        tags: ['mega_structure', 'governance', 'council', 'sentient'],
@@ -558,8 +558,8 @@ const GOVERNANCE_BRANCH = [
        suppliesCost: 800,
        build: 700,
        capacity: 6,
-        sustainmentCost: { sentient_cores: 40, quantum_circuits: 20, psycho_implants: 20 },
-        productionOutputs: { sentient_cores: 0.02 },
+        sustainmentCost: { sentient_cores: 6, quantum_circuits: 4, psycho_implants: 4 },
+        productionOutputs: { sentient_cores: 0.01 },
        modifiers: { law_progress_speed: 0.30, tick_delay_multiplier: 0.75, cohesionModifier: 1.03 },
        tags: ['mega_structure', 'governance', 'transcendent', 'sentient'],
        requisitionUpkeep: 8
@@ -587,7 +587,7 @@ const RESOURCE_BRANCH = [
        build: 50,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { plasma_fuel: 0.2 },
+       productionOutputs: { plasma_fuel: 0.12 },
        modifiers: {},
        tags: ['resource', 'passive', 'extraction'],
        requisitionUpkeep: 1
@@ -604,8 +604,8 @@ const RESOURCE_BRANCH = [
        suppliesCost: 140,
        build: 85,
        capacity: 2,
-        sustainmentCost: { plasma_fuel: 2.5 },
-        productionOutputs: { super_alloys: 0.06 },
+        sustainmentCost: { plasma_fuel: 1 },
+        productionOutputs: { super_alloys: 0.04 },
        modifiers: {},
        tags: ['resource', 'passive', 'production'],
        requisitionUpkeep: 1
@@ -622,8 +622,8 @@ const RESOURCE_BRANCH = [
        suppliesCost: 90,
        build: 85,
        capacity: 2,
-       sustainmentCost: { biomass: 1, genomes: 3 },
-       productionOutputs: { genomes: 0.02 },
+       sustainmentCost: { biomass: 1.5 },
+       productionOutputs: { genomes: 0.012 },
        modifiers: { research_speed: 0.15 }, // 15% research speed bonus
        tags: ['resource', 'passive', 'research'],
        requisitionUpkeep: 1
@@ -641,7 +641,7 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { biomass: 0.08, genomes: 0.03 },
+       productionOutputs: { biomass: 0.05, genomes: 0.015 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic', 'organic'],
        requisitionUpkeep: 1
@@ -659,7 +659,7 @@ const RESOURCE_BRANCH = [
        build: 70,
        capacity: 1,
        sustainmentCost: { },
-       productionOutputs: { rare_gases: 0.22, plasma_fuel: 0.03 },
+       productionOutputs: { rare_gases: 0.12, plasma_fuel: 0.02 },
        modifiers: {},
        tags: ['resource', 'passive', 'mining'],
        requisitionUpkeep: 1
@@ -679,11 +679,11 @@ const RESOURCE_BRANCH = [
        suppliesCost: 200,
        build: 250,
        capacity: 2,
-       sustainmentCost: { quantum_circuits: 5, genomes: 5, plasma_fuel: 15 },
+       sustainmentCost: { quantum_circuits: 3, genomes: 3, plasma_fuel: 4 },
        productionOutputs: {
-         wormhole_reactors: 0.25,
-         dark_matter: 0.015,
-         nano_machines: 0.12
+         wormhole_reactors: 0.08,
+         dark_matter: 0.004,
+         nano_machines: 0.04
        },
        modifiers: {},
        tags: ['resource', 'passive', 'exotic', 'advanced_commodity'],

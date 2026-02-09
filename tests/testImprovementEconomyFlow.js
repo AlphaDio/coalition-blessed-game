@@ -482,6 +482,119 @@ console.log('=== Test 10: Buy Backlog Orders Persist Despite max_duration ===');
 }
 console.log();
 
+console.log('=== Test 11: Fractional Sustainment Values Create Non-Zero Demand ===');
+{
+  const state = {
+    turn: 10,
+    coalitionModifiers: {
+      rationing_add: 0,
+      rationing_mult: 1.0,
+      supply_efficiency: 0
+    },
+    coalitionEconomy: { requisition: 500 },
+    market: {
+      biomass: {
+        commodity: 'biomass',
+        price: 1.0,
+        last_price: 1.0,
+        floor_price: 1.0,
+        demand_qty: 0,
+        supply_qty: 0,
+        buy_orders: [],
+        sell_offers: []
+      }
+    },
+    marketOrders: { buyOrders: [], sellOffers: [] },
+    empires: [
+      createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 1000, budget_credits: 10000 })
+    ],
+    armies: [],
+    improvements: {
+      queue: [
+        {
+          id: 'imp_fractional_sustain',
+          empireId: 'empire_1',
+          name: 'Fractional Sustain Test',
+          state: 'ACTIVE',
+          completedAtTick: null,
+          ticksSinceSustained: 0,
+          sustainmentCost: { biomass: 0.01 },
+          productionOutputs: {},
+          productionBank: {},
+          productionBankThreshold: 1,
+          requisitionUpkeep: 0,
+          modifiers: {}
+        }
+      ],
+      requests: [],
+      completed: [],
+      maxTotalCapacity: 20,
+      currentCapacity: 0
+    }
+  };
+
+  processImprovementsTick(state);
+  const pooledOrder = state.marketOrders.buyOrders.find(order => order.tags?.purpose === 'improvement_sustainment_pool');
+  assert(Boolean(pooledOrder), 'Fractional sustainment creates a pooled buy order');
+  assert((pooledOrder?.qty || 0) > 0, 'Fractional sustainment demand is non-zero');
+  assert((pooledOrder?.qty || 0) < 1, 'Fractional sustainment demand remains tame');
+}
+console.log();
+
+console.log('=== Test 12: Fractional Production Outputs Accumulate Without Flooring To Zero ===');
+{
+  const state = {
+    coalitionModifiers: {
+      production_efficiency_add: 0,
+      production_efficiency_mult: 1.0,
+      rationing_add: 0,
+      rationing_mult: 1.0,
+      supply_efficiency: 0
+    },
+    market: {
+      super_alloys: {
+        commodity: 'super_alloys',
+        price: 1.0,
+        floor_price: 1.0
+      }
+    },
+    marketOrders: { buyOrders: [], sellOffers: [] },
+    empires: [createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 1000, budget_credits: 10000 })],
+    improvements: {
+      queue: [
+        {
+          id: 'imp_fractional_prod',
+          empireId: 'empire_1',
+          name: 'Fractional Production Test',
+          state: 'ACTIVE',
+          completedAtTick: null,
+          ticksSinceSustained: 0,
+          sustainmentCost: {},
+          productionOutputs: { super_alloys: 0.0001 },
+          productionBank: {},
+          productionBankThreshold: 1,
+          requisitionUpkeep: 0,
+          modifiers: {}
+        }
+      ],
+      requests: [],
+      completed: [],
+      maxTotalCapacity: 20,
+      currentCapacity: 0
+    },
+    armies: []
+  };
+
+  processImprovementsTick(state);
+  processImprovementsTick(state);
+
+  const sellOrder = state.marketOrders.sellOffers.find(order => order.commodity === 'super_alloys');
+  assert(Boolean(sellOrder), 'Fractional production eventually creates a market sell order');
+  assert((sellOrder?.qty || 0) > 0, 'Fractional production order quantity is non-zero');
+  assert((sellOrder?.qty || 0) < 1, 'Fractional production release remains in fractional range');
+}
+console.log();
+
 console.log('============================================================');
 console.log(`Passed: ${testsPassed}`);
 console.log(`Failed: ${testsFailed}`);

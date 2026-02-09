@@ -5,6 +5,9 @@ export const POPULATION_GROWTH_SCALE = 100; // Convert percentage-based modifier
 export const BIOLOGIC_TAG = 'biologic';
 export const BIOLOGIC_GROWTH_BONUS_MULTIPLIER = 1.5;
 export const IMPROVEMENT_SUSTAINMENT_TICKS = 10; // Number of ticks of buffer before degradation
+// Sustainment define values are scaled so "1-5" remains tame at typical populations.
+// At population ~1000 with base rationing (0.10), demand ~= define value.
+export const IMPROVEMENT_SUSTAINMENT_SCALE = 0.01;
 
 /**
  * Check if an improvement has a specific tag
