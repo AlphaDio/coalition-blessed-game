@@ -708,6 +708,41 @@ export function migrateGameState(state) {
     };
   }
 
+  if (state.market && typeof state.market === 'object') {
+    if (!Array.isArray(state.market.remaining_sell_offers_post_clear)) {
+      state.market.remaining_sell_offers_post_clear = [];
+    }
+    if (!Array.isArray(state.market.remaining_buy_offers_post_clear)) {
+      state.market.remaining_buy_offers_post_clear = [];
+    }
+    if (!state.market.buy_backlog_by_commodity || typeof state.market.buy_backlog_by_commodity !== 'object') {
+      state.market.buy_backlog_by_commodity = {};
+    }
+    if (!state.market.buy_backlog_by_commodity_and_owner || typeof state.market.buy_backlog_by_commodity_and_owner !== 'object') {
+      state.market.buy_backlog_by_commodity_and_owner = {};
+    }
+
+    Object.entries(state.market).forEach(([marketKey, marketState]) => {
+      if (!marketState || typeof marketState !== 'object') return;
+      if (marketKey === 'price_by_commodity' || marketKey === 'last_price_by_commodity' ||
+          marketKey === 'floor_price_by_commodity' || marketKey === 'price_range_by_commodity' ||
+          marketKey === 'remaining_sell_offers_post_clear' || marketKey === 'remaining_buy_offers_post_clear' ||
+          marketKey === 'buy_backlog_by_commodity' || marketKey === 'buy_backlog_by_commodity_and_owner') {
+        return;
+      }
+
+      if (!Array.isArray(marketState.remaining_sell_offers_post_clear)) {
+        marketState.remaining_sell_offers_post_clear = [];
+      }
+      if (!Array.isArray(marketState.remaining_buy_offers_post_clear)) {
+        marketState.remaining_buy_offers_post_clear = [];
+      }
+      if (!Number.isFinite(marketState.buy_backlog_total)) {
+        marketState.buy_backlog_total = 0;
+      }
+    });
+  }
+
   if (state.improvements && typeof state.improvements === 'object') {
     if (!state.improvements.pendingSustainmentDemand || typeof state.improvements.pendingSustainmentDemand !== 'object') {
       state.improvements.pendingSustainmentDemand = {};

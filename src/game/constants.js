@@ -131,7 +131,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} SUPPLY_SHORTAGE_ORG_PENALTY - Organization penalty for supply shortages
  * @property {number} SUPPLY_SHORTAGE_AGGRAVATION_INCREASE - Aggravation increase from supply shortage
  * @property {number} SCOURGE_FERVOR_GROWTH - Percentage growth of Scourge fervor per tick (2%)
- * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (250:1)
+ * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (2500:1)
  */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
@@ -141,7 +141,7 @@ export const ECONOMY_CONSTANTS = {
   SUPPLY_SHORTAGE_ORG_PENALTY: 10,
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
   SCOURGE_FERVOR_GROWTH: 0.02,
-  NEGATIVE_REQUISITION_COHESION_DIVISOR: 250 // For every 250 req, lose 1 cohesion
+  NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500 // For every 2500 req, lose 1 cohesion
 };
 
 /**

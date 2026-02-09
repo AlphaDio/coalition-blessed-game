@@ -50,7 +50,8 @@ export function consumeRequisition(state) {
 
 /**
  * Applies cohesion penalty based on negative requisition
- * For every 250 points of negative requisition, reduces cohesion by 1 point
+ * For every NEGATIVE_REQUISITION_COHESION_DIVISOR points of negative requisition,
+ * reduces cohesion by 1 point.
  * @param {Object} state - The game state
  * @returns {Object} { log: string[], cohesionLoss: number } - Log messages and cohesion loss amount
  */

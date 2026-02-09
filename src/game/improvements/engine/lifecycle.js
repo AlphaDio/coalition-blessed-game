@@ -27,13 +27,6 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     return { success: false, error: 'Coalition economy not initialized', log: [] };
   }
   if (!state.coalitionEconomy.requisition) state.coalitionEconomy.requisition = 0;
-  if (request.suppliesCost > 0 && state.coalitionEconomy.requisition < request.suppliesCost) {
-    return {
-      success: false,
-      error: `Insufficient Requisition (need ${request.suppliesCost}, have ${state.coalitionEconomy.requisition})`,
-      log: []
-    };
-  }
 
   // Check capacity limits (BUILDING improvements only)
   const improvements = state.improvements;

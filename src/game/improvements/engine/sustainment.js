@@ -7,7 +7,6 @@ import { createBuyOrder } from '../../marketEconomy.js';
 
 const SUSTAINMENT_ORDER_PRIORITY = 800;
 const SUSTAINMENT_ORDER_MAX_DURATION = 6;
-const SUSTAINMENT_BACKLOG_TICKS = IMPROVEMENT_SUSTAINMENT_TICKS * 2;
 export const IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE = 'improvement_sustainment_pool';
 
 function ensureSustainmentLedgers(state) {
@@ -117,8 +116,6 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
 
   const marketState = state.market[commodity];
   const maxPrice = marketState.price;
-  const totalDemand = getLedgerValue(state, 'pendingSustainmentDemand', empireId, commodity);
-  const backlogCap = Math.max(totalDemand, Math.ceil(totalDemand * SUSTAINMENT_BACKLOG_TICKS));
 
   const existing = state.marketOrders.buyOrders.find(order =>
     order.owner_type === 'empire' &&
@@ -129,14 +126,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
   );
 
   if (existing) {
-    const existingFilled = Math.max(0, existing.filled_qty || 0);
-    const existingOutstanding = Math.max(0, existing.qty - existingFilled);
-    const cappedOutstanding = Math.min(existingOutstanding, backlogCap);
-    const room = Math.max(0, backlogCap - cappedOutstanding);
-    const queuedNow = Math.min(addedDemand, room);
-
-    // Clamp legacy oversized orders and grow only within the backlog guardrail.
-    existing.qty = existingFilled + cappedOutstanding + queuedNow;
+    existing.qty += addedDemand;
     existing.max_price = maxPrice;
     existing.priority = Math.max(existing.priority || 0, SUSTAINMENT_ORDER_PRIORITY);
     existing.category = 'needs';
@@ -154,15 +144,12 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
     return;
   }
 
-  const initialQty = Math.min(addedDemand, backlogCap);
-  if (initialQty <= 0) return;
-
   const buyOrder = createBuyOrder(
     nextOrderId('sustain_pool'),
     'empire',
     empireId,
     commodity,
-    initialQty,
+    addedDemand,
     maxPrice,
     SUSTAINMENT_ORDER_PRIORITY,
     SUSTAINMENT_ORDER_MAX_DURATION
@@ -178,8 +165,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
 }
 
 /**
- * Clamp pooled sustainment orders to this turn's finalized demand map.
- * This retires stale outstanding quantities while preserving guarded backlog behavior.
+ * Finalize pooled sustainment orders for the current tick.
  */
 export function finalizeImprovementSustainmentPreMarket(state) {
   if (!state.marketOrders?.buyOrders?.length) return;
@@ -193,18 +179,10 @@ export function finalizeImprovementSustainmentPreMarket(state) {
       continue;
     }
 
-    const demand = getLedgerValue(state, 'pendingSustainmentDemand', order.owner_id, order.commodity);
-    const backlogCap = demand > 0 ? Math.max(demand, Math.ceil(demand * SUSTAINMENT_BACKLOG_TICKS)) : 0;
-    const filled = Math.max(0, order.filled_qty || 0);
-    const outstanding = Math.max(0, order.qty - filled);
-    const clampedOutstanding = Math.min(outstanding, backlogCap);
-    order.qty = filled + clampedOutstanding;
-
-    if (clampedOutstanding > 0 && state.market?.[order.commodity]) {
+    if ((order.filled_qty || 0) < order.qty && state.market?.[order.commodity]) {
       order.max_price = state.market[order.commodity].price;
       order.priority = Math.max(order.priority || 0, SUSTAINMENT_ORDER_PRIORITY);
       order.category = 'needs';
-      order.duration = 0;
       order.max_duration = Number.isFinite(order.max_duration)
         ? order.max_duration
         : SUSTAINMENT_ORDER_MAX_DURATION;

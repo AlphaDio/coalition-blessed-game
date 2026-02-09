@@ -76,8 +76,12 @@ export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice =
     price_range: priceRange || { min: initialPrice, max: initialPrice },
     demand_qty: 0,
     supply_qty: 0,
+    traded_qty: 0,
     buy_orders: [],
-    sell_offers: []
+    sell_offers: [],
+    remaining_buy_offers_post_clear: [],
+    remaining_sell_offers_post_clear: [],
+    buy_backlog_total: 0
   };
 }
 
@@ -127,7 +131,10 @@ export function initializeMarket(commodities, rng = Math.random) {
     last_price_by_commodity: {},
     floor_price_by_commodity: {},
     price_range_by_commodity: {},
-    remaining_sell_offers_post_clear: []
+    remaining_sell_offers_post_clear: [],
+    remaining_buy_offers_post_clear: [],
+    buy_backlog_by_commodity: {},
+    buy_backlog_by_commodity_and_owner: {}
   };
 
   commodities.forEach(commodity => {
@@ -160,10 +167,18 @@ export function initializeMarket(commodities, rng = Math.random) {
  */
 export function clearMarket(buyOrders, sellOffers, marketState) {
   const commodity = marketState.commodity;
-  
-  // Filter orders for this commodity
-  const relevantBuys = buyOrders.filter(o => o.commodity === commodity && o.filled_qty < o.qty);
-  const relevantSells = sellOffers.filter(o => o.commodity === commodity && o.filled_qty < o.qty);
+
+  const dedupeById = (orders) => Array.from(
+    new Map((orders || []).map(order => [order.id, order])).values()
+  );
+
+  // Filter orders for this commodity and dedupe by order id.
+  const relevantBuys = dedupeById(
+    buyOrders.filter(o => o.commodity === commodity && (o.filled_qty || 0) < o.qty)
+  );
+  const relevantSells = dedupeById(
+    sellOffers.filter(o => o.commodity === commodity && (o.filled_qty || 0) < o.qty)
+  );
   
   // Sort by priority (higher first), then by price
   // Buys: highest max_price first (most willing to pay)
@@ -178,46 +193,55 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
     return a.ask_price - b.ask_price;
   });
   
-  let totalDemand = relevantBuys.reduce((sum, o) => sum + (o.qty - o.filled_qty), 0);
-  let totalSupply = relevantSells.reduce((sum, o) => sum + (o.qty - o.filled_qty), 0);
+  let totalDemand = relevantBuys.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
+  let totalSupply = relevantSells.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
   
   marketState.demand_qty = totalDemand;
   marketState.supply_qty = totalSupply;
-  
+
   if (totalSupply === 0 || totalDemand === 0) {
     marketState.traded_qty = 0;
-    return { trades: [], unfilledBuys: relevantBuys, unfilledSells: relevantSells };
+    const unfilledBuys = relevantBuys.map(buy => ({
+      ...buy,
+      remaining: Math.max(0, buy.qty - (buy.filled_qty || 0))
+    }));
+    const unfilledSells = relevantSells.map(sell => ({
+      ...sell,
+      remaining: Math.max(0, sell.qty - (sell.filled_qty || 0))
+    }));
+    return { trades: [], unfilledBuys, unfilledSells };
   }
-  
+
   const trades = [];
   const unfilledBuys = [];
   const unfilledSells = [];
-  
+
   // Create a map of sell offers with remaining quantity
   const sellRemaining = new Map();
   for (const sell of relevantSells) {
     sellRemaining.set(sell.id, sell.qty - (sell.filled_qty || 0));
   }
-  
+
   // Match buys with sells where buy.max_price >= sell.ask_price
   for (const buy of relevantBuys) {
-    const buyRemaining = buy.qty - (buy.filled_qty || 0);
+    let buyRemaining = buy.qty - (buy.filled_qty || 0);
     if (buyRemaining <= 0) continue;
-    
-    let matched = false;
-    
+
     // Find matching sells (where sell.ask_price <= buy.max_price)
     for (const sell of relevantSells) {
+      if (buyRemaining <= 0) break;
       const sellQty = sellRemaining.get(sell.id) || 0;
       if (sellQty <= 0) continue;
-      
+
       // Check if prices are compatible: buyer's max >= seller's ask
       if (buy.max_price >= sell.ask_price) {
         const tradeQty = Math.min(buyRemaining, sellQty);
-        
+        if (tradeQty <= 0) continue;
+
         // Update remaining quantities
         sellRemaining.set(sell.id, sellQty - tradeQty);
-        
+        buyRemaining -= tradeQty;
+
         // Record trade at seller's ask_price (the lower price)
         trades.push({
           buy_order_id: buy.id,
@@ -226,23 +250,18 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
           qty: tradeQty,
           price: sell.ask_price
         });
-        
-        matched = true;
-        
+
         // Update buy's filled_qty
         buy.filled_qty = (buy.filled_qty || 0) + tradeQty;
-        
-        // Stop if buy is fully filled
-        if (buy.filled_qty >= buy.qty) break;
       }
     }
-    
+
     // If buy wasn't fully filled, add to unfilled
-    if (buy.filled_qty < buy.qty) {
-      unfilledBuys.push(buy);
+    if (buyRemaining > 0) {
+      unfilledBuys.push({ ...buy, remaining: buyRemaining });
     }
   }
-  
+
   // Collect remaining sells
   for (const sell of relevantSells) {
     const sellQty = sellRemaining.get(sell.id) || 0;
@@ -250,9 +269,9 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
       unfilledSells.push({ ...sell, remaining: sellQty });
     }
   }
-  
+
   marketState.traded_qty = trades.reduce((sum, t) => sum + t.qty, 0);
-  
+
   return { trades, unfilledBuys, unfilledSells };
 }
 
@@ -262,25 +281,46 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
 export function executeMarketClearing(state, buyOrders, sellOffers) {
   const market = state.market;
   const results = { totalTrades: 0, totalTradedQty: 0 };
+  const remainingSellOffers = [];
+  const remainingBuyOffers = [];
+  const buyBacklogByCommodity = {};
+  const buyBacklogByCommodityAndOwner = {};
 
   // Clear market for each commodity
   for (const commodityKey of Object.keys(market)) {
     if (commodityKey === 'price_by_commodity' || commodityKey === 'last_price_by_commodity' ||
         commodityKey === 'floor_price_by_commodity' || commodityKey === 'price_range_by_commodity' ||
-        commodityKey === 'remaining_sell_offers_post_clear') {
+        commodityKey === 'remaining_sell_offers_post_clear' ||
+        commodityKey === 'remaining_buy_offers_post_clear' ||
+        commodityKey === 'buy_backlog_by_commodity' ||
+        commodityKey === 'buy_backlog_by_commodity_and_owner') {
       continue;
     }
 
     const marketState = market[commodityKey];
     const { trades, unfilledBuys, unfilledSells } = clearMarket(buyOrders, sellOffers, marketState);
+    marketState.remaining_sell_offers_post_clear = unfilledSells;
+    marketState.remaining_buy_offers_post_clear = unfilledBuys;
+    marketState.buy_backlog_total = unfilledBuys.reduce((sum, order) => sum + (order.remaining || 0), 0);
+
+    remainingSellOffers.push(...unfilledSells);
+    remainingBuyOffers.push(...unfilledBuys);
+    buyBacklogByCommodity[commodityKey] = marketState.buy_backlog_total;
+
+    const ownerBacklog = {};
+    unfilledBuys.forEach(order => {
+      ownerBacklog[order.owner_id] = (ownerBacklog[order.owner_id] || 0) + (order.remaining || 0);
+    });
+    buyBacklogByCommodityAndOwner[commodityKey] = ownerBacklog;
 
     results.totalTrades += trades.length;
     results.totalTradedQty += marketState.traded_qty;
   }
 
-  // Collect remaining sell offers post-clear
-  const remainingSellOffers = sellOffers.filter(offer => offer.filled_qty < offer.qty);
   market.remaining_sell_offers_post_clear = remainingSellOffers;
+  market.remaining_buy_offers_post_clear = remainingBuyOffers;
+  market.buy_backlog_by_commodity = buyBacklogByCommodity;
+  market.buy_backlog_by_commodity_and_owner = buyBacklogByCommodityAndOwner;
 
   return results;
 }

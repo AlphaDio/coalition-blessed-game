@@ -9,20 +9,6 @@ function ensureEmpireSpend(empire) {
   return empire.economy_spend;
 }
 
-function applyLegacySustainmentTrade(state, buyOrder, trade) {
-  if (buyOrder.tags?.purpose !== 'sustainment') return;
-  if (!buyOrder.tags?.originator || !state.improvements?.queue) return;
-
-  const improvement = state.improvements.queue.find(i => i.id === buyOrder.tags.originator);
-  if (!improvement) return;
-
-  if (!improvement.sustainmentBuffer) {
-    improvement.sustainmentBuffer = { ...(improvement.stockpile || {}) };
-  }
-  improvement.sustainmentBuffer[trade.commodity] =
-    (improvement.sustainmentBuffer[trade.commodity] || 0) + trade.qty;
-}
-
 function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
   if (buyOrder.owner_type === 'empire') {
     const empire = empiresById.get(buyOrder.owner_id);
@@ -37,8 +23,6 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
       creditSustainmentReceipts(state, buyOrder.owner_id, trade.commodity, trade.qty);
       return;
     }
-
-    applyLegacySustainmentTrade(state, buyOrder, trade);
     return;
   }
 
@@ -57,23 +41,36 @@ function applySellTrade(trade, sellOffer, empiresById) {
   empire.budget_credits = (empire.budget_credits || 0) + (trade.qty * trade.price);
 }
 
-export function applyOrderDurations(state, buyOrders, sellOffers) {
-  const allBuyOrders = buyOrders.concat(state.marketOrders?.buyOrders || []);
-  const allSellOffers = sellOffers.concat(state.marketOrders?.sellOffers || []);
+function mergeOrdersById(baseOrders, overridingOrders) {
+  const merged = new Map();
+  for (const order of baseOrders || []) {
+    if (!order?.id) continue;
+    merged.set(order.id, order);
+  }
+  for (const order of overridingOrders || []) {
+    if (!order?.id) continue;
+    merged.set(order.id, order);
+  }
+  return Array.from(merged.values());
+}
 
-  // Increment duration on all buy orders and separate expired ones
+function getRemainingQty(order) {
+  return Math.max(0, (order?.qty || 0) - (order?.filled_qty || 0));
+}
+
+export function applyOrderDurations(state, buyOrders, sellOffers) {
+  const allBuyOrders = mergeOrdersById(state.marketOrders?.buyOrders || [], buyOrders);
+  const allSellOffers = mergeOrdersById(state.marketOrders?.sellOffers || [], sellOffers);
+
+  // Buy orders are persistent backlog by design (no expiry).
   const validBuyOrders = [];
   const expiredBuyOrders = [];
 
   allBuyOrders.forEach(order => {
+    if (getRemainingQty(order) <= 0) return;
     order.duration = (order.duration || 0) + 1;
-    const maxDuration = Number.isFinite(order.max_duration) ? order.max_duration : 3;
-
-    if (order.duration > maxDuration) {
-      expiredBuyOrders.push(order);
-    } else {
-      validBuyOrders.push(order);
-    }
+    order.max_duration = Number.isFinite(order.max_duration) ? order.max_duration : 1000000;
+    validBuyOrders.push(order);
   });
 
   // Increment duration on all sell offers (sell-side accumulation is persistent)
@@ -81,7 +78,9 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
   const expiredSellOffers = [];
 
   allSellOffers.forEach(order => {
+    if (getRemainingQty(order) <= 0) return;
     order.duration = (order.duration || 0) + 1;
+    order.max_duration = Number.isFinite(order.max_duration) ? order.max_duration : 1000000;
     validSellOffers.push(order);
   });
 
@@ -134,6 +133,10 @@ export function resetEmpireSpend(state) {
 
 export function clearMarkets(state, commodities, validBuyOrders, validSellOffers) {
   const allTrades = [];
+  const remainingSellOffersPostClear = [];
+  const remainingBuyOrdersPostClear = [];
+  const buyBacklogByCommodity = {};
+  const buyBacklogByCommodityAndOwner = {};
   const buyOrdersById = new Map(validBuyOrders.map(order => [order.id, order]));
   const sellOffersById = new Map(validSellOffers.map(order => [order.id, order]));
   const empiresById = new Map((state.empires || []).map(empire => [empire.id, empire]));
@@ -148,6 +151,22 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
 
     // Keep per-commodity post-clear liquidity snapshots for UI/inspection.
     marketState.remaining_sell_offers_post_clear = clearResult.unfilledSells;
+    marketState.remaining_buy_offers_post_clear = clearResult.unfilledBuys;
+    marketState.buy_backlog_total = clearResult.unfilledBuys.reduce(
+      (sum, order) => sum + getRemainingQty(order),
+      0
+    );
+
+    remainingSellOffersPostClear.push(...clearResult.unfilledSells);
+    remainingBuyOrdersPostClear.push(...clearResult.unfilledBuys);
+
+    buyBacklogByCommodity[commodity.key] = marketState.buy_backlog_total;
+    const ownerBacklog = {};
+    clearResult.unfilledBuys.forEach(order => {
+      const ownerKey = order.owner_id || 'unknown';
+      ownerBacklog[ownerKey] = (ownerBacklog[ownerKey] || 0) + getRemainingQty(order);
+    });
+    buyBacklogByCommodityAndOwner[commodity.key] = ownerBacklog;
 
     // Apply trades to entities
     clearResult.trades.forEach(trade => {
@@ -161,13 +180,24 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
 
   });
 
+  if (state.market) {
+    state.market.remaining_sell_offers_post_clear = remainingSellOffersPostClear;
+    state.market.remaining_buy_offers_post_clear = remainingBuyOrdersPostClear;
+    state.market.buy_backlog_by_commodity = buyBacklogByCommodity;
+    state.market.buy_backlog_by_commodity_and_owner = buyBacklogByCommodityAndOwner;
+  }
+
   return allTrades;
 }
 
 export function saveMarketOrders(state, ordersToSave, validBuyOrders, validSellOffers, buyOrders, sellOffers) {
-  // Persist every still-active order, even if it was not touched this tick.
-  const allValidBuyOrders = [...validBuyOrders, ...buyOrders].filter(o => (o.filled_qty || 0) < o.qty);
-  const allValidSellOffers = [...validSellOffers, ...sellOffers].filter(o => (o.filled_qty || 0) < o.qty);
+  void ordersToSave;
+  void buyOrders;
+  void sellOffers;
+
+  // Persist every still-active order exactly once by ID.
+  const allValidBuyOrders = validBuyOrders.filter(order => getRemainingQty(order) > 0);
+  const allValidSellOffers = validSellOffers.filter(order => getRemainingQty(order) > 0);
 
   // Remove duplicates by ID
   const uniqueBuyOrders = Array.from(new Map(allValidBuyOrders.map(o => [o.id, o])).values());

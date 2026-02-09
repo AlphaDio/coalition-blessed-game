@@ -7,13 +7,14 @@
 
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 import { createOrderAggregator } from '../src/game/economyTick/orders.js';
-import { applyOrderDurations, saveMarketOrders } from '../src/game/economyTick/ordersLifecycle.js';
+import { applyOrderDurations, clearMarkets, saveMarketOrders } from '../src/game/economyTick/ordersLifecycle.js';
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
 import { canActivateEmergencyLaw, activateEmergencyLaw, tickEmergencyLaws } from '../src/game/emergencyLaws.js';
 import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../src/game/improvements/types.js';
+import { clearMarket } from '../src/game/marketEconomy.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
 initializeLogger({
@@ -303,7 +304,7 @@ console.log('=== Test 7: Same-Turn Market Fill Prevents Sustainment Degradation 
           owner_type: 'empire',
           owner_id: 'empire_2',
           commodity: 'biomass',
-          qty: 150,
+          qty: 1500,
           filled_qty: 0,
           ask_price: 1.0,
           duration: 0,
@@ -325,7 +326,7 @@ console.log('=== Test 7: Same-Turn Market Fill Prevents Sustainment Degradation 
           state: 'ACTIVE',
           completedAtTick: null,
           ticksSinceSustained: IMPROVEMENT_SUSTAINMENT_TICKS - 1,
-          sustainmentCost: { biomass: 0.1 },
+          sustainmentCost: { biomass: 10 },
           productionOutputs: {},
           productionBank: {},
           productionBankThreshold: 10,
@@ -346,6 +347,138 @@ console.log('=== Test 7: Same-Turn Market Fill Prevents Sustainment Degradation 
   const improvement = state.improvements.queue[0];
   assert(improvement.state === 'ACTIVE', 'Improvement remains ACTIVE when pooled sustainment fills in same turn');
   assert(improvement.ticksSinceSustained === 0, 'Successful same-turn sustainment fill resets unsustained tick counter');
+}
+console.log();
+
+console.log('=== Test 8: Market Matching Does Not Overfill Buys Across Multiple Sells ===');
+{
+  const marketState = {
+    commodity: 'biomass',
+    price: 1,
+    last_price: 1,
+    floor_price: 1,
+    demand_qty: 0,
+    supply_qty: 0,
+    traded_qty: 0
+  };
+
+  const buyOrders = [{
+    id: 'buy_limit_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    max_price: 2.0,
+    priority: 0
+  }];
+
+  const sellOffers = [
+    {
+      id: 'sell_a',
+      owner_type: 'empire',
+      owner_id: 'empire_2',
+      commodity: 'biomass',
+      qty: 6,
+      filled_qty: 0,
+      ask_price: 1.0,
+      priority: 0
+    },
+    {
+      id: 'sell_b',
+      owner_type: 'empire',
+      owner_id: 'empire_3',
+      commodity: 'biomass',
+      qty: 8,
+      filled_qty: 0,
+      ask_price: 1.2,
+      priority: 0
+    }
+  ];
+
+  const result = clearMarket(buyOrders, sellOffers, marketState);
+  const tradedQty = result.trades.reduce((sum, trade) => sum + trade.qty, 0);
+  const remainingSell = result.unfilledSells.reduce((sum, offer) => sum + (offer.remaining || 0), 0);
+
+  assert(tradedQty === 10, 'Trade quantity is capped at buy demand');
+  assert(buyOrders[0].filled_qty === 10, 'Buy order filled quantity never exceeds requested quantity');
+  assert(remainingSell === 4, 'Unfilled sell quantity reflects only true residual supply');
+}
+console.log();
+
+console.log('=== Test 9: Post-Clear Buy Backlog Snapshots Are Stored ===');
+{
+  const state = {
+    empires: [
+      { id: 'empire_1', budget_credits: 1000 },
+      { id: 'empire_2', budget_credits: 1000 }
+    ],
+    armies: [],
+    market: {
+      biomass: {
+        commodity: 'biomass',
+        price: 1.0,
+        last_price: 1.0,
+        floor_price: 1.0,
+        demand_qty: 0,
+        supply_qty: 0,
+        traded_qty: 0,
+        remaining_sell_offers_post_clear: [],
+        remaining_buy_offers_post_clear: []
+      },
+      remaining_sell_offers_post_clear: [],
+      remaining_buy_offers_post_clear: [],
+      buy_backlog_by_commodity: {},
+      buy_backlog_by_commodity_and_owner: {}
+    }
+  };
+
+  const buyOrders = [{
+    id: 'buy_backlog_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 15,
+    filled_qty: 0,
+    max_price: 1.0,
+    priority: 0,
+    category: 'needs'
+  }];
+
+  const sellOffers = [];
+  clearMarkets(state, [{ key: 'biomass' }], buyOrders, sellOffers);
+
+  assert(state.market.biomass.remaining_buy_offers_post_clear.length === 1, 'Per-commodity market state stores unfilled buy orders');
+  assert(state.market.remaining_buy_offers_post_clear.length === 1, 'Root market state stores aggregated unfilled buy orders');
+  assert(state.market.buy_backlog_by_commodity.biomass === 15, 'Commodity backlog summary tracks residual demand');
+  assert(state.market.buy_backlog_by_commodity_and_owner.biomass.empire_1 === 15, 'Commodity-owner backlog summary tracks residual demand');
+}
+console.log();
+
+console.log('=== Test 10: Buy Backlog Orders Persist Despite max_duration ===');
+{
+  const persistentBuy = {
+    id: 'buy_persistent_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 20,
+    filled_qty: 0,
+    max_price: 1.0,
+    category: 'needs',
+    duration: 5,
+    max_duration: 3
+  };
+  const state = {
+    marketOrders: {
+      buyOrders: [persistentBuy],
+      sellOffers: []
+    }
+  };
+
+  const { validBuyOrders, expiredBuyOrders } = applyOrderDurations(state, [], []);
+  assert(validBuyOrders.some(order => order.id === 'buy_persistent_1'), 'Persistent buy backlog remains valid even when max_duration is exceeded');
+  assert(expiredBuyOrders.length === 0, 'No buy backlog orders are expired by duration');
 }
 console.log();
 

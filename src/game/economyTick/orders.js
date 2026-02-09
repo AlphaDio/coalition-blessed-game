@@ -106,11 +106,12 @@ export function createOrderAggregator(state) {
         newQty,
         newPrice,
         priority,
-        100
+        1000000
       );
       order.category = category;
       order.fee = 1;
       order.filled_qty = 0;
+      order.max_duration = 1000000;
       buyOrders.push(order);
       ordersToSave.add(order);
       return order;
@@ -119,6 +120,7 @@ export function createOrderAggregator(state) {
     existing.max_price = newPrice;
     existing.qty = existing.qty + newQty;
     existing.duration = 0;
+    existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
 
     // If from existing orders, move to buyOrders for this tick
     if (!buyOrders.includes(existing)) {
