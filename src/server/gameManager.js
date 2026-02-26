@@ -96,7 +96,9 @@ export class GameManager {
       this.state.coalitionEconomy = {
         requisition: GAME_INIT_CONSTANTS.INITIAL_REQUISITION,
         treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
-        allowance_credits: GAME_INIT_CONSTANTS.INITIAL_ALLOWANCE_CREDITS
+        allowance_credits: GAME_INIT_CONSTANTS.INITIAL_ALLOWANCE_CREDITS,
+        consumption_requisition_pool: 0,
+        consumption_requisition_pool_turns: 0
       };
 
       logger.debug(`Economy initialized: ${commodities.length} commodities`);

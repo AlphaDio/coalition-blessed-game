@@ -21,10 +21,10 @@ declares:
     name: "Verdant Planetary Guard"
     organization: 60
     fervor: 50
-    aggravation: 55
+    aggravation: 44
     command: 48
     recoveryRate: 68
-    reinforcementRate: 40
+    reinforcementRate: 48
     manpower: 12000
     dmgPerUnitMP: 0.95
     dmgPerTickMO: 2.3
@@ -33,9 +33,7 @@ declares:
     killRate: 0.10
     demands:
       needs:
-        biomass: 0.0025
-        genomes: 0.001
+        biomass: 0.0021
+        genomes: 0.0009
       wants:
-        rare_gases: 0.0005
-    signatureCommodity: biomass
-    signatureThreshold: 10000
+        rare_gases: 0.00055

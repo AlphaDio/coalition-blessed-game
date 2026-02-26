@@ -4,6 +4,7 @@ import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../
 import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
 import { nextOrderId } from './orderIds.js';
 import { createBuyOrder } from '../../marketEconomy.js';
+import { CONSUMPTION_SOURCES, recordConsumption } from '../../consumptionToRequisition.js';
 
 const SUSTAINMENT_ORDER_PRIORITY = 800;
 const SUSTAINMENT_ORDER_MAX_DURATION = 6;
@@ -99,6 +100,7 @@ function consumeSustainmentReceipts(state, empireId, commodity, qty) {
   const used = normalizeQty(Math.min(available, normalized));
   if (used > 0) {
     setLedgerValue(state, 'fulfilledSustainmentReceipts', empireId, commodity, normalizeQty(available - used));
+    recordConsumption(commodity, used, empireId, CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT);
   }
   return used;
 }

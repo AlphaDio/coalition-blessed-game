@@ -21,10 +21,10 @@ declares:
     name: "Nexus Hyperspace Marines"
     organization: 75
     fervor: 65
-    aggravation: 45
+    aggravation: 34
     command: 58
     recoveryRate: 45
-    reinforcementRate: 80
+    reinforcementRate: 68
     manpower: 5000
     dmgPerUnitMP: 4.1 # Highest damage per unit per MP in the game
     dmgPerTickMO: 2.7
@@ -33,9 +33,7 @@ declares:
     killRate: 0.12
     demands:
       needs:
-        super_alloys: 0.0018
-        rare_gases: 0.0012
+        super_alloys: 0.0014
+        rare_gases: 0.0010
       wants:
-        quantum_circuits: 0.0001
-    signatureCommodity: rare_gases
-    signatureThreshold: 10000
+        quantum_circuits: 0.00025

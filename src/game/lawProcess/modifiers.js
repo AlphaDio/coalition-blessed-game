@@ -222,7 +222,13 @@ export function applyLawImmediateEffects(lawDef, state, log) {
 
   if (effects.coalition_credits) {
     if (!state.coalitionEconomy) {
-      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0 };
+      state.coalitionEconomy = {
+        requisition: 0,
+        treasury_credits: 0,
+        allowance_credits: 0,
+        consumption_requisition_pool: 0,
+        consumption_requisition_pool_turns: 0
+      };
     }
     state.coalitionEconomy.treasury_credits =
       (state.coalitionEconomy.treasury_credits || 0) + effects.coalition_credits;
@@ -231,7 +237,13 @@ export function applyLawImmediateEffects(lawDef, state, log) {
 
   if (effects.requisition) {
     if (!state.coalitionEconomy) {
-      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0 };
+      state.coalitionEconomy = {
+        requisition: 0,
+        treasury_credits: 0,
+        allowance_credits: 0,
+        consumption_requisition_pool: 0,
+        consumption_requisition_pool_turns: 0
+      };
     }
     state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;
     log.push(`Requisition: +${effects.requisition}`);

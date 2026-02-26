@@ -60,6 +60,7 @@ export const MARKET_CONSTANTS = {
   BUY_WANTS_PREMIUM: 1.05,        // Willing to pay 5% above market for wants
   ARMY_NEEDS_PREMIUM: 1.2,        // Armies pay 20% above market for needs
   ARMY_WANTS_PREMIUM: 1.15,       // Armies pay 15% above market for wants
+  RELATION_PRICE_SWING_CAP: 0.3,  // Diplomacy can swing bilateral trade prices by up to +/-30%
   SURPLUS_RATIO_THRESHOLD: 0.35,  // When stockpiles exceed this ratio, sell surplus
   SURPLUS_TARGET_RATIO: 0.7,      // Target stockpile ratio after selling
   SURPLUS_KEEP_RATIO: 0.5,        // Keep at least this much when selling
@@ -132,6 +133,9 @@ export const BATTLE_CONSTANTS = {
  * @property {number} SUPPLY_SHORTAGE_AGGRAVATION_INCREASE - Aggravation increase from supply shortage
  * @property {number} SCOURGE_FERVOR_GROWTH - Percentage growth of Scourge fervor per tick (2%)
  * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (2500:1)
+ * @property {number} ARMY_NEEDS_DAMAGE_GATE_EPSILON - MP delta required before army needs demand activates
+ * @property {number} ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet needs while damaged
+ * @property {number} ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK - Base fervor decay from unmet wants
  */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
@@ -141,18 +145,23 @@ export const ECONOMY_CONSTANTS = {
   SUPPLY_SHORTAGE_ORG_PENALTY: 10,
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
   SCOURGE_FERVOR_GROWTH: 0.02,
-  NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500 // For every 2500 req, lose 1 cohesion
+  NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500, // For every 2500 req, lose 1 cohesion
+  ARMY_NEEDS_DAMAGE_GATE_EPSILON: 1,
+  ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK: 3.0,
+  ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK: 0.8
 };
 
 /**
  * Insurrection event thresholds and consequences.
  * Insurrections occur when empire aggravation reaches critical levels.
  * @property {number} THRESHOLD - Aggravation level that triggers insurrection (80+)
+ * @property {number} POST_REBELLION_AGGRAVATION - Aggravation reset after armies rebel
  * @property {number} RESOLVED_FERVOR_DROP - Fervor reduction when insurrection is resolved
  * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
  */
 export const INSURRECTION_CONSTANTS = {
   THRESHOLD: 80,
+  POST_REBELLION_AGGRAVATION: 30,
   RESOLVED_FERVOR_DROP: 20,
   RESOLVED_APPROVAL_SHOCK: 15
 };
@@ -375,6 +384,7 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
  * @property {number} ALLOWANCE_CAP_TICKS - Maximum stored allowance in ticks worth (4)
  * @property {number} APPROVAL_SCALE_MIN - Requisition multiplier at 0 approval (50%)
  * @property {number} APPROVAL_SCALE_MAX - Requisition multiplier at 100 approval (200%)
+ * @property {number} REQUISITION_POOL_TURNS - Consumption requisition payout cadence in turns (15)
  */
 export const CONSUMPTION_REQUISITION_CONSTANTS = {
   CREDITS_PER_REQUISITION: 1000,                    // Conversion rate: 1000 credits = 1 requisition
@@ -383,7 +393,16 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
   ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
   ALLOWANCE_CAP_TICKS: 4,                           // Maximum allowance (in ticks worth)
   APPROVAL_SCALE_MIN: 0.5,                          // At 0 approval, contribute 50% requisition
-  APPROVAL_SCALE_MAX: 2.0                           // At 100 approval, contribute 200% requisition
+  APPROVAL_SCALE_MAX: 2.0,                          // At 100 approval, contribute 200% requisition
+  REQUISITION_POOL_TURNS: 15,                       // Pool consumption requisition for 15 turns before payout
+  SOURCE_MULTIPLIERS: {
+    empire_needs: 1.0,
+    empire_wants: 1.0,
+    army_needs: 1.0,
+    army_wants: 1.0,
+    improvement_sustainment: 1.0,
+    unknown: 1.0
+  }
 };
 
 /**

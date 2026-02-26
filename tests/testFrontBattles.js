@@ -5,10 +5,13 @@
  * Tests MP-axis battles with morale badges and lockout mechanics
  */
 
-import { createGameState, createArmy, createUnit } from '../src/game/types.js';
+import { createGameState, createArmy, createUnit, createEmpire } from '../src/game/types.js';
 import { simulateBattleTick, startBattle, getActiveBattles } from '../src/game/frontBattles.js';
 import { collectArmiesInBattle, isRegularArmy } from '../src/game/turn.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
+import { checkInsurrections } from '../src/game/insurrection.js';
+import { INSURRECTION_CONSTANTS } from '../src/game/constants.js';
+import { startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
 
 
 // Helper to create a test state with two armies
@@ -357,6 +360,95 @@ function testIsRegularArmy() {
   return false;
 }
 
+// Test 8: Rebellion resets aggravation to prevent immediate retrigger
+function testInsurrectionResetsAggravation() {
+  console.log('\n=== Test 8: Rebellion resets aggravation ===');
+
+  const state = createGameState(12345);
+  state.turn = 42;
+  state.insurrections = [];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Aggravated Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+  ];
+
+  checkInsurrections(state);
+
+  const army = state.armies[0];
+  const hasInsurrection = state.insurrections.length === 1;
+  const resetApplied = army.aggravation === INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+
+  if (hasInsurrection && resetApplied) {
+    console.log('✓ Insurrection spawned and aggravation reset');
+    return true;
+  }
+
+  console.log('✗ Insurrection/aggravation reset behavior is incorrect');
+  return false;
+}
+
+// Test 9: Low approval alone should not trigger insurrections
+function testLowApprovalDoesNotTriggerInsurrection() {
+  console.log('\n=== Test 9: Low approval alone does not trigger insurrection ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Low Approval Empire', 0)];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Calm Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD - 1)
+  ];
+
+  checkInsurrections(state);
+
+  if (state.insurrections.length === 0) {
+    console.log('✓ No insurrection triggered from low approval when aggravation is below threshold');
+    return true;
+  }
+
+  console.log('✗ Insurrection should not trigger from approval alone');
+  return false;
+}
+
+// Test 10: Rebellion victory still resolves insurrection and resets aggravation
+function testRebellionVictoryResetsAndResolves() {
+  console.log('\n=== Test 10: Rebellion victory resolves/reset ===');
+
+  const state = createGameState(12345);
+  state.turn = 7;
+  state.empires = [
+    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire2', 'Loyal Empire', 60)
+  ];
+
+  const rebelliousArmy = createArmy('rebel_army', 'empire1', 'Rebel Army', 60, 60, INSURRECTION_CONSTANTS.THRESHOLD + 10, 50, 50, 5000);
+  const loyalArmy = createArmy('loyal_army', 'empire2', 'Loyal Army', 60, 60, 10, 50, 50, 6000);
+  state.armies = [rebelliousArmy, loyalArmy];
+  state.insurrections = [{ id: 'insurrection_7', armies: ['rebel_army'], active: true }];
+
+  const { front } = startInsurrectionBattle(state, state.insurrections[0], [loyalArmy], () => 0.5);
+  if (!front) {
+    console.log('✗ Failed to create insurrection battle front');
+    return false;
+  }
+
+  handleInsurrectionBattleEnd(state, front, 'right');
+
+  const insurrection = state.insurrections.find(ins => ins.id === 'insurrection_7');
+  const rebelAfter = state.armies.find(a => a.id === 'rebel_army');
+
+  if (!insurrection || insurrection.active) {
+    console.log('✗ Insurrection should resolve even on rebellion victory');
+    return false;
+  }
+  if (!rebelAfter || rebelAfter.aggravation !== INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
+    console.log('✗ Rebellious army aggravation was not reset after rebellion victory');
+    return false;
+  }
+
+  console.log('✓ Rebellion victory resolves insurrection and resets aggravation');
+  return true;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -369,7 +461,10 @@ const results = {
   'killRate creates permanent losses': testKillRatePermanentLosses(),
   'Recovery pool mechanics': testRecoveryPool(),
   'collectArmiesInBattle includes all participants': testCollectArmiesInBattle(),
-  'isRegularArmy filters temporary armies': testIsRegularArmy()
+  'isRegularArmy filters temporary armies': testIsRegularArmy(),
+  'Insurrection resets aggravation after rebellion': testInsurrectionResetsAggravation(),
+  'Low approval does not trigger insurrection': testLowApprovalDoesNotTriggerInsurrection(),
+  'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves()
 };
 
 

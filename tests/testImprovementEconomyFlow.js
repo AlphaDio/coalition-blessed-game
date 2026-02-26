@@ -7,6 +7,7 @@
 
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 import { createOrderAggregator } from '../src/game/economyTick/orders.js';
+import { emitArmyOrders } from '../src/game/economyTick/ordersPhase.js';
 import { applyOrderDurations, clearMarkets, saveMarketOrders } from '../src/game/economyTick/ordersLifecycle.js';
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
 import { canActivateEmergencyLaw, activateEmergencyLaw, tickEmergencyLaws } from '../src/game/emergencyLaws.js';
@@ -15,6 +16,7 @@ import { processEconomyTick } from '../src/game/economyTick.js';
 import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../src/game/improvements/types.js';
 import { clearMarket } from '../src/game/marketEconomy.js';
+import { initializeTurnConsumptionTracking, recordConsumption } from '../src/game/consumptionToRequisition.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
 initializeLogger({
@@ -139,11 +141,18 @@ console.log('=== Test 3: Improvement Production Merges Into Empire Sell Accumula
 }
 console.log();
 
-console.log('=== Test 4: Consumption Upgrade Retires Sell Accumulation ===');
+console.log('=== Test 4: Consumption Effects Use Persistent Commodity Pools ===');
 {
+  initializeTurnConsumptionTracking();
+
   const state = {
     coalitionConstruction: 4,
     coalitionModifiers: {},
+    consumptionEffectPools: {
+      empire_1: {
+        biomass: 90
+      }
+    },
     armies: [],
     empires: [
       {
@@ -158,32 +167,16 @@ console.log('=== Test 4: Consumption Upgrade Retires Sell Accumulation ===');
           }
         ]
       }
-    ],
-    marketOrders: {
-      buyOrders: [],
-      sellOffers: [
-        {
-          id: 'sell_consume_1',
-          owner_type: 'empire',
-          owner_id: 'empire_1',
-          commodity: 'biomass',
-          qty: 120,
-          filled_qty: 10,
-          ask_price: 1.0,
-          duration: 0,
-          max_duration: 1000000
-        }
-      ]
-    }
+    ]
   };
 
+  recordConsumption('biomass', 250, 'empire_1', 'empire_needs');
   const log = [];
   processEmpireStockpileConsumption(state, log);
 
-  const order = state.marketOrders.sellOffers[0];
-  const remaining = order.qty - order.filled_qty;
-  assert(remaining === 0, 'Consumption retires outstanding sell accumulation for triggering commodity');
-  assert(state.coalitionConstruction === 6, 'Consumption effect applied from retired sell accumulation');
+  const remainingPool = state.consumptionEffectPools?.empire_1?.biomass || 0;
+  assert(state.coalitionConstruction === 10, 'Consumption pool applies multiple threshold hits in one turn');
+  assert(remainingPool === 40, 'Consumption pool keeps carryover remainder after threshold hits');
 }
 console.log();
 
@@ -592,6 +585,298 @@ console.log('=== Test 12: Fractional Production Outputs Accumulate Without Floor
   assert(Boolean(sellOrder), 'Fractional production eventually creates a market sell order');
   assert((sellOrder?.qty || 0) > 0, 'Fractional production order quantity is non-zero');
   assert((sellOrder?.qty || 0) < 1, 'Fractional production release remains in fractional range');
+}
+console.log();
+
+console.log('=== Test 13: Positive Relations Discount Bilateral Trade Settlement ===');
+{
+  const state = {
+    diplomacy: {
+      relations: {
+        empire_1: { empire_2: 100 },
+        empire_2: { empire_1: 100 }
+      }
+    },
+    empires: [
+      { id: 'empire_1', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } },
+      { id: 'empire_2', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } }
+    ],
+    armies: [],
+    market: {
+      biomass: {
+        commodity: 'biomass',
+        price: 1.0,
+        last_price: 1.0,
+        floor_price: 1.0,
+        demand_qty: 0,
+        supply_qty: 0,
+        traded_qty: 0,
+        remaining_sell_offers_post_clear: [],
+        remaining_buy_offers_post_clear: []
+      },
+      remaining_sell_offers_post_clear: [],
+      remaining_buy_offers_post_clear: [],
+      buy_backlog_by_commodity: {},
+      buy_backlog_by_commodity_and_owner: {}
+    }
+  };
+
+  const buyOrders = [{
+    id: 'buy_rel_good_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    max_price: 20,
+    priority: 0,
+    category: 'needs'
+  }];
+  const sellOffers = [{
+    id: 'sell_rel_good_1',
+    owner_type: 'empire',
+    owner_id: 'empire_2',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    ask_price: 10,
+    priority: 0
+  }];
+
+  const trades = clearMarkets(state, [{ key: 'biomass' }], buyOrders, sellOffers);
+  const expectedPrice = 7; // 30% discount at +100 relation
+
+  assert(trades.length === 1, 'Market clears one bilateral trade under positive relation');
+  assert(Math.abs(trades[0].price - expectedPrice) < 1e-9, 'Positive relation applies discounted trade price');
+  assert(Math.abs(state.empires[0].budget_credits - 930) < 1e-9, 'Buyer pays discounted bilateral trade cost');
+  assert(Math.abs(state.empires[1].budget_credits - 1070) < 1e-9, 'Seller receives discounted bilateral trade revenue');
+}
+console.log();
+
+console.log('=== Test 14: Negative Relations Increase Bilateral Trade Settlement ===');
+{
+  const state = {
+    diplomacy: {
+      relations: {
+        empire_1: { empire_2: -100 },
+        empire_2: { empire_1: -100 }
+      }
+    },
+    empires: [
+      { id: 'empire_1', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } },
+      { id: 'empire_2', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } }
+    ],
+    armies: [],
+    market: {
+      biomass: {
+        commodity: 'biomass',
+        price: 1.0,
+        last_price: 1.0,
+        floor_price: 1.0,
+        demand_qty: 0,
+        supply_qty: 0,
+        traded_qty: 0,
+        remaining_sell_offers_post_clear: [],
+        remaining_buy_offers_post_clear: []
+      },
+      remaining_sell_offers_post_clear: [],
+      remaining_buy_offers_post_clear: [],
+      buy_backlog_by_commodity: {},
+      buy_backlog_by_commodity_and_owner: {}
+    }
+  };
+
+  const buyOrders = [{
+    id: 'buy_rel_bad_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    max_price: 20,
+    priority: 0,
+    category: 'needs'
+  }];
+  const sellOffers = [{
+    id: 'sell_rel_bad_1',
+    owner_type: 'empire',
+    owner_id: 'empire_2',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    ask_price: 10,
+    priority: 0
+  }];
+
+  const trades = clearMarkets(state, [{ key: 'biomass' }], buyOrders, sellOffers);
+  const expectedPrice = 13; // 30% penalty at -100 relation
+
+  assert(trades.length === 1, 'Market clears one bilateral trade under negative relation');
+  assert(Math.abs(trades[0].price - expectedPrice) < 1e-9, 'Negative relation applies penalized trade price');
+  assert(Math.abs(state.empires[0].budget_credits - 870) < 1e-9, 'Buyer pays penalized bilateral trade cost');
+  assert(Math.abs(state.empires[1].budget_credits - 1130) < 1e-9, 'Seller receives penalized bilateral trade revenue');
+}
+console.log();
+
+console.log('=== Test 15: Army Needs Are Damage-Gated And Wants Stay Persistent ===');
+{
+  const state = {
+    marketOrders: { buyOrders: [], sellOffers: [] },
+    market: {
+      biomass: { price: 2.0 },
+      rare_gases: { price: 3.0 }
+    },
+    coalitionModifiers: {},
+    empires: [createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 1000, budget_credits: 10000 })],
+    armies: []
+  };
+
+  const fullArmy = createArmy('army_full', 'empire_1', 'Full Army', 50, 60, 0, 50, 50, 1000);
+  fullArmy.mp.current = 1000;
+  fullArmy.demands = {
+    needs: { biomass: 0.01 },
+    wants: { rare_gases: 0.005 }
+  };
+
+  const damagedArmy = createArmy('army_dmg', 'empire_1', 'Damaged Army', 50, 60, 0, 50, 50, 1000);
+  damagedArmy.mp.current = 500;
+  damagedArmy.demands = {
+    needs: { biomass: 0.01 },
+    wants: { rare_gases: 0.005 }
+  };
+
+  state.armies.push(fullArmy, damagedArmy);
+
+  const { aggregateBuyOrder, buyOrders } = createOrderAggregator(state);
+  emitArmyOrders(state, aggregateBuyOrder, 1, 1);
+
+  const fullNeeds = buyOrders.find(order => order.tags?.army_id === 'army_full' && order.category === 'needs');
+  const fullWants = buyOrders.find(order => order.tags?.army_id === 'army_full' && order.category === 'wants');
+  const damagedNeeds = buyOrders.find(order => order.tags?.army_id === 'army_dmg' && order.category === 'needs');
+  const damagedWants = buyOrders.find(order => order.tags?.army_id === 'army_dmg' && order.category === 'wants');
+
+  assert(!fullNeeds, 'Full army does not post needs demand');
+  assert(Boolean(fullWants), 'Full army still posts wants demand');
+  assert(Boolean(damagedNeeds), 'Damaged army posts needs demand');
+  assert(Boolean(damagedWants), 'Damaged army posts wants demand');
+  assert(damagedNeeds?.owner_type === 'empire' && damagedNeeds?.owner_id === 'empire_1', 'Army demand orders are empire-owned');
+  assert((damagedNeeds?.tags?.demand_type === 'army_needs') && (damagedWants?.tags?.demand_type === 'army_wants'), 'Army demand orders carry routing tags');
+}
+console.log();
+
+console.log('=== Test 16: Empire-Owned Army Orders Credit Army Receipts On Fill ===');
+{
+  const state = {
+    empires: [
+      { id: 'empire_1', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } },
+      { id: 'empire_2', budget_credits: 1000, economy_spend: { needs: 0, wants: 0, order_fees: 0 } }
+    ],
+    armies: [createArmy('army_1', 'empire_1', 'Army One', 50, 60, 0, 50, 50, 1000)],
+    market: {
+      biomass: {
+        commodity: 'biomass',
+        price: 5.0,
+        last_price: 5.0,
+        floor_price: 5.0,
+        demand_qty: 0,
+        supply_qty: 0,
+        traded_qty: 0,
+        remaining_sell_offers_post_clear: [],
+        remaining_buy_offers_post_clear: []
+      },
+      remaining_sell_offers_post_clear: [],
+      remaining_buy_offers_post_clear: [],
+      buy_backlog_by_commodity: {},
+      buy_backlog_by_commodity_and_owner: {}
+    }
+  };
+
+  const buyOrders = [{
+    id: 'army_tagged_buy_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    max_price: 10,
+    priority: 2,
+    category: 'needs',
+    tags: { army_id: 'army_1', demand_type: 'army_needs' }
+  }];
+  const sellOffers = [{
+    id: 'sell_emp2_1',
+    owner_type: 'empire',
+    owner_id: 'empire_2',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    ask_price: 5,
+    priority: 0
+  }];
+
+  const trades = clearMarkets(state, [{ key: 'biomass' }], buyOrders, sellOffers);
+  const army = state.armies[0];
+
+  assert(trades.length === 1, 'Tagged army order trade clears');
+  assert(Math.abs(state.empires[0].budget_credits - 950) < 1e-9, 'Owning empire budget is debited for army order fill');
+  assert(Math.abs(state.empires[1].budget_credits - 1050) < 1e-9, 'Seller empire receives trade revenue');
+  assert((army.supply_state?.received?.biomass || 0) === 10, 'Filled quantity is routed to army supply receipts');
+}
+console.log();
+
+console.log('=== Test 17: Damaged Needs Drive Aggravation And Wants Deficits Reduce Fervor ===');
+{
+  const state = {
+    empires: [createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 10000 })],
+    armies: [],
+    battleFronts: []
+  };
+
+  const damagedArmy = createArmy('army_dmg_2', 'empire_1', 'Damaged Army', 50, 60, 10, 50, 50, 1000);
+  damagedArmy.mp.current = 500;
+  damagedArmy.reinforcementRate = 0;
+  damagedArmy.supply_state = {
+    needs_fulfillment: { biomass: 0 },
+    wants_fulfillment: { rare_gases: 0 },
+    shortages: {},
+    received: {},
+    needs_demand: { biomass: 5 },
+    wants_demand: { rare_gases: 5 }
+  };
+  damagedArmy.demands = {
+    needs: { biomass: 0.01 },
+    wants: { rare_gases: 0.005 }
+  };
+
+  const fullArmy = createArmy('army_full_2', 'empire_1', 'Full Army', 50, 60, 10, 50, 50, 1000);
+  fullArmy.mp.current = 1000;
+  fullArmy.reinforcementRate = 0;
+  fullArmy.supply_state = {
+    needs_fulfillment: {},
+    wants_fulfillment: { rare_gases: 0 },
+    shortages: {},
+    received: {},
+    needs_demand: {},
+    wants_demand: { rare_gases: 5 }
+  };
+  fullArmy.demands = {
+    needs: { biomass: 0.01 },
+    wants: { rare_gases: 0.005 }
+  };
+
+  state.armies.push(damagedArmy, fullArmy);
+
+  const damagedAggravationBefore = damagedArmy.aggravation;
+  const damagedFervorBefore = damagedArmy.fervor;
+  const fullAggravationBefore = fullArmy.aggravation;
+  const fullFervorBefore = fullArmy.fervor;
+
+  replenishArmyManpower(state, []);
+
+  assert(damagedArmy.aggravation > damagedAggravationBefore, 'Damaged army gains aggravation when needs are unmet');
+  assert(damagedArmy.fervor < damagedFervorBefore, 'Damaged army loses fervor when wants are unmet');
+  assert(fullArmy.aggravation === fullAggravationBefore, 'Full army does not gain aggravation from needs while undamaged');
+  assert(fullArmy.fervor < fullFervorBefore, 'Full army still loses fervor from unmet persistent wants');
 }
 console.log();
 

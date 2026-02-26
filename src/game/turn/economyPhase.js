@@ -1,11 +1,6 @@
 import { consumeRequisition } from '../economy.js';
 import { processEconomyTick } from '../economyTick.js';
-import { recordConsumption } from '../consumptionToRequisition.js';
-import {
-  consumeFromSellOrders,
-  getEmpireCommoditySellOrders,
-  getOrderAvailable
-} from '../marketOrderReserves.js';
+import { getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
 import { getLogger } from '../../modules/logger.js';
 
 export function handleEconomyTick(state, log, logger) {
@@ -45,136 +40,158 @@ function applyArmyBonus(state, empireId, bonusKey, amount) {
   return armies.length;
 }
 
-function applyConsumptionEffect(state, empire, rule, consumed, log, logger) {
-  const { commodity, threshold, effect } = rule;
+function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger) {
+  const { commodity, effect } = rule;
+  if (!effect || hits <= 0) return;
+
   const amount = effect.amount;
+  const scaledAmount = amount * hits;
 
   if (effect.type === 'population_percent') {
-    const increments = Math.floor(consumed / 100000);
-    const populationIncrease = Math.floor(empire.stats.population * (amount / 100) * increments);
+    const populationIncrease = Math.floor(empire.stats.population * (amount / 100) * hits);
     empire.stats.population += populationIncrease;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${populationIncrease} pop (${increments * amount}%)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${populationIncrease} pop (${(hits * amount).toFixed(2)}%, ${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_fervor_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'fervorBonus', amount);
+    const armyCount = applyArmyBonus(state, empire.id, 'fervorBonus', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} fervor bonus to ${armyCount} armies (until next scourge battle)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} fervor bonus to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_protection_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'protectionBonus', amount);
+    const armyCount = applyArmyBonus(state, empire.id, 'protectionBonus', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} protection bonus to ${armyCount} armies (until next scourge battle)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} protection bonus to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_resolve_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'resolveBonus', amount);
+    const armyCount = applyArmyBonus(state, empire.id, 'resolveBonus', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} resolve bonus to ${armyCount} armies (until next scourge battle)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} resolve bonus to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_kill_rate_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'killRateBonus', amount);
+    const armyCount = applyArmyBonus(state, empire.id, 'killRateBonus', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} kill rate bonus to ${armyCount} armies (until next scourge battle)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} kill rate bonus to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'law_progress_bonus') {
-    state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + amount;
+    state.coalitionModifiers.lawProgressBonus = (state.coalitionModifiers.lawProgressBonus || 0) + scaledAmount;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} law progress bonus (until law enacted)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} law progress bonus (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'research_speed_bonus') {
-    empire.stats.researchSpeedBonus = (empire.stats.researchSpeedBonus || 0) + amount;
+    empire.stats.researchSpeedBonus = (empire.stats.researchSpeedBonus || 0) + scaledAmount;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} research speed bonus (permanent)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} research speed bonus (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'industrial_output_bonus') {
-    state.coalitionModifiers.industrialOutputBonus = (state.coalitionModifiers.industrialOutputBonus || 0) + amount;
+    state.coalitionModifiers.industrialOutputBonus = (state.coalitionModifiers.industrialOutputBonus || 0) + scaledAmount;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} industrial output bonus (permanent)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} industrial output bonus (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'empire_approval_bonus') {
-    empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + amount;
+    empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + scaledAmount;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${amount} approval bonus (until next scourge battle)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} approval bonus (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'coalition_construction_bonus') {
-    const increments = Math.floor(consumed / threshold);
-    const bonus = increments * amount;
+    const bonus = scaledAmount;
     state.coalitionConstruction = (state.coalitionConstruction || 0) + bonus;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: consumed ${consumed}, +${bonus} coalition construction (permanent)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${bonus.toFixed(3)} coalition construction (${hits} hits)`
     );
   }
 }
 
 /**
- * Processes empire consumption upgrades from accumulated market sell orders.
- * When a commodity's outstanding sell quantity reaches a threshold, the empire
- * retires that accumulation and applies the configured bonus.
- * to apply effects like population growth, and tracks consumption for coalition requisition.
+ * Processes empire consumption effects from pooled regular consumption.
+ * Consumption is accumulated by empire+commodity across turns and triggers effect
+ * increments when a rule's threshold is reached. Pool remainder is carried forward.
  * @param {Object} state - The game state
  * @param {Function} log - Logging function
  */
 export function processEmpireStockpileConsumption(state, log) {
   const logger = getLogger();
+  if (!state.consumptionEffectPools || typeof state.consumptionEffectPools !== 'object') {
+    state.consumptionEffectPools = {};
+  }
+
   for (const empire of state.empires) {
+    if (!Array.isArray(empire.consumptionRules) || empire.consumptionRules.length === 0) {
+      continue;
+    }
+
+    const empireId = String(empire.id);
+    if (!state.consumptionEffectPools[empireId] || typeof state.consumptionEffectPools[empireId] !== 'object') {
+      state.consumptionEffectPools[empireId] = {};
+    }
+    const empirePool = state.consumptionEffectPools[empireId];
+    const consumedByCommodity = getEmpireTurnConsumptionByCommodity(empire.id);
+
     for (const rule of empire.consumptionRules) {
       const { commodity, threshold } = rule;
-      const sellOrders = getEmpireCommoditySellOrders(state, empire.id, commodity);
-      const available = sellOrders.reduce((sum, order) => sum + getOrderAvailable(order), 0);
-      if (available >= threshold) {
-        const consumed = consumeFromSellOrders(sellOrders, available);
-
-        // Track consumption for coalition requisition generation (with empire ID for approval scaling)
-        recordConsumption(commodity, consumed, empire.id);
-        applyConsumptionEffect(state, empire, rule, consumed, log, logger);
+      const normalizedThreshold = Number(threshold);
+      if (!Number.isFinite(normalizedThreshold) || normalizedThreshold <= 0) {
+        logger.warn(`Skipping invalid consumption threshold for ${empire.name} ${commodity}: ${threshold}`);
+        continue;
       }
+
+      const consumedThisTurn = Math.max(0, Number(consumedByCommodity[commodity] || 0));
+      const existingPool = Math.max(0, Number(empirePool[commodity] || 0));
+      const updatedPool = existingPool + consumedThisTurn;
+      const hits = Math.floor(updatedPool / normalizedThreshold);
+      const spentFromPool = hits * normalizedThreshold;
+
+      empirePool[commodity] = Math.max(0, updatedPool - spentFromPool);
+      if (hits <= 0) continue;
+
+      applyConsumptionEffect(state, empire, rule, spentFromPool, hits, log, logger);
     }
   }
 }

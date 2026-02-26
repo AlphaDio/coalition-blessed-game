@@ -15,6 +15,7 @@ import { createGameState, createArmy, createEmpire } from '../src/game/types.js'
 import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
 import { simulateBattleTick, getActiveBattles } from '../src/game/frontBattles.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
+import { INSURRECTION_CONSTANTS } from '../src/game/constants.js';
 
 // Helper to create a full test state with empires and armies
 function createFullTestState(seed = 12345) {
@@ -287,6 +288,71 @@ function testDamageDistributionAfterBattle() {
   return true;
 }
 
+// Test 6b: Permanent losses reduce MP max/manpower on original armies
+function testPermanentLossReducesCapacity() {
+  console.log('\n=== Test 6b: Permanent losses reduce army MP max/manpower ===');
+
+  const state = createFullTestState();
+  state.scourgeFervor = 60;
+  const participatingArmies = state.armies.filter(a => a.organization > 30);
+  const initialCaps = {};
+  participatingArmies.forEach(army => {
+    initialCaps[army.id] = army.mp.max;
+  });
+
+  const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
+  if (!front) {
+    console.log('✗ Failed to start Scourge battle');
+    return false;
+  }
+
+  let ticks = 0;
+  while (front.state === 'ACTIVE' && ticks < 500) {
+    simulateBattleTick(front, state);
+    ticks++;
+  }
+  if (front.state !== 'ENDED') {
+    console.log('✗ Battle did not end for capacity-loss test');
+    return false;
+  }
+
+  const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
+  const coalitionWon = coalitionArmy && coalitionArmy.mp.current > 0;
+  const winnerSide = coalitionWon ? 'left' : 'right';
+  handleScourgeBattleEnd(state, front, winnerSide);
+
+  let anyReduced = false;
+  let invalidState = false;
+  participatingArmies.forEach(army => {
+    const updated = state.armies.find(a => a.id === army.id);
+    if (!updated) return;
+
+    if (updated.mp.max < initialCaps[army.id] - 0.001) {
+      anyReduced = true;
+    }
+    if (updated.mp.current > updated.mp.max + 0.001) {
+      invalidState = true;
+    }
+    if (Math.abs((updated.manpower || 0) - (updated.mp.max || 0)) > 0.001) {
+      invalidState = true;
+    }
+  });
+
+  if (invalidState) {
+    console.log('✗ Invalid post-battle army state (current > max or manpower mismatch)');
+    return false;
+  }
+
+  const coalitionPermanentLosses = front.permanentLosses?.left || 0;
+  if (coalitionPermanentLosses > 0 && !anyReduced) {
+    console.log('✗ Permanent losses recorded but no army capacity was reduced');
+    return false;
+  }
+
+  console.log(`✓ Permanent losses=${coalitionPermanentLosses.toFixed(1)} reflected in army capacity`);
+  return true;
+}
+
 // Test 6: Scourge army persists and updates across battles
 function testScourgeArmyPersistence() {
   console.log('\n=== Test 6: Scourge army persists across battles ===');
@@ -409,8 +475,26 @@ function testInsurrectionBattle() {
   // Handle battle end
   const winnerSide = loyalCombined.mp.current > 0 ? 'left' : 'right';
   const result = handleInsurrectionBattleEnd(state, front, winnerSide);
-  
+
   console.log('Winner:', winnerSide === 'left' ? 'Loyal forces' : 'Rebellious forces');
+
+  const resolvedInsurrection = state.insurrections.find(ins => ins.id === 'insurrection_1');
+  if (!resolvedInsurrection || resolvedInsurrection.active) {
+    console.log('✗ Insurrection was not resolved after battle end');
+    return false;
+  }
+
+  const updatedRebelArmy = state.armies.find(a => a.id === 'army3');
+  if (!updatedRebelArmy) {
+    console.log('✗ Rebellious original army missing after battle resolution');
+    return false;
+  }
+  if (updatedRebelArmy.aggravation !== INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
+    console.log('✗ Rebellious army aggravation was not reset after insurrection resolution');
+    return false;
+  }
+
+  console.log('✓ Insurrection resolved and aggravation reset to post-rebellion baseline');
   
   return true;
 }
@@ -464,6 +548,7 @@ const results = {
   'Coalition combined army aggregation': testCoalitionCombinedArmy(),
   'Full battle simulation': testFullBattleSimulation(),
   'Damage distribution after battle': testDamageDistributionAfterBattle(),
+  'Permanent loss reduces MP capacity': testPermanentLossReducesCapacity(),
   'Scourge army persistence': testScourgeArmyPersistence(),
   'Insurrection battle': testInsurrectionBattle(),
   'Direct manpower mechanics': testDirectManpowerMechanics()

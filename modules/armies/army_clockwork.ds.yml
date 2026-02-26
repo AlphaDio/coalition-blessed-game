@@ -21,10 +21,10 @@ declares:
     name: "Quantum Legion"
     organization: 80
     fervor: 40
-    aggravation: 30
+    aggravation: 28
     command: 70
     recoveryRate: 40
-    reinforcementRate: 20
+    reinforcementRate: 36
     manpower: 8000
     dmgPerUnitMP: 1.2
     dmgPerTickMO: 2.8
@@ -33,9 +33,7 @@ declares:
     killRate: 0.25 # Highest kill rate in the game
     demands:
       needs:
-        quantum_circuits: 0.0015
-        nano_machines: 0.001
+        quantum_circuits: 0.0012
+        nano_machines: 0.0009
       wants:
-        sentient_cores: 0.0002
-    signatureCommodity: wormhole_reactors
-    signatureThreshold: 10
+        sentient_cores: 0.00025

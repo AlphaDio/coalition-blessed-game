@@ -1,3 +1,4 @@
+import { ECONOMY_CONSTANTS } from '../constants.js';
 import { clampStat } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
@@ -13,13 +14,19 @@ function averageFulfillment(fulfillmentMap, fallback = 1) {
 }
 
 function getArmySupplySignals(army) {
-  const needsDemandCount = Object.keys(army.demands?.needs || {}).length;
-  const wantsDemandCount = Object.keys(army.demands?.wants || {}).length;
+  const needsDemandCount = Object.values(army.supply_state?.needs_demand || {})
+    .filter(value => Number.isFinite(value) && value > 0)
+    .length;
+  const wantsDemandCount = Object.values(army.supply_state?.wants_demand || {})
+    .filter(value => Number.isFinite(value) && value > 0)
+    .length;
   const needsFallback = needsDemandCount > 0 ? 0 : 1;
   const wantsFallback = wantsDemandCount > 0 ? 0 : 1;
 
   const needsFulfillment = averageFulfillment(army.supply_state?.needs_fulfillment, needsFallback);
   const wantsFulfillment = averageFulfillment(army.supply_state?.wants_fulfillment, wantsFallback);
+  const needsDeficit = Math.max(0, 1 - needsFulfillment);
+  const wantsDeficit = Math.max(0, 1 - wantsFulfillment);
 
   // Needs are mandatory for replacement throughput. Wants only provide upside.
   const replenishmentMultiplier = clamp((0.15 + (needsFulfillment * 0.85)) + Math.max(0, wantsFulfillment - 0.7) * 0.4, 0.05, 1.35);
@@ -30,6 +37,10 @@ function getArmySupplySignals(army) {
   return {
     needsFulfillment,
     wantsFulfillment,
+    needsDeficit,
+    wantsDeficit,
+    needsActive: needsDemandCount > 0,
+    wantsActive: wantsDemandCount > 0,
     replenishmentMultiplier,
     growthSignal
   };
@@ -95,14 +106,35 @@ export function replenishArmyManpower(state, activeBattles) {
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
 
   replenishingArmies.forEach(army => {
-    // Skip if already at max
-    if (army.mp.current >= army.mp.max) return;
-
     const empire = empireMap.get(army.empireId);
     if (!empire) {
       logger.debug(`Army ${army.name} has no empire, skipping replenishment`);
       return;
     }
+
+    const maxMP = Math.max(1, army.mp?.max || army.manpower || 0);
+    const currentMP = Math.max(0, army.mp?.current || 0);
+    const damageRatio = clamp((maxMP - currentMP) / maxMP, 0, 1);
+    const supplySignals = getArmySupplySignals(army);
+
+    // Damage-gated unmet needs drive rebellion pressure.
+    const needsAggravationGain = (damageRatio > 0 && supplySignals.needsActive)
+      ? ECONOMY_CONSTANTS.ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK * supplySignals.needsDeficit * damageRatio
+      : 0;
+    if (needsAggravationGain > 0) {
+      army.aggravation = clampStat((army.aggravation || 0) + needsAggravationGain, 0, 100);
+    }
+
+    // Wants are persistent: unmet wants reduce morale/enthusiasm over time.
+    const wantsFervorLoss = supplySignals.wantsActive
+      ? ECONOMY_CONSTANTS.ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK * supplySignals.wantsDeficit
+      : 0;
+    if (wantsFervorLoss > 0) {
+      army.fervor = clampStat((army.fervor || 0) - wantsFervorLoss, 0, 100);
+    }
+
+    // Skip manpower refill if already at max (stress effects still applied above).
+    if (army.mp.current >= army.mp.max) return;
 
     // Base replenishment rate (per tick)
     const baseRate = army.reinforcementRate || 100;
@@ -141,8 +173,6 @@ export function replenishArmyManpower(state, activeBattles) {
       populationModifier = 2.0;
     }
 
-    const supplySignals = getArmySupplySignals(army);
-
     // Calculate effective replenishment rate
     // Apply multiplicative modifier (default 1.0)
     const replenishmentMultiplier = army.replenishmentMultiplier || 1.0;
@@ -180,11 +210,12 @@ export function replenishArmyManpower(state, activeBattles) {
     army.mp.current += replenished;
 
     // Debug logging for significant replenishment
-    if (replenished > 50 || capacityGrowth > 2) {
+    if (replenished > 50 || capacityGrowth > 2 || needsAggravationGain > 0.2 || wantsFervorLoss > 0.2) {
       logger.debug(
         `Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP` +
         ` (needs ${(supplySignals.needsFulfillment * 100).toFixed(0)}%, wants ${(supplySignals.wantsFulfillment * 100).toFixed(0)}%,` +
-        ` rate ${effectiveRate.toFixed(0)}, cap ${Math.floor(army.mp.max)})`
+        ` rate ${effectiveRate.toFixed(0)}, cap ${Math.floor(army.mp.max)},` +
+        ` aggravation +${needsAggravationGain.toFixed(2)}, fervor -${wantsFervorLoss.toFixed(2)})`
       );
     }
   });

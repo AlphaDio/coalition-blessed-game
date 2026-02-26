@@ -80,7 +80,9 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
       needs_fulfillment: {},
       wants_fulfillment: {},
       shortages: {},
-      received: {} // Track received commodities this tick
+      received: {}, // Track received commodities this tick
+      needs_demand: {},
+      wants_demand: {}
     },
     demands: {
       needs: {}, // commodity_key -> qty_per_manpower_per_tick
@@ -471,6 +473,9 @@ export function createGameState(seed = 0) {
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0,
       tick_delay_multiplier: 1.0,
+      consumptionShareMultiplier: 1.0,
+      consumptionShareBonus: 0,
+      consumptionSourceMultipliers: {},
       hero_siphon_efficiency_mult: 0,
       hero_siphon_efficiency_add: 0,
       lawProgressBonus: 0,
@@ -500,11 +505,16 @@ export function createGameState(seed = 0) {
       requisition: 500, // Starting requisition for purchasing improvements
       treasury_credits: 10000, // Coalition treasury (long-term storage)
       allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
+      consumption_requisition_pool: 0, // Consumption requisition accrual pool (paid out in cadence)
+      consumption_requisition_pool_turns: 0, // Turns progressed in current requisition payout cycle
       bank: 0
       // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
       // and credits from the allowance pool (up to allowance cap per tick)
       // Modifiable by multiplicativeShare and additiveShare modifiers
     },
+
+    // Per-empire pooled regular consumption for commodity effect triggers.
+    consumptionEffectPools: {},
     
     // Market economy system (updated with floor prices)
     market: null, // Market state per commodity (initialized on first economy tick)
@@ -623,6 +633,36 @@ export function migrateGameState(state) {
       if (!Array.isArray(army.timedFervorBonuses)) {
         army.timedFervorBonuses = [];
       }
+
+      if (!army.supply_state || typeof army.supply_state !== 'object') {
+        army.supply_state = {
+          needs_fulfillment: {},
+          wants_fulfillment: {},
+          shortages: {},
+          received: {},
+          needs_demand: {},
+          wants_demand: {}
+        };
+      } else {
+        if (!army.supply_state.needs_fulfillment || typeof army.supply_state.needs_fulfillment !== 'object') {
+          army.supply_state.needs_fulfillment = {};
+        }
+        if (!army.supply_state.wants_fulfillment || typeof army.supply_state.wants_fulfillment !== 'object') {
+          army.supply_state.wants_fulfillment = {};
+        }
+        if (!army.supply_state.shortages || typeof army.supply_state.shortages !== 'object') {
+          army.supply_state.shortages = {};
+        }
+        if (!army.supply_state.received || typeof army.supply_state.received !== 'object') {
+          army.supply_state.received = {};
+        }
+        if (!army.supply_state.needs_demand || typeof army.supply_state.needs_demand !== 'object') {
+          army.supply_state.needs_demand = {};
+        }
+        if (!army.supply_state.wants_demand || typeof army.supply_state.wants_demand !== 'object') {
+          army.supply_state.wants_demand = {};
+        }
+      }
     });
   }
   
@@ -697,6 +737,15 @@ export function migrateGameState(state) {
   if (state.coalitionModifiers.tick_delay_multiplier === undefined) {
     state.coalitionModifiers.tick_delay_multiplier = 1.0;
   }
+  if (state.coalitionModifiers.consumptionShareMultiplier === undefined) {
+    state.coalitionModifiers.consumptionShareMultiplier = 1.0;
+  }
+  if (state.coalitionModifiers.consumptionShareBonus === undefined) {
+    state.coalitionModifiers.consumptionShareBonus = 0;
+  }
+  if (!state.coalitionModifiers.consumptionSourceMultipliers || typeof state.coalitionModifiers.consumptionSourceMultipliers !== 'object') {
+    state.coalitionModifiers.consumptionSourceMultipliers = {};
+  }
   if (state.coalitionModifiers.law_progress_speed === undefined) {
     state.coalitionModifiers.law_progress_speed = 0;
   }
@@ -706,6 +755,54 @@ export function migrateGameState(state) {
       improvement_build_speed_mult: 1.0,
       requisition_gen_mult: 1.0
     };
+  }
+  if (!state.coalitionEconomy || typeof state.coalitionEconomy !== 'object') {
+    state.coalitionEconomy = {
+      requisition: 0,
+      treasury_credits: 0,
+      allowance_credits: 0,
+      consumption_requisition_pool: 0,
+      consumption_requisition_pool_turns: 0,
+      bank: 0
+    };
+  } else {
+    if (!Number.isFinite(state.coalitionEconomy.requisition)) {
+      state.coalitionEconomy.requisition = 0;
+    }
+    if (!Number.isFinite(state.coalitionEconomy.treasury_credits)) {
+      state.coalitionEconomy.treasury_credits = 0;
+    }
+    if (!Number.isFinite(state.coalitionEconomy.allowance_credits)) {
+      state.coalitionEconomy.allowance_credits = 0;
+    }
+    if (!Number.isFinite(state.coalitionEconomy.consumption_requisition_pool)) {
+      state.coalitionEconomy.consumption_requisition_pool = 0;
+    }
+    if (!Number.isFinite(state.coalitionEconomy.consumption_requisition_pool_turns)) {
+      state.coalitionEconomy.consumption_requisition_pool_turns = 0;
+    }
+    if (!Number.isFinite(state.coalitionEconomy.bank)) {
+      state.coalitionEconomy.bank = 0;
+    }
+  }
+  if (!state.consumptionEffectPools || typeof state.consumptionEffectPools !== 'object' || Array.isArray(state.consumptionEffectPools)) {
+    state.consumptionEffectPools = {};
+  } else {
+    Object.entries(state.consumptionEffectPools).forEach(([empireId, commodityPools]) => {
+      if (!commodityPools || typeof commodityPools !== 'object' || Array.isArray(commodityPools)) {
+        state.consumptionEffectPools[empireId] = {};
+        return;
+      }
+
+      Object.entries(commodityPools).forEach(([commodity, pooledValue]) => {
+        const normalized = Number(pooledValue);
+        if (!Number.isFinite(normalized) || normalized <= 0) {
+          delete state.consumptionEffectPools[empireId][commodity];
+          return;
+        }
+        state.consumptionEffectPools[empireId][commodity] = normalized;
+      });
+    });
   }
 
   if (state.market && typeof state.market === 'object') {

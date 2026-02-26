@@ -1,12 +1,29 @@
 import { clearMarket } from '../marketEconomy.js';
+import { MARKET_CONSTANTS } from '../constants.js';
 import {
   IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE,
   creditSustainmentReceipts
 } from '../improvements/engine/sustainment.js';
+import { CONSUMPTION_SOURCES, recordConsumption } from '../consumptionToRequisition.js';
 
 function ensureEmpireSpend(empire) {
   empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
   return empire.economy_spend;
+}
+
+function getConsumptionSourceFromBuyOrder(buyOrder) {
+  if (!buyOrder) return CONSUMPTION_SOURCES.UNKNOWN;
+  const demandType = buyOrder.tags?.demand_type;
+  if (demandType === 'army_needs') return CONSUMPTION_SOURCES.ARMY_NEEDS;
+  if (demandType === 'army_wants') return CONSUMPTION_SOURCES.ARMY_WANTS;
+  if (buyOrder.tags?.army_id) {
+    return buyOrder.category === 'wants'
+      ? CONSUMPTION_SOURCES.ARMY_WANTS
+      : CONSUMPTION_SOURCES.ARMY_NEEDS;
+  }
+  return buyOrder.category === 'wants'
+    ? CONSUMPTION_SOURCES.EMPIRE_WANTS
+    : CONSUMPTION_SOURCES.EMPIRE_NEEDS;
 }
 
 function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
@@ -23,12 +40,36 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
       creditSustainmentReceipts(state, buyOrder.owner_id, trade.commodity, trade.qty);
       return;
     }
+
+    const consumptionSource = getConsumptionSourceFromBuyOrder(buyOrder);
+    recordConsumption(trade.commodity, trade.qty, buyOrder.owner_id, consumptionSource);
+
+    const taggedArmyId = buyOrder.tags?.army_id;
+    if (taggedArmyId) {
+      const army = armiesById.get(taggedArmyId);
+      if (army) {
+        if (!army.supply_state) {
+          army.supply_state = { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} };
+        }
+        if (!army.supply_state.received) army.supply_state.received = {};
+        army.supply_state.received[trade.commodity] = (army.supply_state.received[trade.commodity] || 0) + trade.qty;
+      }
+    }
     return;
   }
 
   if (buyOrder.owner_type === 'army') {
     const army = armiesById.get(buyOrder.owner_id);
     if (!army) return;
+
+    const consumptionSource = buyOrder.category === 'wants'
+      ? CONSUMPTION_SOURCES.ARMY_WANTS
+      : CONSUMPTION_SOURCES.ARMY_NEEDS;
+    recordConsumption(trade.commodity, trade.qty, army.empireId, consumptionSource);
+
+    if (!army.supply_state) {
+      army.supply_state = { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} };
+    }
     if (!army.supply_state.received) army.supply_state.received = {};
     army.supply_state.received[trade.commodity] = (army.supply_state.received[trade.commodity] || 0) + trade.qty;
   }
@@ -56,6 +97,39 @@ function mergeOrdersById(baseOrders, overridingOrders) {
 
 function getRemainingQty(order) {
   return Math.max(0, (order?.qty || 0) - (order?.filled_qty || 0));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getOrderEmpireId(order, armiesById) {
+  if (!order) return null;
+  if (order.owner_type === 'empire') return order.owner_id || null;
+  if (order.owner_type === 'army') {
+    const army = armiesById.get(order.owner_id);
+    return army?.empireId || null;
+  }
+  return null;
+}
+
+function getRelationValue(state, fromEmpireId, toEmpireId) {
+  if (!fromEmpireId || !toEmpireId || fromEmpireId === toEmpireId) return 0;
+  return state?.diplomacy?.relations?.[fromEmpireId]?.[toEmpireId] ?? 0;
+}
+
+function applyRelationAdjustedTradePrice(state, trade, buyOrder, sellOffer, armiesById) {
+  const buyerEmpireId = getOrderEmpireId(buyOrder, armiesById);
+  const sellerEmpireId = getOrderEmpireId(sellOffer, armiesById);
+  if (!buyerEmpireId || !sellerEmpireId) return;
+
+  const relation = clamp(getRelationValue(state, buyerEmpireId, sellerEmpireId), -100, 100);
+  const swingCap = MARKET_CONSTANTS.RELATION_PRICE_SWING_CAP || 0;
+  const relationMultiplier = 1 - ((relation / 100) * swingCap);
+  const adjustedPrice = trade.price * relationMultiplier;
+  const buyMaxPrice = Number.isFinite(buyOrder?.max_price) ? buyOrder.max_price : adjustedPrice;
+
+  trade.price = Math.max(0, Math.min(adjustedPrice, buyMaxPrice));
 }
 
 export function applyOrderDurations(state, buyOrders, sellOffers) {
@@ -147,7 +221,6 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
     if (!marketState) return;
 
     const clearResult = clearMarket(validBuyOrders, validSellOffers, marketState);
-    allTrades.push(...clearResult.trades);
 
     // Keep per-commodity post-clear liquidity snapshots for UI/inspection.
     marketState.remaining_sell_offers_post_clear = clearResult.unfilledSells;
@@ -174,8 +247,10 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
       const sellOffer = sellOffersById.get(trade.sell_offer_id);
       if (!buyOrder || !sellOffer) return;
 
+      applyRelationAdjustedTradePrice(state, trade, buyOrder, sellOffer, armiesById);
       applyBuyTrade(state, trade, buyOrder, empiresById, armiesById);
       applySellTrade(trade, sellOffer, empiresById);
+      allTrades.push(trade);
     });
 
   });

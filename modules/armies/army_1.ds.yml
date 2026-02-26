@@ -21,10 +21,10 @@ declares:
     name: "1st Stellar Battle Fleet"
     organization: 70
     fervor: 60
-    aggravation: 60
+    aggravation: 42
     command: 55
     recoveryRate: 55
-    reinforcementRate: 55
+    reinforcementRate: 52
     manpower: 10000
     dmgPerUnitMP: 1.05
     dmgPerTickMO: 2.6
@@ -33,9 +33,7 @@ declares:
     killRate: 0.11
     demands:
       needs:
-        super_alloys: 0.002
-        plasma_fuel: 0.0015
+        super_alloys: 0.0016
+        plasma_fuel: 0.0012
       wants:
-        rare_gases: 0.001
-    signatureCommodity: super_alloys
-    signatureThreshold: 10000
+        rare_gases: 0.0009

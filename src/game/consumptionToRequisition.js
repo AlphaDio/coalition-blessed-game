@@ -2,11 +2,10 @@
  * Consumption-Based Requisition System
  *
  * Converts empire commodity consumption directly into coalition requisition and credits.
- * When empires consume commodities from accumulated market sell orders, the coalition receives:
- * - Requisition based on consumption value (share rate × consumption value / 1000)
- * - Credits from the coalition allowance (up to the allowance cap per tick)
- *
- * The system tracks consumption by commodity and calculates value based on market prices.
+ * Coalition gain is based on per-source consumption value:
+ * - Empire needs/wants (market fills)
+ * - Army needs/wants (empire-owned tagged market fills)
+ * - Improvement sustainment (goods actually consumed from receipts)
  */
 
 import { getLogger } from '../modules/logger.js';
@@ -23,11 +22,10 @@ export const CREDITS_PER_REQUISITION = CONSUMPTION_REQUISITION_CONSTANTS.CREDITS
  * Base coalition share of consumption value (as percentage)
  * Can be modified by multiplicative and additive modifiers
  */
-export const COALITION_CONSUMPTION_SHARE_BASE = CONSUMPTION_REQUISITION_CONSTANTS.COALITION_CONSUMPTION_SHARE_BASE; // 10%
+export const COALITION_CONSUMPTION_SHARE_BASE = CONSUMPTION_REQUISITION_CONSTANTS.COALITION_CONSUMPTION_SHARE_BASE;
 
 /**
  * Multiplier for requisition obtained from conversion (affects the conversion rate)
- * 10x multiplier means consumption-based requisition is 10x more valuable
  */
 export const CONVERSION_REQUISITION_MULTIPLIER = CONSUMPTION_REQUISITION_CONSTANTS.CONVERSION_REQUISITION_MULTIPLIER;
 
@@ -40,7 +38,13 @@ export const ALLOWANCE_PER_TICK = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_PE
  * Maximum allowance (in ticks worth)
  */
 export const ALLOWANCE_CAP_TICKS = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_CAP_TICKS;
-export const ALLOWANCE_MAX = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS; // 4000
+export const ALLOWANCE_MAX = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS;
+
+/**
+ * Consumption requisition payout cadence.
+ * Consumption-generated requisition is pooled and paid out every N turns.
+ */
+export const REQUISITION_POOL_TURNS = CONSUMPTION_REQUISITION_CONSTANTS.REQUISITION_POOL_TURNS || 15;
 
 /**
  * Approval scaling for requisition contribution
@@ -51,207 +55,355 @@ export const APPROVAL_SCALE_MIN = CONSUMPTION_REQUISITION_CONSTANTS.APPROVAL_SCA
 export const APPROVAL_SCALE_MAX = CONSUMPTION_REQUISITION_CONSTANTS.APPROVAL_SCALE_MAX;
 
 /**
- * Track consumption during a turn phase
- * @type {Object} Map of empireId -> { commodity -> quantity consumed }
+ * Per-source weighting for consumption value before coalition share is applied.
+ */
+export const CONSUMPTION_SOURCE_MULTIPLIERS = CONSUMPTION_REQUISITION_CONSTANTS.SOURCE_MULTIPLIERS || {};
+
+export const CONSUMPTION_SOURCES = Object.freeze({
+  EMPIRE_NEEDS: 'empire_needs',
+  EMPIRE_WANTS: 'empire_wants',
+  ARMY_NEEDS: 'army_needs',
+  ARMY_WANTS: 'army_wants',
+  IMPROVEMENT_SUSTAINMENT: 'improvement_sustainment',
+  UNKNOWN: 'unknown'
+});
+
+/**
+ * Track consumption during a turn phase.
+ * Map of empireId -> { byCommodity, bySource }
  */
 let turnConsumptionTracker = {};
 
+function normalizeSource(source) {
+  if (!source) return CONSUMPTION_SOURCES.UNKNOWN;
+  const normalized = String(source).trim().toLowerCase();
+  if (!normalized) return CONSUMPTION_SOURCES.UNKNOWN;
+  return normalized;
+}
+
+function ensureEmpireConsumptionLedger(empireId) {
+  const key = String(empireId);
+  if (!turnConsumptionTracker[key]) {
+    turnConsumptionTracker[key] = {
+      byCommodity: {},
+      bySource: {}
+    };
+  }
+  return turnConsumptionTracker[key];
+}
+
+function getCommodityPrice(market, commodityId) {
+  const commodityMarket = market?.[commodityId];
+  if (!commodityMarket) return 1.0;
+  if (Number.isFinite(commodityMarket.price)) return commodityMarket.price;
+  if (Number.isFinite(commodityMarket.last_price)) return commodityMarket.last_price;
+  return 1.0;
+}
+
+function getSourceMultiplier(source, sourceMultipliers = {}) {
+  if (Number.isFinite(sourceMultipliers[source])) {
+    return Math.max(0, sourceMultipliers[source]);
+  }
+  if (Number.isFinite(CONSUMPTION_SOURCE_MULTIPLIERS[source])) {
+    return Math.max(0, CONSUMPTION_SOURCE_MULTIPLIERS[source]);
+  }
+  return 1.0;
+}
+
 /**
- * Initialize consumption tracking for a new turn
+ * Initialize consumption tracking for a new turn.
  */
 export function initializeTurnConsumptionTracking() {
   turnConsumptionTracker = {};
 }
 
 /**
- * Record commodity consumption for requisition calculation
+ * Record commodity consumption for requisition calculation.
  * @param {string} commodityId - The commodity being consumed
  * @param {number} quantity - Amount of commodity consumed
  * @param {string} empireId - ID of the empire consuming the commodity
+ * @param {string} source - Consumption source
  */
-export function recordConsumption(commodityId, quantity, empireId) {
-  if (quantity <= 0) return;
-  
-  // Initialize empire consumption tracker if needed
-  if (!turnConsumptionTracker[empireId]) {
-    turnConsumptionTracker[empireId] = {};
+export function recordConsumption(commodityId, quantity, empireId, source = CONSUMPTION_SOURCES.UNKNOWN) {
+  if (!Number.isFinite(quantity) || quantity <= 0) return;
+  if (!commodityId || empireId === null || empireId === undefined) return;
+
+  const normalizedSource = normalizeSource(source);
+  const ledger = ensureEmpireConsumptionLedger(empireId);
+
+  ledger.byCommodity[commodityId] = (ledger.byCommodity[commodityId] || 0) + quantity;
+  if (!ledger.bySource[normalizedSource]) {
+    ledger.bySource[normalizedSource] = {};
   }
-  
-  turnConsumptionTracker[empireId][commodityId] = (turnConsumptionTracker[empireId][commodityId] || 0) + quantity;
+  ledger.bySource[normalizedSource][commodityId] = (ledger.bySource[normalizedSource][commodityId] || 0) + quantity;
 }
 
 /**
- * Get recorded consumption for a commodity from an empire
+ * Get recorded consumption for a commodity from an empire.
  * @param {string} commodityId - The commodity to check
- * @param {string} empireId - ID of the empire (optional, returns total if not specified)
+ * @param {string} empireId - Optional empire ID
+ * @param {string|null} source - Optional source filter
  * @returns {number} Quantity consumed
  */
-export function getRecordedConsumption(commodityId, empireId) {
+export function getRecordedConsumption(commodityId, empireId, source = null) {
+  const normalizedSource = source ? normalizeSource(source) : null;
+
   if (empireId) {
-    return (turnConsumptionTracker[empireId]?.[commodityId]) || 0;
+    const ledger = turnConsumptionTracker[String(empireId)];
+    if (!ledger) return 0;
+    if (normalizedSource) {
+      return ledger.bySource?.[normalizedSource]?.[commodityId] || 0;
+    }
+    return ledger.byCommodity?.[commodityId] || 0;
   }
-  
-  // Return total across all empires if empireId not specified
+
   let total = 0;
-  for (const empirConsumption of Object.values(turnConsumptionTracker)) {
-    total += empirConsumption[commodityId] || 0;
+  for (const ledger of Object.values(turnConsumptionTracker)) {
+    if (normalizedSource) {
+      total += ledger.bySource?.[normalizedSource]?.[commodityId] || 0;
+    } else {
+      total += ledger.byCommodity?.[commodityId] || 0;
+    }
   }
   return total;
 }
 
 /**
- * Calculate the credit value of consumption based on market prices
- * @param {Object} market - The market state object (per-commodity market states)
- * @param {string} empireId - Optional empire ID to calculate value for specific empire only
- * @returns {number} Total credit value of recorded consumption
+ * Get this-turn consumption totals by commodity for a single empire.
+ * Aggregates across all recorded consumption sources.
+ * @param {string} empireId - Empire identifier
+ * @returns {Object} commodity -> quantity consumed this turn
  */
-export function calculateConsumptionValue(market, empireId) {
+export function getEmpireTurnConsumptionByCommodity(empireId) {
+  const ledger = turnConsumptionTracker[String(empireId)];
+  if (!ledger?.byCommodity || typeof ledger.byCommodity !== 'object') {
+    return {};
+  }
+  return { ...ledger.byCommodity };
+}
+
+/**
+ * Calculate weighted credit value of recorded consumption.
+ * @param {Object} market - The market state object (per-commodity market states)
+ * @param {string} empireId - Optional empire ID
+ * @param {string|null} source - Optional source filter
+ * @param {Object} sourceMultipliers - Optional source multipliers override
+ * @returns {number} Total weighted credit value of recorded consumption
+ */
+export function calculateConsumptionValue(market, empireId, source = null, sourceMultipliers = {}) {
+  const normalizedSource = source ? normalizeSource(source) : null;
   let totalValue = 0;
-  
-  const consumptionData = empireId ? turnConsumptionTracker[empireId] : {};
 
-  for (const [commodityId, quantity] of Object.entries(consumptionData || {})) {
-    if (quantity <= 0) continue;
+  const empireKeys = empireId
+    ? [String(empireId)]
+    : Object.keys(turnConsumptionTracker);
 
-    // Get market price for this commodity
-    const commodityMarket = market[commodityId];
-    let price = 1.0; // Default price
+  for (const key of empireKeys) {
+    const ledger = turnConsumptionTracker[key];
+    if (!ledger) continue;
 
-    if (commodityMarket) {
-      // Use current market price if available
-      price = commodityMarket.price || commodityMarket.last_price || 1.0;
+    const sourceEntries = normalizedSource
+      ? { [normalizedSource]: ledger.bySource?.[normalizedSource] || {} }
+      : (ledger.bySource || {});
+
+    for (const [sourceKey, sourceCommodities] of Object.entries(sourceEntries)) {
+      const sourceMultiplier = getSourceMultiplier(sourceKey, sourceMultipliers);
+      for (const [commodityId, quantity] of Object.entries(sourceCommodities || {})) {
+        if (!Number.isFinite(quantity) || quantity <= 0) continue;
+        const price = getCommodityPrice(market, commodityId);
+        totalValue += quantity * price * sourceMultiplier;
+      }
     }
-
-    const commodityValue = quantity * price;
-    totalValue += commodityValue;
   }
 
   return totalValue;
 }
 
 /**
- * Calculate effective coalition share rate with modifiers
+ * Calculate effective coalition share rate with modifiers.
  * @param {Object} modifiers - Aggregate modifiers: { multiplicativeShare: 1.0, additiveShare: 0 }
  * @returns {number} Effective share rate (clamped between 0 and 1)
  */
 export function calculateEffectiveShareRate(modifiers = {}) {
   let shareRate = COALITION_CONSUMPTION_SHARE_BASE;
-  
-  // Apply multiplicative modifier
-  if (modifiers.multiplicativeShare) {
+
+  if (Number.isFinite(modifiers.multiplicativeShare)) {
     shareRate *= modifiers.multiplicativeShare;
   }
-  
-  // Apply additive modifier
-  if (modifiers.additiveShare) {
+
+  if (Number.isFinite(modifiers.additiveShare)) {
     shareRate += modifiers.additiveShare;
   }
-  
-  // Clamp between 0 and 1
+
   return Math.max(0, Math.min(1, shareRate));
 }
 
 /**
  * Process commodity consumption and convert to coalition requisition and credits.
- * Called at the end of turn phase after all consumption has been recorded.
- * Requisition gained is multiplied by 10x and scaled by each empire's approval rating.
- *
- * @param {Object} market - The market state object (containing per-commodity market states)
+ * @param {Object} market - The market state object
  * @param {Object} coalitionEconomy - The coalition economy state object
- * @param {Object} modifiers - Optional modifiers: { multiplicativeShare, additiveShare }
- * @param {Array} empires - Array of empire objects (needed to get approval ratings)
- * @returns {Object} Consumption summary: { totalConsumed, coalitionValue, requisitionGained, creditsGained, creditsSpent }
+ * @param {Object} modifiers - Optional modifiers: { multiplicativeShare, additiveShare, requisitionMultiplier, sourceMultipliers, requisitionPoolTurns }
+ * @param {Array} empires - Array of empire objects
+ * @returns {Object} Consumption summary
  */
 export function processConsumptionToRequisition(market, coalitionEconomy, modifiers = {}, empires = []) {
   if (!coalitionEconomy) {
-    return { totalConsumed: 0, coalitionValue: 0, requisitionGained: 0, creditsGained: 0, creditsSpent: 0 };
+    return {
+      totalConsumed: 0,
+      coalitionValue: 0,
+      weightedConsumptionValue: 0,
+      requisitionGenerated: 0,
+      requisitionGained: 0,
+      requisitionPoolBalance: 0,
+      requisitionPoolTurns: 0,
+      requisitionPoolPayoutTurns: REQUISITION_POOL_TURNS,
+      creditsGranted: 0,
+      creditsSpent: 0,
+      sourceBreakdown: {}
+    };
   }
 
-  if (!coalitionEconomy.requisition) {
+  if (!Number.isFinite(coalitionEconomy.requisition)) {
     coalitionEconomy.requisition = 0;
   }
-  if (!coalitionEconomy.allowance_credits) {
+  if (!Number.isFinite(coalitionEconomy.allowance_credits)) {
     coalitionEconomy.allowance_credits = 0;
   }
+  if (!Number.isFinite(coalitionEconomy.consumption_requisition_pool)) {
+    coalitionEconomy.consumption_requisition_pool = 0;
+  }
+  if (!Number.isFinite(coalitionEconomy.consumption_requisition_pool_turns)) {
+    coalitionEconomy.consumption_requisition_pool_turns = 0;
+  }
 
-  // Get effective share rate with modifiers
   const effectiveShareRate = calculateEffectiveShareRate(modifiers);
-  const requisitionMultiplier = modifiers.requisitionMultiplier || 1.0;
+  const requisitionMultiplier = Number.isFinite(modifiers.requisitionMultiplier)
+    ? modifiers.requisitionMultiplier
+    : 1.0;
+  const requisitionPoolPayoutTurns = Math.max(
+    1,
+    Math.floor(Number.isFinite(modifiers.requisitionPoolTurns) ? modifiers.requisitionPoolTurns : REQUISITION_POOL_TURNS)
+  );
+  const sourceMultipliers = {
+    ...CONSUMPTION_SOURCE_MULTIPLIERS,
+    ...(modifiers.sourceMultipliers || {})
+  };
+  const empiresById = new Map((empires || []).map(empire => [String(empire.id), empire]));
 
-  let totalRequisitionGained = 0;
+  let totalRequisitionGenerated = 0;
   let totalCreditsGranted = 0;
   let totalCreditsSpent = 0;
-  let totalConsumedValue = 0;
+  let totalConsumedRawValue = 0;
+  let totalConsumedWeightedValue = 0;
+  let totalConsumedUnits = 0;
+  const sourceBreakdown = {};
 
-  // Process consumption per empire to apply approval scaling
-  for (const empireId in turnConsumptionTracker) {
-    // Find the empire object to get approval rating
-    const empire = empires.find(e => String(e.id) === String(empireId));
-    if (!empire) continue;
+  for (const [empireId, ledger] of Object.entries(turnConsumptionTracker)) {
+    const empire = empiresById.get(String(empireId));
+    const empireName = empire?.name || `Empire ${empireId}`;
+    const approval = Number.isFinite(empire?.approval) ? empire.approval : 50;
 
-    // Calculate consumption value for this empire
-    const empireConsumptionValue = calculateConsumptionValue(market, empireId);
-    totalConsumedValue += empireConsumptionValue;
+    let empireUnits = 0;
+    let empireRawValue = 0;
+    let empireWeightedValue = 0;
 
-    // Coalition receives a percentage of consumption value as requisition
-    const coalitionValue = empireConsumptionValue * effectiveShareRate;
+    for (const [source, commodities] of Object.entries(ledger.bySource || {})) {
+      const sourceMultiplier = getSourceMultiplier(source, sourceMultipliers);
+      for (const [commodityId, quantity] of Object.entries(commodities || {})) {
+        if (!Number.isFinite(quantity) || quantity <= 0) continue;
+        const price = getCommodityPrice(market, commodityId);
+        const rawValue = quantity * price;
+        const weightedValue = rawValue * sourceMultiplier;
 
-    // Apply multiplier and scale by empire's approval rating
-    // Approval ranges from 0-100, scaling requisition contribution:
-    // At 0 approval: APPROVAL_SCALE_MIN (50%), at 100 approval: APPROVAL_SCALE_MAX (200%)
-    const approvalNormalized = (empire.approval || 0) / 100;
+        empireUnits += quantity;
+        empireRawValue += rawValue;
+        empireWeightedValue += weightedValue;
+
+        if (!sourceBreakdown[source]) {
+          sourceBreakdown[source] = {
+            quantity: 0,
+            rawValue: 0,
+            weightedValue: 0
+          };
+        }
+        sourceBreakdown[source].quantity += quantity;
+        sourceBreakdown[source].rawValue += rawValue;
+        sourceBreakdown[source].weightedValue += weightedValue;
+      }
+    }
+
+    if (empireWeightedValue <= 0) continue;
+
+    totalConsumedUnits += empireUnits;
+    totalConsumedRawValue += empireRawValue;
+    totalConsumedWeightedValue += empireWeightedValue;
+
+    const coalitionValue = empireWeightedValue * effectiveShareRate;
+    const approvalNormalized = Math.max(0, Math.min(1, approval / 100));
     const approvalScale = APPROVAL_SCALE_MIN + approvalNormalized * (APPROVAL_SCALE_MAX - APPROVAL_SCALE_MIN);
     const scaledCoalitionValue = coalitionValue * CONVERSION_REQUISITION_MULTIPLIER * approvalScale;
 
-    // Convert credits to requisition (1000 credits = 1 requisition)
-    let requisitionGained = (scaledCoalitionValue / CREDITS_PER_REQUISITION) * requisitionMultiplier;
-    
-    // Safeguard against NaN/Infinity to prevent game breaks
-    if (!Number.isFinite(requisitionGained)) {
-      logger.warn(`Invalid requisitionGained value (${requisitionGained}) for empire ${empire.name}, clamping to 0`);
-      requisitionGained = 0;
+    let requisitionGenerated = (scaledCoalitionValue / CREDITS_PER_REQUISITION) * requisitionMultiplier;
+    if (!Number.isFinite(requisitionGenerated)) {
+      logger.warn(`Invalid requisition gain (${requisitionGenerated}) for ${empireName}, clamping to 0`);
+      requisitionGenerated = 0;
     }
 
-    coalitionEconomy.requisition += requisitionGained;
-    totalRequisitionGained += requisitionGained;
+    totalRequisitionGenerated += requisitionGenerated;
 
-    // Also grant credits from the allowance pool (up to what's available)
     const creditsGranted = scaledCoalitionValue;
     const creditsSpent = Math.min(creditsGranted, coalitionEconomy.allowance_credits);
     coalitionEconomy.allowance_credits -= creditsSpent;
     totalCreditsGranted += creditsGranted;
     totalCreditsSpent += creditsSpent;
 
-    if (requisitionGained > 0.001 || creditsSpent > 0.001) {
-      const consumedCount = Object.values(turnConsumptionTracker[empireId] || {}).reduce((sum, qty) => sum + qty, 0);
+    if (requisitionGenerated > 0.001 || creditsSpent > 0.001) {
       logger.debug(
-        `[${empire.name}] Consumption conversion: ${empireConsumptionValue.toFixed(2)} consumed value ` +
-        `(${consumedCount} units) @ ${(effectiveShareRate * 100).toFixed(1)}% share ` +
+        `[${empireName}] Consumption conversion: ${empireRawValue.toFixed(2)} raw value ` +
+        `(${empireWeightedValue.toFixed(2)} weighted, ${empireUnits.toFixed(2)} units) ` +
+        `@ ${(effectiveShareRate * 100).toFixed(1)}% share ` +
         `-> ${coalitionValue.toFixed(2)} base credits ` +
-        `-> ${scaledCoalitionValue.toFixed(2)} credits (${CONVERSION_REQUISITION_MULTIPLIER}x multiplier × ${(approvalScale * 100).toFixed(0)}% approval scale) ` +
-        `-> +${requisitionGained.toFixed(3)} requisition, +${creditsSpent.toFixed(0)} credits from allowance`
+        `-> ${scaledCoalitionValue.toFixed(2)} credits (${CONVERSION_REQUISITION_MULTIPLIER}x multiplier x ${(approvalScale * 100).toFixed(0)}% approval scale) ` +
+        `-> +${requisitionGenerated.toFixed(3)} requisition pooled, +${creditsSpent.toFixed(0)} credits from allowance`
       );
     }
   }
 
+  if (totalRequisitionGenerated > 0) {
+    coalitionEconomy.consumption_requisition_pool += totalRequisitionGenerated;
+  }
+  coalitionEconomy.consumption_requisition_pool_turns += 1;
+
+  let totalRequisitionGained = 0;
+  if (coalitionEconomy.consumption_requisition_pool_turns >= requisitionPoolPayoutTurns) {
+    totalRequisitionGained = coalitionEconomy.consumption_requisition_pool;
+    coalitionEconomy.requisition += totalRequisitionGained;
+    coalitionEconomy.consumption_requisition_pool = 0;
+    coalitionEconomy.consumption_requisition_pool_turns = 0;
+  }
+
   return {
-    totalConsumed: Object.values(turnConsumptionTracker).reduce((sum, empireConsumption) => {
-      return sum + Object.values(empireConsumption || {}).reduce((s, qty) => s + qty, 0);
-    }, 0),
-    coalitionValue: totalConsumedValue,
+    totalConsumed: totalConsumedUnits,
+    coalitionValue: totalConsumedRawValue,
+    weightedConsumptionValue: totalConsumedWeightedValue,
+    requisitionGenerated: totalRequisitionGenerated,
     requisitionGained: totalRequisitionGained,
+    requisitionPoolBalance: coalitionEconomy.consumption_requisition_pool,
+    requisitionPoolTurns: coalitionEconomy.consumption_requisition_pool_turns,
+    requisitionPoolPayoutTurns,
     creditsGranted: totalCreditsGranted,
-    creditsSpent: totalCreditsSpent
+    creditsSpent: totalCreditsSpent,
+    sourceBreakdown
   };
 }
 
 /**
- * Refill coalition allowance each tick
+ * Refill coalition allowance each tick.
  * @param {Object} coalitionEconomy - The coalition economy state object
  */
 export function refillCoalitionAllowance(coalitionEconomy) {
   if (!coalitionEconomy) return;
-  
+
   coalitionEconomy.allowance_credits = Math.min(
     (coalitionEconomy.allowance_credits || 0) + ALLOWANCE_PER_TICK,
     ALLOWANCE_MAX
@@ -259,7 +411,7 @@ export function refillCoalitionAllowance(coalitionEconomy) {
 }
 
 /**
- * Get requisition display value
+ * Get requisition display value.
  */
 export function getRequisitionDisplay(economy) {
   return {

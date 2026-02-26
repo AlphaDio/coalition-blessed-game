@@ -1,9 +1,25 @@
-import { BATTLE_CONSTANTS } from '../constants.js';
+import { BATTLE_CONSTANTS, INSURRECTION_CONSTANTS } from '../constants.js';
 import { clampStat, clampCohesion, clampApproval } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { startBattle } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
+
+function applyPermanentLossToArmy(army, originalMP, originalMaxMP, lossRatio) {
+  if (!army?.mp) return;
+
+  const clampedLossRatio = Math.max(0, Math.min(1, Number(lossRatio) || 0));
+  const safeOriginalMax = Math.max(1, Number(originalMaxMP) || 1);
+  const safeOriginalCurrent = Math.max(0, Number(originalMP) || 0);
+
+  const permanentLoss = safeOriginalMax * clampedLossRatio;
+  const nextMax = Math.max(1, safeOriginalMax - permanentLoss);
+  const nextCurrent = Math.max(0, Math.min(nextMax, safeOriginalCurrent - permanentLoss));
+
+  army.mp.max = nextMax;
+  army.mp.current = nextCurrent;
+  army.manpower = nextMax;
+}
 
 /**
  * Start a round-based insurrection battle
@@ -112,27 +128,28 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   loyalArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-
-    const armyMPLoss = armyData.originalMaxMP * loyalMPLossRatio;
-    army.mp.current = Math.max(0, armyData.originalMP - armyMPLoss);
+    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, loyalMPLossRatio);
   });
 
   // Distribute results to rebellious armies
   rebelliousArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-
-    const armyMPLoss = armyData.originalMaxMP * rebelliousMPLossRatio;
-    army.mp.current = Math.max(0, armyData.originalMP - armyMPLoss);
+    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, rebelliousMPLossRatio);
 
     if (loyalWon) {
       // Insurrection quelled
-      army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.RESOLVED_FERVOR_DROP);
-      army.aggravation = clampStat(army.aggravation - 30);
-    } else {
-      // Insurrection spreads - no changes to rebellious armies, but approval shock
+      army.fervor = clampStat(army.fervor - INSURRECTION_CONSTANTS.RESOLVED_FERVOR_DROP);
     }
+    // Rebellion pressure is tracked by aggravation and is reset after an insurrection resolves.
+    army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
   });
+
+  // Mark insurrection as resolved regardless of winner.
+  const insurrection = state.insurrections.find(ins => ins.id === front.insurrectionId);
+  if (insurrection) {
+    insurrection.active = false;
+  }
 
   // Apply cohesion and approval changes
   if (loyalWon) {
@@ -140,19 +157,13 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     const prevCoalitionCohesion = state.coalitionCohesion;
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
 
-    // Mark insurrection as resolved
-    const insurrection = state.insurrections.find(ins => ins.id === front.insurrectionId);
-    if (insurrection) {
-      insurrection.active = false;
-    }
-
     logger.info(`Insurrection battle: Quelled! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss})`);
   } else {
     const cohesionLoss = BATTLE_CONSTANTS.INSURRECTION_LOSS_COHESION_LOSS;
     const prevCoalitionCohesion = state.coalitionCohesion;
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
 
-    const approvalShock = BATTLE_CONSTANTS.RESOLVED_APPROVAL_SHOCK;
+    const approvalShock = INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK;
     rebelliousArmyData.forEach(armyData => {
       const army = state.armies.find(a => a.id === armyData.id);
       if (army) {

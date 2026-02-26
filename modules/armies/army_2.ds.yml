@@ -21,10 +21,10 @@ declares:
     name: "2nd Stellar Defense Fleet"
     organization: 65
     fervor: 55
-    aggravation: 50
+    aggravation: 38
     command: 52
     recoveryRate: 52
-    reinforcementRate: 70
+    reinforcementRate: 62
     manpower: 8000
     dmgPerUnitMP: 1.0
     dmgPerTickMO: 2.4
@@ -33,9 +33,7 @@ declares:
     killRate: 0.09
     demands:
       needs:
-        super_alloys: 0.0015
-        plasma_fuel: 0.002
+        super_alloys: 0.0013
+        plasma_fuel: 0.0017
       wants:
-        rare_gases: 0.0008
-    signatureCommodity: plasma_fuel
-    signatureThreshold: 10000
+        rare_gases: 0.0009

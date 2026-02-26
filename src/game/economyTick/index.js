@@ -49,7 +49,9 @@ export function processEconomyTick(state) {
     state.coalitionEconomy = {
       requisition: 500,
       treasury_credits: 10000,
-      allowance_credits: 1000
+      allowance_credits: 1000,
+      consumption_requisition_pool: 0,
+      consumption_requisition_pool_turns: 0
     };
     logger.info('Coalition economy initialized');
   }

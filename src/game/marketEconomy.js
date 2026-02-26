@@ -332,6 +332,9 @@ export function computeArmyFulfillment(army, config) {
   const { needs, wants } = army.demands || {};
   const supplyState = army.supply_state || {};
   const manpower = army.manpower || army.mp?.max || 0;
+  const needsDemandMap = supplyState.needs_demand || {};
+  const wantsDemandMap = supplyState.wants_demand || {};
+  const receivedMap = supplyState.received || {};
   
   const needsFulfillment = {};
   const wantsFulfillment = {};
@@ -340,8 +343,9 @@ export function computeArmyFulfillment(army, config) {
   // Compute needs fulfillment
   if (needs) {
     Object.entries(needs).forEach(([commodity, neededPerManpower]) => {
-      const totalNeeded = neededPerManpower * manpower;
-      const received = supplyState.received?.[commodity] || 0;
+      const fallbackDemand = neededPerManpower * manpower;
+      const totalNeeded = Number.isFinite(needsDemandMap[commodity]) ? needsDemandMap[commodity] : fallbackDemand;
+      const received = receivedMap[commodity] || 0;
       const fulfillment = totalNeeded > 0 ? Math.min(1.0, received / totalNeeded) : 1.0;
       
       needsFulfillment[commodity] = fulfillment;
@@ -355,8 +359,9 @@ export function computeArmyFulfillment(army, config) {
   // Compute wants fulfillment
   if (wants) {
     Object.entries(wants).forEach(([commodity, wantedPerManpower]) => {
-      const totalWanted = wantedPerManpower * manpower;
-      const received = supplyState.received?.[commodity] || 0;
+      const fallbackDemand = wantedPerManpower * manpower;
+      const totalWanted = Number.isFinite(wantsDemandMap[commodity]) ? wantsDemandMap[commodity] : fallbackDemand;
+      const received = receivedMap[commodity] || 0;
       const fulfillment = totalWanted > 0 ? Math.min(1.0, received / totalWanted) : 1.0;
       
       wantsFulfillment[commodity] = fulfillment;
@@ -367,7 +372,10 @@ export function computeArmyFulfillment(army, config) {
   army.supply_state = {
     needs_fulfillment: needsFulfillment,
     wants_fulfillment: wantsFulfillment,
-    shortages
+    shortages,
+    received: receivedMap,
+    needs_demand: needsDemandMap,
+    wants_demand: wantsDemandMap
   };
   
   // Compute performance impact

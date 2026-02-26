@@ -11,7 +11,24 @@ export function createOrderAggregator(state) {
   // Load existing orders for aggregation (but don't add to arrays yet)
   const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
   const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
-  const hasPurposeTag = (order) => !!order?.tags?.purpose;
+
+  function serializeTags(tags) {
+    if (!tags || typeof tags !== 'object') return '';
+    const sortedEntries = Object.entries(tags)
+      .filter(([, value]) => value !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b));
+    return JSON.stringify(Object.fromEntries(sortedEntries));
+  }
+
+  function getBuyAggregationKey(order) {
+    return [
+      order.owner_type,
+      order.owner_id,
+      order.commodity,
+      order.category,
+      serializeTags(order.tags)
+    ].join('|');
+  }
 
   /**
    * Find existing sell offer for owner+commodity and aggregate qty
@@ -74,27 +91,21 @@ export function createOrderAggregator(state) {
    * Find existing buy order for owner+commodity+category and aggregate qty
    * Returns updated order with fixed market price and reset duration
    */
-  function aggregateBuyOrder(ownerType, ownerId, commodity, newQty, newPrice, category, priority) {
+  function aggregateBuyOrder(ownerType, ownerId, commodity, newQty, newPrice, category, priority, tags = null) {
+    const targetKey = [
+      ownerType,
+      ownerId,
+      commodity,
+      category,
+      serializeTags(tags)
+    ].join('|');
+
     // First check new orders created this tick
-    let existing = buyOrders.find(o =>
-      o.owner_type === ownerType &&
-      o.owner_id === ownerId &&
-      o.commodity === commodity &&
-      o.category === category &&
-      !hasPurposeTag(o) &&
-      (o.filled_qty || 0) < o.qty
-    );
+    let existing = buyOrders.find(o => getBuyAggregationKey(o) === targetKey && (o.filled_qty || 0) < o.qty);
 
     // Then check existing orders from previous ticks
     if (!existing) {
-      existing = existingBuyOrders.find(o =>
-        o.owner_type === ownerType &&
-        o.owner_id === ownerId &&
-        o.commodity === commodity &&
-        o.category === category &&
-        !hasPurposeTag(o) &&
-        (o.filled_qty || 0) < o.qty
-      );
+      existing = existingBuyOrders.find(o => getBuyAggregationKey(o) === targetKey && (o.filled_qty || 0) < o.qty);
     }
 
     if (!existing) {
@@ -109,6 +120,7 @@ export function createOrderAggregator(state) {
         1000000
       );
       order.category = category;
+      if (tags) order.tags = { ...tags };
       order.fee = 1;
       order.filled_qty = 0;
       order.max_duration = 1000000;

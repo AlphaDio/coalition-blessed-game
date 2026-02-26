@@ -21,10 +21,10 @@ declares:
     name: "Synaptic Swarm Host"
     organization: 55
     fervor: 75
-    aggravation: 70
+    aggravation: 50
     command: 45
     recoveryRate: 65
-    reinforcementRate: 50
+    reinforcementRate: 46
     manpower: 15000
     dmgPerUnitMP: 0.9
     dmgPerTickMO: 2.0
@@ -33,10 +33,6 @@ declares:
     killRate: 0.15
     demands:
       needs:
-        psycho_implants: 0.0008
-        dark_matter: 0.0005
+        psycho_implants: 0.0012
       wants:
-        ancient_relics: 0.0003
-        anti_grav_modules: 0.0002
-    signatureCommodity: genomes
-    signatureThreshold: 10000
+        genomes: 0.00035

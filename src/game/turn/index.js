@@ -66,6 +66,7 @@ export function advanceTurn(state, rng = Math.random) {
   applyDynamicScourgeModifierEffects(state, log);
   applyEmergencyPowerDynamicModifiers(state);
   tickScourgeRecovery(state);
+  initializeTurnConsumptionTracking();
 
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
@@ -231,25 +232,29 @@ export function advanceTurn(state, rng = Math.random) {
   // 3.6. Apply baseline population growth
   applyBasePopulationGrowth(state);
 
-  // 3.7. Initialize consumption tracking for requisition generation
-  initializeTurnConsumptionTracking();
-
-  // 3.8. Process empire consumption upgrades from accumulated sell orders
+  // 3.7. Process pooled empire consumption effects from regular consumption
   processEmpireStockpileConsumption(state, log);
 
-  // 3.9. Convert tracked consumption to coalition requisition and credits
+  // 3.8. Convert tracked consumption to coalition requisition and credits
   // Build consumption share rate modifiers from active laws/effects
   const consumptionModifiers = {
-    multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier || 1.0,
-    additiveShare: state.coalitionModifiers?.consumptionShareBonus || 0,
-    requisitionMultiplier: state.coalitionModifiers?.dynamic?.requisition_gen_mult || 1.0
+    multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier ?? 1.0,
+    additiveShare: state.coalitionModifiers?.consumptionShareBonus ?? 0,
+    requisitionMultiplier: state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0,
+    sourceMultipliers: state.coalitionModifiers?.consumptionSourceMultipliers || {}
   };
 
   const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers, state.empires);
-  if (consumptionResult.requisitionGained > 0.001 || consumptionResult.creditsSpent > 0.001) {
+  if (consumptionResult.requisitionGenerated > 0.001 || consumptionResult.requisitionGained > 0.001 || consumptionResult.creditsSpent > 0.001) {
     const logParts = [];
+    if (consumptionResult.requisitionGenerated > 0.001 && consumptionResult.requisitionGained <= 0.001) {
+      logParts.push(
+        `+${consumptionResult.requisitionGenerated.toFixed(3)} req pooled ` +
+        `(${consumptionResult.requisitionPoolTurns}/${consumptionResult.requisitionPoolPayoutTurns})`
+      );
+    }
     if (consumptionResult.requisitionGained > 0.001) {
-      logParts.push(`+${consumptionResult.requisitionGained.toFixed(3)} req`);
+      logParts.push(`+${consumptionResult.requisitionGained.toFixed(3)} req payout`);
     }
     if (consumptionResult.creditsSpent > 0.001) {
       logParts.push(`+${Math.round(consumptionResult.creditsSpent)} credits`);

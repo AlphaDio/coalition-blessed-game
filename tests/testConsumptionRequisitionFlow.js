@@ -1,0 +1,346 @@
+#!/usr/bin/env node
+
+/**
+ * Regression tests for requisition-from-consumption flow.
+ * Verifies coalition gain from:
+ *  - empire needs/wants consumption
+ *  - army tagged consumption
+ *  - improvement sustainment consumption
+ */
+
+import { initializeLogger, LogLevel } from '../src/modules/logger.js';
+import { clearMarkets } from '../src/game/economyTick/ordersLifecycle.js';
+import {
+  initializeTurnConsumptionTracking,
+  recordConsumption,
+  processConsumptionToRequisition,
+  CONSUMPTION_SOURCES
+} from '../src/game/consumptionToRequisition.js';
+import { processEconomyTick } from '../src/game/economyTick.js';
+import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
+import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
+import { createArmy, createEmpire } from '../src/game/types.js';
+
+initializeLogger({
+  level: LogLevel.ERROR,
+  enableConsole: false,
+  enableFile: false,
+  enableUI: false
+});
+
+let testsPassed = 0;
+let testsFailed = 0;
+
+function assert(condition, message) {
+  if (condition) {
+    testsPassed++;
+    console.log(`[PASS] ${message}`);
+  } else {
+    testsFailed++;
+    console.log(`[FAIL] ${message}`);
+  }
+}
+
+function approxEqual(actual, expected, epsilon = 1e-9) {
+  return Math.abs(actual - expected) <= epsilon;
+}
+
+function createMarketState(commodity, price) {
+  return {
+    [commodity]: {
+      commodity,
+      price,
+      last_price: price,
+      floor_price: price,
+      demand_qty: 0,
+      supply_qty: 0,
+      traded_qty: 0,
+      buy_orders: [],
+      sell_offers: [],
+      remaining_sell_offers_post_clear: [],
+      remaining_buy_offers_post_clear: [],
+      buy_backlog_total: 0
+    },
+    remaining_sell_offers_post_clear: [],
+    remaining_buy_offers_post_clear: [],
+    buy_backlog_by_commodity: {},
+    buy_backlog_by_commodity_and_owner: {}
+  };
+}
+
+function createEmpireShell(id, approval = 50, budget = 10000) {
+  return {
+    id,
+    name: id,
+    approval,
+    budget_credits: budget,
+    economy_spend: { needs: 0, wants: 0, order_fees: 0 },
+    needs: { per_pop: {} },
+    wants: { per_pop: {} },
+    stats: { population: 1000 },
+    modifiers: { supply_efficiency: 0 }
+  };
+}
+
+console.log('============================================================');
+console.log('Consumption Requisition Flow Tests');
+console.log('============================================================\n');
+
+console.log('=== Test 1: Empire Needs Fill Generates Coalition Requisition ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const state = {
+    empires: [
+      createEmpireShell('empire_1', 50, 1000),
+      createEmpireShell('empire_2', 50, 1000)
+    ],
+    armies: [],
+    market: createMarketState('biomass', 2)
+  };
+
+  const buyOrders = [{
+    id: 'buy_empire_needs_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    max_price: 5,
+    priority: 1,
+    category: 'needs'
+  }];
+  const sellOffers = [{
+    id: 'sell_empire_2_1',
+    owner_type: 'empire',
+    owner_id: 'empire_2',
+    commodity: 'biomass',
+    qty: 10,
+    filled_qty: 0,
+    ask_price: 2,
+    priority: 0
+  }];
+
+  clearMarkets(state, [{ key: 'biomass' }], buyOrders, sellOffers);
+
+  const coalitionEconomy = {
+    requisition: 0,
+    allowance_credits: 1000,
+    consumption_requisition_pool: 0,
+    consumption_requisition_pool_turns: 0
+  };
+  const result = processConsumptionToRequisition(state.market, coalitionEconomy, {}, state.empires);
+
+  assert(approxEqual(result.totalConsumed, 10), 'Tracks exact filled quantity as consumption');
+  assert((result.sourceBreakdown[CONSUMPTION_SOURCES.EMPIRE_NEEDS]?.quantity || 0) === 10, 'Classifies fill as empire needs consumption');
+  assert(result.requisitionGenerated > 0, 'Empire needs consumption generates requisition value');
+  assert(result.requisitionGained === 0, 'No requisition is paid before payout cadence');
+  assert(coalitionEconomy.requisition === 0, 'Coalition requisition stays unchanged before payout turn');
+  assert(result.requisitionPoolBalance > 0 && result.requisitionPoolTurns === 1, 'Generated requisition is queued in the pool');
+}
+console.log();
+
+console.log('=== Test 2: Army-Tagged Fill Counts As Army Consumption And Payout Triggers On Turn 15 ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const army = createArmy('army_1', 'empire_1', 'Army One', 50, 60, 0, 50, 50, 1000);
+  const state = {
+    empires: [
+      createEmpireShell('empire_1', 50, 1000),
+      createEmpireShell('empire_2', 50, 1000)
+    ],
+    armies: [army],
+    market: createMarketState('rare_gases', 4)
+  };
+
+  const buyOrders = [{
+    id: 'buy_army_wants_1',
+    owner_type: 'empire',
+    owner_id: 'empire_1',
+    commodity: 'rare_gases',
+    qty: 5,
+    filled_qty: 0,
+    max_price: 6,
+    priority: 1,
+    category: 'wants',
+    tags: {
+      army_id: 'army_1',
+      demand_type: 'army_wants'
+    }
+  }];
+  const sellOffers = [{
+    id: 'sell_empire_2_2',
+    owner_type: 'empire',
+    owner_id: 'empire_2',
+    commodity: 'rare_gases',
+    qty: 5,
+    filled_qty: 0,
+    ask_price: 4,
+    priority: 0
+  }];
+
+  clearMarkets(state, [{ key: 'rare_gases' }], buyOrders, sellOffers);
+
+  const coalitionEconomy = {
+    requisition: 0,
+    allowance_credits: 1000,
+    consumption_requisition_pool: 1,
+    consumption_requisition_pool_turns: 14
+  };
+  const result = processConsumptionToRequisition(state.market, coalitionEconomy, {}, state.empires);
+
+  assert((army.supply_state?.received?.rare_gases || 0) === 5, 'Army-tagged fills route commodities to army receipts');
+  assert((result.sourceBreakdown[CONSUMPTION_SOURCES.ARMY_WANTS]?.quantity || 0) === 5, 'Classifies tagged fill as army wants consumption');
+  assert(result.requisitionGenerated > 0, 'Army consumption generates requisition value');
+  assert(result.requisitionGained > 1, 'Pool pays out on the 15th turn');
+  assert(approxEqual(coalitionEconomy.requisition, result.requisitionGained), 'Paid requisition is credited to coalition economy');
+  assert(result.requisitionPoolBalance === 0 && result.requisitionPoolTurns === 0, 'Pool resets after payout');
+}
+console.log();
+
+console.log('=== Test 3: Improvement Sustainment Consumption Grants Requisition ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const empire1 = createEmpire('empire_1', 'Empire One', 50, {}, {}, {
+    population: 1000,
+    budget_credits: 10000,
+    needs: { per_pop: {} },
+    wants: { per_pop: {} },
+    production: { outputs_per_tick: {} },
+    stockpiles: {}
+  });
+  const empire2 = createEmpire('empire_2', 'Empire Two', 50, {}, {}, {
+    population: 1000,
+    budget_credits: 10000,
+    needs: { per_pop: {} },
+    wants: { per_pop: {} },
+    production: { outputs_per_tick: {} },
+    stockpiles: {}
+  });
+
+  const state = {
+    turn: 11,
+    coalitionConstruction: 4,
+    coalitionModifiers: {
+      rationing_add: 0,
+      rationing_mult: 1.0,
+      supply_efficiency: 0,
+      dynamic: {
+        improvement_build_speed_mult: 1.0,
+        requisition_gen_mult: 1.0
+      },
+      consumptionShareMultiplier: 1.0,
+      consumptionShareBonus: 0,
+      consumptionSourceMultipliers: {}
+    },
+    coalitionEconomy: {
+      requisition: 500,
+      treasury_credits: 10000,
+      allowance_credits: 1000,
+      consumption_requisition_pool: 0,
+      consumption_requisition_pool_turns: 0
+    },
+    market: createMarketState('biomass', 1),
+    marketOrders: {
+      buyOrders: [],
+      sellOffers: [{
+        id: 'sustain_sell_emp2',
+        owner_type: 'empire',
+        owner_id: 'empire_2',
+        commodity: 'biomass',
+        qty: 30,
+        filled_qty: 0,
+        ask_price: 1,
+        priority: 0,
+        duration: 0,
+        max_duration: 1000000
+      }]
+    },
+    empires: [empire1, empire2],
+    armies: [],
+    improvements: {
+      queue: [{
+        id: 'imp_sustain_1',
+        empireId: 'empire_1',
+        name: 'Sustainment Relay',
+        state: 'ACTIVE',
+        completedAtTick: null,
+        ticksSinceSustained: 0,
+        sustainmentCost: { biomass: 10 },
+        productionOutputs: {},
+        productionBank: {},
+        productionBankThreshold: 10,
+        requisitionUpkeep: 0,
+        modifiers: {}
+      }],
+      requests: [],
+      completed: [],
+      maxTotalCapacity: 10,
+      currentCapacity: 0,
+      pendingSustainmentDemand: {},
+      pendingSustainmentNeedsByImprovement: {},
+      fulfilledSustainmentReceipts: {}
+    },
+    diplomacy: { relations: { empire_1: { empire_2: 0 }, empire_2: { empire_1: 0 } } }
+  };
+
+  processImprovementsTick(state);
+  processEconomyTick(state);
+  processImprovementSustainmentPostMarket(state);
+
+  const result = processConsumptionToRequisition(state.market, state.coalitionEconomy, {}, state.empires);
+  const improvementSourceQty = result.sourceBreakdown[CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT]?.quantity || 0;
+
+  assert(improvementSourceQty > 0, 'Consumed sustainment goods are tracked as improvement consumption');
+  assert(result.requisitionGenerated > 0, 'Improvement sustainment consumption generates requisition value');
+  assert(state.coalitionEconomy.requisition === 500, 'Requisition stays unchanged before 15-turn payout');
+  assert(result.requisitionPoolBalance > 0, 'Improvement requisition is added to the pool');
+  assert(state.improvements.queue[0].state === 'ACTIVE', 'Improvement remains active after same-turn sustainment fill');
+}
+console.log();
+
+console.log('=== Test 4: Effect Pool Aggregates Consumption Sources Before Trigger ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const state = {
+    coalitionConstruction: 0,
+    coalitionModifiers: {},
+    consumptionEffectPools: {},
+    empires: [{
+      id: 'empire_1',
+      name: 'Empire One',
+      stats: { population: 1000, approvalBonus: 0, researchSpeedBonus: 0 },
+      consumptionRules: [{
+        commodity: 'biomass',
+        threshold: 20,
+        effect: { type: 'coalition_construction_bonus', amount: 1 }
+      }]
+    }],
+    armies: []
+  };
+
+  recordConsumption('biomass', 5, 'empire_1', CONSUMPTION_SOURCES.EMPIRE_NEEDS);
+  recordConsumption('biomass', 5, 'empire_1', CONSUMPTION_SOURCES.ARMY_WANTS);
+  recordConsumption('biomass', 12, 'empire_1', CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT);
+
+  const log = [];
+  processEmpireStockpileConsumption(state, log);
+
+  assert(state.coalitionConstruction === 1, 'Pooled effect triggers once after combined sources reach threshold');
+  assert((state.consumptionEffectPools?.empire_1?.biomass || 0) === 2, 'Pool keeps commodity carryover after threshold hit');
+}
+console.log();
+
+console.log('============================================================');
+console.log(`Passed: ${testsPassed}`);
+console.log(`Failed: ${testsFailed}`);
+console.log('============================================================');
+
+if (testsFailed > 0) {
+  process.exit(1);
+}
+
+console.log('[PASS] ALL TESTS PASSED');

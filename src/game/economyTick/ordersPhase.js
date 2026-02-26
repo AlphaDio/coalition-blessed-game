@@ -1,4 +1,4 @@
-import { RATIONING_CONSTANTS } from '../constants.js';
+import { ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
 
 export function getEffectiveRationing(state) {
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
@@ -26,6 +26,12 @@ export function getEmpireSupplyEfficiency(empire, state) {
   const fromDefinition = empire.modifiers?.supply_efficiency || 0;
   const fromImprovements = state.improvements?.empireModifiers?.[empire.id]?.supply_efficiency || 0;
   return Math.min(1, fromDefinition + fromImprovements);
+}
+
+function isArmyDamaged(army) {
+  const maxMP = Number.isFinite(army?.mp?.max) ? army.mp.max : (army.manpower || 0);
+  const currentMP = Number.isFinite(army?.mp?.current) ? army.mp.current : maxMP;
+  return (maxMP - currentMP) > ECONOMY_CONSTANTS.ARMY_NEEDS_DAMAGE_GATE_EPSILON;
 }
 
 export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
@@ -73,40 +79,60 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
 export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
   state.armies.forEach(army => {
     if (!army.demands) return;
-    const manpower = army.manpower || army.mp?.max || 0;
     const empire = state.empires?.find(e => e.id === army.empireId);
-    const empireEff = empire ? getEmpireSupplyEfficiency(empire, state) : 0;
+    if (!empire) return;
+
+    const maxMP = Number.isFinite(army?.mp?.max) ? army.mp.max : (army.manpower || 0);
+    const currentMP = Number.isFinite(army?.mp?.current) ? army.mp.current : maxMP;
+    const missingMP = Math.max(0, maxMP - currentMP);
+    const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
+    const needsActive = isArmyDamaged(army);
 
     // Ensure supply_state is initialized
     if (!army.supply_state) {
-      army.supply_state = { needs_fulfillment: {}, wants_fulfillment: {}, shortages: {}, received: {} };
+      army.supply_state = {
+        needs_fulfillment: {},
+        wants_fulfillment: {},
+        shortages: {},
+        received: {},
+        needs_demand: {},
+        wants_demand: {}
+      };
     }
 
     // Reset received commodities for this tick
     army.supply_state.received = {};
+    army.supply_state.needs_demand = {};
+    army.supply_state.wants_demand = {};
 
-    // Create buy orders for all army needs (no direct stockpile consumption)
+    // Needs are only requested when army is damaged and replacing losses.
     Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalNeeded = qtyPerManpower * manpower * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalNeeded = needsActive
+        ? qtyPerManpower * missingMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult
+        : 0;
+      army.supply_state.needs_demand[commodity] = totalNeeded;
 
       if (totalNeeded > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice;
+        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_NEEDS_PREMIUM;
+        const tags = { army_id: army.id, demand_type: 'army_needs' };
 
-        aggregateBuyOrder('army', army.id, commodity, totalNeeded, maxPrice, 'needs', 0);
+        aggregateBuyOrder('empire', empire.id, commodity, totalNeeded, maxPrice, 'needs', 2, tags);
       }
     });
 
-    // Create buy orders for all army wants (no direct stockpile consumption)
+    // Wants are persistent and represent ongoing readiness/upgrade pressure.
     Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalWanted = qtyPerManpower * manpower * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalWanted = qtyPerManpower * maxMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      army.supply_state.wants_demand[commodity] = totalWanted;
 
       if (totalWanted > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
-        const maxPrice = marketPrice;
+        const maxPrice = marketPrice * MARKET_CONSTANTS.ARMY_WANTS_PREMIUM;
+        const tags = { army_id: army.id, demand_type: 'army_wants' };
 
-        aggregateBuyOrder('army', army.id, commodity, totalWanted, maxPrice, 'wants', -1);
+        aggregateBuyOrder('empire', empire.id, commodity, totalWanted, maxPrice, 'wants', 1, tags);
       }
     });
   });

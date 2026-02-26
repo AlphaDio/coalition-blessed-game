@@ -8,6 +8,22 @@ import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
 
+function applyPermanentLossToArmy(army, originalMP, originalMaxMP, lossRatio) {
+  if (!army?.mp) return;
+
+  const clampedLossRatio = Math.max(0, Math.min(1, Number(lossRatio) || 0));
+  const safeOriginalMax = Math.max(1, Number(originalMaxMP) || 1);
+  const safeOriginalCurrent = Math.max(0, Number(originalMP) || 0);
+
+  const permanentLoss = safeOriginalMax * clampedLossRatio;
+  const nextMax = Math.max(1, safeOriginalMax - permanentLoss);
+  const nextCurrent = Math.max(0, Math.min(nextMax, safeOriginalCurrent - permanentLoss));
+
+  army.mp.max = nextMax;
+  army.mp.current = nextCurrent;
+  army.manpower = nextMax;
+}
+
 function removeScourgeForces(state) {
   if (state.armies) {
     state.armies = state.armies.filter(army => !(army.empireId === '_scourge' && army.id.startsWith('_scourge_army')));
@@ -185,9 +201,7 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   originalArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-
-    const armyMPLoss = armyData.originalMaxMP * coalitionMPLossRatio;
-    army.mp.current = Math.max(0, armyData.originalMP - armyMPLoss);
+    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, coalitionMPLossRatio);
 
     // Distribute organization and fervor changes
     if (coalitionWon) {
