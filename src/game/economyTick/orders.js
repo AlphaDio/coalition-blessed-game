@@ -11,6 +11,18 @@ export function createOrderAggregator(state) {
   // Load existing orders for aggregation (but don't add to arrays yet)
   const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
   const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+  existingBuyOrders.forEach(order => {
+    if (order.turn_added_turn !== state.turn) {
+      order.turn_added_qty = 0;
+      order.turn_added_turn = state.turn;
+    }
+  });
+  existingSellOffers.forEach(order => {
+    if (order.turn_added_turn !== state.turn) {
+      order.turn_added_qty = 0;
+      order.turn_added_turn = state.turn;
+    }
+  });
 
   function serializeTags(tags) {
     if (!tags || typeof tags !== 'object') return '';
@@ -64,6 +76,8 @@ export function createOrderAggregator(state) {
         priority,
         filled_qty: 0,
         fee: 0,
+        turn_added_qty: newQty,
+        turn_added_turn: state.turn,
         // Sell-side resource accumulation is market-centered and persistent.
         max_duration: 1000000,
         duration: 0
@@ -75,6 +89,8 @@ export function createOrderAggregator(state) {
 
     existing.ask_price = newPrice;
     existing.qty = existing.qty + newQty;
+    existing.turn_added_qty = (existing.turn_added_qty || 0) + newQty;
+    existing.turn_added_turn = state.turn;
     existing.duration = 0;
     existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
 
@@ -123,6 +139,8 @@ export function createOrderAggregator(state) {
       if (tags) order.tags = { ...tags };
       order.fee = 1;
       order.filled_qty = 0;
+      order.turn_added_qty = newQty;
+      order.turn_added_turn = state.turn;
       order.max_duration = 1000000;
       buyOrders.push(order);
       ordersToSave.add(order);
@@ -131,6 +149,8 @@ export function createOrderAggregator(state) {
 
     existing.max_price = newPrice;
     existing.qty = existing.qty + newQty;
+    existing.turn_added_qty = (existing.turn_added_qty || 0) + newQty;
+    existing.turn_added_turn = state.turn;
     existing.duration = 0;
     existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
 

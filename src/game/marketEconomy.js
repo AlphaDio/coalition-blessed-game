@@ -77,6 +77,9 @@ export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice =
     demand_qty: 0,
     supply_qty: 0,
     traded_qty: 0,
+    flow_demand_qty_turn: 0,
+    flow_supply_qty_turn: 0,
+    flow_traded_qty_turn: 0,
     buy_orders: [],
     sell_offers: [],
     remaining_buy_offers_post_clear: [],
@@ -195,12 +198,23 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
   
   let totalDemand = relevantBuys.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
   let totalSupply = relevantSells.reduce((sum, o) => sum + (o.qty - (o.filled_qty || 0)), 0);
+  const flowDemand = relevantBuys.reduce((sum, o) => {
+    const added = Number.isFinite(o.turn_added_qty) ? o.turn_added_qty : 0;
+    return sum + Math.max(0, added);
+  }, 0);
+  const flowSupply = relevantSells.reduce((sum, o) => {
+    const added = Number.isFinite(o.turn_added_qty) ? o.turn_added_qty : 0;
+    return sum + Math.max(0, added);
+  }, 0);
   
   marketState.demand_qty = totalDemand;
   marketState.supply_qty = totalSupply;
+  marketState.flow_demand_qty_turn = flowDemand;
+  marketState.flow_supply_qty_turn = flowSupply;
 
   if (totalSupply === 0 || totalDemand === 0) {
     marketState.traded_qty = 0;
+    marketState.flow_traded_qty_turn = 0;
     const unfilledBuys = relevantBuys.map(buy => ({
       ...buy,
       remaining: Math.max(0, buy.qty - (buy.filled_qty || 0))
@@ -271,6 +285,7 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
   }
 
   marketState.traded_qty = trades.reduce((sum, t) => sum + t.qty, 0);
+  marketState.flow_traded_qty_turn = marketState.traded_qty;
 
   return { trades, unfilledBuys, unfilledSells };
 }

@@ -475,6 +475,8 @@ export function createGameState(seed = 0) {
       tick_delay_multiplier: 1.0,
       consumptionShareMultiplier: 1.0,
       consumptionShareBonus: 0,
+      requisition_uptick: 0,
+      requisition_gain_multiplier: 1.0,
       consumptionSourceMultipliers: {},
       hero_siphon_efficiency_mult: 0,
       hero_siphon_efficiency_add: 0,
@@ -743,6 +745,12 @@ export function migrateGameState(state) {
   if (state.coalitionModifiers.consumptionShareBonus === undefined) {
     state.coalitionModifiers.consumptionShareBonus = 0;
   }
+  if (state.coalitionModifiers.requisition_uptick === undefined) {
+    state.coalitionModifiers.requisition_uptick = 0;
+  }
+  if (state.coalitionModifiers.requisition_gain_multiplier === undefined) {
+    state.coalitionModifiers.requisition_gain_multiplier = 1.0;
+  }
   if (!state.coalitionModifiers.consumptionSourceMultipliers || typeof state.coalitionModifiers.consumptionSourceMultipliers !== 'object') {
     state.coalitionModifiers.consumptionSourceMultipliers = {};
   }
@@ -836,6 +844,15 @@ export function migrateGameState(state) {
       }
       if (!Number.isFinite(marketState.buy_backlog_total)) {
         marketState.buy_backlog_total = 0;
+      }
+      if (!Number.isFinite(marketState.flow_demand_qty_turn)) {
+        marketState.flow_demand_qty_turn = 0;
+      }
+      if (!Number.isFinite(marketState.flow_supply_qty_turn)) {
+        marketState.flow_supply_qty_turn = 0;
+      }
+      if (!Number.isFinite(marketState.flow_traded_qty_turn)) {
+        marketState.flow_traded_qty_turn = 0;
       }
     });
   }

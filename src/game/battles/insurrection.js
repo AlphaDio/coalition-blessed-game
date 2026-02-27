@@ -5,16 +5,18 @@ import { startBattle } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 
-function applyPermanentLossToArmy(army, originalMP, originalMaxMP, lossRatio) {
+function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   if (!army?.mp) return;
 
-  const clampedLossRatio = Math.max(0, Math.min(1, Number(lossRatio) || 0));
+  const clampedLossRatio = Math.max(0, Math.min(1, Number(permanentLossRatio) || 0));
+  const clampedRetention = Math.max(0, Number(currentRetentionRatio) || 0);
   const safeOriginalMax = Math.max(1, Number(originalMaxMP) || 1);
-  const safeOriginalCurrent = Math.max(0, Number(originalMP) || 0);
+  const safeOriginalCurrent = Math.max(0, Math.min(safeOriginalMax, Number(originalMP) || 0));
 
   const permanentLoss = safeOriginalMax * clampedLossRatio;
   const nextMax = Math.max(1, safeOriginalMax - permanentLoss);
-  const nextCurrent = Math.max(0, Math.min(nextMax, safeOriginalCurrent - permanentLoss));
+  const retainedCurrent = safeOriginalCurrent * clampedRetention;
+  const nextCurrent = Math.max(0, Math.min(nextMax, retainedCurrent));
 
   army.mp.max = nextMax;
   army.mp.current = nextCurrent;
@@ -118,24 +120,61 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
 
   const loyalWon = winnerSide === 'left';
 
-  // Calculate MP loss ratios
-  const loyalMPLoss = loyalArmy.mp.max - loyalArmy.mp.current;
-  const loyalMPLossRatio = loyalArmy.mp.max > 0 ? loyalMPLoss / loyalArmy.mp.max : 0;
-  const rebelliousMPLoss = rebelliousArmy.mp.max - rebelliousArmy.mp.current;
-  const rebelliousMPLossRatio = rebelliousArmy.mp.max > 0 ? rebelliousMPLoss / rebelliousArmy.mp.max : 0;
+  // Use permanent losses (kill-rate driven) for lasting capacity damage.
+  // Use current retention (post-battle remaining manpower ratio) for current MP.
+  const loyalPermanentLoss = Math.max(0, Number(front.permanentLosses?.left || 0));
+  const rebelliousPermanentLoss = Math.max(0, Number(front.permanentLosses?.right || 0));
+  const loyalOriginalCurrent = Math.max(
+    1,
+    loyalArmyData.reduce((sum, armyData) => sum + Math.max(0, Number(armyData.originalMP) || 0), 0)
+  );
+  const rebelliousOriginalCurrent = Math.max(
+    1,
+    rebelliousArmyData.reduce((sum, armyData) => sum + Math.max(0, Number(armyData.originalMP) || 0), 0)
+  );
+  const loyalCurrentRetentionRatio = Math.max(0, (loyalArmy.mp.current || 0) / loyalOriginalCurrent);
+  const rebelliousCurrentRetentionRatio = Math.max(0, (rebelliousArmy.mp.current || 0) / rebelliousOriginalCurrent);
+  const loyalMPLossRatio = loyalArmy.mp.max > 0 ? loyalPermanentLoss / loyalArmy.mp.max : 0;
+  const rebelliousMPLossRatio = rebelliousArmy.mp.max > 0 ? rebelliousPermanentLoss / rebelliousArmy.mp.max : 0;
 
   // Distribute results to loyal armies
   loyalArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, loyalMPLossRatio);
+    const prevMax = Number(army.mp?.max || 0);
+    const prevCurrent = Number(army.mp?.current || 0);
+    applyPermanentLossToArmy(
+      army,
+      armyData.originalMP,
+      armyData.originalMaxMP,
+      loyalMPLossRatio,
+      loyalCurrentRetentionRatio
+    );
+    const maxLoss = Math.max(0, prevMax - Number(army.mp?.max || 0));
+    const currentLoss = Math.max(0, prevCurrent - Number(army.mp?.current || 0));
+    if (maxLoss > 0.01 || currentLoss > 0.01) {
+      log.push(`${army.name}: permanent battle losses -> MP ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (-${Math.floor(maxLoss)} cap, -${Math.floor(currentLoss)} current)`);
+    }
   });
 
   // Distribute results to rebellious armies
   rebelliousArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, rebelliousMPLossRatio);
+    const prevMax = Number(army.mp?.max || 0);
+    const prevCurrent = Number(army.mp?.current || 0);
+    applyPermanentLossToArmy(
+      army,
+      armyData.originalMP,
+      armyData.originalMaxMP,
+      rebelliousMPLossRatio,
+      rebelliousCurrentRetentionRatio
+    );
+    const maxLoss = Math.max(0, prevMax - Number(army.mp?.max || 0));
+    const currentLoss = Math.max(0, prevCurrent - Number(army.mp?.current || 0));
+    if (maxLoss > 0.01 || currentLoss > 0.01) {
+      log.push(`${army.name}: permanent battle losses -> MP ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (-${Math.floor(maxLoss)} cap, -${Math.floor(currentLoss)} current)`);
+    }
 
     if (loyalWon) {
       // Insurrection quelled

@@ -240,30 +240,24 @@ export function advanceTurn(state, rng = Math.random) {
   const consumptionModifiers = {
     multiplicativeShare: state.coalitionModifiers?.consumptionShareMultiplier ?? 1.0,
     additiveShare: state.coalitionModifiers?.consumptionShareBonus ?? 0,
-    requisitionMultiplier: state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0,
+    requisitionMultiplier:
+      (state.coalitionModifiers?.requisition_gain_multiplier ?? 1.0) *
+      (state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0),
     sourceMultipliers: state.coalitionModifiers?.consumptionSourceMultipliers || {}
   };
 
   const consumptionResult = processConsumptionToRequisition(state.market, state.coalitionEconomy, consumptionModifiers, state.empires);
-  if (consumptionResult.requisitionGenerated > 0.001 || consumptionResult.requisitionGained > 0.001 || consumptionResult.creditsSpent > 0.001) {
-    const logParts = [];
-    if (consumptionResult.requisitionGenerated > 0.001 && consumptionResult.requisitionGained <= 0.001) {
-      logParts.push(
-        `+${consumptionResult.requisitionGenerated.toFixed(3)} req pooled ` +
-        `(${consumptionResult.requisitionPoolTurns}/${consumptionResult.requisitionPoolPayoutTurns})`
-      );
-    }
-    if (consumptionResult.requisitionGained > 0.001) {
-      logParts.push(`+${consumptionResult.requisitionGained.toFixed(3)} req payout`);
-    }
-    if (consumptionResult.creditsSpent > 0.001) {
-      logParts.push(`+${Math.round(consumptionResult.creditsSpent)} credits`);
-    }
-    if (logParts.length > 0) {
-      const message = `Coalition from consumption: ${logParts.join(', ')}`;
-      log.push(message);
-      logger.info(message);
-    }
+  // Only log on requisition payout; pooled accrual stays silent to avoid per-turn noise.
+  if (consumptionResult.requisitionGained > 0.001) {
+    const message = `Coalition from consumption payout: +${consumptionResult.requisitionGained.toFixed(3)} req`;
+    log.push(message);
+    logger.info(message);
+  }
+
+  // Passive requisition uptick from enacted laws.
+  const requisitionUptick = state.coalitionModifiers?.requisition_uptick ?? 0;
+  if (Number.isFinite(requisitionUptick) && requisitionUptick !== 0) {
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + requisitionUptick;
   }
 
   applyMissionSliderEffects(state, log);

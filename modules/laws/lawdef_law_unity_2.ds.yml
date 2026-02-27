@@ -40,8 +40,10 @@ declares:
       VOTING:
         - "governance"
     modifiers:
-      cohesionModifier: 1.15
-      empire_approval: 1
+      cohesionModifier: 1.14
+      empire_approval: 1.1
+      population_growth: 0.04
+      requisition_uptick: 0.06
     immediate_effects:
       cohesion: 4
       empire_approval: 2

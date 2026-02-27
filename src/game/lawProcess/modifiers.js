@@ -26,8 +26,20 @@ export function applyLawModifiers(lawDef, state) {
       army_maintenance_cost_modifier: 1.0,
       relations_strength_modifier: 1.0,
       consumptionShareMultiplier: 1.0,
-      consumptionShareBonus: 0
+      consumptionShareBonus: 0,
+      law_progress_speed: 0,
+      requisition_uptick: 0,
+      requisition_gain_multiplier: 1.0
     };
+  }
+  if (!Number.isFinite(state.coalitionModifiers.law_progress_speed)) {
+    state.coalitionModifiers.law_progress_speed = 0;
+  }
+  if (!Number.isFinite(state.coalitionModifiers.requisition_uptick)) {
+    state.coalitionModifiers.requisition_uptick = 0;
+  }
+  if (!Number.isFinite(state.coalitionModifiers.requisition_gain_multiplier)) {
+    state.coalitionModifiers.requisition_gain_multiplier = 1.0;
   }
 
   // Apply empire approval modifier (applies each tick to all empires)
@@ -87,6 +99,12 @@ export function applyLawModifiers(lawDef, state) {
     log.push(`Supply efficiency: +${(modifiers.supply_efficiency * 100).toFixed(1)}%`);
   }
 
+  // Apply law process speed modifier
+  if (modifiers.law_progress_speed) {
+    state.coalitionModifiers.law_progress_speed += modifiers.law_progress_speed;
+    log.push(`Law process speed: +${(modifiers.law_progress_speed * 100).toFixed(1)}%`);
+  }
+
   // Apply army organization modifier (immediate bonus to all armies)
   if (modifiers.army_organization) {
     state.coalitionModifiers.army_organization += modifiers.army_organization;
@@ -118,6 +136,24 @@ export function applyLawModifiers(lawDef, state) {
   if (modifiers.consumptionShareBonus) {
     state.coalitionModifiers.consumptionShareBonus = (state.coalitionModifiers.consumptionShareBonus || 0) + modifiers.consumptionShareBonus;
     log.push(`Coalition consumption share: +${(modifiers.consumptionShareBonus * 100).toFixed(0)}%`);
+  }
+
+  // Apply requisition uptick (flat requisition gain per turn)
+  if (Number.isFinite(modifiers.requisition_uptick) && modifiers.requisition_uptick !== 0) {
+    state.coalitionModifiers.requisition_uptick = (state.coalitionModifiers.requisition_uptick || 0) + modifiers.requisition_uptick;
+    const sign = modifiers.requisition_uptick >= 0 ? '+' : '';
+    log.push(`Requisition uptick: ${sign}${modifiers.requisition_uptick.toFixed(3)} per tick`);
+  }
+
+  // Apply requisition gain multiplier (affects requisition-generating systems)
+  if (Number.isFinite(modifiers.requisition_gain_multiplier) && modifiers.requisition_gain_multiplier !== 1) {
+    const current = Number.isFinite(state.coalitionModifiers.requisition_gain_multiplier)
+      ? state.coalitionModifiers.requisition_gain_multiplier
+      : 1.0;
+    state.coalitionModifiers.requisition_gain_multiplier = current * modifiers.requisition_gain_multiplier;
+    const bonus = ((modifiers.requisition_gain_multiplier - 1) * 100).toFixed(1);
+    const sign = Number(bonus) >= 0 ? '+' : '';
+    log.push(`Requisition gains: ${sign}${bonus}%`);
   }
 
   // Apply immediate empire reactions based on law's axis vector
@@ -153,6 +189,15 @@ export function removeLawModifiers(lawDef, state) {
   if (!state.coalitionModifiers) {
     return;
   }
+  if (!Number.isFinite(state.coalitionModifiers.law_progress_speed)) {
+    state.coalitionModifiers.law_progress_speed = 0;
+  }
+  if (!Number.isFinite(state.coalitionModifiers.requisition_uptick)) {
+    state.coalitionModifiers.requisition_uptick = 0;
+  }
+  if (!Number.isFinite(state.coalitionModifiers.requisition_gain_multiplier)) {
+    state.coalitionModifiers.requisition_gain_multiplier = 1.0;
+  }
 
   if (modifiers.empire_approval) {
     state.coalitionModifiers.empire_approval -= modifiers.empire_approval;
@@ -171,6 +216,9 @@ export function removeLawModifiers(lawDef, state) {
   }
   if (modifiers.supply_efficiency) {
     state.coalitionModifiers.supply_efficiency -= modifiers.supply_efficiency;
+  }
+  if (modifiers.law_progress_speed) {
+    state.coalitionModifiers.law_progress_speed -= modifiers.law_progress_speed;
   }
   if (modifiers.empire_production_multiplier) {
     state.coalitionModifiers.empire_production_multiplier -= modifiers.empire_production_multiplier;
@@ -207,6 +255,15 @@ export function removeLawModifiers(lawDef, state) {
   }
   if (modifiers.consumptionShareBonus) {
     state.coalitionModifiers.consumptionShareBonus -= modifiers.consumptionShareBonus;
+  }
+  if (Number.isFinite(modifiers.requisition_uptick) && modifiers.requisition_uptick !== 0) {
+    state.coalitionModifiers.requisition_uptick -= modifiers.requisition_uptick;
+  }
+  if (Number.isFinite(modifiers.requisition_gain_multiplier) && modifiers.requisition_gain_multiplier !== 0) {
+    const current = Number.isFinite(state.coalitionModifiers.requisition_gain_multiplier)
+      ? state.coalitionModifiers.requisition_gain_multiplier
+      : 1.0;
+    state.coalitionModifiers.requisition_gain_multiplier = current / modifiers.requisition_gain_multiplier;
   }
 }
 

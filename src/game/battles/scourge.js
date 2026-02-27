@@ -8,16 +8,18 @@ import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
 
-function applyPermanentLossToArmy(army, originalMP, originalMaxMP, lossRatio) {
+function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   if (!army?.mp) return;
 
-  const clampedLossRatio = Math.max(0, Math.min(1, Number(lossRatio) || 0));
+  const clampedLossRatio = Math.max(0, Math.min(1, Number(permanentLossRatio) || 0));
+  const clampedRetention = Math.max(0, Number(currentRetentionRatio) || 0);
   const safeOriginalMax = Math.max(1, Number(originalMaxMP) || 1);
-  const safeOriginalCurrent = Math.max(0, Number(originalMP) || 0);
+  const safeOriginalCurrent = Math.max(0, Math.min(safeOriginalMax, Number(originalMP) || 0));
 
   const permanentLoss = safeOriginalMax * clampedLossRatio;
   const nextMax = Math.max(1, safeOriginalMax - permanentLoss);
-  const nextCurrent = Math.max(0, Math.min(nextMax, safeOriginalCurrent - permanentLoss));
+  const retainedCurrent = safeOriginalCurrent * clampedRetention;
+  const nextCurrent = Math.max(0, Math.min(nextMax, retainedCurrent));
 
   army.mp.max = nextMax;
   army.mp.current = nextCurrent;
@@ -193,15 +195,34 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   const originalArmyData = coalitionArmy._originalArmies || [];
   const coalitionWon = winnerSide === 'left';
 
-  // Calculate MP loss ratio for distributing damage
-  const coalitionMPLoss = coalitionArmy.mp.max - coalitionArmy.mp.current;
-  const coalitionMPLossRatio = coalitionArmy.mp.max > 0 ? coalitionMPLoss / coalitionArmy.mp.max : 0;
+  // Use permanent losses (kill-rate driven) for lasting army capacity damage.
+  // Use current retention (post-battle remaining manpower ratio) for current MP.
+  const coalitionPermanentLoss = Math.max(0, Number(front.permanentLosses?.left || 0));
+  const coalitionOriginalCurrent = Math.max(
+    1,
+    originalArmyData.reduce((sum, armyData) => sum + Math.max(0, Number(armyData.originalMP) || 0), 0)
+  );
+  const coalitionCurrentRetentionRatio = Math.max(0, (coalitionArmy.mp.current || 0) / coalitionOriginalCurrent);
+  const coalitionMPLossRatio = coalitionArmy.mp.max > 0 ? coalitionPermanentLoss / coalitionArmy.mp.max : 0;
 
   // Distribute results to original armies
   originalArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
-    applyPermanentLossToArmy(army, armyData.originalMP, armyData.originalMaxMP, coalitionMPLossRatio);
+    const prevMax = Number(army.mp?.max || 0);
+    const prevCurrent = Number(army.mp?.current || 0);
+    applyPermanentLossToArmy(
+      army,
+      armyData.originalMP,
+      armyData.originalMaxMP,
+      coalitionMPLossRatio,
+      coalitionCurrentRetentionRatio
+    );
+    const maxLoss = Math.max(0, prevMax - Number(army.mp?.max || 0));
+    const currentLoss = Math.max(0, prevCurrent - Number(army.mp?.current || 0));
+    if (maxLoss > 0.01 || currentLoss > 0.01) {
+      log.push(`${army.name}: permanent battle losses -> MP ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (-${Math.floor(maxLoss)} cap, -${Math.floor(currentLoss)} current)`);
+    }
 
     // Distribute organization and fervor changes
     if (coalitionWon) {
@@ -257,7 +278,9 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     }
 
     // Grant requisition based on Scourge destroyed
-    const requisitionGain = scourgeDestroyed * 0.001;
+    const requisitionGainMultiplier = (state.coalitionModifiers?.requisition_gain_multiplier ?? 1.0) *
+      (state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0);
+    const requisitionGain = scourgeDestroyed * 0.001 * requisitionGainMultiplier;
     state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + requisitionGain;
 
     logger.info(`Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}, ${scourgeDestroyed} Scourge destroyed (+${requisitionGain.toFixed(3)} req)`);

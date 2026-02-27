@@ -1,4 +1,5 @@
 import { ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
+import { applyDemandCommodityMultiplier } from '../economyBalance.js';
 
 export function getEffectiveRationing(state) {
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
@@ -46,7 +47,8 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
     }
 
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const totalNeeded = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawNeeded = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       if (totalNeeded > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice;
@@ -65,7 +67,8 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
     const empireMult = Math.max(0, 1 - empireEff);
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const totalWanted = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawWanted = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       if (totalWanted > 0) {
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice;
@@ -108,9 +111,10 @@ export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, sup
 
     // Needs are only requested when army is damaged and replacing losses.
     Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalNeeded = needsActive
+      const rawNeeded = needsActive
         ? qtyPerManpower * missingMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult
         : 0;
+      const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       army.supply_state.needs_demand[commodity] = totalNeeded;
 
       if (totalNeeded > 0) {
@@ -124,7 +128,8 @@ export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, sup
 
     // Wants are persistent and represent ongoing readiness/upgrade pressure.
     Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-      const totalWanted = qtyPerManpower * maxMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawWanted = qtyPerManpower * maxMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       army.supply_state.wants_demand[commodity] = totalWanted;
 
       if (totalWanted > 0) {

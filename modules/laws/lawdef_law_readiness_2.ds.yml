@@ -40,9 +40,10 @@ declares:
       VOTING:
         - "security"
     modifiers:
-      army_maintenance_cost_modifier: 0.8
+      army_maintenance_cost_modifier: 0.82
       cohesionModifier: 1.05
-      supply_efficiency: 0.05
+      supply_efficiency: 0.04
+      requisition_gain_multiplier: 1.12
     immediate_effects:
-      requisition: 600
+      requisition: 560
       cohesion: 3

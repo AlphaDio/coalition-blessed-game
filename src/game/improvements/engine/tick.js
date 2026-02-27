@@ -74,12 +74,15 @@ export function processImprovementsTick(state) {
           state.coalitionEconomy.requisition = 0;
         }
 
+        // Upkeep is scaled down to match the new economy pacing.
+        const effectiveUpkeep = improvement.requisitionUpkeep / 10;
+
         // Allow requisition to go negative
-        state.coalitionEconomy.requisition -= improvement.requisitionUpkeep;
+        state.coalitionEconomy.requisition -= effectiveUpkeep;
 
         // Only log if this is a significant upkeep cost
-        if (improvement.requisitionUpkeep >= 5) {
-          log.push(`{yellow-fg}Upkeep:{/yellow-fg} ${improvement.name} (-${improvement.requisitionUpkeep} requisition)`);
+        if (effectiveUpkeep >= 0.5) {
+          log.push(`{yellow-fg}Upkeep:{/yellow-fg} ${improvement.name} (-${effectiveUpkeep.toFixed(3)} requisition)`);
         }
       }
 

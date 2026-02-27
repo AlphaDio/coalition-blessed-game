@@ -1,4 +1,5 @@
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../constants.js';
+import { applySupplyCommodityMultiplier } from '../economyBalance.js';
 
 export function emitEmpireProduction(state, aggregateSellOffer) {
   state.empires.forEach(empire => {
@@ -19,8 +20,9 @@ export function emitEmpireProduction(state, aggregateSellOffer) {
 
     Object.entries(empire.production.outputs_per_tick).forEach(([commodity, qty]) => {
       if (qty > 0) {
-        const modifiedQty = qty * population * productionMultiplier * effectiveEfficiency *
+        const rawQty = qty * population * productionMultiplier * effectiveEfficiency *
           (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
+        const modifiedQty = applySupplyCommodityMultiplier(commodity, rawQty);
         const marketPrice = state.market[commodity]?.price || 1.0;
         const askPrice = marketPrice;
 

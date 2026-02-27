@@ -43,6 +43,7 @@ declares:
     modifiers:
       relations_strength_modifier: 1.05
       research_speed: 0.05
+      law_progress_speed: 0.03
     immediate_effects:
       cohesion: 2
-      coalition_credits: 1000
+      coalition_credits: 900

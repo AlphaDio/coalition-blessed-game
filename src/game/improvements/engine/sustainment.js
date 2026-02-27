@@ -1,5 +1,6 @@
 import { getLogger } from '../../../modules/logger.js';
 import { RATIONING_CONSTANTS } from '../../constants.js';
+import { applyDemandCommodityMultiplier } from '../../economyBalance.js';
 import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../economyTick/ordersPhase.js';
 import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
 import { nextOrderId } from './orderIds.js';
@@ -105,7 +106,7 @@ function consumeSustainmentReceipts(state, empireId, commodity, qty) {
   return used;
 }
 
-function calculateImprovementNeed(state, empire, qtyPerPopulation) {
+function calculateImprovementNeed(state, empire, commodity, qtyPerPopulation) {
   const population = empire.stats?.population || 1;
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
   const rationingAdd = state.coalitionModifiers?.rationing_add || 0;
@@ -123,7 +124,8 @@ function calculateImprovementNeed(state, empire, qtyPerPopulation) {
     * IMPROVEMENT_SUSTAINMENT_SCALE
     * supplyEfficiencyMultiplier
     * empireMult;
-  return normalizeQty(rawNeed);
+  const balancedNeed = applyDemandCommodityMultiplier(commodity, rawNeed);
+  return normalizeQty(balancedNeed);
 }
 
 function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
@@ -148,6 +150,11 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
 
   if (existing) {
     existing.qty = normalizeQty(existing.qty + demandToAdd);
+    const currentTurnAdded = existing.turn_added_turn === state.turn
+      ? (existing.turn_added_qty || 0)
+      : 0;
+    existing.turn_added_qty = normalizeQty(currentTurnAdded + demandToAdd);
+    existing.turn_added_turn = state.turn;
     existing.max_price = maxPrice;
     existing.priority = Math.max(existing.priority || 0, SUSTAINMENT_ORDER_PRIORITY);
     existing.category = 'needs';
@@ -177,6 +184,8 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
   );
   buyOrder.category = 'needs';
   buyOrder.fee = 1;
+  buyOrder.turn_added_qty = demandToAdd;
+  buyOrder.turn_added_turn = state.turn;
   buyOrder.tags = {
     payer: empireId,
     beneficiary: empireId,
@@ -314,7 +323,7 @@ export function processImprovementSustainmentPreMarket(state, improvement) {
 
   const sustainmentNeeds = improvement.sustainmentCost || {};
   for (const [commodity, qtyPerPopulation] of Object.entries(sustainmentNeeds)) {
-    const needed = calculateImprovementNeed(state, empire, qtyPerPopulation);
+    const needed = calculateImprovementNeed(state, empire, commodity, qtyPerPopulation);
     if (needed <= 0) continue;
 
     let remainingNeed = needed;

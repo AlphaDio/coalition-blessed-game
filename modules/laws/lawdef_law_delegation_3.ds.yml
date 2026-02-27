@@ -41,7 +41,9 @@ declares:
         - "governance"
     modifiers:
       relations_strength_modifier: 1.2
-      trade_income: 150
+      trade_income: 140
+      empire_approval: 0.9
+      requisition_gain_multiplier: 1.12
     immediate_effects:
-      coalition_credits: 3500
+      coalition_credits: 3200
       cohesion: 4

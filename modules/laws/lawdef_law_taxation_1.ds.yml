@@ -44,8 +44,9 @@ declares:
       VOTING:
         - "economic"
     modifiers:
-      consumptionShareMultiplier: 1.25
-      empire_approval: -0.3
+      consumptionShareMultiplier: 1.2
+      requisition_uptick: 0.2
+      empire_approval: -0.4
     immediate_effects:
-      requisition: 200
+      requisition: 220
       cohesion: 1

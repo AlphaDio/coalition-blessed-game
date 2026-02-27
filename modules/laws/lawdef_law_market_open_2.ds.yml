@@ -40,9 +40,10 @@ declares:
       VOTING:
         - "economic"
     modifiers:
-      trade_income: 300
-      supply_efficiency: 0.1
+      trade_income: 260
+      supply_efficiency: 0.08
+      consumptionShareBonus: 0.03
     immediate_effects:
-      coalition_credits: 3000
-      requisition: 400
-      cohesion: 3
+      coalition_credits: 2600
+      requisition: 320
+      cohesion: 2

@@ -40,8 +40,10 @@ declares:
       VOTING:
         - "governance"
     modifiers:
-      research_speed: 0.16
-      supply_efficiency: 0.1
+      research_speed: 0.12
+      supply_efficiency: 0.07
+      law_progress_speed: 0.06
+      requisition_uptick: 0.08
     immediate_effects:
       influence: 40
       cohesion: 3

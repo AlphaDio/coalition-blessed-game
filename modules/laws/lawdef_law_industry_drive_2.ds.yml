@@ -41,9 +41,10 @@ declares:
       VOTING:
         - "economic"
     modifiers:
-      industrial_output: 0.2
-      empire_production_multiplier: 0.1
+      industrial_output: 0.18
+      empire_production_multiplier: 0.08
+      consumptionShareMultiplier: 1.1
     immediate_effects:
-      coalition_credits: 2500
-      requisition: 500
+      coalition_credits: 2200
+      requisition: 420
       cohesion: 2

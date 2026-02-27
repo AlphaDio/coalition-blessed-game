@@ -3,6 +3,9 @@ import { processEconomyTick } from '../economyTick.js';
 import { getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
 import { getLogger } from '../../modules/logger.js';
 
+const LEGACY_CONSUMPTION_THRESHOLD_CUTOFF = 100;
+const LEGACY_CONSUMPTION_THRESHOLD_DIVISOR = 100;
+
 export function handleEconomyTick(state, log, logger) {
   try {
     const economyResult = processEconomyTick(state);
@@ -30,6 +33,21 @@ export function handleEconomyTick(state, log, logger) {
 function logConsumptionEffect(logger, log, message) {
   log.push(message);
   logger.info(message);
+}
+
+function normalizeConsumptionThreshold(rawThreshold) {
+  const parsed = Number(rawThreshold);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  // Old stockpile-era thresholds were orders of magnitude larger than
+  // regular market-consumption ticks. Normalize them into current pacing.
+  if (parsed > LEGACY_CONSUMPTION_THRESHOLD_CUTOFF) {
+    return Math.max(1, parsed / LEGACY_CONSUMPTION_THRESHOLD_DIVISOR);
+  }
+
+  return parsed;
 }
 
 function applyArmyBonus(state, empireId, bonusKey, amount) {
@@ -176,8 +194,8 @@ export function processEmpireStockpileConsumption(state, log) {
 
     for (const rule of empire.consumptionRules) {
       const { commodity, threshold } = rule;
-      const normalizedThreshold = Number(threshold);
-      if (!Number.isFinite(normalizedThreshold) || normalizedThreshold <= 0) {
+      const normalizedThreshold = normalizeConsumptionThreshold(threshold);
+      if (!normalizedThreshold) {
         logger.warn(`Skipping invalid consumption threshold for ${empire.name} ${commodity}: ${threshold}`);
         continue;
       }

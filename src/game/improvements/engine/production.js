@@ -1,5 +1,6 @@
 import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
+import { applySupplyCommodityMultiplier } from '../../economyBalance.js';
 import { nextOrderId } from './orderIds.js';
 
 const QUANTITY_PRECISION = 1000;
@@ -41,11 +42,14 @@ export function processImprovementProduction(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs)) {
     // Apply production efficiency to base quantity before scaling
     const efficiencyAdjustedQty = qty * effectiveEfficiency;
-    const scaledQty = normalizeQty(
+    const baseScaledQty = normalizeQty(
       commodity === 'requisition'
         ? efficiencyAdjustedQty
         : efficiencyAdjustedQty * population
     );
+    const scaledQty = commodity === 'requisition'
+      ? baseScaledQty
+      : normalizeQty(applySupplyCommodityMultiplier(commodity, baseScaledQty));
     if (scaledQty <= 0) continue;
 
     // Special handling for requisition - add directly to coalition economy (bypass bank)
@@ -96,6 +100,11 @@ export function releaseProductionFromBank(state, improvement) {
 
     if (existing) {
       existing.qty = normalizeQty(existing.qty + normalizedQty);
+      const currentTurnAdded = existing.turn_added_turn === state.turn
+        ? (existing.turn_added_qty || 0)
+        : 0;
+      existing.turn_added_qty = normalizeQty(currentTurnAdded + normalizedQty);
+      existing.turn_added_turn = state.turn;
       existing.ask_price = askPrice;
       existing.priority = Math.max(existing.priority || 0, 100);
       existing.duration = 0;
@@ -111,6 +120,8 @@ export function releaseProductionFromBank(state, improvement) {
       qty: normalizedQty,
       ask_price: askPrice,
       filled_qty: 0,
+      turn_added_qty: normalizedQty,
+      turn_added_turn: state.turn,
       priority: 100,
       fee: 0,
       duration: 0,
@@ -136,7 +147,8 @@ export function releaseProductionFromBank(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionOutputs || {})) {
     if (commodity !== 'requisition') {
       const efficiencyAdjustedQty = qty * effectiveEfficiency;
-      thresholdValue += efficiencyAdjustedQty * population;
+      const baseScaledQty = efficiencyAdjustedQty * population;
+      thresholdValue += applySupplyCommodityMultiplier(commodity, baseScaledQty);
     }
   }
 

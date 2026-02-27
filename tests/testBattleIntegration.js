@@ -319,9 +319,11 @@ function testPermanentLossReducesCapacity() {
   const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
   const coalitionWon = coalitionArmy && coalitionArmy.mp.current > 0;
   const winnerSide = coalitionWon ? 'left' : 'right';
+  const coalitionHadCurrentDamage = coalitionArmy && coalitionArmy.mp.current < coalitionArmy.mp.max - 0.001;
   handleScourgeBattleEnd(state, front, winnerSide);
 
   let anyReduced = false;
+  let anyCurrentBelowMax = false;
   let invalidState = false;
   participatingArmies.forEach(army => {
     const updated = state.armies.find(a => a.id === army.id);
@@ -332,6 +334,9 @@ function testPermanentLossReducesCapacity() {
     }
     if (updated.mp.current > updated.mp.max + 0.001) {
       invalidState = true;
+    }
+    if (updated.mp.current < updated.mp.max - 0.001) {
+      anyCurrentBelowMax = true;
     }
     if (Math.abs((updated.manpower || 0) - (updated.mp.max || 0)) > 0.001) {
       invalidState = true;
@@ -346,6 +351,11 @@ function testPermanentLossReducesCapacity() {
   const coalitionPermanentLosses = front.permanentLosses?.left || 0;
   if (coalitionPermanentLosses > 0 && !anyReduced) {
     console.log('✗ Permanent losses recorded but no army capacity was reduced');
+    return false;
+  }
+
+  if (coalitionHadCurrentDamage && !anyCurrentBelowMax) {
+    console.log('✗ Battle dealt current MP damage but all armies returned at full strength');
     return false;
   }
 

@@ -40,8 +40,10 @@ declares:
       VOTING:
         - "governance"
     modifiers:
-      relations_strength_modifier: 1.1
-      trade_income: 100
+      relations_strength_modifier: 1.12
+      trade_income: 85
+      empire_approval: 0.6
+      requisition_gain_multiplier: 1.06
     immediate_effects:
-      coalition_credits: 2000
+      coalition_credits: 1800
       cohesion: 3

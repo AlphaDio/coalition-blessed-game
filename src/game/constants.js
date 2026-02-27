@@ -225,6 +225,23 @@ export const RATIONING_CONSTANTS = {
 };
 
 /**
+ * Commodity-specific economy rebalance multipliers.
+ * Used to keep per-turn supply and demand closer to market-clearing
+ * while preserving persistent backlog behavior.
+ */
+export const ECONOMY_BALANCE_CONSTANTS = {
+  DEMAND_MULTIPLIERS_BY_COMMODITY: {
+    plasma_fuel: 1.35,
+    biomass: 1.30
+  },
+  SUPPLY_MULTIPLIERS_BY_COMMODITY: {
+    plasma_fuel: 0.88,
+    biomass: 0.90
+  },
+  IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT: 6
+};
+
+/**
  * Initial game setup values for new games.
  * @property {number} INITIAL_REQUISITION - Starting requisition points for coalition operations
  * @property {number} INITIAL_TREASURY_CREDITS - Starting credits in coalition treasury

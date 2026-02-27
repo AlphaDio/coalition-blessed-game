@@ -40,8 +40,10 @@ declares:
       VOTING:
         - "security"
     modifiers:
-      supply_efficiency: 0.05
-      empire_approval: -0.5
+      supply_efficiency: 0.04
+      army_organization: 4
+      empire_approval: -0.6
+      requisition_uptick: 0.12
     immediate_effects:
-      requisition: 400
+      requisition: 350
       cohesion: 1

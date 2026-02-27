@@ -40,10 +40,11 @@ declares:
       VOTING:
         - "economic"
     modifiers:
-      trade_income: 100
-      empire_approval: 0.5
+      trade_income: 90
+      empire_approval: 0.4
+      requisition_uptick: 0.12
     immediate_effects:
-      coalition_credits: 1500
-      requisition: 150
+      coalition_credits: 1400
+      requisition: 120
       cohesion: 2
       empire_approval: 1
