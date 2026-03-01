@@ -1,4 +1,4 @@
-import { EVENT_CONSTANTS } from './constants.js';
+import { EVENT_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
 import { clampApproval, clampCohesion, clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
@@ -110,6 +110,35 @@ function autoResolveEvent(state, event) {
   // This allows the game to continue without player input
   state.activeEvent = null;
   return { success: true, log: [`Event ${getEventTitle(event)} occurred (no action required)`] };
+}
+
+function applyLinkedIntelAndPrediction(state, confidenceDelta = 0, intelDelta = 0, log = []) {
+  const confidenceChange = Number(confidenceDelta) || 0;
+  const intelChange = Number(intelDelta) || 0;
+  const perPoint = SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT;
+
+  let totalIntelDelta = intelChange;
+  let totalConfidenceDelta = confidenceChange;
+
+  if (confidenceChange !== 0 && perPoint > 0) {
+    totalIntelDelta += confidenceChange / perPoint;
+  }
+  if (intelChange !== 0 && perPoint > 0) {
+    totalConfidenceDelta += intelChange * perPoint;
+  }
+
+  if (totalIntelDelta !== 0) {
+    state.coalitionIntel = (state.coalitionIntel || 0) + totalIntelDelta;
+    const direction = totalIntelDelta >= 0 ? '+' : '';
+    log.push(`Coalition intel ${direction}${totalIntelDelta.toFixed(2)}`);
+  }
+
+  if (state.scourgePrediction && totalConfidenceDelta !== 0) {
+    boostScourgePredictionConfidence(state, totalConfidenceDelta);
+    const newLevel = state.scourgePrediction.confidenceLevel;
+    const direction = totalConfidenceDelta >= 0 ? '+' : '';
+    log.push(`Scourge prediction confidence ${direction}${totalConfidenceDelta.toFixed(2)} (now ${newLevel.toUpperCase()})`);
+  }
 }
 
 export function handleEventChoice(state, eventId, choiceIndex) {
@@ -296,18 +325,24 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       });
     }
 
-    // Handle Scourge prediction confidence boost
+    // Keep Intel and prediction confidence synchronized when either event effect is used.
+    let confidenceBoost = 0;
+    let intelBoost = 0;
+
     if (expandedEffects.scourgePredictionConfidence !== undefined) {
-      const confidenceBoost = typeof expandedEffects.scourgePredictionConfidence === 'function' 
-        ? expandedEffects.scourgePredictionConfidence() 
+      confidenceBoost = typeof expandedEffects.scourgePredictionConfidence === 'function'
+        ? expandedEffects.scourgePredictionConfidence()
         : expandedEffects.scourgePredictionConfidence;
-      
-      if (state.scourgePrediction) {
-        boostScourgePredictionConfidence(state, confidenceBoost);
-        const newLevel = state.scourgePrediction.confidenceLevel;
-        const direction = confidenceBoost >= 0 ? '+' : '';
-        log.push(`Scourge prediction confidence ${direction}${confidenceBoost.toFixed(2)} (now ${newLevel.toUpperCase()})`);
-      }
+    }
+
+    if (expandedEffects.coalitionIntel !== undefined) {
+      intelBoost = typeof expandedEffects.coalitionIntel === 'function'
+        ? expandedEffects.coalitionIntel()
+        : expandedEffects.coalitionIntel;
+    }
+
+    if (confidenceBoost !== 0 || intelBoost !== 0) {
+      applyLinkedIntelAndPrediction(state, confidenceBoost, intelBoost, log);
     }
   }
   

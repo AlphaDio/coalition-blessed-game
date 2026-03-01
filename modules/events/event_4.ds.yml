@@ -20,19 +20,19 @@ declares:
     name: "Scourge Advance"
     description: "Scourge forces are advancing on a Nexus Dominion relay station. Our scouts report information on their attacking formations and supply lines."
     choices:
-      - text: "Stand and fight (costs 50 requisition, take casualties, gain insight)"
+      - text: "Stand and fight (costs 50 requisition, take casualties, gain intel confidence)"
         effects:
           coalitionEconomy:
             requisition: -50
           coalitionCohesion: -4
           scourgeCohesion: -5
           scourgePredictionConfidence: 0.2
-      - text: "Strategic retreat (preserve forces, minimal intel gain)"
+      - text: "Strategic retreat (preserve forces, slight intel confidence gain)"
         effects:
           coalitionCohesion: -2
           scourgeCohesion: 2
           scourgePredictionConfidence: 0.07
-      - text: "Scorched earth deployment (costs 150 requisition, major damage, maximum intel)"
+      - text: "Scorched earth deployment (costs 150 requisition, major damage, major intel confidence gain)"
         effects:
           coalitionEconomy:
             requisition: -150

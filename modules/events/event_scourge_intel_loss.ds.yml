@@ -22,20 +22,20 @@ declares:
     choices:
       - text: "Emergency Reconstruction"
         description: "Immediately recruit and train replacement scouts, establish new observation posts, and honor the fallen with a proper memorial. Costly but minimizes capability loss."
-        effects_summary: "Cost: 100 requisition | Prediction confidence: -12% (minimized)"
+        effects_summary: "Cost: 100 requisition | Prediction confidence + intel reserve: minor loss (minimized)"
         effects:
           coalitionEconomy:
             requisition: -100
           scourgePredictionConfidence: -0.12
       - text: "Request Allied Volunteers"
         description: "Call upon member empires to temporarily assign their own scouts to Coalition service. Maintains capability but some empires resent the imposition."
-        effects_summary: "Cost: Free | Prediction confidence: -22% | All empires: -1 approval"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: moderate loss | All empires: -1 approval"
         effects:
           empireApproval:
             "@all": -1
           scourgePredictionConfidence: -0.22
       - text: "Honor and Regroup"
         description: "Hold a memorial service and allow time for organic rebuilding. Significant intelligence impact but avoids rushed decisions."
-        effects_summary: "Cost: Free | Prediction confidence: -35%"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: major loss"
         effects:
           scourgePredictionConfidence: -0.35

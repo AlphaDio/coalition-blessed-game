@@ -394,9 +394,9 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   MIN_CONFIDENCE_MODIFIER: 0.1,        // Minimum (very uncertain)
   MAX_CONFIDENCE_MODIFIER: 2.0,        // Maximum (very certain)
   CONFIDENCE_DRIFT_TURNS: 60,          // Turns to drift toward baseline (1.0) 30 -> 60
-  INTEL_CONFIDENCE_PER_POINT: 0.03,    // Each stored intel point improves prediction confidence
-  MAX_INTEL_CONFIDENCE_BONUS: 0.75,    // Cap the confidence gain from stockpiled intel
-  DIRECT_TARGET_INTEL_COST: 8,         // Spend intel to force the next target empire
+  INTEL_CONFIDENCE_PER_POINT: 0.05,    // Each stored intel point improves prediction confidence
+  MAX_INTEL_CONFIDENCE_BONUS: 1.0,     // Cap the confidence gain from stockpiled intel
+  DIRECT_TARGET_INTEL_COST: 6,         // Spend intel to force the next target empire
 
   // Uncertainty ranges based on confidence
   UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low
@@ -482,6 +482,8 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
  * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
  * @property {number} MISSION_INTEL_PER_REQUISITION - Intel gained per requisition diverted into mission budget
+ * @property {number} DEEP_MISSION_THRESHOLD_BASE - Base mission meter required for the first Deep Mission (100)
+ * @property {number} DEEP_MISSION_THRESHOLD_GROWTH_RATE - Permanent threshold growth after each Deep Mission (15%)
  * @property {number} DEEP_STRIKE_MP_PCT - Military power percentage for deep strikes (50%)
  * @property {number} DEEP_SABOTAGE_SEVERITY - Severity reduction from sabotage missions (1)
  * @property {number} DEEP_GLORY_SMALL - Small glory reward (40)
@@ -504,7 +506,9 @@ export const SCOURGE_MISSION_CONSTANTS = {
   MISSION_NEGATIVE_THREAT_INCREASE: 2,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
   MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
-  MISSION_INTEL_PER_REQUISITION: 0.02,
+  MISSION_INTEL_PER_REQUISITION: 0.025,
+  DEEP_MISSION_THRESHOLD_BASE: 100,
+  DEEP_MISSION_THRESHOLD_GROWTH_RATE: 0.15,
   DEEP_STRIKE_MP_PCT: 0.5,
   DEEP_SABOTAGE_SEVERITY: 1,
   DEEP_GLORY_SMALL: 40,

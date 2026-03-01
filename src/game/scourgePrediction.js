@@ -146,10 +146,11 @@ function predictNextScourgeTargetByVulnerability(state, rng) {
 function calculateConfidenceModifier(state) {
   let modifier = SCOURGE_PREDICTION_CONSTANTS.BASE_CONFIDENCE_MODIFIER;
 
-  const coalitionIntel = Math.max(0, Number(state.coalitionIntel) || 0);
-  modifier += Math.min(
-    SCOURGE_PREDICTION_CONSTANTS.MAX_INTEL_CONFIDENCE_BONUS,
-    coalitionIntel * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT
+  const coalitionIntel = Number(state.coalitionIntel) || 0;
+  const intelConfidenceBonus = coalitionIntel * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT;
+  modifier += Math.max(
+    -SCOURGE_PREDICTION_CONSTANTS.MAX_INTEL_CONFIDENCE_BONUS,
+    Math.min(SCOURGE_PREDICTION_CONSTANTS.MAX_INTEL_CONFIDENCE_BONUS, intelConfidenceBonus)
   );
 
   // Cohesion tier affects predictability

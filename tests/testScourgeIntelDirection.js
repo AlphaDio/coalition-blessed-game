@@ -5,8 +5,11 @@ import {
   applyMissionSliderEffects,
   buildDeepMissionEvent,
   buildPreAttackMissionEvent,
+  getDeepMissionThreshold,
+  maybeSpawnDeepMission,
   handleMissionEventChoice
 } from '../src/game/scourgeMissions.js';
+import { handleEventChoice } from '../src/game/events.js';
 import { triggerScourgeBattle } from '../src/game/turn/battlePhase.js';
 import { GameManager } from '../src/server/gameManager.js';
 
@@ -41,7 +44,7 @@ function testMissionIntelFlow() {
   state.missionSlider = 5;
 
   applyMissionSliderEffects(state, []);
-  assert(approxEqual(state.coalitionIntel, 1.0), `Expected 1.0 intel from mission budget, got ${state.coalitionIntel}`);
+  assert(approxEqual(state.coalitionIntel, 1.25), `Expected 1.25 intel from mission budget, got ${state.coalitionIntel}`);
 
   const preAttackEvent = buildPreAttackMissionEvent(state, () => 0);
   const intelBeforeEscalate = state.coalitionIntel;
@@ -63,11 +66,84 @@ function testDirectTargetUsesIntel() {
 
   const result = manager.directScourgeTarget('empire_2');
   assert(result.success, 'Direct target action should succeed');
-  assert(approxEqual(manager.state.coalitionIntel, 2), `Expected 2 intel remaining, got ${manager.state.coalitionIntel}`);
+  assert(approxEqual(manager.state.coalitionIntel, 4), `Expected 4 intel remaining, got ${manager.state.coalitionIntel}`);
   assert(manager.state.scourgeDirectedTargetEmpireId === 'empire_2', 'Directed target should be stored');
   assert(manager.state.scourgePrediction.targetEmpireId === 'empire_2', 'Prediction should immediately point at directed target');
   assert(manager.state.scourgePrediction.targetingMode === 'directed', 'Prediction should mark directed targeting mode');
   assert(manager.state.scourgePrediction.confidenceLevel === 'high', 'Directed target should show high confidence');
+}
+
+function testRegularEventSyncsIntelAndConfidence() {
+  const state = createBasicState();
+  const event = {
+    id: 'evt_sync',
+    title: 'Signal Intercept',
+    choices: [
+      {
+        text: 'Exploit the intercept',
+        effects: {
+          scourgePredictionConfidence: 0.2
+        }
+      }
+    ]
+  };
+
+  state.activeEvent = event;
+  const result = handleEventChoice(state, event.id, 0);
+
+  assert(result.success, 'Regular event choice should succeed');
+  assert(approxEqual(state.coalitionIntel, 4), `Expected 4 intel from +0.2 confidence event, got ${state.coalitionIntel}`);
+  assert(approxEqual(state.scourgePrediction.confidenceModifier, 1.2), `Expected immediate confidence modifier 1.2, got ${state.scourgePrediction.confidenceModifier}`);
+}
+
+function testIntelEventBoostsConfidence() {
+  const state = createBasicState();
+  const event = {
+    id: 'evt_intel_gain',
+    title: 'Recovered Scout Cache',
+    choices: [
+      {
+        text: 'Decrypt the recovered data',
+        effects: {
+          coalitionIntel: 2
+        }
+      }
+    ]
+  };
+
+  state.activeEvent = event;
+  const result = handleEventChoice(state, event.id, 0);
+
+  assert(result.success, 'Intel event choice should succeed');
+  assert(approxEqual(state.coalitionIntel, 2), `Expected +2 intel from explicit intel event, got ${state.coalitionIntel}`);
+  assert(approxEqual(state.scourgePrediction.confidenceModifier, 1.1), `Expected immediate confidence modifier 1.1 from +2 intel, got ${state.scourgePrediction.confidenceModifier}`);
+}
+
+function testIntelLossReducesConfidence() {
+  const state = createBasicState();
+  state.coalitionIntel = 5;
+  state.scourgePrediction.confidenceModifier = 1.25;
+  state.scourgePrediction.confidenceLevel = 'medium';
+
+  const event = {
+    id: 'evt_intel_loss',
+    title: 'Compromised Relay',
+    choices: [
+      {
+        text: 'Accept the loss',
+        effects: {
+          coalitionIntel: -2
+        }
+      }
+    ]
+  };
+
+  state.activeEvent = event;
+  const result = handleEventChoice(state, event.id, 0);
+
+  assert(result.success, 'Intel loss event choice should succeed');
+  assert(approxEqual(state.coalitionIntel, 3), `Expected intel to fall from 5 to 3, got ${state.coalitionIntel}`);
+  assert(approxEqual(state.scourgePrediction.confidenceModifier, 1.15), `Expected confidence modifier to drop from 1.25 to 1.15, got ${state.scourgePrediction.confidenceModifier}`);
 }
 
 function testBattleTriggerHonorsDirective() {
@@ -93,6 +169,34 @@ function testBattleTriggerHonorsDirective() {
   assert(state.activeEvent?.id === 'EVT_MISSION_PRE_ATTACK', 'Pre-attack mission should still be created');
 }
 
+function testDeepMissionThresholdScaling() {
+  const state = createBasicState();
+
+  assert(getDeepMissionThreshold(state) === 100, `Expected initial Deep Mission threshold 100, got ${getDeepMissionThreshold(state)}`);
+
+  state.missionMeter = 99;
+  assert(maybeSpawnDeepMission(state, () => 0) === null, 'Deep mission should not trigger below the base threshold');
+  assert(state.deepMissionCount === 0, 'Deep mission count should not change before the first trigger');
+
+  state.missionMeter = 100;
+  let deepMission = maybeSpawnDeepMission(state, () => 0);
+  assert(deepMission?.id === 'EVT_DEEP_MISSION', 'Deep mission should trigger at the base threshold');
+  assert(state.missionMeter === 0, `Expected mission meter to spend the full 100 cost, got ${state.missionMeter}`);
+  assert(state.deepMissionCount === 1, `Expected deep mission count 1 after first trigger, got ${state.deepMissionCount}`);
+  assert(getDeepMissionThreshold(state) === 115, `Expected second Deep Mission threshold 115, got ${getDeepMissionThreshold(state)}`);
+
+  state.missionMeter = 114;
+  assert(maybeSpawnDeepMission(state, () => 0) === null, 'Deep mission should not trigger below the scaled threshold');
+  assert(state.deepMissionCount === 1, 'Deep mission count should not increase on a failed trigger');
+
+  state.missionMeter = 130;
+  deepMission = maybeSpawnDeepMission(state, () => 0);
+  assert(deepMission?.id === 'EVT_DEEP_MISSION', 'Deep mission should trigger once the scaled threshold is met');
+  assert(state.missionMeter === 15, `Expected mission meter overflow to be preserved (15), got ${state.missionMeter}`);
+  assert(state.deepMissionCount === 2, `Expected deep mission count 2 after second trigger, got ${state.deepMissionCount}`);
+  assert(getDeepMissionThreshold(state) === 132, `Expected third Deep Mission threshold 132, got ${getDeepMissionThreshold(state)}`);
+}
+
 function run() {
   console.log('=== Test: Scourge Intel Direction ===');
 
@@ -102,8 +206,20 @@ function run() {
   testDirectTargetUsesIntel();
   console.log('PASS Direct target spends intel and updates prediction');
 
+  testRegularEventSyncsIntelAndConfidence();
+  console.log('PASS Regular events keep intel and confidence synchronized');
+
+  testIntelEventBoostsConfidence();
+  console.log('PASS Explicit intel gains raise confidence');
+
+  testIntelLossReducesConfidence();
+  console.log('PASS Intel losses reduce confidence');
+
   testBattleTriggerHonorsDirective();
   console.log('PASS Battle trigger honors stored directive');
+
+  testDeepMissionThresholdScaling();
+  console.log('PASS Deep mission threshold scales permanently and preserves overflow');
 }
 
 try {

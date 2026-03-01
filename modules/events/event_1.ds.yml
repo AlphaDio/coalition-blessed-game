@@ -20,7 +20,7 @@ declares:
     name: "Requisition Convoy Attacked"
     description: "A requisition convoy bound for coalition forces has been ambushed by Scourge forces. Analysis of the attack reveals information about Scourge tactics. How do you respond?"
     choices:
-      - text: "Send reinforcements + analyze tactics (lose requisition, analyze patterns)"
+      - text: "Send reinforcements + analyze tactics (lose requisition, gain intel confidence)"
         effects:
           coalitionEconomy:
             requisition: -100
@@ -32,7 +32,7 @@ declares:
           empireApproval:
             "@poorest": 8
             "@richest": -8
-      - text: "Ambush the ambushers (lose cohesion, learn from combat)"
+      - text: "Ambush the ambushers (lose cohesion, gain intel confidence from combat)"
         effects:
           coalitionCohesion: -5
           scourgePredictionConfidence: 0.2

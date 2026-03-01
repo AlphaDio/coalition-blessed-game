@@ -12,6 +12,7 @@ export function initialState() {
     coalitionIntel: 0,
     missionSlider: 0,
     missionMeter: 0,
+    deepMissionCount: 0,
     scourgeCohesion: 80,
     scourgeFervor: 10,
     scourgeManpower: 100,

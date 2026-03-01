@@ -690,7 +690,8 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       
       const state = gameManager.getGameState();
       broadcastGameState(state);
-      broadcastNotification('turn_advanced', { turn: state.turn });
+      const turnLog = result.data?.log ?? [];
+      broadcastNotification('turn_advanced', { turn: state.turn, log: turnLog });
       
       res.sendSuccess(state, {
         notification: {

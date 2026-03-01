@@ -16,8 +16,8 @@ const DEEP_MISSION_NAMES = [
   'Crimson Veil'
 ];
 
-function clampMeter(value, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
+function clampMeter(value, min = 0) {
+  return Math.max(min, value);
 }
 
 function clampThreat(value, min = 0) {
@@ -150,10 +150,21 @@ export function buildDeepMissionEvent(state, rng = Math.random) {
   };
 }
 
+export function getDeepMissionThreshold(state) {
+  const completedDeepMissions = Math.max(0, Math.floor(Number(state?.deepMissionCount) || 0));
+  const growthMultiplier = Math.pow(
+    1 + SCOURGE_MISSION_CONSTANTS.DEEP_MISSION_THRESHOLD_GROWTH_RATE,
+    completedDeepMissions
+  );
+  return Math.round(SCOURGE_MISSION_CONSTANTS.DEEP_MISSION_THRESHOLD_BASE * growthMultiplier);
+}
+
 export function maybeSpawnDeepMission(state, rng = Math.random) {
   if (state.activeEvent) return null;
-  if ((state.missionMeter || 0) < 100) return null;
-  state.missionMeter = 0;
+  const threshold = getDeepMissionThreshold(state);
+  if ((state.missionMeter || 0) < threshold) return null;
+  state.missionMeter = clampMeter((state.missionMeter || 0) - threshold);
+  state.deepMissionCount = Math.max(0, Math.floor(Number(state.deepMissionCount) || 0)) + 1;
   return buildDeepMissionEvent(state, rng);
 }
 

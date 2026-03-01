@@ -404,6 +404,7 @@ export function createGameState(seed = 0) {
     coalitionIntel: 0,
     missionSlider: 0,
     missionMeter: 0,
+    deepMissionCount: 0,
     scourgeCohesion: 80,
     scourgeFervor: 10,
     scourgeManpower: 100,
@@ -708,6 +709,11 @@ export function migrateGameState(state) {
   }
   if (state.missionMeter === undefined) {
     state.missionMeter = 0;
+  }
+  if (!Number.isFinite(state.deepMissionCount) || state.deepMissionCount < 0) {
+    state.deepMissionCount = 0;
+  } else {
+    state.deepMissionCount = Math.floor(state.deepMissionCount);
   }
   if (state.scourgeManpower === undefined) {
     state.scourgeManpower = 100;
