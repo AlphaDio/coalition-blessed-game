@@ -1,6 +1,48 @@
 import { calculateArmyPower } from './power.js';
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizeParticipant(entry) {
+  const army = entry?.army || entry;
+  if (!army?.mp) {
+    return null;
+  }
+
+  const commitRatio = clamp(
+    entry?.army && Number.isFinite(Number(entry.commitRatio)) ? Number(entry.commitRatio) : 1,
+    0,
+    1
+  );
+  if (commitRatio <= 0) {
+    return null;
+  }
+
+  const originalArmyCurrentMP = Math.max(0, Number(army.mp.current) || 0);
+  const originalArmyMaxMP = Math.max(1, Number(army.mp.max) || 1);
+  const committedCurrentMP = originalArmyCurrentMP * commitRatio;
+  const committedMaxMP = originalArmyMaxMP * commitRatio;
+
+  return {
+    army,
+    commitRatio,
+    committedCurrentMP,
+    committedMaxMP,
+    reserveCurrentMP: Math.max(0, originalArmyCurrentMP - committedCurrentMP),
+    reserveMaxMP: Math.max(0, originalArmyMaxMP - committedMaxMP),
+    originalArmyCurrentMP,
+    originalArmyMaxMP,
+    combatWeight: commitRatio,
+    isSupport: !!entry?.isSupport,
+    supportRelation: Number.isFinite(entry?.supportRelation) ? entry.supportRelation : null
+  };
+}
+
 export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix = '') {
+  const normalizedParticipants = (participatingArmies || [])
+    .map(normalizeParticipant)
+    .filter(Boolean);
   const combinedId = '_coalition_combined_' + state.turn + idSuffix;
 
   // Calculate combined stats (weighted average)
@@ -27,15 +69,9 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   let rawRecovery = 0;
   let rawReinforcementRate = 0;
 
-  participatingArmies.forEach(army => {
-    // Guard against invalid army structures
-    if (!army || !army.mp) {
-      return;
-    }
-
-    const power = calculateArmyPower(army);
-    const mpCurrent = typeof army.mp.current === 'number' && !isNaN(army.mp.current) ? army.mp.current : 0;
-    const mpMax = typeof army.mp.max === 'number' && !isNaN(army.mp.max) ? army.mp.max : 0;
+  normalizedParticipants.forEach(participant => {
+    const { army, committedCurrentMP, committedMaxMP, combatWeight } = participant;
+    const power = calculateArmyPower(army) * combatWeight;
     const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
     const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
     const dmgPerUnitMP = typeof army.dmgPerUnitMP === 'number' && !isNaN(army.dmgPerUnitMP) ? army.dmgPerUnitMP : 1.0;
@@ -47,8 +83,8 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     const recovery = typeof army.recovery === 'number' && !isNaN(army.recovery) ? army.recovery : 50;
     const reinforcementRate = typeof army.reinforcementRate === 'number' && !isNaN(army.reinforcementRate) ? army.reinforcementRate : 100;
 
-    totalMP += mpCurrent;
-    totalMaxMP += mpMax;
+    totalMP += committedCurrentMP;
+    totalMaxMP += committedMaxMP;
     totalOrg += org * power;
     totalFervor += fervor * power;
     totalDmgPerUnitMP += dmgPerUnitMP * power;
@@ -71,16 +107,16 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     rawReinforcementRate += reinforcementRate;
   });
 
-  const totalPower = participatingArmies.reduce((sum, a) => {
-    const power = calculateArmyPower(a);
+  const totalPower = normalizedParticipants.reduce((sum, participant) => {
+    const power = calculateArmyPower(participant.army) * participant.combatWeight;
     return sum + (isNaN(power) ? 0 : power);
   }, 0);
-  const powerDivisor = totalPower > 0 ? totalPower : Math.max(1, participatingArmies.length);
+  const powerDivisor = totalPower > 0 ? totalPower : Math.max(1, normalizedParticipants.length);
   const useRawAverages = totalPower <= 0;
 
   // Aggregate empire improvement damage modifiers (army_damage_add, army_damage_mult) from participating empires
   const empireModifiers = state.improvements?.empireModifiers || {};
-  const participatingEmpireIds = [...new Set(participatingArmies.map(a => a.empireId).filter(Boolean))];
+  const participatingEmpireIds = [...new Set(normalizedParticipants.map(p => p.army.empireId).filter(Boolean))];
   let coalitionDamageAdd = 0;
   let coalitionDamageMultSum = 0;
   let coalitionDamageMultCount = 0;
@@ -103,7 +139,7 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   const combinedArmy = {
     id: combinedId,
     empireId: '_coalition',
-    name: `Coalition Forces (${participatingArmies.length} armies)`,
+    name: `Coalition Forces (${normalizedParticipants.length} armies)`,
     fervor: useRawAverages ? (rawFervor / powerDivisor) : (totalFervor / powerDivisor),
     organization: useRawAverages ? (rawOrg / powerDivisor) : (totalOrg / powerDivisor),
     supplyNeed: 0,
@@ -143,10 +179,17 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     _empireDamageMult: coalitionDamageMult,
 
     // Store reference to original armies for result distribution
-    _originalArmies: participatingArmies.map(a => ({
-      id: a.id,
-      originalMP: (a.mp && typeof a.mp.current === 'number' && !isNaN(a.mp.current)) ? a.mp.current : 0,
-      originalMaxMP: (a.mp && typeof a.mp.max === 'number' && !isNaN(a.mp.max)) ? a.mp.max : 1
+    _originalArmies: normalizedParticipants.map(participant => ({
+      id: participant.army.id,
+      originalMP: participant.committedCurrentMP,
+      originalMaxMP: participant.committedMaxMP,
+      sourceOriginalMP: participant.originalArmyCurrentMP,
+      sourceOriginalMaxMP: participant.originalArmyMaxMP,
+      reserveCurrentMP: participant.reserveCurrentMP,
+      reserveMaxMP: participant.reserveMaxMP,
+      commitRatio: participant.commitRatio,
+      isSupport: participant.isSupport,
+      supportRelation: participant.supportRelation
     })),
     isComposite: true
   };

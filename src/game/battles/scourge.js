@@ -8,22 +8,89 @@ import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
 
-function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
-  if (!army?.mp) return;
-
+function projectBattleResult(originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   const clampedLossRatio = Math.max(0, Math.min(1, Number(permanentLossRatio) || 0));
   const clampedRetention = Math.max(0, Number(currentRetentionRatio) || 0);
   const safeOriginalMax = Math.max(1, Number(originalMaxMP) || 1);
   const safeOriginalCurrent = Math.max(0, Math.min(safeOriginalMax, Number(originalMP) || 0));
 
   const permanentLoss = safeOriginalMax * clampedLossRatio;
-  const nextMax = Math.max(1, safeOriginalMax - permanentLoss);
+  const nextMax = Math.max(0, safeOriginalMax - permanentLoss);
   const retainedCurrent = safeOriginalCurrent * clampedRetention;
   const nextCurrent = Math.max(0, Math.min(nextMax, retainedCurrent));
+
+  return { nextMax, nextCurrent };
+}
+
+function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
+  if (!army?.mp) return { nextMax: 0, nextCurrent: 0 };
+
+  const { nextMax, nextCurrent } = projectBattleResult(
+    originalMP,
+    originalMaxMP,
+    permanentLossRatio,
+    currentRetentionRatio
+  );
 
   army.mp.max = nextMax;
   army.mp.current = nextCurrent;
   army.manpower = nextMax;
+  return { nextMax, nextCurrent };
+}
+
+function applyCompositeBattleResultToArmy(army, armyData, permanentLossRatio, currentRetentionRatio = 1) {
+  if (!army?.mp) return { nextMax: 0, nextCurrent: 0 };
+
+  const committedCurrent = Math.max(0, Number(armyData?.originalMP) || 0);
+  const committedMax = Math.max(committedCurrent, Number(armyData?.originalMaxMP) || 0);
+  const reserveCurrent = Number.isFinite(Number(armyData?.reserveCurrentMP))
+    ? Math.max(0, Number(armyData.reserveCurrentMP))
+    : Math.max(0, (Number(armyData?.sourceOriginalMP) || committedCurrent) - committedCurrent);
+  const reserveMax = Number.isFinite(Number(armyData?.reserveMaxMP))
+    ? Math.max(0, Number(armyData.reserveMaxMP))
+    : Math.max(0, (Number(armyData?.sourceOriginalMaxMP) || committedMax) - committedMax);
+  const committedResult = projectBattleResult(
+    committedCurrent,
+    committedMax,
+    permanentLossRatio,
+    currentRetentionRatio
+  );
+
+  army.mp.max = reserveMax + committedResult.nextMax;
+  army.mp.current = Math.max(
+    0,
+    Math.min(army.mp.max, reserveCurrent + committedResult.nextCurrent)
+  );
+  army.manpower = army.mp.max;
+
+  return {
+    nextMax: army.mp.max,
+    nextCurrent: army.mp.current,
+    committedResult
+  };
+}
+
+function normalizeParticipant(entry) {
+  const army = entry?.army || entry;
+  if (!army?.mp) {
+    return null;
+  }
+
+  const rawRatio = entry?.army ? Number(entry.commitRatio) : 1;
+  const commitRatio = Math.max(
+    0,
+    Math.min(1, Number.isFinite(rawRatio) ? rawRatio : 1)
+  );
+  if (commitRatio <= 0) {
+    return null;
+  }
+
+  return {
+    army,
+    commitRatio,
+    isSupport: !!entry?.isSupport,
+    supportRelation: Number.isFinite(entry?.supportRelation) ? entry.supportRelation : null
+  };
 }
 
 function removeScourgeForces(state) {
@@ -36,13 +103,14 @@ function createScourgeArmy(state, idSuffix) {
   const scourgeId = `_scourge_army_${idSuffix}`;
   const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
   const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
-  const baseMP = 12000 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
+  const baseMP = BATTLE_CONSTANTS.SCOURGE_BASE_MP + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
   const fervorMPBonus = state.scourgeFervor * 50;
   // Manpower increases exponentially as cohesion drops
   const cohesionMultiplier = Math.exp((100 - state.scourgeCohesion) / 25);
   const manpowerPct = Math.max(0, Math.min(100, state.scourgeManpower ?? 100)) / 100;
+  const scaledTotalMP = (baseMP + fervorMPBonus) * cohesionMultiplier * manpowerPct;
   const missionDamagePct = Math.max(0, Math.min(1, state.scourgeNextAttackManpowerDamagePct || 0));
-  const totalMP = (baseMP + fervorMPBonus) * cohesionMultiplier * manpowerPct * (1 - missionDamagePct);
+  const totalMP = Math.max(1, scaledTotalMP * (1 - missionDamagePct));
   state.scourgeNextAttackManpowerDamagePct = 0;
 
   const alwaysEffects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
@@ -123,22 +191,33 @@ function createScourgeArmy(state, idSuffix) {
 export function startScourgeBattle(state, participatingArmies, rng = Math.random) {
   const logger = getLogger();
   const log = [];
-  const participatingEmpireIds = [...new Set(participatingArmies.map(army => army.empireId))];
+  const normalizedParticipants = (participatingArmies || [])
+    .map(normalizeParticipant)
+    .filter(Boolean);
+  const participatingEmpireIds = [
+    ...new Set(normalizedParticipants.map(participant => participant.army.empireId))
+  ];
   runHeroBattlePassives(state, {
     phase: 'BATTLE',
     type: 'SCOURGE',
     participatingEmpireIds
   }, 'OnStart', log);
 
-  logger.info(`Scourge battle: ${participatingArmies.length} armies vs Scourge`);
-  logger.debug(`Scourge battle starting: ${participatingArmies.length} armies participating`);
-  logger.debug(`Participating armies: ${participatingArmies.map(a => `${a.name} (Power: ${calculateArmyPower(a).toFixed(2)}, Org: ${a.organization.toFixed(1)}, Fervor: ${a.fervor.toFixed(1)})`).join(', ')}`);
+  logger.info(`Scourge battle: ${normalizedParticipants.length} armies vs Scourge`);
+  logger.debug(`Scourge battle starting: ${normalizedParticipants.length} armies participating`);
+  logger.debug(
+    `Participating armies: ${normalizedParticipants.map(participant => {
+      const army = participant.army;
+      const committedMP = (army.mp?.current || 0) * participant.commitRatio;
+      const supportTag = participant.isSupport ? `, Assist ${(participant.commitRatio * 100).toFixed(0)}%` : '';
+      return `${army.name} (Power: ${calculateArmyPower(army).toFixed(2)}, Org: ${army.organization.toFixed(1)}, Fervor: ${army.fervor.toFixed(1)}, Commit: ${committedMP.toFixed(0)} MP${supportTag})`;
+    }).join(', ')}`
+  );
 
   removeScourgeForces(state);
-  const scourgeArmy = createScourgeArmy(state, state.turn);
-
   // Create combined coalition army
-  const coalitionArmy = createCombinedCoalitionArmy(state, participatingArmies);
+  const coalitionArmy = createCombinedCoalitionArmy(state, normalizedParticipants);
+  const scourgeArmy = createScourgeArmy(state, state.turn);
 
   // Calculate battlefield size based on total forces
   const totalForces = coalitionArmy.mp.current + scourgeArmy.mp.current;
@@ -149,7 +228,7 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
 
   // Mark as Scourge battle
   front.isScourgeBattle = true;
-  front.participatingArmyIds = participatingArmies.map(a => a.id);
+  front.participatingArmyIds = normalizedParticipants.map(participant => participant.army.id);
   front.targetEmpireId = state.scourgeTargetEmpireId || null;
 
   const coalitionMP = Math.floor(coalitionArmy.mp.current);
@@ -161,7 +240,7 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
     scourgeMP: scourgeArmy.mp.current
   });
 
-  log.push(`Scourge battle engaged! ${participatingArmies.length} armies vs The Scourge`);
+  log.push(`Scourge battle engaged! ${normalizedParticipants.length} armies vs The Scourge`);
   return { front, log };
 }
 
@@ -211,10 +290,9 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     if (!army) return;
     const prevMax = Number(army.mp?.max || 0);
     const prevCurrent = Number(army.mp?.current || 0);
-    applyPermanentLossToArmy(
+    applyCompositeBattleResultToArmy(
       army,
-      armyData.originalMP,
-      armyData.originalMaxMP,
+      armyData,
       coalitionMPLossRatio,
       coalitionCurrentRetentionRatio
     );

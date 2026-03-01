@@ -334,6 +334,37 @@ console.log('=== Test 4: Effect Pool Aggregates Consumption Sources Before Trigg
 }
 console.log();
 
+console.log('=== Test 5: Large Resource Thresholds Are Preserved ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const state = {
+    coalitionConstruction: 0,
+    coalitionModifiers: {},
+    consumptionEffectPools: {},
+    empires: [{
+      id: 'empire_1',
+      name: 'Empire One',
+      stats: { population: 1000, approvalBonus: 0, researchSpeedBonus: 0 },
+      consumptionRules: [{
+        commodity: 'plasma_fuel',
+        threshold: 10000,
+        effect: { type: 'coalition_construction_bonus', amount: 1 }
+      }]
+    }],
+    armies: []
+  };
+
+  recordConsumption('plasma_fuel', 150, 'empire_1', CONSUMPTION_SOURCES.EMPIRE_NEEDS);
+
+  const log = [];
+  processEmpireStockpileConsumption(state, log);
+
+  assert(state.coalitionConstruction === 0, 'Large configured thresholds do not trigger early');
+  assert((state.consumptionEffectPools?.empire_1?.plasma_fuel || 0) === 150, 'Large-threshold pool keeps full accumulated consumption');
+}
+console.log();
+
 console.log('============================================================');
 console.log(`Passed: ${testsPassed}`);
 console.log(`Failed: ${testsFailed}`);

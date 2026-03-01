@@ -3,6 +3,7 @@ import { getLogger } from '../../modules/logger.js';
 import { startScourgeBattle } from '../battles.js';
 import { collectScourgeModifierEffects } from '../scourgeModifiers.js';
 import { resetDynamicCoalitionModifiers, getThreatScalar } from '../scourgeThreat.js';
+import { resolveScourgeParticipantPlans } from './battlePhase.js';
 
 export function applyDynamicScourgeModifierEffects(state, log) {
   const effects = collectScourgeModifierEffects(state.scourgeModifiers || [], 'always');
@@ -41,12 +42,14 @@ export function resolvePendingScourgeAttack(state, rng, log, logger) {
   const pending = state.pendingScourgeAttack;
   if (!pending || !pending.ready) return false;
 
-  const participatingArmies = (pending.participatingArmyIds || [])
-    .map(id => state.armies.find(army => army.id === id))
-    .filter(Boolean);
+  const battleParticipants = Array.isArray(pending.participantPlans) && pending.participantPlans.length > 0
+    ? resolveScourgeParticipantPlans(state, pending.participantPlans)
+    : (pending.participatingArmyIds || [])
+      .map(id => state.armies.find(army => army.id === id))
+      .filter(Boolean);
 
-  if (participatingArmies.length > 0) {
-    const battleResult = startScourgeBattle(state, participatingArmies, rng);
+  if (battleParticipants.length > 0) {
+    const battleResult = startScourgeBattle(state, battleParticipants, rng);
     log.push(...battleResult.log);
   } else {
     logger.warn('Pending Scourge battle had no available armies');

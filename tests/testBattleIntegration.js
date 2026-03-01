@@ -509,9 +509,72 @@ function testInsurrectionBattle() {
   return true;
 }
 
+// Test 8: Partial allied commitments only risk the deployed portion
+function testPartialSupportCommitments() {
+  console.log('\n=== Test 8: Partial allied commitments preserve reserve MP ===');
+
+  const state = createFullTestState();
+  const targetArmy = state.armies.find(army => army.id === 'army1');
+  const allyArmy = state.armies.find(army => army.id === 'army2');
+  const initialTargetMax = targetArmy.mp.max;
+  const initialAllyMax = allyArmy.mp.max;
+
+  const { front } = startScourgeBattle(state, [
+    { army: targetArmy, commitRatio: 1.0 },
+    { army: allyArmy, commitRatio: 0.4, isSupport: true, supportRelation: 80 }
+  ], () => 0.5);
+
+  const combinedArmy = state.armies.find(army => army.id === front.leftArmyId);
+  const scourgeArmy = state.armies.find(army => army.id === front.rightArmyId);
+  if (!combinedArmy || !scourgeArmy) {
+    console.log('X Failed to create battle armies');
+    return false;
+  }
+
+  const expectedCommittedMP = initialTargetMax + (initialAllyMax * 0.4);
+  if (Math.abs(combinedArmy.mp.current - expectedCommittedMP) > 0.001) {
+    console.log('X Combined army did not use partial commitment MP correctly');
+    return false;
+  }
+
+  if (scourgeArmy.mp.max >= 20000) {
+    console.log('X Scourge baseline is still too large for reduced coalition battles');
+    return false;
+  }
+
+  front.permanentLosses.left = combinedArmy.mp.max * 0.2;
+  combinedArmy.mp.current = expectedCommittedMP * 0.5;
+
+  handleScourgeBattleEnd(state, front, 'left');
+
+  const updatedTargetArmy = state.armies.find(army => army.id === 'army1');
+  const updatedAllyArmy = state.armies.find(army => army.id === 'army2');
+
+  const expectedTargetMax = initialTargetMax * 0.8;
+  const expectedAllyMax = (initialAllyMax * 0.6) + (initialAllyMax * 0.4 * 0.8);
+
+  if (Math.abs(updatedTargetArmy.mp.max - expectedTargetMax) > 0.01) {
+    console.log('X Target army cap was not reduced from its committed losses');
+    return false;
+  }
+
+  if (Math.abs(updatedAllyArmy.mp.max - expectedAllyMax) > 0.01) {
+    console.log('X Allied reserve was damaged beyond its deployed share');
+    return false;
+  }
+
+  if (updatedAllyArmy.mp.current >= updatedAllyArmy.mp.max + 0.001) {
+    console.log('X Allied army current MP exceeded max after partial redistribution');
+    return false;
+  }
+
+  console.log('PASS Partial support only damaged the committed allied detachment');
+  return true;
+}
+
 // Test 8: Army with no units uses direct manpower
 function testDirectManpowerMechanics() {
-  console.log('\n=== Test 8: Army with direct manpower ===');
+  console.log('\n=== Test 9: Army with direct manpower ===');
   
   const state = createFullTestState();
   
@@ -561,6 +624,7 @@ const results = {
   'Permanent loss reduces MP capacity': testPermanentLossReducesCapacity(),
   'Scourge army persistence': testScourgeArmyPersistence(),
   'Insurrection battle': testInsurrectionBattle(),
+  'Partial support commitments': testPartialSupportCommitments(),
   'Direct manpower mechanics': testDirectManpowerMechanics()
 };
 
@@ -582,3 +646,5 @@ if (allPassed) {
   process.exit(1);
 }
 console.log('='.repeat(60));
+
+
