@@ -137,12 +137,16 @@ export function handleBattlePhase(state, rng, log, logger) {
     }
   });
 
-  // Handle battles that ended this turn
+  // Handle battles that ended this turn — always apply MP/permanent losses to original armies
   battlesEndedThisTick.forEach(front => {
-    // Determine winner from battle state
     const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
     const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
-    const winnerSide = getBattleWinner(leftArmy, rightArmy);
+    let winnerSide = getBattleWinner(leftArmy, rightArmy);
+    // Fallback: derive winner from remaining MP so we always apply results (e.g. after endBattle(winner=null))
+    if (!winnerSide && leftArmy && rightArmy) {
+      if ((leftArmy.mp?.current ?? 0) <= 0) winnerSide = 'right';
+      else if ((rightArmy.mp?.current ?? 0) <= 0) winnerSide = 'left';
+    }
 
     if (winnerSide) {
       if (front.isScourgeBattle) {

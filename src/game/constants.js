@@ -155,7 +155,14 @@ export const ECONOMY_CONSTANTS = {
   NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500, // For every 2500 req, lose 1 cohesion
   ARMY_NEEDS_DAMAGE_GATE_EPSILON: 1,
   ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK: 3.0,
-  ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK: 0.8
+  ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK: 0.8,
+
+  // Army growth from stored resources: only when empire stockpile reaches threshold, every cooldown turns
+  ARMY_GROWTH_COOLDOWN_TURNS: 18,           // Growth can trigger every ~18 turns (dozens)
+  ARMY_GROWTH_STOCKPILE_THRESHOLD_BASE: 60, // Base stockpile required for growth (scales with army size)
+  ARMY_GROWTH_MP_BASE: 25,                  // Base MP added per growth event
+  ARMY_GROWTH_MP_PER_1K_CAPACITY: 2,       // Extra MP per 1000 current capacity (scaling)
+  ARMY_GROWTH_CONSUME_PCT: 0.25            // Consume 25% of threshold from stockpile when growth triggers
 };
 
 /**

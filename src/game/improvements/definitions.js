@@ -569,8 +569,8 @@ const GOVERNANCE_BRANCH = [
 
 /**
   * RESOURCE BRANCH
-  * Focus: Free resource generation without sustainment costs
-  * Role: Passive income of basic resources to bootstrap economy
+  * Focus: Resource extraction and generation (sustain + outputs)
+  * Role: Passive income of basic resources; T1 requires sustainment like other branches
   * T1: Basic extractors and fabricators (can produce T1-T3 commodities)
   * T2: Advanced facilities (higher output, tier-appropriate commodities)
   */
@@ -586,7 +586,7 @@ const RESOURCE_BRANCH = [
        suppliesCost: 50,
        build: 50,
        capacity: 1,
-       sustainmentCost: { },
+       sustainmentCost: { biomass: 1 },
        productionOutputs: { plasma_fuel: 0.12 },
        modifiers: {},
        tags: ['resource', 'passive', 'extraction'],
@@ -633,14 +633,14 @@ const RESOURCE_BRANCH = [
    createTieredImprovementRequest(
      'mycellium_grove',
      'Mycellium Grove',
-     'Self-sustaining fungal colony cultivating organic biomass and genetic material through symbiotic growth',
+     'Fungal colony cultivating organic biomass and genetic material; requires nutrients and energy to sustain',
      1,
      'resource',
      {
        suppliesCost: 75,
        build: 70,
        capacity: 1,
-       sustainmentCost: { },
+       sustainmentCost: { plasma_fuel: 1, rare_gases: 0.5 },
        productionOutputs: { biomass: 0.05, genomes: 0.015 },
        modifiers: {},
        tags: ['resource', 'passive', 'biologic', 'organic'],
@@ -658,7 +658,7 @@ const RESOURCE_BRANCH = [
        suppliesCost: 80,
        build: 70,
        capacity: 1,
-       sustainmentCost: { },
+       sustainmentCost: { plasma_fuel: 1.5, super_alloys: 0.5 },
        productionOutputs: { rare_gases: 0.12, plasma_fuel: 0.02 },
        modifiers: {},
        tags: ['resource', 'passive', 'mining'],

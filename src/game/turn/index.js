@@ -28,7 +28,7 @@ import { applyDynamicScourgeModifierEffects, tickScourgeRecovery, resolvePending
 import { handleLawProcesses } from './lawPhase.js';
 import { handleEconomyTick, processEmpireStockpileConsumption } from './economyPhase.js';
 import { handleBattlePhase } from './battlePhase.js';
-import { recoverArmyOrganization, replenishArmyManpower } from './armyPhase.js';
+import { processArmyResourceGrowth, recoverArmyOrganization, replenishArmyManpower } from './armyPhase.js';
 import { applyBasePopulationGrowth } from './population.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 
@@ -297,6 +297,9 @@ export function advanceTurn(state, rng = Math.random) {
 
   // 6. Replenish army manpower (for armies not in active battles)
   replenishArmyManpower(state, activeBattles);
+
+  // 6.2. Army capacity growth only when empire stockpile of army's resource reaches threshold (logged)
+  processArmyResourceGrowth(state, activeBattles);
 
   // 6.5. Recover army organization (all armies, but slower during battles)
   recoverArmyOrganization(state, activeBattles);
