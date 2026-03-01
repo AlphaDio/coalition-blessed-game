@@ -86,15 +86,23 @@ export function recoverArmyOrganization(state, activeBattles) {
   });
 }
 
+function getArmyGrowthThreshold(army) {
+  const base = ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE;
+  const perSqrt = ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP;
+  const mp = Math.max(1, army.mp?.max || army.manpower || 100);
+  return Math.max(50, base + perSqrt * Math.sqrt(mp));
+}
+
 /**
- * Replenish manpower for armies not currently in active battles
- * Replenishment rate is based on:
- * - Army fervor (higher fervor = faster replenishment)
- * - Empire size (population - larger empires can replenish faster)
+ * Replenish manpower for armies not currently in active battles.
+ * Army capacity growth happens ONLY when consumption of demanded resources (needs/wants)
+ * reaches a threshold; growth is logged to the turn log.
+ *
  * @param {Object} state - Game state
  * @param {Array} activeBattles - Array of active battle fronts
+ * @param {string[]} log - Turn log array to push growth messages
  */
-export function replenishArmyManpower(state, activeBattles) {
+export function replenishArmyManpower(state, activeBattles, log = []) {
   const logger = getLogger();
 
   const armiesInBattle = collectArmiesInBattle(activeBattles);
@@ -156,9 +164,25 @@ export function replenishArmyManpower(state, activeBattles) {
 
     const replenishmentMultiplier = army.replenishmentMultiplier || 1.0;
 
-    // Capacity growth is handled only by processArmyResourceGrowth (stockpile threshold + cooldown).
+    // Army growth ONLY when consumption of demanded resources (needs/wants) reaches threshold.
+    const threshold = getArmyGrowthThreshold(army);
+    let bank = Number(army.growthConsumptionBank) || 0;
+    const mpPerTrigger = Math.max(1, ECONOMY_CONSTANTS.ARMY_GROWTH_MP_PER_TRIGGER || 1);
+    while (bank >= threshold) {
+      const prevMax = Math.floor(army.mp?.max || army.manpower || 0);
+      army.mp = army.mp || { current: 0, max: 0 };
+      army.mp.max = (army.mp.max || 0) + mpPerTrigger;
+      army.manpower = Math.max(army.manpower || 0, army.mp.max);
+      bank -= threshold;
+      army.growthConsumptionBank = bank;
+      const empireName = empire?.name || 'Unknown';
+      const msg = `${army.name} (${empireName}): supply stockpile reached threshold → +${mpPerTrigger} MP capacity (${prevMax} → ${Math.floor(army.mp.max)})`;
+      log.push(msg);
+      logger.info(msg);
+    }
+    if (bank !== (Number(army.growthConsumptionBank) || 0)) army.growthConsumptionBank = bank;
 
-    // Skip manpower refill if already at max.
+    // Skip manpower refill if already at max (growth already applied above).
     if (army.mp.current >= army.mp.max) return;
 
     // Calculate effective replenishment rate
@@ -187,72 +211,5 @@ export function replenishArmyManpower(state, activeBattles) {
     }
   });
 
-}
-
-/**
- * Get the primary resource this army "cares about" for growth (from demands: needs first, then wants).
- * @param {Object} army
- * @returns {string|null} Commodity key or null
- */
-function getArmyGrowthCommodity(army) {
-  const needs = army.demands?.needs && typeof army.demands.needs === 'object' ? Object.keys(army.demands.needs) : [];
-  const wants = army.demands?.wants && typeof army.demands.wants === 'object' ? Object.keys(army.demands.wants) : [];
-  if (needs.length > 0) return needs[0];
-  if (wants.length > 0) return wants[0];
-  return null;
-}
-
-/**
- * Army growth ONLY when empire stockpile of the army's cared-about resource reaches a threshold.
- * Triggers every ARMY_GROWTH_COOLDOWN_TURNS when threshold is met; consumes part of stockpile and adds MP.
- * Growth amount scales with army capacity. Logged to state.log.
- * @param {Object} state - Game state (mutated: armies, empires, log)
- * @param {Array} activeBattles - Array of active battle fronts (armies in battle skip growth)
- */
-export function processArmyResourceGrowth(state, activeBattles) {
-  const armiesInBattle = collectArmiesInBattle(activeBattles);
-  const regularArmies = state.armies.filter(isRegularArmy);
-  const empireMap = new Map((state.empires || []).map(e => [e.id, e]));
-  const turn = state.turn || 1;
-  const {
-    ARMY_GROWTH_COOLDOWN_TURNS: cooldownTurns,
-    ARMY_GROWTH_STOCKPILE_THRESHOLD_BASE: thresholdBase,
-    ARMY_GROWTH_MP_BASE: mpBase,
-    ARMY_GROWTH_MP_PER_1K_CAPACITY: mpPer1k,
-    ARMY_GROWTH_CONSUME_PCT: consumePct
-  } = ECONOMY_CONSTANTS;
-
-  const log = state.log || [];
-
-  regularArmies.forEach(army => {
-    if (armiesInBattle.has(army.id)) return;
-
-    const empire = empireMap.get(army.empireId);
-    if (!empire || !empire.stockpiles) return;
-
-    const commodity = getArmyGrowthCommodity(army);
-    if (!commodity) return;
-
-    const capacity = Math.max(1, army.mp?.max || army.manpower || 0);
-    const threshold = Math.max(thresholdBase, Math.floor(thresholdBase * (1 + capacity / 10000)));
-    const stock = Number(empire.stockpiles[commodity]) || 0;
-    if (stock < threshold) return;
-
-    const lastGrowth = army.lastResourceGrowthTurn ?? 0;
-    if (turn - lastGrowth < cooldownTurns) return;
-
-    const consumeAmount = Math.min(stock, Math.floor(threshold * consumePct));
-    const mpGain = Math.max(1, Math.floor(mpBase + (capacity / 1000) * mpPer1k));
-
-    empire.stockpiles[commodity] = Math.max(0, stock - consumeAmount);
-    army.mp = army.mp || { current: 0, max: capacity };
-    army.mp.max += mpGain;
-    army.manpower = Math.max(army.manpower || 0, army.mp.max);
-    army.lastResourceGrowthTurn = turn;
-
-    const commodityLabel = commodity.replace(/_/g, ' ');
-    const msg = `${empire.name}’s ${army.name}: stockpiled ${commodityLabel} reached ${threshold} (had ${Math.floor(stock)}). Consumed ${Math.floor(consumeAmount)}; army capacity +${mpGain} → ${Math.floor(army.mp.max)} MP.`;
-    log.push(msg);
-  });
 }
 

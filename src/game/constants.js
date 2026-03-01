@@ -143,6 +143,9 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_NEEDS_DAMAGE_GATE_EPSILON - MP delta required before army needs demand activates
  * @property {number} ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet needs while damaged
  * @property {number} ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK - Base fervor decay from unmet wants
+ * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE - Base consumption (of demanded resources) needed to trigger +1 MP capacity; scales so growth ~every dozens of turns
+ * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP - Extra threshold per sqrt(army MP) so larger armies need more stored consumption
+ * @property {number} ARMY_GROWTH_MP_PER_TRIGGER - MP capacity added when consumption threshold is reached
  */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
@@ -156,13 +159,9 @@ export const ECONOMY_CONSTANTS = {
   ARMY_NEEDS_DAMAGE_GATE_EPSILON: 1,
   ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK: 3.0,
   ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK: 0.8,
-
-  // Army growth from stored resources: only when empire stockpile reaches threshold, every cooldown turns
-  ARMY_GROWTH_COOLDOWN_TURNS: 18,           // Growth can trigger every ~18 turns (dozens)
-  ARMY_GROWTH_STOCKPILE_THRESHOLD_BASE: 60, // Base stockpile required for growth (scales with army size)
-  ARMY_GROWTH_MP_BASE: 25,                  // Base MP added per growth event
-  ARMY_GROWTH_MP_PER_1K_CAPACITY: 2,       // Extra MP per 1000 current capacity (scaling)
-  ARMY_GROWTH_CONSUME_PCT: 0.25            // Consume 25% of threshold from stockpile when growth triggers
+  ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE: 180,
+  ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP: 1.5,
+  ARMY_GROWTH_MP_PER_TRIGGER: 1
 };
 
 /**
