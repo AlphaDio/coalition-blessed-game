@@ -87,11 +87,15 @@ export const FRONT_BATTLE_MODIFIERS = {
  * @property {number} ARMY_POWER_ORG_WEIGHT - Weight of organization in army power calculation (60%)
  * @property {number} ARMY_POWER_FERVOR_WEIGHT - Weight of fervor in army power calculation (40%)
  * @property {number} SCOURGE_BASE_POWER - Base combat power of Scourge forces
+ * @property {number} SCOURGE_BASE_MP - Base manpower pool of the Scourge before turn scaling
  * @property {number} SCOURGE_FERVOR_MULTIPLIER - Multiplier for Scourge fervor contribution to power
  * @property {number} SCOURGE_RNG_RANGE - Random variance range (+/-) in Scourge power
  * @property {number} SCOURGE_TURN_POWER_GROWTH - Percentage power growth per turn (0.15%)
  * @property {number} SCOURGE_TURN_MP_GROWTH - Military power points gained by Scourge per turn
  * @property {number} INSURRECTION_RNG_RANGE - Random variance range in insurrection battles
+ * @property {number} SCOURGE_TARGET_ARMY_ORG_MIN - Minimum organization for target-empire armies to respond
+ * @property {number} SCOURGE_ASSIST_MIN_RELATIONS - Minimum mutual relations required for allied support
+ * @property {number} SCOURGE_ASSIST_MAX_RATIO - Maximum share of an allied army that can be committed as support
  * @property {number} WIN_ORG_LOSS - Organization lost by winner after battle
  * @property {number} WIN_FERVOR_GAIN - Fervor gained by winner after battle
  * @property {number} LOSS_ORG_LOSS - Organization lost by loser after battle
@@ -106,11 +110,14 @@ export const BATTLE_CONSTANTS = {
   ARMY_POWER_ORG_WEIGHT: 0.6,
   ARMY_POWER_FERVOR_WEIGHT: 0.4,
   SCOURGE_BASE_POWER: 80, // Increased from 50 to make battles more challenging
+  SCOURGE_BASE_MP: 7000,
   SCOURGE_FERVOR_MULTIPLIER: 2.0,
   SCOURGE_RNG_RANGE: 20,
   SCOURGE_TURN_POWER_GROWTH: 0.0015,
-
   SCOURGE_TURN_MP_GROWTH: 12,
+  SCOURGE_TARGET_ARMY_ORG_MIN: 30,
+  SCOURGE_ASSIST_MIN_RELATIONS: 40,
+  SCOURGE_ASSIST_MAX_RATIO: 0.5,
   INSURRECTION_RNG_RANGE: 15,
   WIN_ORG_LOSS: 5,
   WIN_FERVOR_GAIN: 3,
@@ -371,6 +378,9 @@ export const IMPROVEMENTS_CONSTANTS = {
  * @property {number} MIN_CONFIDENCE_MODIFIER - Minimum confidence floor (0.1)
  * @property {number} MAX_CONFIDENCE_MODIFIER - Maximum confidence cap (2.0)
  * @property {number} CONFIDENCE_DRIFT_TURNS - Turns to drift back toward baseline (30)
+ * @property {number} INTEL_CONFIDENCE_PER_POINT - Confidence bonus per stored intel point
+ * @property {number} MAX_INTEL_CONFIDENCE_BONUS - Maximum confidence bonus from stored intel
+ * @property {number} DIRECT_TARGET_INTEL_COST - Intel cost to direct the next Scourge target
  * @property {Object} UNCERTAINTY_RANGE_LOW - Wide prediction range at low confidence (5-20 turns)
  * @property {Object} UNCERTAINTY_RANGE_MEDIUM - Moderate range at medium confidence (2-8 turns)
  * @property {Object} UNCERTAINTY_RANGE_HIGH - Narrow range at high confidence (1-3 turns)
@@ -384,7 +394,10 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   MIN_CONFIDENCE_MODIFIER: 0.1,        // Minimum (very uncertain)
   MAX_CONFIDENCE_MODIFIER: 2.0,        // Maximum (very certain)
   CONFIDENCE_DRIFT_TURNS: 60,          // Turns to drift toward baseline (1.0) 30 -> 60
-  
+  INTEL_CONFIDENCE_PER_POINT: 0.03,    // Each stored intel point improves prediction confidence
+  MAX_INTEL_CONFIDENCE_BONUS: 0.75,    // Cap the confidence gain from stockpiled intel
+  DIRECT_TARGET_INTEL_COST: 8,         // Spend intel to force the next target empire
+
   // Uncertainty ranges based on confidence
   UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low
   UNCERTAINTY_RANGE_MEDIUM: { min: 2, max: 8 },    // Moderate range
@@ -468,13 +481,13 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase from negative outcomes (+2)
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
  * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
+ * @property {number} MISSION_INTEL_PER_REQUISITION - Intel gained per requisition diverted into mission budget
  * @property {number} DEEP_STRIKE_MP_PCT - Military power percentage for deep strikes (50%)
  * @property {number} DEEP_SABOTAGE_SEVERITY - Severity reduction from sabotage missions (1)
  * @property {number} DEEP_GLORY_SMALL - Small glory reward (40)
  * @property {number} DEEP_GLORY_MEDIUM - Medium glory reward (80)
  * @property {number} DEEP_HARVEST_THREAT_SMALL_POSITIVE - Small threat increase from harvesting (+2)
  * @property {number} DEEP_REQUISITION_SMALL - Small requisition reward (60)
- * @property {number} DEEP_INTEL_SMALL - Small intel reward (1)
  * @property {number[]} THREAT_CLIMATE_STRENGTHS - Threat modifier strengths by climate tier [0.08, 0.15, 0.25]
  */
 export const SCOURGE_MISSION_CONSTANTS = {
@@ -491,12 +504,12 @@ export const SCOURGE_MISSION_CONSTANTS = {
   MISSION_NEGATIVE_THREAT_INCREASE: 2,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
   MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
+  MISSION_INTEL_PER_REQUISITION: 0.02,
   DEEP_STRIKE_MP_PCT: 0.5,
   DEEP_SABOTAGE_SEVERITY: 1,
   DEEP_GLORY_SMALL: 40,
   DEEP_GLORY_MEDIUM: 80,
   DEEP_HARVEST_THREAT_SMALL_POSITIVE: 2,
   DEEP_REQUISITION_SMALL: 60,
-  DEEP_INTEL_SMALL: 1,
   THREAT_CLIMATE_STRENGTHS: [0.08, 0.15, 0.25]
 };

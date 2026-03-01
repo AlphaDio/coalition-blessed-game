@@ -32,6 +32,7 @@ export function initialState() {
     heroes: [],
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
+    scourgeDirectedTargetEmpireId: null,
     log: [],
     gameOver: false,
     victory: false

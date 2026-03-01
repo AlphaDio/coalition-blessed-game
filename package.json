@@ -8,7 +8,7 @@
                     "start":  "node server.js",
                     "server":  "node server.js",
                     "server:dev":  "nodemon server.js",
-                    "test":  "node tests/testDeterminism.js && node tests/testConsumptionRequisitionFlow.js && node tests/testFrontBattles.js && node tests/testExtendedGameplay.js && node tests/testImprovements.js && node tests/testBattleIntegration.js && node tests/testLawCategories.js",
+                    "test":  "node tests/testDeterminism.js && node tests/testConsumptionRequisitionFlow.js && node tests/testScourgeIntelDirection.js && node tests/testFrontBattles.js && node tests/testExtendedGameplay.js && node tests/testImprovements.js && node tests/testBattleIntegration.js && node tests/testLawCategories.js",
                     "test:determinism":  "node tests/testDeterminism.js",
                     "test:consumption":  "node tests/testConsumptionRequisitionFlow.js",
                     "test:battles":  "node tests/testFrontBattles.js",

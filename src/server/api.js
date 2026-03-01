@@ -626,6 +626,53 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Spend intel to direct the next Scourge target
+  app.post('/api/game/actions/direct-scourge-target', (req, res) => {
+    try {
+      const empireId = req.body.empireId;
+      if (!empireId) {
+        return res.sendError(
+          ErrorCodes.MISSING_PARAMETER,
+          'Missing required parameter: empireId'
+        );
+      }
+
+      const result = gameManager.directScourgeTarget(empireId);
+      if (!result.success) {
+        let errorCode = ErrorCodes.INVALID_ACTION;
+
+        if (result.error?.includes('not found')) {
+          errorCode = ErrorCodes.EMPIRE_NOT_FOUND;
+        } else if (result.error?.includes('intel')) {
+          errorCode = ErrorCodes.INSUFFICIENT_RESOURCES;
+        }
+
+        return res.sendError(
+          errorCode,
+          result.error || 'Failed to direct the Scourge'
+        );
+      }
+
+      const state = gameManager.getGameState();
+      broadcastGameState(state);
+      broadcastNotification('scourge_target_directed', { empireId, turn: state.turn });
+      res.sendSuccess(state, {
+        notification: {
+          type: 'scourge_target_directed',
+          details: { empireId, turn: state.turn }
+        }
+      });
+    } catch (error) {
+      logger.error(`Error directing Scourge target: ${error.message}`);
+      logger.error(error.stack);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to direct the Scourge target',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Manually advance one turn (when paused)
   app.post('/api/game/actions/advance-turn', (req, res) => {
     try {

@@ -51,8 +51,12 @@ export function applyMissionSliderEffects(state, log = []) {
       const diverted = requisition * (slider / 100);
       state.coalitionEconomy.requisition = requisition - diverted;
       const meterGain = diverted * SCOURGE_MISSION_CONSTANTS.MISSION_METER_PER_REQUISITION;
+      const intelGain = diverted * SCOURGE_MISSION_CONSTANTS.MISSION_INTEL_PER_REQUISITION;
       const prevMeter = state.missionMeter || 0;
       state.missionMeter = clampMeter(prevMeter + meterGain);
+      if (intelGain > 0) {
+        state.coalitionIntel = (state.coalitionIntel || 0) + intelGain;
+      }
       if (meterGain > 0.001) {
         log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req)`);
       }
@@ -109,7 +113,7 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
         id: 'escalate',
         text: 'Aggressive Engagement',
         description: 'Launch a bold strike to seize resources and glory. High risk operation that emboldens the enemy but yields immediate rewards.',
-        effects: 'Gain: +60 requisition, +10 glory, +1 intel | Threat: +6 | Modifier severity: +2'
+        effects: 'Gain: +60 requisition, +10 glory | Threat: +6 | Modifier severity: +2'
       }
     ]
   };
@@ -139,8 +143,8 @@ export function buildDeepMissionEvent(state, rng = Math.random) {
       {
         id: 'harvest',
         text: 'Resource Extraction',
-        description: 'Seize Scourge supplies and intelligence. Maximum resource gain but increases enemy alertness and aggression.',
-        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM} glory, +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL} requisition, +${SCOURGE_MISSION_CONSTANTS.DEEP_INTEL_SMALL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE}`
+        description: 'Seize Scourge supplies. Maximum resource gain but increases enemy alertness and aggression.',
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM} glory, +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL} requisition | Threat: +${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE}`
       }
     ]
   };
@@ -166,11 +170,6 @@ function addGlory(state, amount, log, reason = 'Glory') {
   state.coalitionGlory = (state.coalitionGlory || 0) + gained;
   state.coalitionPrestige = (state.coalitionPrestige || 0) + Math.round(gained * 0.25);
   if (log) log.push(`${reason}: +${Math.round(gained)}`);
-}
-
-function addIntel(state, amount, log) {
-  state.coalitionIntel = (state.coalitionIntel || 0) + amount;
-  if (log) log.push(`Intel: +${amount}`);
 }
 
 export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.random) {
@@ -209,7 +208,6 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + 60;
       log.push(`Aggressive engagement successful - seized enemy supplies`);
       log.push(`Requisition gained: +60`);
-      addIntel(state, 1, log);
       addGlory(state, 10, log, 'Escalation bonus');
       log.push(`"${modifier.name}" severity increased by 2 - enemy is now more aggressive`);
       log.push(`Coalition threat increased by 6 (now ${Math.round(state.coalitionThreat)})`);
@@ -256,7 +254,6 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       addGlory(state, SCOURGE_MISSION_CONSTANTS.DEEP_GLORY_MEDIUM, log, 'Harvest operation glory');
       state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL;
       log.push(`Requisition gained: +${SCOURGE_MISSION_CONSTANTS.DEEP_REQUISITION_SMALL}`);
-      addIntel(state, SCOURGE_MISSION_CONSTANTS.DEEP_INTEL_SMALL, log);
       state.coalitionThreat = clampThreat((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE);
       log.push(`Enemy alerted - Coalition threat increased by ${SCOURGE_MISSION_CONSTANTS.DEEP_HARVEST_THREAT_SMALL_POSITIVE} (now ${Math.round(state.coalitionThreat)})`);
     }

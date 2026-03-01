@@ -1,4 +1,4 @@
-import { ECONOMY_CONSTANTS } from '../constants.js';
+import { ECONOMY_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
 import { clampStat } from '../cohesion.js';
 import { applyNegativeRequisitionCohesionPenalty } from '../economy.js';
 import { checkInsurrections } from '../insurrection.js';
@@ -313,7 +313,9 @@ export function advanceTurn(state, rng = Math.random) {
       estimatedTurnsToNextBattle: null,
       confidenceModifier: 1.0,
       confidenceLevel: 'low',
-      uncertaintyRange: { min: null, max: null }
+      uncertaintyRange: { min: null, max: null },
+      targetingMode: 'calculated',
+      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
     };
   }
   state.scourgePrediction = calculateScourgePrediction(state, rngFn);

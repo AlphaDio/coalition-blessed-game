@@ -15,40 +15,83 @@ export function calculateScourgePrediction(state, rng) {
   }
 
   // Predict the next target empire
-  const targetEmpire = predictNextScourgTarget(state, rng);
+  const targetSelection = selectScourgeTargetEmpire(state, rng);
+  const targetEmpire = targetSelection?.empire;
   if (!targetEmpire) {
     return createBlankPrediction();
   }
 
   // Calculate target confidence modifier based on current game state
-  const confidenceModifier = calculateConfidenceModifier(state);
+  let confidenceModifier = calculateConfidenceModifier(state);
 
   // Estimate when the next battle will occur
   const estimatedTurns = estimateTurnsToNextBattle(state, confidenceModifier, rng);
 
   // Determine the confidence level label
-  const confidenceLevel = getConfidenceLevel(confidenceModifier);
+  let confidenceLevel = getConfidenceLevel(confidenceModifier);
 
   // Calculate uncertainty range based on confidence
-  const uncertaintyRange = getUncertaintyRange(confidenceModifier);
+  let uncertaintyRange = getUncertaintyRange(confidenceModifier);
+
+  if (targetSelection.source === 'pending' || targetSelection.source === 'directed') {
+    confidenceModifier = SCOURGE_PREDICTION_CONSTANTS.MAX_CONFIDENCE_MODIFIER;
+    confidenceLevel = 'high';
+    uncertaintyRange = getUncertaintyRange(SCOURGE_PREDICTION_CONSTANTS.MAX_CONFIDENCE_MODIFIER);
+  }
 
   return {
     targetEmpireId: targetEmpire.id,
     estimatedTurnsToNextBattle: estimatedTurns,
     confidenceModifier,
     confidenceLevel,
-    uncertaintyRange
+    uncertaintyRange,
+    targetingMode: targetSelection.source,
+    directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
   };
 }
 
 /**
- * Predict which empire will be the next Scourge target
- * Uses a deterministic method based on empire properties
+ * Select which empire will be the next Scourge target.
+ * Pending attacks and intel directives override the default vulnerability logic.
+ * @param {Object} state - Game state
+ * @param {Function} rng - Random number generator
+ * @returns {{empire: Object|null, source: string}} Selected target and source mode
+ */
+export function selectScourgeTargetEmpire(state, rng = Math.random) {
+  if (!state.empires || state.empires.length === 0) {
+    return { empire: null, source: 'calculated' };
+  }
+
+  const pendingEmpireId = state.pendingScourgeAttack?.targetEmpireId;
+  if (pendingEmpireId) {
+    const pendingEmpire = state.empires.find(empire => empire.id === pendingEmpireId);
+    if (pendingEmpire) {
+      return { empire: pendingEmpire, source: 'pending' };
+    }
+  }
+
+  const directedEmpireId = state.scourgeDirectedTargetEmpireId;
+  if (directedEmpireId) {
+    const directedEmpire = state.empires.find(empire => empire.id === directedEmpireId);
+    if (directedEmpire) {
+      return { empire: directedEmpire, source: 'directed' };
+    }
+  }
+
+  return {
+    empire: predictNextScourgeTargetByVulnerability(state, rng),
+    source: 'calculated'
+  };
+}
+
+/**
+ * Predict which empire will be the next Scourge target using normal targeting logic.
+ * Uses a deterministic method based on empire properties.
  * @param {Object} state - Game state
  * @param {Function} rng - Random number generator
  * @returns {Object|null} Predicted target empire
  */
-function predictNextScourgTarget(state, rng) {
+function predictNextScourgeTargetByVulnerability(state, rng) {
   if (!state.empires || state.empires.length === 0) return null;
 
   // If there's already a current target, predict after that
@@ -103,6 +146,12 @@ function predictNextScourgTarget(state, rng) {
 function calculateConfidenceModifier(state) {
   let modifier = SCOURGE_PREDICTION_CONSTANTS.BASE_CONFIDENCE_MODIFIER;
 
+  const coalitionIntel = Math.max(0, Number(state.coalitionIntel) || 0);
+  modifier += Math.min(
+    SCOURGE_PREDICTION_CONSTANTS.MAX_INTEL_CONFIDENCE_BONUS,
+    coalitionIntel * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT
+  );
+
   // Cohesion tier affects predictability
   const tier = getCohesionTier(state.coalitionCohesion);
   if (tier?.name === 'Stable') {
@@ -155,6 +204,10 @@ function calculateConfidenceModifier(state) {
  * @returns {number|null} Estimated turns (null if no good estimate)
  */
 function estimateTurnsToNextBattle(state, confidenceModifier, rng) {
+  if (state.pendingScourgeAttack) {
+    return 1;
+  }
+
   // Get the base battle chance for the current cohesion tier
   const tier = getCohesionTier(state.coalitionCohesion);
   const baseBattleChance = getBattleChanceForTier(tier?.name);
@@ -225,7 +278,9 @@ function createBlankPrediction() {
     estimatedTurnsToNextBattle: null,
     confidenceModifier: SCOURGE_PREDICTION_CONSTANTS.BASE_CONFIDENCE_MODIFIER,
     confidenceLevel: 'low',
-    uncertaintyRange: { min: null, max: null }
+    uncertaintyRange: { min: null, max: null },
+    targetingMode: 'calculated',
+    directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
   };
 }
 

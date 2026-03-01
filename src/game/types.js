@@ -1,5 +1,5 @@
 // Type definitions and initializers
-import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS } from './constants.js';
+import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -422,6 +422,7 @@ export function createGameState(seed = 0) {
       heroRecruitmentState: {},
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
+    scourgeDirectedTargetEmpireId: null,
     
     // Scourge prediction system
     scourgePrediction: {
@@ -429,7 +430,9 @@ export function createGameState(seed = 0) {
       estimatedTurnsToNextBattle: null, // Estimated turns until battle (null = very uncertain)
       confidenceModifier: 1.0,        // 1.0 = baseline certainty, >1.0 = more certain, <1.0 = less certain
       confidenceLevel: 'low',         // 'low' | 'medium' | 'high' based on modifier
-      uncertaintyRange: { min: null, max: null } // Range of possible turn counts
+      uncertaintyRange: { min: null, max: null }, // Range of possible turn counts
+      targetingMode: 'calculated',
+      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
     },
     
     laws: [],
@@ -697,6 +700,9 @@ export function migrateGameState(state) {
   if (state.coalitionIntel === undefined) {
     state.coalitionIntel = 0;
   }
+  if (state.scourgeDirectedTargetEmpireId === undefined) {
+    state.scourgeDirectedTargetEmpireId = null;
+  }
   if (state.missionSlider === undefined) {
     state.missionSlider = 0;
   }
@@ -720,6 +726,24 @@ export function migrateGameState(state) {
   }
   if (state.pendingScourgeAttack === undefined) {
     state.pendingScourgeAttack = null;
+  }
+  if (!state.scourgePrediction || typeof state.scourgePrediction !== 'object') {
+    state.scourgePrediction = {
+      targetEmpireId: null,
+      estimatedTurnsToNextBattle: null,
+      confidenceModifier: 1.0,
+      confidenceLevel: 'low',
+      uncertaintyRange: { min: null, max: null },
+      targetingMode: 'calculated',
+      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
+    };
+  } else {
+    if (state.scourgePrediction.targetingMode === undefined) {
+      state.scourgePrediction.targetingMode = 'calculated';
+    }
+    if (!Number.isFinite(state.scourgePrediction.directTargetIntelCost)) {
+      state.scourgePrediction.directTargetIntelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
+    }
   }
   if (!state.threatClimate || typeof state.threatClimate !== 'object') {
     state.threatClimate = { activeSlots: 0, activeBonusList: [] };

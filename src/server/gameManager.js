@@ -15,7 +15,8 @@ import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import { activateEmergencyPower } from '../game/emergencyPowers.js';
-import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES } from '../game/constants.js';
+import { calculateScourgePrediction } from '../game/scourgePrediction.js';
+import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES, SCOURGE_PREDICTION_CONSTANTS } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -70,6 +71,7 @@ export class GameManager {
     this.initializeEconomyState();
     this.initializeImprovementsState();
     this.applyLawSystemDefaults(true);
+    this.refreshScourgePrediction();
 
     // Assign initial heroes to each empire
     const heroRng = new DeterministicRNG(seed);
@@ -183,14 +185,26 @@ export class GameManager {
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;
     }
+    if (this.state.scourgeDirectedTargetEmpireId === undefined) {
+      this.state.scourgeDirectedTargetEmpireId = null;
+    }
     if (force || !this.state.scourgePrediction) {
       this.state.scourgePrediction = {
         targetEmpireId: null,
         estimatedTurnsToNextBattle: null,
         confidenceModifier: 1.0,
         confidenceLevel: 'low',
-        uncertaintyRange: { min: null, max: null }
+        uncertaintyRange: { min: null, max: null },
+        targetingMode: 'calculated',
+        directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
       };
+    } else {
+      if (this.state.scourgePrediction.targetingMode === undefined) {
+        this.state.scourgePrediction.targetingMode = 'calculated';
+      }
+      if (!Number.isFinite(this.state.scourgePrediction.directTargetIntelCost)) {
+        this.state.scourgePrediction.directTargetIntelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
+      }
     }
   }
 
@@ -354,6 +368,52 @@ export class GameManager {
     return { success: true };
   }
 
+  refreshScourgePrediction() {
+    if (!this.state) {
+      return;
+    }
+    const predictionRng = new DeterministicRNG((this.state.rngSeed ?? 0) + (this.state.turn ?? 0) + 9001);
+    this.state.scourgePrediction = calculateScourgePrediction(this.state, predictionRng.random.bind(predictionRng));
+  }
+
+  directScourgeTarget(empireId) {
+    if (!this.state) {
+      return { success: false, error: 'Game is not initialized' };
+    }
+
+    const targetEmpire = this.state.empires?.find(empire => empire.id === empireId);
+    if (!targetEmpire) {
+      return { success: false, error: `Empire not found: ${empireId}` };
+    }
+
+    if (this.state.pendingScourgeAttack) {
+      return { success: false, error: 'A Scourge attack is already locked in' };
+    }
+
+    if (this.state.scourgeDirectedTargetEmpireId === empireId) {
+      return { success: false, error: `${targetEmpire.name} is already the directed target` };
+    }
+
+    const intelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
+    const availableIntel = Number(this.state.coalitionIntel || 0);
+    if (availableIntel < intelCost) {
+      return { success: false, error: `Need ${intelCost} intel to direct the Scourge` };
+    }
+
+    this.state.coalitionIntel = availableIntel - intelCost;
+    this.state.scourgeDirectedTargetEmpireId = targetEmpire.id;
+    this.refreshScourgePrediction();
+    this.notifyStateChange();
+
+    return {
+      success: true,
+      data: {
+        targetEmpireId: targetEmpire.id,
+        intelSpent: intelCost
+      }
+    };
+  }
+
   /**
    * Manually advance one turn
    */
@@ -446,6 +506,7 @@ export class GameManager {
     if (!this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {
       this.state.heroRecruitmentState = {};
     }
+    this.refreshScourgePrediction();
     this.notifyStateChange();
     logger.debug(`Game loaded: turn ${this.state.turn}`);
     return this.state;
