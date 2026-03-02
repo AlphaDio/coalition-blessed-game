@@ -39,7 +39,7 @@ declares:
         quantum_circuits: 0.00025
     consumption:
       super_alloys:
-        threshold: 4200
+        threshold: 24
         effect:
           type: mp_bonus
           amount: 1

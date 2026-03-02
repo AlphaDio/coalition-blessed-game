@@ -39,7 +39,7 @@ declares:
         rare_gases: 0.0009
     consumption:
       super_alloys:
-        threshold: 4800
+        threshold: 24
         effect:
           type: mp_bonus
           amount: 1

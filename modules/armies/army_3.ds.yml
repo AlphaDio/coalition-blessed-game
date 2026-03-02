@@ -39,7 +39,7 @@ declares:
         rare_gases: 0.00055
     consumption:
       biomass:
-        threshold: 6000
+        threshold: 36
         effect:
           type: mp_bonus
           amount: 1.5

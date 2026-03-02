@@ -404,7 +404,7 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   assert(approxEqual(army.mp.current, 1002.5) && approxEqual(army.mp.max, 1002.5), 'Direct MP gain respects the accumulated army consumption growth multiplier');
   assert((army.consumptionEffectPools?.rare_gases || 0) === 0, 'Army consumption pool spends exact threshold hits without phantom carryover');
 
-  const populousArmy = createArmy('army_2', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
+  const populousArmy = createArmy('army_populous', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
   populousArmy.consumptionRules = [{
     commodity: 'super_alloys',
     threshold: 4,
@@ -424,15 +424,29 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
 }
 console.log();
 
-console.log('=== Test 7: Army Content Thresholds Stay Above Legacy Low Values ===');
+console.log('=== Test 7: Army MP Thresholds Stay Reachable While Scaling Thresholds Stay High ===');
 {
   const content = createSampleContent(42);
-  const thresholds = (content.armies || [])
-    .flatMap((army) => (army.consumptionRules || []).map((rule) => Number(rule.threshold)))
-    .filter((threshold) => Number.isFinite(threshold));
+  const rules = (content.armies || [])
+    .flatMap((army) => (army.consumptionRules || []).map((rule) => ({
+      threshold: Number(rule.threshold),
+      effectType: rule.effect?.type || null
+    })))
+    .filter((rule) => Number.isFinite(rule.threshold));
 
-  const minThreshold = thresholds.length > 0 ? Math.min(...thresholds) : 0;
-  assert(minThreshold >= 3600, 'Army consumption thresholds are now 100x higher than the prior values');
+  const mpThresholds = rules
+    .filter((rule) => rule.effectType === 'mp_bonus')
+    .map((rule) => rule.threshold);
+  const scalingThresholds = rules
+    .filter((rule) => rule.effectType !== 'mp_bonus')
+    .map((rule) => rule.threshold);
+
+  const minMpThreshold = mpThresholds.length > 0 ? Math.min(...mpThresholds) : 0;
+  const maxMpThreshold = mpThresholds.length > 0 ? Math.max(...mpThresholds) : 0;
+  const minScalingThreshold = scalingThresholds.length > 0 ? Math.min(...scalingThresholds) : 0;
+
+  assert(minMpThreshold >= 24 && maxMpThreshold <= 36, 'Army MP growth thresholds stay in a reachable medium range');
+  assert(minScalingThreshold >= 3600, 'Army non-MP scaling thresholds stay in the high long-tail range');
 }
 console.log();
 
