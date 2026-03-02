@@ -36,3 +36,14 @@ declares:
         psycho_implants: 0.0012
       wants:
         genomes: 0.00035
+    consumption:
+      psycho_implants:
+        threshold: 4400
+        effect:
+          type: mp_bonus
+          amount: 1.5
+      genomes:
+        threshold: 5000
+        effect:
+          type: army_damage_bonus
+          amount: 0.03

@@ -9,9 +9,10 @@ import { createGameState, createArmy, createUnit, createEmpire } from '../src/ga
 import { simulateBattleTick, startBattle, getActiveBattles } from '../src/game/frontBattles.js';
 import { collectArmiesInBattle, isRegularArmy } from '../src/game/turn.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
-import { checkInsurrections } from '../src/game/insurrection.js';
+import { checkInsurrections, selectInsurrectionTargetEmpire } from '../src/game/insurrection.js';
 import { INSURRECTION_CONSTANTS } from '../src/game/constants.js';
 import { startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
+import { triggerInsurrectionBattles } from '../src/game/turn/battlePhase.js';
 
 
 // Helper to create a test state with two armies
@@ -449,6 +450,151 @@ function testRebellionVictoryResetsAndResolves() {
   return true;
 }
 
+// Test 11: Empire military modifiers from improvements and tech increase battle damage
+function testEmpireMilitaryModifiersIncreaseDamage() {
+  console.log('\n=== Test 11: Empire military modifiers increase battle damage ===');
+
+  const baseline = createGameState(12345);
+  baseline.turn = 1;
+  baseline.empires = [
+    createEmpire('empire1', 'Attacker', 60),
+    createEmpire('empire2', 'Defender', 60)
+  ];
+  baseline.armies = [
+    createArmy('army1', 'empire1', 'Attacker Army', 60, 70, 0, 50, 50, 4000),
+    createArmy('army2', 'empire2', 'Defender Army', 60, 70, 0, 50, 50, 4000)
+  ];
+  baseline.units = [];
+  baseline.armies[0].reinforcementRate = 0;
+  baseline.armies[1].reinforcementRate = 0;
+  baseline.armies[1].dmgPerUnitMP = 0;
+  baseline.improvements = { empireModifiers: {} };
+
+  const baselineFront = startBattle(baseline, 'army1', 'army2', 1000);
+  const baselineInitialMP = baseline.armies[1].mp.current;
+  simulateBattleTick(baselineFront, baseline);
+  const baselineDamage = baselineInitialMP - baseline.armies[1].mp.current;
+
+  const boosted = createGameState(12345);
+  boosted.turn = 1;
+  boosted.empires = [
+    createEmpire('empire1', 'Attacker', 60),
+    createEmpire('empire2', 'Defender', 60)
+  ];
+  boosted.empires[0].techModifiers = { army_damage_mult: 0.2 };
+  boosted.armies = [
+    createArmy('army1', 'empire1', 'Attacker Army', 60, 70, 0, 50, 50, 4000),
+    createArmy('army2', 'empire2', 'Defender Army', 60, 70, 0, 50, 50, 4000)
+  ];
+  boosted.units = [];
+  boosted.armies[0].reinforcementRate = 0;
+  boosted.armies[1].reinforcementRate = 0;
+  boosted.armies[1].dmgPerUnitMP = 0;
+  boosted.armies[0].consumptionDamageAdd = 0.1;
+  boosted.improvements = {
+    empireModifiers: {
+      empire1: { army_damage_add: 0.15 }
+    }
+  };
+
+  const boostedFront = startBattle(boosted, 'army1', 'army2', 1000);
+  const boostedInitialMP = boosted.armies[1].mp.current;
+  simulateBattleTick(boostedFront, boosted);
+  const boostedDamage = boostedInitialMP - boosted.armies[1].mp.current;
+
+  console.log('Baseline damage:', baselineDamage.toFixed(2));
+  console.log('Boosted damage:', boostedDamage.toFixed(2));
+
+  if (boostedDamage > baselineDamage) {
+    console.log('âœ“ Improvement, tech, and army scaling modifiers all increase battle damage');
+    return true;
+  }
+
+  console.log('âœ— Military modifiers did not increase battle damage');
+  return false;
+}
+
+// Test 12: Insurrections target the empire they hate most
+function testInsurrectionTargetingUsesRelations() {
+  console.log('\n=== Test 12: Insurrection targeting uses hostile relations ===');
+
+  const state = createGameState(12345);
+  state.empires = [
+    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire2', 'Hated Empire', 60),
+    createEmpire('empire3', 'Tolerated Empire', 60)
+  ];
+  state.armies = [
+    createArmy('rebel_army', 'empire1', 'Rebel Army', 60, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+  ];
+  state.diplomacy = {
+    relations: {
+      empire1: { empire2: -80, empire3: 60 },
+      empire2: { empire1: -40, empire3: 0 },
+      empire3: { empire1: 10, empire2: 0 }
+    }
+  };
+
+  checkInsurrections(state);
+  const targetEmpireId = selectInsurrectionTargetEmpire(state, state.insurrections[0], () => 0.4);
+
+  if (targetEmpireId === 'empire2') {
+    console.log('âœ“ Rebellion targets the most hated empire');
+    return true;
+  }
+
+  console.log('âœ— Rebellion did not target the most hated empire');
+  return false;
+}
+
+// Test 13: Insurrection battles only pull in the targeted empire
+function testInsurrectionOnlyTargetsSingleEmpire() {
+  console.log('\n=== Test 13: Insurrection only targets one empire ===');
+
+  const state = createGameState(12345);
+  state.empires = [
+    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire2', 'Target Empire', 60),
+    createEmpire('empire3', 'Bystander Empire', 60)
+  ];
+  const rebelArmy = createArmy('rebel_army', 'empire1', 'Rebel Army', 60, 60, INSURRECTION_CONSTANTS.THRESHOLD + 10, 50, 50, 5000);
+  const targetArmy = createArmy('target_army', 'empire2', 'Target Army', 60, 65, 10, 50, 50, 6000);
+  const bystanderArmy = createArmy('bystander_army', 'empire3', 'Bystander Army', 60, 70, 10, 50, 50, 7000);
+  state.armies = [rebelArmy, targetArmy, bystanderArmy];
+  state.diplomacy = {
+    relations: {
+      empire1: { empire2: -90, empire3: 40 },
+      empire2: { empire1: -60, empire3: 0 },
+      empire3: { empire1: 10, empire2: 0 }
+    }
+  };
+
+  checkInsurrections(state);
+  const log = [];
+  const silentLogger = { debug() {}, info() {}, warn() {}, error() {} };
+  triggerInsurrectionBattles(state, () => 0.2, [], log, silentLogger);
+
+  const front = (state.battleFronts || []).find(entry => entry.isInsurrectionBattle);
+  if (!front) {
+    console.log('âœ— No insurrection battle was created');
+    return false;
+  }
+
+  const onlyTargetedEmpireResponded =
+    front.targetEmpireId === 'empire2' &&
+    front.loyalArmyIds.length === 1 &&
+    front.loyalArmyIds[0] === 'target_army' &&
+    !front.loyalArmyIds.includes('bystander_army');
+
+  if (onlyTargetedEmpireResponded) {
+    console.log('âœ“ Only the targeted empire defended against the insurrection');
+    return true;
+  }
+
+  console.log('âœ— Insurrection still pulled in non-target empires');
+  return false;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -464,7 +610,10 @@ const results = {
   'isRegularArmy filters temporary armies': testIsRegularArmy(),
   'Insurrection resets aggravation after rebellion': testInsurrectionResetsAggravation(),
   'Low approval does not trigger insurrection': testLowApprovalDoesNotTriggerInsurrection(),
-  'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves()
+  'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves(),
+  'Empire military modifiers increase damage': testEmpireMilitaryModifiersIncreaseDamage(),
+  'Insurrection targeting uses hostile relations': testInsurrectionTargetingUsesRelations(),
+  'Insurrection only targets one empire': testInsurrectionOnlyTargetsSingleEmpire()
 };
 
 

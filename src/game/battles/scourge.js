@@ -4,6 +4,7 @@ import { getLogger } from '../../modules/logger.js';
 import { startBattle } from '../frontBattles.js';
 import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from '../scourgeModifiers.js';
 import { runHeroBattlePassives } from '../heroes.js';
+import { applyPopulationDelta } from '../populationUtils.js';
 import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
@@ -349,9 +350,10 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const targetEmpire = state.empires.find(e => e.id === state.scourgeTargetEmpireId);
     if (targetEmpire) {
       const prevPop = targetEmpire.stats.population;
-      // Ensure population never goes below 1 to prevent division by zero and game breaks
-      targetEmpire.stats.population = Math.max(1, Math.floor(targetEmpire.stats.population * 0.9));
-      const popLoss = prevPop - targetEmpire.stats.population;
+      const popLoss = Math.max(
+        0,
+        -applyPopulationDelta(targetEmpire, -Math.ceil(prevPop * 0.1), { scalePositiveByHeadroom: false })
+      );
       logger.debug(`Scourge battle: ${targetEmpire.name} population ${prevPop} -> ${targetEmpire.stats.population} (-${popLoss})`);
     }
 

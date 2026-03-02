@@ -73,7 +73,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       industrial_output: 0.75,           // +75% industrial output
       supply_efficiency: 0.35,           // +35% supply efficiency
       market_efficiency: 0.25,           // +25% market efficiency
-      population_growth: -0.10,          // -10% population growth
+      population_growth: -0.0018,        // -0.18% population growth
       empire_approval: -8                // Heavy approval penalty
     },
     axis_vector: {
@@ -133,7 +133,7 @@ export const EMERGENCY_LAW_DEFINITIONS = [
       cohesion_bonus: 1.5,               // +1.5 cohesion per tick (forced unity)
       army_fervor_bonus: 8,              // +8 fervor (patriotic fervor)
       empire_approval: -12,              // Significant approval penalty
-      population_growth: -0.05           // Population suppressed
+      population_growth: -0.0010         // Population suppressed
     },
     axis_vector: {
       authoritarian_liberal: -0.9,

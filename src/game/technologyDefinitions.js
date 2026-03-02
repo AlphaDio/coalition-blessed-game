@@ -21,8 +21,8 @@ export const GENERAL_TECHS = [
     'Enhanced armor technology boosts army effectiveness.',
     'general',
     {},
-    { credits: 100 },
-    { army_organization: 4, supply_efficiency: 0.05 }
+    { credits: 80 },
+    { army_organization: 2.5, army_damage_add: 0.03, army_replenishment_mult: 0.05, supply_efficiency: 0.03 }
   ),
 
   createTechnology(
@@ -31,8 +31,8 @@ export const GENERAL_TECHS = [
     'Clean, abundant energy source increases industrial output.',
     'general',
     {},
-    { stability: 3 },
-    { industrial_output: 0.10, trade_income: 75 }
+    { stability: 2 },
+    { industrial_output: 0.06, trade_income: 30 }
   ),
 
   createTechnology(
@@ -41,8 +41,8 @@ export const GENERAL_TECHS = [
     'Direct brain-computer interfaces accelerate research.',
     'general',
     {},
-    { approval: 4 },
-    { research_speed: 0.10, army_organization: 3 }
+    { approval: 3 },
+    { research_speed: 0.08, army_organization: 1.5 }
   ),
 
   createTechnology(
@@ -51,8 +51,8 @@ export const GENERAL_TECHS = [
     'Faster-than-light travel improves logistics and trade.',
     'general',
     {},
-    { cohesion: 3 },
-    { supply_efficiency: 0.08, market_efficiency: 0.05 }
+    { cohesion: 2 },
+    { supply_efficiency: 0.06, market_efficiency: 0.04 }
   ),
 
   createTechnology(
@@ -62,7 +62,7 @@ export const GENERAL_TECHS = [
     'general',
     {},
     { stability: 2 },
-    { population_growth: 0.025, empire_approval: 3 }
+    { population_growth: 0.0004, empire_approval: 2 }
   ),
 
   createTechnology(
@@ -71,8 +71,8 @@ export const GENERAL_TECHS = [
     'Intelligent systems boost research and administration.',
     'general',
     {},
-    { approval: 3 },
-    { research_speed: 0.08, law_progress_speed: 0.05 }
+    { approval: 2 },
+    { research_speed: 0.06, law_progress_speed: 0.04 }
   )
 ];
 
@@ -88,8 +88,8 @@ export const ALIGNED_TECHS = [
     'Machine enhancements dramatically boost army and research capabilities.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
-    { approval: 5 },
-    { army_organization: 8, research_speed: 0.12 }
+    { approval: 4 },
+    { army_organization: 4, research_speed: 0.09, army_damage_add: 0.06, army_consumption_mp_gain_mult: 0.08 }
   ),
 
   createTechnology(
@@ -98,8 +98,8 @@ export const ALIGNED_TECHS = [
     'Machines handle all production, greatly increasing output.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: 1, threshold: 0.3 } },
-    { stability: 4 },
-    { industrial_output: 0.15, population_growth: -0.010 }
+    { stability: 3 },
+    { industrial_output: 0.10, population_growth: -0.0003 }
   ),
 
   // Natural-aligned (natural_mechanical < -0.3)
@@ -109,8 +109,8 @@ export const ALIGNED_TECHS = [
     'Living in balance with nature accelerates population and resource growth.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
-    { stability: 6 },
-    { population_growth: 0.040, empire_approval: 5 }
+    { stability: 5 },
+    { population_growth: 0.0007, empire_approval: 4 }
   ),
 
   createTechnology(
@@ -119,8 +119,8 @@ export const ALIGNED_TECHS = [
     'Genetic modifications enhance population growth and happiness.',
     'aligned',
     { axis: { axis: 'natural_mechanical', direction: -1, threshold: 0.3 } },
-    { approval: 8 },
-    { population_growth: 0.030, supply_efficiency: 0.08 }
+    { approval: 6 },
+    { population_growth: 0.0006, supply_efficiency: 0.06 }
   ),
 
   // Militaristic-aligned (pacifist_militaristic > 0.3)
@@ -130,8 +130,8 @@ export const ALIGNED_TECHS = [
     'Advanced tactics and training create superior fighting forces.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
-    { approval: 4 },
-    { army_organization: 10, supply_efficiency: 0.06 }
+    { approval: 3 },
+    { army_organization: 5, supply_efficiency: 0.05, army_damage_mult: 0.06, army_replenishment_mult: 0.08 }
   ),
 
   createTechnology(
@@ -141,7 +141,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
     { cohesion: -3 },
-    { army_organization: 12 }
+    { army_organization: 4, army_damage_add: 0.14, army_damage_mult: 0.08 }
   ),
 
   // Pacifist-aligned (pacifist_militaristic < -0.3)
@@ -151,8 +151,8 @@ export const ALIGNED_TECHS = [
     'Exceptional negotiation skills improve all international relations.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
-    { cohesion: 6 },
-    { empire_approval: 6, trade_income: 150 }
+    { cohesion: 5 },
+    { empire_approval: 5, trade_income: 60 }
   ),
 
   createTechnology(
@@ -161,8 +161,8 @@ export const ALIGNED_TECHS = [
     'Shared values and traditions unite the coalition in purpose.',
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: -1, threshold: 0.3 } },
-    { approval: 8, stability: 4 },
-    { empire_approval: 4, population_growth: 0.020 }
+    { approval: 6, stability: 3 },
+    { empire_approval: 3, population_growth: 0.0003 }
   ),
 
   // Authoritarian-aligned (authoritarian_liberal > 0.3)
@@ -172,8 +172,8 @@ export const ALIGNED_TECHS = [
     'Unified command structure maximizes efficiency across all domains.',
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: 1, threshold: 0.3 } },
-    { stability: 6 },
-    { army_organization: 6, industrial_output: 0.10 }
+    { stability: 5 },
+    { army_organization: 3, industrial_output: 0.07, army_replenishment_mult: 0.06 }
   ),
 
   // Liberal-aligned (authoritarian_liberal < -0.3)
@@ -183,8 +183,8 @@ export const ALIGNED_TECHS = [
     'Open sharing of knowledge dramatically accelerates technological progress.',
     'aligned',
     { axis: { axis: 'authoritarian_liberal', direction: -1, threshold: 0.3 } },
-    { approval: 6 },
-    { research_speed: 0.15, market_efficiency: 0.08 }
+    { approval: 5 },
+    { research_speed: 0.10, market_efficiency: 0.05 }
   ),
 
   // Spiritual-aligned (spiritual_materialistic > 0.3)
@@ -194,8 +194,8 @@ export const ALIGNED_TECHS = [
     'Spiritual enlightenment enhances all aspects of society.',
     'aligned',
     { axis: { axis: 'spiritual_materialistic', direction: 1, threshold: 0.3 } },
-    { stability: 8 },
-    { empire_approval: 6, population_growth: 0.015 }
+    { stability: 6 },
+    { empire_approval: 5, population_growth: 0.0003 }
   ),
   
   // Materialistic-aligned (spiritual_materialistic < -0.3)
@@ -205,8 +205,8 @@ export const ALIGNED_TECHS = [
     'Efficient allocation maximizes output from available materials.',
     'aligned',
     { axis: { axis: 'spiritual_materialistic', direction: -1, threshold: 0.3 } },
-    { credits: 250 },
-    { industrial_output: 0.12, trade_income: 200, market_efficiency: 0.06 }
+    { credits: 180 },
+    { industrial_output: 0.08, trade_income: 80, market_efficiency: 0.05 }
   )
 ];
 
@@ -222,8 +222,8 @@ export const UNIQUE_TECHS = [
     'Perfect coordination through collective consciousness.',
     'unique',
     { tags: ['hive'] },
-    { cohesion: 8 },
-    { army_organization: 12, research_speed: 0.10 }
+    { cohesion: 6 },
+    { army_organization: 5, research_speed: 0.08, army_replenishment_mult: 0.10, army_damage_mult: 0.05 }
   ),
 
   // Mechanical-tagged empires
@@ -233,8 +233,8 @@ export const UNIQUE_TECHS = [
     'Molecular assembly creates anything from raw materials.',
     'unique',
     { tags: ['mechanical'] },
-    { credits: 250 },
-    { industrial_output: 0.20, supply_efficiency: 0.10 }
+    { credits: 200 },
+    { industrial_output: 0.14, supply_efficiency: 0.08, army_replenishment_mult: 0.08, army_consumption_mp_gain_mult: 0.10 }
   ),
 
   // Warped-tagged empires (touched by the Scourge)
@@ -245,7 +245,7 @@ export const UNIQUE_TECHS = [
     'unique',
     { tags: ['warped'] },
     { stability: -4, cohesion: -3 },
-    { research_speed: 0.18, industrial_output: 0.12 }
+    { research_speed: 0.14, industrial_output: 0.08 }
   ),
 
   // Biologic-tagged empires
@@ -255,8 +255,8 @@ export const UNIQUE_TECHS = [
     'Perfect genetic engineering creates ideal citizens.',
     'unique',
     { tags: ['biologic'] },
-    { approval: 10 },
-    { population_growth: 0.050, empire_approval: 8 }
+    { approval: 8 },
+    { population_growth: 0.0008, empire_approval: 6 }
   )
 ];
 

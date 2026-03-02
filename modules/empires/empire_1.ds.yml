@@ -68,10 +68,10 @@ declares:
             type: army_resolve_bonus
             amount: 0.1
         sentient_cores:
-          threshold: 1000
+          threshold: 24
           effect:
-            type: law_progress_bonus
-            amount: 0.1
+            type: coalition_intel_bonus
+            amount: 1
         wormhole_reactors:
           threshold: 500
           effect:

@@ -1,7 +1,40 @@
 import { clamp } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { HERO_CONSTANTS, HERO_STATUS } from './constants.js';
-import { computeAlignmentScore, ensureHeroMeters, getHeroEmpireId, getLawValues } from './utils.js';
+import { computeAlignmentScore, ensureHeroMeters, getHeroEmpireId, getLawValues, getPopularityScalar } from './utils.js';
+
+export function applyHeroLawSponsorship(state, lawProcess, lawDef, sponsorHero, log) {
+  if (!lawProcess?.meters || !sponsorHero || sponsorHero.status === HERO_STATUS.EXILED) return;
+
+  ensureHeroMeters(sponsorHero);
+  const logger = getLogger();
+  const sponsorAlignment = Math.max(0, computeAlignmentScore(getLawValues(lawDef), sponsorHero.values || {}));
+  const popularityScalar = getPopularityScalar(sponsorHero);
+  const momentumDelta = 0.08 + (popularityScalar * 0.04);
+  const legitimacyDelta = sponsorAlignment * 0.10;
+  const grievancePressure = Math.max(sponsorHero.meters.heat || 0, sponsorHero.meters.grievance || 0);
+  const unrestDelta = grievancePressure >= 70
+    ? 0.08
+    : grievancePressure >= 50
+      ? 0.05
+      : grievancePressure >= 35
+        ? 0.03
+        : 0;
+
+  lawProcess.meters.momentum = clamp((lawProcess.meters.momentum || 0) + momentumDelta, 0, 1);
+  lawProcess.meters.legitimacy = clamp((lawProcess.meters.legitimacy || 0) + legitimacyDelta, 0, 1);
+  if (unrestDelta > 0) {
+    lawProcess.meters.unrest = clamp((lawProcess.meters.unrest || 0) + unrestDelta, 0, 1);
+  }
+
+  const sponsorEmpire = state.empires?.find((empire) => empire.id === getHeroEmpireId(sponsorHero));
+  const message =
+    `Sponsor ${sponsorHero.name}${sponsorEmpire ? ` (${sponsorEmpire.name})` : ''}: ` +
+    `momentum +${momentumDelta.toFixed(2)}, legitimacy +${legitimacyDelta.toFixed(2)}` +
+    (unrestDelta > 0 ? `, unrest +${unrestDelta.toFixed(2)}` : '');
+  log.push(message);
+  logger.info(message);
+}
 
 export function applyHeroLawPressure(state, lawProcess, lawDef, log) {
   if (!state.heroes || state.heroes.length === 0) return;

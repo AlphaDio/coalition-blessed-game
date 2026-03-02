@@ -1,10 +1,22 @@
-import { ECONOMY_CONSTANTS } from '../constants.js';
+import { ECONOMY_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
 import { clampStat } from '../cohesion.js';
+import { getEmpireById, getEmpireMilitaryModifierSet } from '../empireModifiers.js';
+import { clampPopulation } from '../populationUtils.js';
+import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { getLogger } from '../../modules/logger.js';
+import { MODIFIER_ARMY_ORG_SCALE } from '../improvements/types.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalizeConsumptionThreshold(rawThreshold) {
+  const parsed = Number(rawThreshold);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
 }
 
 function averageFulfillment(fulfillmentMap, fallback = 1) {
@@ -28,10 +40,7 @@ function getArmySupplySignals(army) {
   const needsDeficit = Math.max(0, 1 - needsFulfillment);
   const wantsDeficit = Math.max(0, 1 - wantsFulfillment);
 
-  // Needs are mandatory for replacement throughput. Wants only provide upside.
   const replenishmentMultiplier = clamp((0.15 + (needsFulfillment * 0.85)) + Math.max(0, wantsFulfillment - 0.7) * 0.4, 0.05, 1.35);
-
-  // Capacity growth starts when needs and wants are reasonably met (lower thresholds so growth is visible).
   const growthSignal = Math.max(0, needsFulfillment - 0.70) + (Math.max(0, wantsFulfillment - 0.60) * 0.5);
 
   return {
@@ -44,6 +53,147 @@ function getArmySupplySignals(army) {
     replenishmentMultiplier,
     growthSignal
   };
+}
+
+function getArmyConsumptionPopulationMultiplier(empire) {
+  const population = clampPopulation(empire?.stats?.population || 1000, 1000);
+  const logPopulation = Math.log10(population);
+  return clamp(1 + ((logPopulation - 3) * 0.12), 0.8, 1.4);
+}
+
+function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logger) {
+  const { commodity, effect } = rule;
+  if (!effect || hits <= 0) return;
+
+  const amount = Number(effect.amount);
+  if (!Number.isFinite(amount) || amount === 0) return;
+  const scaledAmount = amount * hits;
+  const empireMilitaryMods = getEmpireMilitaryModifierSet(state, army.empireId);
+
+  if (effect.type === 'mp_bonus') {
+    const growthMultiplier = Math.max(0, Number(army.consumptionMpGainMultiplier) || 1) * empireMilitaryMods.army_consumption_mp_gain_mult;
+    const populationMultiplier = getArmyConsumptionPopulationMultiplier(getEmpireById(state, army.empireId));
+    const mpGain = scaledAmount * growthMultiplier * populationMultiplier;
+    const prevCurrent = Math.floor(army.mp?.current || 0);
+    const prevMax = Math.floor(army.mp?.max || army.manpower || 0);
+    army.mp = army.mp || { current: 0, max: 0 };
+    army.mp.current = Math.max(0, (army.mp.current || 0) + mpGain);
+    army.mp.max = (army.mp.max || 0) + mpGain;
+    army.manpower = Math.max(army.manpower || 0, army.mp.max);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${mpGain.toFixed(3)} MP (${prevCurrent}/${prevMax} -> ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)}, ${hits} hits, x${growthMultiplier.toFixed(2)} growth, x${populationMultiplier.toFixed(2)} pop)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'mp_growth_multiplier_bonus') {
+    army.consumptionMpGainMultiplier = Math.max(0, (Number(army.consumptionMpGainMultiplier) || 1) + scaledAmount);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${(scaledAmount * 100).toFixed(1)}% MP growth from army consumption (${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'army_damage_bonus') {
+    army.consumptionDamageAdd = Math.max(0, (Number(army.consumptionDamageAdd) || 0) + scaledAmount);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} persistent army damage (${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'replenishment_bonus') {
+    army.replenishmentBonus = (army.replenishmentBonus || 0) + scaledAmount;
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} replenishment bonus (${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'replenishment_multiplier_bonus') {
+    army.replenishmentMultiplier = Math.max(0, (army.replenishmentMultiplier || 1) + scaledAmount);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${(scaledAmount * 100).toFixed(1)}% replenishment multiplier (${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'fervor_bonus') {
+    army.fervor = clampStat((army.fervor || 0) + scaledAmount, 0, 100);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} fervor (${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
+  if (effect.type === 'coalition_intel_bonus') {
+    const intelGained = applyCoalitionIntel(state, scaledAmount);
+    const confidenceBonus = intelGained * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT;
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${intelGained.toFixed(3)} coalition intel (+${confidenceBonus.toFixed(3)} confidence, ${hits} hits)`;
+    log.push(msg);
+    logger.info(msg);
+  }
+}
+
+function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log) {
+  const logger = getLogger();
+
+  regularArmies.forEach(army => {
+    if (!Array.isArray(army.consumptionRules) || army.consumptionRules.length === 0) {
+      return;
+    }
+
+    if (!army.consumptionEffectPools || typeof army.consumptionEffectPools !== 'object') {
+      army.consumptionEffectPools = {};
+    }
+
+    const receivedByCommodity = army.supply_state?.received || {};
+
+    for (const rule of army.consumptionRules) {
+      const { commodity, threshold } = rule;
+      const normalizedThreshold = normalizeConsumptionThreshold(threshold);
+      if (!normalizedThreshold) {
+        logger.warn(`Skipping invalid army consumption threshold for ${army.name} ${commodity}: ${threshold}`);
+        continue;
+      }
+
+      const consumedThisTurn = Math.max(0, Number(receivedByCommodity[commodity] || 0));
+      const existingPool = Math.max(0, Number(army.consumptionEffectPools[commodity] || 0));
+      const updatedPool = existingPool + consumedThisTurn;
+
+      if (armiesInBattle.has(army.id)) {
+        army.consumptionEffectPools[commodity] = updatedPool;
+        continue;
+      }
+
+      const hits = Math.floor(updatedPool / normalizedThreshold);
+      const spentFromPool = hits * normalizedThreshold;
+      army.consumptionEffectPools[commodity] = Math.max(0, updatedPool - spentFromPool);
+
+      if (hits <= 0) continue;
+      applyArmyConsumptionEffect(state, army, rule, spentFromPool, hits, log, logger);
+    }
+  });
+}
+
+export function applyArmyPassiveStatModifiers(state) {
+  if (!Array.isArray(state?.armies)) {
+    return;
+  }
+
+  const regularArmies = state.armies.filter(isRegularArmy);
+  regularArmies.forEach(army => {
+    const empireMilitaryMods = getEmpireMilitaryModifierSet(state, army.empireId);
+    const passiveOrganizationGain = Math.max(0, empireMilitaryMods.army_organization) / MODIFIER_ARMY_ORG_SCALE;
+    const passiveFervorGain = Math.max(0, empireMilitaryMods.army_fervor) / MODIFIER_ARMY_ORG_SCALE;
+
+    if (passiveOrganizationGain > 0) {
+      army.organization = clampStat((army.organization || 0) + passiveOrganizationGain, 0, 100);
+    }
+    if (passiveFervorGain > 0) {
+      army.fervor = clampStat((army.fervor || 0) + passiveFervorGain, 0, 100);
+    }
+  });
 }
 
 /**
@@ -62,41 +212,25 @@ export function recoverArmyOrganization(state, activeBattles) {
   const regularArmies = state.armies.filter(isRegularArmy);
 
   regularArmies.forEach(army => {
-    // Skip if already at max organization
     if (army.organization >= 100) return;
 
     const inBattle = armiesInBattle.has(army.id);
-
-    // Base recovery rate: Command stat (0-100) determines recovery per tick
-    // Scale: 0 command = 0.1 per tick, 100 command = 1.0 per tick
     const baseRecoveryRate = 0.1 + ((army.command || 50) / 100) * 0.9;
-
-    // During battles, recovery is slower (50% of normal rate)
     const effectiveRate = inBattle ? baseRecoveryRate * 0.5 : baseRecoveryRate;
-
-    // Apply organization recovery
     const spaceAvailable = 100 - army.organization;
     const recovered = Math.min(effectiveRate, spaceAvailable);
     army.organization = clampStat(army.organization + recovered, 0, 100);
 
-    // Debug logging for significant recovery
     if (recovered > 0.5) {
       logger.debug(`Organization recovery: ${army.name} +${recovered.toFixed(2)} org (command: ${(army.command || 50).toFixed(0)}, inBattle: ${inBattle}, new: ${army.organization.toFixed(1)})`);
     }
   });
 }
 
-function getArmyGrowthThreshold(army) {
-  const base = ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE;
-  const perSqrt = ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP;
-  const mp = Math.max(1, army.mp?.max || army.manpower || 100);
-  return Math.max(50, base + perSqrt * Math.sqrt(mp));
-}
-
 /**
  * Replenish manpower for armies not currently in active battles.
- * Army capacity growth happens ONLY when consumption of demanded resources (needs/wants)
- * reaches a threshold; growth is logged to the turn log.
+ * Threshold-based army consumption effects are processed from filled needs/wants orders.
+ * Direct MP refill still happens separately for armies not currently in active battles.
  *
  * @param {Object} state - Game state
  * @param {Array} activeBattles - Array of active battle fronts
@@ -106,11 +240,10 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
   const logger = getLogger();
 
   const armiesInBattle = collectArmiesInBattle(activeBattles);
-
   const regularArmies = state.armies.filter(isRegularArmy);
+  processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log);
   const replenishingArmies = regularArmies.filter(army => !armiesInBattle.has(army.id));
 
-  // Build empire lookup map
   const empireMap = new Map(state.empires.map(empire => [empire.id, empire]));
 
   replenishingArmies.forEach(army => {
@@ -124,8 +257,8 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     const currentMP = Math.max(0, army.mp?.current || 0);
     const damageRatio = clamp((maxMP - currentMP) / maxMP, 0, 1);
     const supplySignals = getArmySupplySignals(army);
+    const empireMilitaryMods = getEmpireMilitaryModifierSet(state, army.empireId);
 
-    // Damage-gated unmet needs drive rebellion pressure.
     const needsAggravationGain = (damageRatio > 0 && supplySignals.needsActive)
       ? ECONOMY_CONSTANTS.ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK * supplySignals.needsDeficit * damageRatio
       : 0;
@@ -133,18 +266,14 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       army.aggravation = clampStat((army.aggravation || 0) + needsAggravationGain, 0, 100);
     }
 
-    // Wants are persistent: unmet wants reduce morale/enthusiasm over time.
     const wantsFervorLoss = supplySignals.wantsActive
       ? ECONOMY_CONSTANTS.ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK * supplySignals.wantsDeficit
       : 0;
     if (wantsFervorLoss > 0) {
       army.fervor = clampStat((army.fervor || 0) - wantsFervorLoss, 0, 100);
     }
-
-    // Base replenishment rate (per tick) - used for both replenishment and capacity growth
     const baseRate = army.reinforcementRate || 100;
 
-    // Fervor modifier: 0.5x at 0 fervor, 1.5x at 100 fervor
     let totalFervorBonus = (army.fervorBonus || 0);
     if (army.timedFervorBonuses && Array.isArray(army.timedFervorBonuses)) {
       totalFervorBonus += army.timedFervorBonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
@@ -152,9 +281,8 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     const effectiveFervor = Math.min(100, (army.fervor || 0) + totalFervorBonus);
     const fervorModifier = 0.5 + (effectiveFervor / 100) * 1.0;
 
-    // Empire size modifier based on population
-    const population = empire.stats?.population || 1000;
-    const logPopulation = Math.log10(Math.max(1, population));
+    const population = clampPopulation(empire.stats?.population || 1000, 1000);
+    const logPopulation = Math.log10(population);
     let populationModifier;
     if (logPopulation <= 3.0) populationModifier = 0.5;
     else if (logPopulation <= 4.0) populationModifier = 0.5 + (logPopulation - 3.0) * 0.5;
@@ -162,30 +290,10 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     else if (logPopulation <= 6.0) populationModifier = 1.5 + (logPopulation - 5.0) * 0.5;
     else populationModifier = 2.0;
 
-    const replenishmentMultiplier = army.replenishmentMultiplier || 1.0;
+    const replenishmentMultiplier = (army.replenishmentMultiplier || 1.0) * empireMilitaryMods.army_replenishment_mult;
 
-    // Army growth ONLY when consumption of demanded resources (needs/wants) reaches threshold.
-    const threshold = getArmyGrowthThreshold(army);
-    let bank = Number(army.growthConsumptionBank) || 0;
-    const mpPerTrigger = Math.max(1, ECONOMY_CONSTANTS.ARMY_GROWTH_MP_PER_TRIGGER || 1);
-    while (bank >= threshold) {
-      const prevMax = Math.floor(army.mp?.max || army.manpower || 0);
-      army.mp = army.mp || { current: 0, max: 0 };
-      army.mp.max = (army.mp.max || 0) + mpPerTrigger;
-      army.manpower = Math.max(army.manpower || 0, army.mp.max);
-      bank -= threshold;
-      army.growthConsumptionBank = bank;
-      const empireName = empire?.name || 'Unknown';
-      const msg = `${army.name} (${empireName}): supply stockpile reached threshold → +${mpPerTrigger} MP capacity (${prevMax} → ${Math.floor(army.mp.max)})`;
-      log.push(msg);
-      logger.info(msg);
-    }
-    if (bank !== (Number(army.growthConsumptionBank) || 0)) army.growthConsumptionBank = bank;
-
-    // Skip manpower refill if already at max (growth already applied above).
     if (army.mp.current >= army.mp.max) return;
 
-    // Calculate effective replenishment rate
     let effectiveRate =
       baseRate *
       fervorModifier *
@@ -195,12 +303,10 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     const replenishmentBonus = army.replenishmentBonus || 0;
     effectiveRate = Math.max(0, effectiveRate + replenishmentBonus);
 
-    // Apply replenishment
     const spaceAvailable = army.mp.max - army.mp.current;
     const replenished = Math.min(effectiveRate, spaceAvailable);
     army.mp.current += replenished;
 
-    // Debug logging for significant replenishment
     if (replenished > 50 || needsAggravationGain > 0.2 || wantsFervorLoss > 0.2) {
       logger.debug(
         `Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP` +
@@ -210,6 +316,4 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       );
     }
   });
-
 }
-

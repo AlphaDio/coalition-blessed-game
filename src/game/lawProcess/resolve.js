@@ -15,27 +15,56 @@ import { getLogger } from '../../modules/logger.js';
 import { updateCoalitionColor } from '../coalitionColor.js';
 import {
   applyHeroLawPressure,
+  applyHeroLawSponsorship,
   applyHeroLawTension,
   triggerHeroPassives,
   triggerHeroAbilities
 } from '../heroes.js';
 import { filterLawLogs } from './logs.js';
 import { getLawProgressSpeedMultiplier } from './progress.js';
-import { applyLawImmediateEffects, applyLawModifiers, removeLawModifiers } from './modifiers.js';
+import { applyLawImmediateEffects, applyLawModifiers } from './modifiers.js';
 import { calculateEmpireStances } from './stances.js';
 import { getLawEvents } from './events.js';
+import { getLawProposalById, LAW_PROPOSAL_STATUS, setLawProposalStatus } from '../lawProposals.js';
 
-/**
- * Start a new law process
- * @param {Object} state - Game state
- * @param {string} lawId - Law definition ID to start
- * @param {number} influenceCost - Influence cost (default 100)
- * @returns {Object} Result with success/error and log
- */
-export function startLawProcess(state, lawId, influenceCost = 100) {
+function getOpenLawProcesses(state) {
+  return (state.lawProcesses || []).filter((process) =>
+    process.phase !== 'ENACTED' && process.phase !== 'BURIED'
+  );
+}
+
+function ensureLawStateDefaults(state) {
+  if (!Array.isArray(state.enactedLaws)) {
+    state.enactedLaws = [];
+  }
+  if (!Array.isArray(state.enactedLawsHistory)) {
+    state.enactedLawsHistory = [];
+  }
+  if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
+    state.enactedLawsByCategory = {};
+  }
+  if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
+    state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+  }
+  if (!Array.isArray(state.activeLaws)) {
+    state.activeLaws = [];
+  }
+}
+
+function rebuildActiveLaws(state) {
+  ensureLawStateDefaults(state);
+  state.activeLaws = state.enactedLaws
+    .map((lawId) => {
+      const def = state.lawDefinitions.find((law) => law.id === lawId);
+      if (!def) return null;
+      return { lawId: def.id, category: def.category, modifiers: def.modifiers || {} };
+    })
+    .filter(Boolean);
+}
+
+function startLawProcessInternal(state, lawId, influenceCost = 100, proposal = null) {
   const logger = getLogger();
 
-  // Check prerequisites and enacted status
   const eligibility = canStartLaw(lawId, state);
   if (!eligibility.canStart) {
     logger.warn(`Cannot start law process: ${eligibility.reason}`, { lawId });
@@ -45,9 +74,7 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
 
-  const activeProcesses = (state.lawProcesses || []).filter(process =>
-    process.phase !== 'ENACTED' && process.phase !== 'BURIED'
-  );
+  const activeProcesses = getOpenLawProcesses(state);
   if (activeProcesses.length > 0) {
     logger.warn('Cannot start law process: another law is active', { lawId });
     return {
@@ -56,9 +83,8 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
 
-  // Check if player has enough influence
   if (state.playerInfluence < influenceCost) {
-    logger.warn(`Cannot start law process: insufficient influence`, {
+    logger.warn('Cannot start law process: insufficient influence', {
       needed: influenceCost,
       have: state.playerInfluence,
       lawId
@@ -69,8 +95,7 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
 
-  // Find law definition
-  const lawDef = state.lawDefinitions.find(l => l.id === lawId);
+  const lawDef = state.lawDefinitions.find((law) => law.id === lawId);
   if (!lawDef) {
     logger.error(`Law definition not found: ${lawId}`);
     return {
@@ -79,24 +104,28 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     };
   }
 
-  logger.info(`Law started: ${lawDef.name} (Cost: ${influenceCost}, Remaining: ${state.playerInfluence - influenceCost})`);
+  state.playerInfluence -= influenceCost;
+
+  const lawProcess = createLawProcess(lawId, state.turn);
+  const sponsorHero = proposal?.proposerHeroId
+    ? (state.heroes || []).find((hero) => hero.id === proposal.proposerHeroId) || null
+    : null;
+
+  if (proposal) {
+    lawProcess.proposalId = proposal.proposalId;
+    lawProcess.sponsorHeroId = proposal.proposerHeroId || null;
+    proposal.status = LAW_PROPOSAL_STATUS.IN_PROCESS;
+  }
+
+  calculateEmpireStances(lawProcess, lawDef, state);
+  state.lawProcesses.push(lawProcess);
+
+  logger.info(`Law started: ${lawDef.name} (Cost: ${influenceCost}, Remaining: ${state.playerInfluence})`);
   logger.debug(`Starting law process: ${lawDef.name}`, {
     lawId,
     influenceCost,
-    remainingInfluence: state.playerInfluence - influenceCost
+    remainingInfluence: state.playerInfluence
   });
-
-  // Deduct influence
-  state.playerInfluence -= influenceCost;
-
-  // Create new law process
-  const lawProcess = createLawProcess(lawId, state.turn);
-
-  // Calculate initial empire stances
-  calculateEmpireStances(lawProcess, lawDef, state);
-
-  // Add to active processes
-  state.lawProcesses.push(lawProcess);
 
   const log = [
     `Law process started: ${lawDef.name}`,
@@ -104,14 +133,63 @@ export function startLawProcess(state, lawId, influenceCost = 100) {
     `Phase: ${lawProcess.phase}`
   ];
 
-  triggerHeroPassives(state, 'LAW_PROCESS_STARTED', { lawProcess, lawDef }, log);
-  triggerHeroPassives(state, 'LAW_PHASE_STARTED', { phase: lawProcess.phase, lawProcess, lawDef }, log);
+  if (proposal) {
+    log.push(`Proposal selected: ${proposal.proposalId}`);
+  }
+  if (sponsorHero) {
+    log.push(`Sponsor: ${sponsorHero.name}`);
+  }
 
-  // Apply immediate hero pressure when the law starts
+  triggerHeroPassives(state, 'LAW_PROCESS_STARTED', { lawProcess, lawDef, proposal, sponsorHero }, log);
+  triggerHeroPassives(state, 'LAW_PHASE_STARTED', { phase: lawProcess.phase, lawProcess, lawDef, proposal, sponsorHero }, log);
+
+  if (sponsorHero) {
+    applyHeroLawSponsorship(state, lawProcess, lawDef, sponsorHero, log);
+  }
   applyHeroLawPressure(state, lawProcess, lawDef, log);
   applyHeroLawTension(state, lawProcess, log);
 
-  return { success: true, log };
+  return {
+    success: true,
+    lawId,
+    proposalId: proposal?.proposalId || null,
+    log
+  };
+}
+
+/**
+ * Start a new law process
+ * @param {Object} state - Game state
+ * @param {string} lawId - Law definition ID to start
+ * @param {number} influenceCost - Influence cost (default 100)
+ * @returns {Object} Result with success/error and log
+ */
+export function startLawProcess(state, lawId, influenceCost = 100) {
+  return startLawProcessInternal(state, lawId, influenceCost, null);
+}
+
+export function startLawProcessFromProposal(state, proposalId, influenceCost = 100) {
+  const logger = getLogger();
+  const proposal = getLawProposalById(state, proposalId);
+  if (!proposal) {
+    logger.warn('Cannot start law process: proposal not found', { proposalId });
+    return {
+      error: 'Law proposal not found',
+      log: []
+    };
+  }
+  if (proposal.status !== LAW_PROPOSAL_STATUS.PROPOSED) {
+    logger.warn('Cannot start law process: proposal is no longer available', {
+      proposalId,
+      status: proposal.status
+    });
+    return {
+      error: 'Law proposal is no longer available',
+      log: []
+    };
+  }
+
+  return startLawProcessInternal(state, proposal.lawId, influenceCost, proposal);
 }
 
 /**
@@ -199,6 +277,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
         // Check burial
         if (checkBurialRule(lawProcess, state)) {
           const logger = getLogger();
+          setLawProposalStatus(state, lawProcess.proposalId, LAW_PROPOSAL_STATUS.WITHDRAWN);
           logger.info(`Law BURIED: ${lawDef.name} (4 rejects)`);
           log.push(`\n*** LAW BURIED (4 rejects) ***`);
           return log;
@@ -300,43 +379,15 @@ export function resolveLawProcess(lawProcess, state, rng) {
     }
 
     const category = lawDef.category || 'uncategorized';
-    if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
-      state.enactedLawsByCategory = {};
-    }
-    if (!Array.isArray(state.enactedLaws)) {
-      state.enactedLaws = [];
-    }
-    if (!Array.isArray(state.enactedLawsHistory)) {
-      state.enactedLawsHistory = [];
-    }
-    if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
-      state.lawTierUnlocks = { 1: true, 2: false, 3: false };
-    }
-
-    const previousLawId = state.enactedLawsByCategory[category];
-    if (previousLawId && previousLawId !== lawProcess.lawId) {
-      const previousDef = state.lawDefinitions.find(l => l.id === previousLawId);
-      if (previousDef) {
-        removeLawModifiers(previousDef, state);
-        log.push(`Replaced ${previousDef.name} (${category})`);
-      }
-    }
-
+    ensureLawStateDefaults(state);
     state.enactedLawsByCategory[category] = lawProcess.lawId;
-    state.enactedLaws = Object.values(state.enactedLawsByCategory);
+    if (!state.enactedLaws.includes(lawProcess.lawId)) {
+      state.enactedLaws.push(lawProcess.lawId);
+    }
     if (!state.enactedLawsHistory.includes(lawProcess.lawId)) {
       state.enactedLawsHistory.push(lawProcess.lawId);
     }
-    if (!Array.isArray(state.activeLaws)) {
-      state.activeLaws = [];
-    }
-    state.activeLaws = state.enactedLaws
-      .map(lawId => {
-        const def = state.lawDefinitions.find(l => l.id === lawId);
-        if (!def) return null;
-        return { lawId: def.id, category: def.category, modifiers: def.modifiers || {} };
-      })
-      .filter(Boolean);
+    rebuildActiveLaws(state);
     if (lawDef.tier === 1) state.lawTierUnlocks[2] = true;
     if (lawDef.tier === 2) state.lawTierUnlocks[3] = true;
 
@@ -346,7 +397,17 @@ export function resolveLawProcess(lawProcess, state, rng) {
       log.push('Law effects applied:');
       modifierLog.forEach(msg => log.push(`  ${msg}`));
     }
-    applyLawImmediateEffects(lawDef, state, log);
+    applyLawImmediateEffects(lawDef, state, log, { lawProcess });
+    if (lawProcess.sponsorHeroId && Array.isArray(state.heroes)) {
+      const sponsorHero = state.heroes.find((hero) => hero.id === lawProcess.sponsorHeroId);
+      if (sponsorHero) {
+        sponsorHero.meters = sponsorHero.meters || { heat: 0, grievance: 0, popularity: 50 };
+        const popularityGain = 4 + ((lawDef.tier || 1) * 2);
+        sponsorHero.meters.popularity = clamp((sponsorHero.meters.popularity || 0) + popularityGain, 0, 100);
+        log.push(`Sponsor mandate: ${sponsorHero.name} gains +${popularityGain} popularity.`);
+      }
+    }
+    setLawProposalStatus(state, lawProcess.proposalId, LAW_PROPOSAL_STATUS.ENACTED);
 
     // Update Coalition coloration based on enacted laws
     updateCoalitionColor(state);

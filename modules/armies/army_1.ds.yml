@@ -19,21 +19,37 @@ declares:
     id: "army_1"
     empireId: "empire_1"
     name: "1st Stellar Battle Fleet"
-    organization: 70
-    fervor: 60
+    organization: 76
+    fervor: 52
     aggravation: 42
-    command: 55
-    recoveryRate: 55
-    reinforcementRate: 52
+    command: 58
+    recoveryRate: 62
+    reinforcementRate: 48
     manpower: 10000
-    dmgPerUnitMP: 1.05
-    dmgPerTickMO: 2.6
-    protection: 0.22
-    resolve: 0.32
-    killRate: 0.11
+    dmgPerUnitMP: 0.90
+    dmgPerTickMO: 2.2
+    protection: 0.33
+    resolve: 0.43
+    killRate: 0.08
     demands:
       needs:
         super_alloys: 0.0016
         plasma_fuel: 0.0012
       wants:
         rare_gases: 0.0009
+    consumption:
+      super_alloys:
+        threshold: 4800
+        effect:
+          type: mp_bonus
+          amount: 1
+      plasma_fuel:
+        threshold: 4200
+        effect:
+          type: replenishment_multiplier_bonus
+          amount: 0.05
+      rare_gases:
+        threshold: 5200
+        effect:
+          type: replenishment_bonus
+          amount: 10

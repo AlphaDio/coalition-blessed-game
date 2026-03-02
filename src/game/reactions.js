@@ -1,4 +1,5 @@
 import { REACTION_CONSTANTS } from './constants.js';
+import { clampPopulation } from './populationUtils.js';
 import { clamp } from '../utils/math.js';
 
 /**
@@ -76,7 +77,7 @@ export function calculateReaction(empire, law) {
   const reaction = getReactionTier(score);
 
   // 5. Calculate power/pressure (based on population only)
-  const population = empire.stats?.population || 1000;
+  const population = clampPopulation(empire.stats?.population || 1000, 1000);
   const popExponent = REACTION_CONSTANTS.POWER_SCALING.POP_EXPONENT;
   const pressure = Math.pow(population, popExponent);
 

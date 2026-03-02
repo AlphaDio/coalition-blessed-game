@@ -56,9 +56,12 @@ export function triggerHeroAbilities(state, lawProcess, log) {
 export function tickHeroCooldowns(state) {
   if (!state.heroes || state.heroes.length === 0) return;
   state.heroes.forEach(hero => {
-    if (!hero.cooldowns) return;
+    hero.cooldowns = hero.cooldowns || {};
     if (hero.cooldowns.ability > 0) {
       hero.cooldowns.ability -= 1;
+    }
+    if (hero.cooldowns.law_proposal > 0) {
+      hero.cooldowns.law_proposal -= 1;
     }
   });
 }

@@ -3,6 +3,7 @@ import { getLogger } from '../modules/logger.js';
 import { clamp } from '../utils/math.js';
 import { FRONT_BATTLE_MODIFIERS } from './constants.js';
 import { syncUnitsFromArmy } from './armyComposition.js';
+import { getEmpireMilitaryModifierSet } from './empireModifiers.js';
 
 /**
  * Calculate MP participation rate based on organization
@@ -330,18 +331,18 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const baseDmgPerUnitMP = typeof attackingArmy.dmgPerUnitMP === 'number' && !isNaN(attackingArmy.dmgPerUnitMP)
     ? attackingArmy.dmgPerUnitMP
     : 1.0;
-  // Per-empire damage modifiers: from empireModifiers (single empire) or aggregated on combined army (_coalition)
+  // Per-empire damage modifiers: improvements + tech for single empires, aggregated values for combined armies.
+  const empireMilitaryMods = getEmpireMilitaryModifierSet(worldState, attackingArmy.empireId);
   const damageAdd = Number.isFinite(attackingArmy._empireDamageAdd)
     ? attackingArmy._empireDamageAdd
-    : (Number.isFinite(worldState.improvements?.empireModifiers?.[attackingArmy.empireId]?.army_damage_add)
-      ? worldState.improvements.empireModifiers[attackingArmy.empireId].army_damage_add
-      : 0);
+    : empireMilitaryMods.army_damage_add;
   const damageMult = Number.isFinite(attackingArmy._empireDamageMult)
     ? attackingArmy._empireDamageMult
-    : (Number.isFinite(worldState.improvements?.empireModifiers?.[attackingArmy.empireId]?.army_damage_mult)
-      ? worldState.improvements.empireModifiers[attackingArmy.empireId].army_damage_mult
-      : 0);
-  const dmgPerUnitMP = (baseDmgPerUnitMP + damageAdd) * (1 + damageMult);
+    : empireMilitaryMods.army_damage_mult;
+  const consumptionDamageAdd = Number.isFinite(attackingArmy._consumptionDamageAdd)
+    ? attackingArmy._consumptionDamageAdd
+    : (Number(attackingArmy.consumptionDamageAdd) || 0);
+  const dmgPerUnitMP = (baseDmgPerUnitMP + damageAdd + consumptionDamageAdd) * (1 + damageMult);
   const rawMPDmg = engagedUnits * dmgPerUnitMP;
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
@@ -350,7 +351,7 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
     ? defendingArmy.protection
     : 0;
   const effectiveProtection = Math.min(1, baseProtection + (defendingArmy.protectionBonus || 0));
-  const finalMPDmg = modifiedMPDmg * (1 - effectiveProtection);
+  const finalMPDmg = modifiedMPDmg * (1 - effectiveProtection) * FRONT_BATTLE_MODIFIERS.MP_DAMAGE_MULT;
   
   // Split into permanent and temporary: attacker's kill rate determines how much of the defender's
   // losses are destroyed (permanent) vs wounded (temporary). Higher kill rate = more destroyed, less wounded.
@@ -406,7 +407,7 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const baseDmgPerTickMO = typeof attackingArmy.dmgPerTickMO === 'number' && !isNaN(attackingArmy.dmgPerTickMO)
     ? attackingArmy.dmgPerTickMO
     : 2.5;
-  const dmgPerTickMO = (baseDmgPerTickMO + damageAdd) * (1 + damageMult);
+  const dmgPerTickMO = (baseDmgPerTickMO + damageAdd + (consumptionDamageAdd * 0.5)) * (1 + damageMult);
   const rawMODmg = dmgPerTickMO;
   const modifiedMODmg = applyModifiers(rawMODmg, attackingArmy);
   

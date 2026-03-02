@@ -1,6 +1,9 @@
 import { consumeRequisition } from '../economy.js';
 import { processEconomyTick } from '../economyTick.js';
 import { getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
+import { SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
+import { applyPopulationDelta } from '../populationUtils.js';
+import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { getLogger } from '../../modules/logger.js';
 
 export function handleEconomyTick(state, log, logger) {
@@ -56,8 +59,8 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
   const scaledAmount = amount * hits;
 
   if (effect.type === 'population_percent') {
-    const populationIncrease = Math.floor(empire.stats.population * (amount / 100) * hits);
-    empire.stats.population += populationIncrease;
+    const rawPopulationIncrease = Math.floor(empire.stats.population * (amount / 100) * hits);
+    const populationIncrease = applyPopulationDelta(empire, rawPopulationIncrease);
     logConsumptionEffect(
       logger,
       log,
@@ -153,6 +156,17 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
       logger,
       log,
       `${empire.name} ${commodity}: pooled consumed ${consumed}, +${bonus.toFixed(3)} coalition construction (${hits} hits)`
+    );
+    return;
+  }
+
+  if (effect.type === 'coalition_intel_bonus') {
+    const intelGained = applyCoalitionIntel(state, scaledAmount);
+    const confidenceBonus = intelGained * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT;
+    logConsumptionEffect(
+      logger,
+      log,
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${intelGained.toFixed(3)} coalition intel (+${confidenceBonus.toFixed(3)} confidence, ${hits} hits)`
     );
   }
 }

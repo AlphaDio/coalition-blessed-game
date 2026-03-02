@@ -279,11 +279,17 @@ const TECH_EVENT_TEMPLATES = [
  */
 function formatModifier(key, value) {
   const sign = value > 0 ? '+' : '';
+
+  if (key === 'population_growth') {
+    return `${sign}${(value * 100).toFixed(2)}% ${key.replace(/_/g, ' ')}`;
+  }
   
   // Percentage modifiers
   const percentageModifiers = [
     'research_speed', 'industrial_output', 'supply_efficiency', 
     'market_efficiency', 'population_growth', 'energy_production',
+    'army_damage_mult', 'army_replenishment_mult', 'army_consumption_mp_gain_mult',
+    'law_progress_speed',
     'consumptionShareBonus'
   ];
   
@@ -321,6 +327,18 @@ function generateTechChoice(tech) {
     hints.push('Military enhancement');
   }
 
+  if ((modifiers.army_damage_add && modifiers.army_damage_add > 0.1) || (modifiers.army_damage_mult && modifiers.army_damage_mult > 0.08)) {
+    hints.push('Heavy combat doctrine');
+  } else if ((modifiers.army_damage_add && modifiers.army_damage_add > 0.03) || (modifiers.army_damage_mult && modifiers.army_damage_mult > 0.03)) {
+    hints.push('Combat damage boost');
+  }
+
+  if (modifiers.army_replenishment_mult && modifiers.army_replenishment_mult > 0.08) {
+    hints.push('Fast reinforcement');
+  } else if (modifiers.army_replenishment_mult && modifiers.army_replenishment_mult > 0.03) {
+    hints.push('Reinforcement support');
+  }
+
   if (modifiers.industrial_output && modifiers.industrial_output > 0.12) {
     hints.push('Major production increase');
   } else if (modifiers.industrial_output && modifiers.industrial_output > 0.04) {
@@ -333,15 +351,15 @@ function generateTechChoice(tech) {
     hints.push('Research enhancement');
   }
 
-  if (modifiers.population_growth && modifiers.population_growth > 0.03) {
+  if (modifiers.population_growth && modifiers.population_growth > 0.0007) {
     hints.push('Rapid population growth');
-  } else if (modifiers.population_growth && modifiers.population_growth > 0.01) {
+  } else if (modifiers.population_growth && modifiers.population_growth > 0.00025) {
     hints.push('Population increase');
   }
 
-  if (modifiers.trade_income && modifiers.trade_income > 100) {
+  if (modifiers.trade_income && modifiers.trade_income > 60) {
     hints.push('Major trade benefits');
-  } else if (modifiers.trade_income && modifiers.trade_income > 25) {
+  } else if (modifiers.trade_income && modifiers.trade_income > 20) {
     hints.push('Trade income');
   }
 

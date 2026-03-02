@@ -1,5 +1,6 @@
 // Type definitions and initializers
 import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
+import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -19,7 +20,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     traits,
     values: values,
     stats: {
-      population: Math.max(1, stats.population ?? 1000),
+      population: clampPopulation(stats.population ?? 1000),
       tech_rate_bonus: stats.tech_rate_bonus || 0,
       researchSpeedBonus: 0,
       approvalBonus: 0
@@ -88,6 +89,10 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
       needs: {}, // commodity_key -> qty_per_manpower_per_tick
       wants: {} // commodity_key -> qty_per_manpower_per_tick
     },
+    consumptionRules: [],
+    consumptionEffectPools: {},
+    consumptionMpGainMultiplier: 1.0,
+    consumptionDamageAdd: 0,
     
     // MP and MO pools for Front Battles
     mp: {
@@ -200,12 +205,18 @@ export function createTechnology(id, name, description, category = 'general', re
       research_speed: modifiers.research_speed || 0,
       industrial_output: modifiers.industrial_output || 0,
       army_organization: modifiers.army_organization || 0,
+      army_fervor: modifiers.army_fervor || 0,
+      army_damage_add: modifiers.army_damage_add || 0,
+      army_damage_mult: modifiers.army_damage_mult || 0,
+      army_replenishment_mult: modifiers.army_replenishment_mult || 0,
+      army_consumption_mp_gain_mult: modifiers.army_consumption_mp_gain_mult || 0,
       supply_efficiency: modifiers.supply_efficiency || 0,
       trade_income: modifiers.trade_income || 0,
       market_efficiency: modifiers.market_efficiency || 0,
       population_growth: modifiers.population_growth || 0,
       empire_approval: modifiers.empire_approval || 0,
-      energy_production: modifiers.energy_production || 0
+      energy_production: modifiers.energy_production || 0,
+      law_progress_speed: modifiers.law_progress_speed || 0
     }
   };
 }
@@ -272,6 +283,8 @@ export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], s
 export function createLawProcess(lawId, startTick = 0) {
   return {
     lawId,
+    proposalId: null,
+    sponsorHeroId: null,
     phase: 'DEBATE', // DEBATE | FALLOUT | VOTING | ENACTED | BURIED
     phaseProgress: 0, // 0..1, advances to next phase at 1.0
     rejects: 0, // 0..4, burial at 4
@@ -353,12 +366,14 @@ export function createEvent(id, title, text, choices = [], variables = null) {
   };
 }
 
-export function createInsurrection(id, armies = [], strength = 0) {
+export function createInsurrection(id, armies = [], strength = 0, options = {}) {
   return {
     id,
     armies,
     strength,
-    active: true
+    active: true,
+    sourceEmpireIds: Array.isArray(options.sourceEmpireIds) ? [...options.sourceEmpireIds] : [],
+    targetEmpireId: options.targetEmpireId || null
   };
 }
 
@@ -455,6 +470,7 @@ export function createGameState(seed = 0) {
     playerInfluence: 0, // Influence currency for starting laws
     influenceProgress: 0, // Progress toward next influence point (0..100 ticks)
     lawDefinitions: [], // Available law definitions
+    proposedLaws: [], // Hero-backed proposal pool for the player to select from
     lawProcesses: [], // In-flight law processes
     powerSystemPolicy: null, // Current voting power system
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
@@ -623,6 +639,18 @@ export function cleanupAllExpiredBonuses(state) {
  */
 export function migrateGameState(state) {
   if (!state) return state;
+
+  if (state.empires && Array.isArray(state.empires)) {
+    state.empires.forEach((empire) => {
+      if (!empire.stats) {
+        empire.stats = {};
+      }
+      if (empire.stats.population === undefined) {
+        empire.stats.population = 1000;
+      }
+      ensurePopulationStats(empire);
+    });
+  }
   
   // Migrate armies - ensure replenishment fields exist
   if (state.armies && Array.isArray(state.armies)) {
@@ -633,6 +661,12 @@ export function migrateGameState(state) {
       }
       if (army.replenishmentBonus === undefined) {
         army.replenishmentBonus = 0;
+      }
+      if (army.consumptionMpGainMultiplier === undefined) {
+        army.consumptionMpGainMultiplier = 1.0;
+      }
+      if (army.consumptionDamageAdd === undefined) {
+        army.consumptionDamageAdd = 0;
       }
       
       // Ensure timed fervor bonuses array exists
@@ -671,6 +705,19 @@ export function migrateGameState(state) {
       }
     });
   }
+
+  if (!Array.isArray(state.insurrections)) {
+    state.insurrections = [];
+  } else {
+    state.insurrections.forEach(insurrection => {
+      if (!Array.isArray(insurrection.sourceEmpireIds)) {
+        insurrection.sourceEmpireIds = [];
+      }
+      if (insurrection.targetEmpireId === undefined) {
+        insurrection.targetEmpireId = null;
+      }
+    });
+  }
   
   // Ensure state has timedModifiers array for expired modifier cleanup
   if (!Array.isArray(state.timedModifiers)) {
@@ -680,8 +727,32 @@ export function migrateGameState(state) {
   if (!Array.isArray(state.enactedLaws)) {
     state.enactedLaws = [];
   }
+  if (!Array.isArray(state.proposedLaws)) {
+    state.proposedLaws = [];
+  }
   if (!state.enactedLawsByCategory || typeof state.enactedLawsByCategory !== 'object') {
     state.enactedLawsByCategory = {};
+  }
+  if (state.lawProcesses && Array.isArray(state.lawProcesses)) {
+    state.lawProcesses.forEach((lawProcess) => {
+      if (lawProcess.proposalId === undefined) {
+        lawProcess.proposalId = null;
+      }
+      if (lawProcess.sponsorHeroId === undefined) {
+        lawProcess.sponsorHeroId = null;
+      }
+    });
+  }
+  if (state.heroes && Array.isArray(state.heroes)) {
+    state.heroes.forEach((hero) => {
+      hero.cooldowns = hero.cooldowns || {};
+      if (!Number.isFinite(hero.cooldowns.ability)) {
+        hero.cooldowns.ability = 0;
+      }
+      if (!Number.isFinite(hero.cooldowns.law_proposal)) {
+        hero.cooldowns.law_proposal = 0;
+      }
+    });
   }
   if (!Array.isArray(state.enactedLawsHistory)) {
     state.enactedLawsHistory = [...state.enactedLaws];

@@ -329,16 +329,17 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   // Enact a law
   app.post('/api/game/actions/enact-law', (req, res) => {
     try {
+      const proposalId = req.body.proposalId;
       const lawId = req.body.lawId;
       
-      if (!lawId) {
+      if (!proposalId && !lawId) {
         return res.sendError(
           ErrorCodes.MISSING_PARAMETER,
-          'Missing required parameter: lawId'
+          'Missing required parameter: proposalId or lawId'
         );
       }
       
-      const result = gameManager.enactLaw(lawId);
+      const result = gameManager.enactLaw(proposalId || lawId, { proposalId });
       
       if (!result.success) {
         // Map game manager errors to specific error codes
@@ -359,13 +360,14 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       }
       
       const state = gameManager.getGameState();
+      const startedLawId = result.lawId || lawId;
       broadcastGameState(state);
-      broadcastNotification('law_started', { lawId, turn: state.turn });
+      broadcastNotification('law_started', { lawId: startedLawId, proposalId, turn: state.turn });
       
       res.sendSuccess(state, {
         notification: {
           type: 'law_started',
-          details: { lawId, turn: state.turn }
+          details: { lawId: startedLawId, proposalId, turn: state.turn }
         }
       });
     } catch (error) {
@@ -801,7 +803,9 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         description: law.description,
         tier: law.tier,
         branch: law.branch,
-        tags: law.tags
+        tags: law.tags,
+        modifiers: law.modifiers,
+        immediate_effects: law.immediate_effects
       }));
       res.sendSuccess({ laws });
     } catch (error) {

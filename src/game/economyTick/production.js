@@ -1,5 +1,6 @@
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../constants.js';
 import { applySupplyCommodityMultiplier } from '../economyBalance.js';
+import { allocateSustainmentFromLocalProduction } from '../improvements/engine/sustainment.js';
 
 export function emitEmpireProduction(state, aggregateSellOffer) {
   state.empires.forEach(empire => {
@@ -23,10 +24,15 @@ export function emitEmpireProduction(state, aggregateSellOffer) {
         const rawQty = qty * population * productionMultiplier * effectiveEfficiency *
           (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
         const modifiedQty = applySupplyCommodityMultiplier(commodity, rawQty);
+        const reservedForSustainment = allocateSustainmentFromLocalProduction(state, empire.id, commodity, modifiedQty);
+        const qtyForMarket = Math.max(0, modifiedQty - reservedForSustainment);
+        if (qtyForMarket <= 0) {
+          return;
+        }
         const marketPrice = state.market[commodity]?.price || 1.0;
         const askPrice = marketPrice;
 
-        aggregateSellOffer('empire', empire.id, commodity, modifiedQty, askPrice, 0);
+        aggregateSellOffer('empire', empire.id, commodity, qtyForMarket, askPrice, 0);
       }
     });
   });

@@ -1,7 +1,8 @@
-import { BATTLE_CONSTANTS } from '../constants.js';
+import { BATTLE_CONSTANTS, INSURRECTION_CONSTANTS } from '../constants.js';
 import { clampCohesion, clampApproval } from '../cohesion.js';
 import { getCohesionTier } from '../cohesion.js';
 import { getActiveBattles, simulateBattleTick } from '../frontBattles.js';
+import { selectInsurrectionTargetEmpire } from '../insurrection.js';
 import { selectScourgeTargetEmpire } from '../scourgePrediction.js';
 import {
   handleInsurrectionBattleEnd,
@@ -14,8 +15,7 @@ import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import {
   collectRebelliousArmyIds,
   getBattleChance,
-  getBattleWinner,
-  partitionInsurrectionArmies
+  getBattleWinner
 } from './battleUtils.js';
 
 function clamp(value, min, max) {
@@ -293,12 +293,40 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
     }
 
     const rebelliousArmyIds = new Set(insurrection.armies || []);
-    const { rebelliousArmies, opposingArmies } = partitionInsurrectionArmies(
-      state.armies,
-      rebelliousArmyIds
+    const rebelliousArmies = state.armies.filter(army => rebelliousArmyIds.has(army.id));
+    const targetEmpireId = selectInsurrectionTargetEmpire(state, insurrection, rng);
+    const opposingArmies = state.armies.filter(army =>
+      !rebelliousArmyIds.has(army.id) &&
+      army.empireId === targetEmpireId &&
+      army.organization > 30 &&
+      isRegularArmy(army)
     );
 
-    if (opposingArmies.length === 0 || rebelliousArmies.length === 0) {
+    if (!targetEmpireId || rebelliousArmies.length === 0) {
+      if (!targetEmpireId) {
+        logger.warn(`Insurrection ${insurrection.id} has no valid target empire`);
+      }
+      return;
+    }
+
+    if (opposingArmies.length === 0) {
+      const targetEmpire = state.empires.find(empire => empire.id === targetEmpireId) || null;
+      const cohesionLoss = BATTLE_CONSTANTS.INSURRECTION_LOSS_COHESION_LOSS;
+      const prevCoalitionCohesion = state.coalitionCohesion;
+      state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+
+      if (targetEmpire) {
+        targetEmpire.approval = clampApproval(targetEmpire.approval - INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK);
+      }
+
+      insurrection.active = false;
+      const targetLabel = targetEmpire ? targetEmpire.name : targetEmpireId;
+      const message =
+        `Insurrection spreads into ${targetLabel} unopposed! ` +
+        `Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), ` +
+        `Approval -${INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK}`;
+      log.push(message);
+      logger.warn(message);
       return;
     }
 

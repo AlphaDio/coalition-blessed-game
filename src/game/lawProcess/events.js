@@ -78,6 +78,12 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
       const lawName = lawDef ? lawDef.name : lawProcess.lawId;
       logger.info(`Law BURIED: ${lawName} (4 rejects)`);
       log.push(`\n*** LAW BURIED (4 rejects) ***`);
+      if (lawProcess.proposalId && Array.isArray(state.proposedLaws)) {
+        const proposal = state.proposedLaws.find((entry) => entry.proposalId === lawProcess.proposalId);
+        if (proposal) {
+          proposal.status = 'WITHDRAWN';
+        }
+      }
 
       // Clear pending event
       lawProcess.pendingEvent = null;

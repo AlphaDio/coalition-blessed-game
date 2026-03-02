@@ -1,4 +1,5 @@
 import { clampApproval, clampStat } from './cohesion.js';
+import { TRADE_INCOME_EFFECT_DIVISOR } from './constants.js';
 import { calculateLawReactions } from './reactions.js';
 
 export function enactLaw(state, lawId) {
@@ -66,7 +67,9 @@ export function enactLaw(state, lawId) {
    }
    if (law.trade_income) {
      state.coalitionModifiers.trade_income += law.trade_income;
-     log.push(`Trade income increased by +${law.trade_income} per tick`);
+     const scaledTradeIncome = law.trade_income / TRADE_INCOME_EFFECT_DIVISOR;
+     const sign = scaledTradeIncome >= 0 ? '+' : '';
+     log.push(`Trade income increased by ${sign}${scaledTradeIncome.toFixed(3)} per tick per empire`);
    }
    if (law.population_growth) {
      state.coalitionModifiers.population_growth += law.population_growth;

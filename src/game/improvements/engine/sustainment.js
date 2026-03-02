@@ -94,6 +94,49 @@ export function creditSustainmentReceipts(state, empireId, commodity, qty) {
   addLedgerValue(state, 'fulfilledSustainmentReceipts', empireId, commodity, qty);
 }
 
+export function allocateSustainmentFromLocalProduction(state, empireId, commodity, qty) {
+  const normalizedQty = normalizeQty(qty);
+  if (normalizedQty <= 0 || !empireId || !commodity || commodity === 'requisition') {
+    return 0;
+  }
+
+  const pending = getLedgerValue(state, 'pendingSustainmentDemand', empireId, commodity);
+  if (pending <= 0) {
+    return 0;
+  }
+
+  const used = normalizeQty(Math.min(pending, normalizedQty));
+  if (used <= 0) {
+    return 0;
+  }
+
+  setLedgerValue(state, 'pendingSustainmentDemand', empireId, commodity, normalizeQty(pending - used));
+  creditSustainmentReceipts(state, empireId, commodity, used);
+
+  let remainingToTrim = used;
+  const buyOrders = state.marketOrders?.buyOrders || [];
+  buyOrders.forEach((order) => {
+    if (remainingToTrim <= 0) return;
+    if (order.owner_type !== 'empire') return;
+    if (order.owner_id !== empireId) return;
+    if (order.commodity !== commodity) return;
+    if (order.tags?.purpose !== IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE) return;
+
+    const filledQty = normalizeQty(order.filled_qty || 0);
+    const openQty = normalizeQty((order.qty || 0) - filledQty);
+    if (openQty <= 0) return;
+
+    const trimmed = normalizeQty(Math.min(openQty, remainingToTrim));
+    order.qty = normalizeQty(Math.max(filledQty, (order.qty || 0) - trimmed));
+    if (order.turn_added_turn === state.turn && Number.isFinite(order.turn_added_qty)) {
+      order.turn_added_qty = normalizeQty(Math.max(0, order.turn_added_qty - trimmed));
+    }
+    remainingToTrim = normalizeQty(remainingToTrim - trimmed);
+  });
+
+  return used;
+}
+
 function consumeSustainmentReceipts(state, empireId, commodity, qty) {
   const normalized = normalizeQty(qty);
   if (normalized <= 0) return 0;

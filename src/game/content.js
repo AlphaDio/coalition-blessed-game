@@ -93,7 +93,8 @@ export function createSampleContent(seed = 0) {
   });
   
   // Extract armies from modules
-  const armyModules = getModulesByType(registry, 'army');
+  const armyModules = getModulesByType(registry, 'army')
+    .filter(entry => entry.id !== 'army_2'); // Retire the duplicate Stellar Federation fleet from starting rosters.
   const armies = armyModules.map(entry => {
     const moduleDoc = registry.modules[entry.id];
     const data = moduleDoc.declares.army_data;
@@ -119,6 +120,12 @@ export function createSampleContent(seed = 0) {
     // Apply demands from module
     if (data.demands) {
       army.demands = data.demands;
+    }
+    if (data.consumption) {
+      army.consumptionRules = Object.entries(data.consumption).map(([commodity, rule]) => ({
+        commodity,
+        ...rule
+      }));
     }
     // reinforcementRate = reserves joining the line during battle; recovery/recoveryRate = fraction of wounded that return after battle (0-100)
     if (typeof data.reinforcementRate === 'number' && !isNaN(data.reinforcementRate)) {

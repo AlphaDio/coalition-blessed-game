@@ -11,7 +11,8 @@ import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
 import { handleEventChoice } from '../game/events.js';
 import { assignInitialHeroes } from '../game/heroes.js';
-import { handleLawEventChoice, startLawProcess } from '../game/lawProcessManager.js';
+import { generateHeroLawProposals } from '../game/lawProposals.js';
+import { handleLawEventChoice, startLawProcess, startLawProcessFromProposal } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import { activateEmergencyPower } from '../game/emergencyPowers.js';
@@ -76,6 +77,7 @@ export class GameManager {
     // Assign initial heroes to each empire
     const heroRng = new DeterministicRNG(seed);
     assignInitialHeroes(this.state, heroRng.random.bind(heroRng));
+    generateHeroLawProposals(this.state, heroRng.random.bind(heroRng));
 
     logger.debug(`Game initialized with seed: ${seed}`);
   }
@@ -165,6 +167,9 @@ export class GameManager {
     }
     if (force || !Array.isArray(this.state.lawProcesses)) {
       this.state.lawProcesses = [];
+    }
+    if (force || !Array.isArray(this.state.proposedLaws)) {
+      this.state.proposedLaws = [];
     }
     if (force || !Array.isArray(this.state.heroes)) {
       this.state.heroes = [];
@@ -268,9 +273,12 @@ export class GameManager {
   /**
    * Enact a law
    */
-  enactLaw(lawId) {
+  enactLaw(lawIdOrProposalId, options = {}) {
     try {
-      const result = startLawProcess(this.state, lawId);
+      const { proposalId = null } = options;
+      const result = proposalId
+        ? startLawProcessFromProposal(this.state, proposalId)
+        : startLawProcess(this.state, lawIdOrProposalId);
       if (result.success) {
         this.notifyStateChange();
       }
@@ -503,8 +511,14 @@ export class GameManager {
     // Migrate save data to current schema to handle missing fields
     this.state = migrateGameState(saveData);
     this.ensureHeroRoster();
+    this.applyLawSystemDefaults();
     if (!this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {
       this.state.heroRecruitmentState = {};
+    }
+    const activeProposals = (this.state.proposedLaws || []).filter((proposal) => proposal.status === 'PROPOSED');
+    if (activeProposals.length === 0 && Array.isArray(this.state.heroes) && this.state.heroes.length > 0) {
+      const loadRng = new DeterministicRNG((this.state.rngSeed || 0) + (this.state.turn || 0));
+      generateHeroLawProposals(this.state, loadRng.random.bind(loadRng));
     }
     this.refreshScourgePrediction();
     this.notifyStateChange();

@@ -68,18 +68,39 @@ export const MARKET_CONSTANTS = {
 };
 
 /**
+ * Population system balance targets.
+ * Population is treated as a capped strategic scale value. Positive growth tapers
+ * as an empire approaches the ceiling so stacked growth sources remain useful
+ * without running away indefinitely.
+ */
+export const POPULATION_CONSTANTS = {
+  MIN_POPULATION: 1,
+  MAX_POPULATION: 1_000_000,
+  BASE_GROWTH_RATE: 0.001
+};
+
+/**
+ * Raw trade_income modifiers are scaled down before being paid out as credits.
+ * This keeps law and improvement values readable in content while preventing
+ * runaway per-tick budget growth.
+ */
+export const TRADE_INCOME_EFFECT_DIVISOR = 100;
+
+/**
  * Front battle damage calculation modifiers.
  * Fervor and organization affect damage output in battles.
- * @property {number} FERVOR_MIN - Base damage multiplier at 0 fervor (0.8x)
- * @property {number} FERVOR_RANGE - Additional multiplier at 100 fervor (0.8 + 1.0 = 1.8x max)
+ * @property {number} FERVOR_MIN - Base damage multiplier at 0 fervor (0.85x)
+ * @property {number} FERVOR_RANGE - Additional multiplier at 100 fervor (0.85 + 1.25 = 2.1x max)
  * @property {number} ORG_MIN - Base damage multiplier at 0 organization (0.9x)
  * @property {number} ORG_RANGE - Additional multiplier at 100 organization (0.9 + 0.2 = 1.1x max)
+ * @property {number} MP_DAMAGE_MULT - Applied to MP damage only to control battle duration
  */
 export const FRONT_BATTLE_MODIFIERS = {
-  FERVOR_MIN: 0.8,                // 0 fervor = 0.8x damage
-  FERVOR_RANGE: 1.0,              // 100 fervor = 0.8 + 1.0 = 1.8x damage
+  FERVOR_MIN: 0.85,               // 0 fervor = 0.85x damage
+  FERVOR_RANGE: 1.25,             // 100 fervor = 0.85 + 1.25 = 2.1x damage
   ORG_MIN: 0.9,                   // 0 organization = 0.9x damage
-  ORG_RANGE: 0.2                  // 100 organization = 0.9 + 0.2 = 1.1x damage
+  ORG_RANGE: 0.2,                 // 100 organization = 0.9 + 0.2 = 1.1x damage
+  MP_DAMAGE_MULT: 0.5             // Halve MP attrition so battles run longer and morale matters more
 };
 
 /**
@@ -251,7 +272,7 @@ export const ECONOMY_BALANCE_CONSTANTS = {
     plasma_fuel: 0.88,
     biomass: 0.90
   },
-  IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT: 6
+  IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT: 7
 };
 
 /**

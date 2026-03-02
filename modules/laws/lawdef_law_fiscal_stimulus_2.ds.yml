@@ -42,7 +42,7 @@ declares:
     modifiers:
       trade_income: 170
       empire_approval: 0.8
-      population_growth: 0.03
+      population_growth: 0.0003
       requisition_uptick: 0.25
     immediate_effects:
       coalition_credits: 2800

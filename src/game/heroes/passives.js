@@ -175,6 +175,7 @@ function shouldTriggerPassive(trigger, triggerType, payload, heroEmpireId) {
       if (!requireEmpireMatch) return true;
       return !payload.empireId || payload.empireId === heroEmpireId;
     }
+    case 'LAW_PROPOSED':
     case 'LAW_PROCESS_STARTED':
     case 'LAW_ENACTED':
       return true;

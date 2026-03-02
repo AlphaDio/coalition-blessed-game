@@ -1,4 +1,5 @@
 import { calculateReaction, getReactionTier } from '../reactions.js';
+import { clampPopulation } from '../populationUtils.js';
 import { createEmpireStance } from '../types.js';
 
 /**
@@ -71,7 +72,9 @@ export function applyLawSupportBias(baseScore, empire, lawDef, state) {
 
   // Population incentive - large empires support laws benefiting populace
   if (lawDef.support_weights.population_incentive) {
-    const popFactor = Math.log10(empire.stats.population || SUPPORT_BIAS_CONSTANTS.DEFAULT_POPULATION)
+    const popFactor = Math.log10(
+      clampPopulation(empire.stats.population || SUPPORT_BIAS_CONSTANTS.DEFAULT_POPULATION, SUPPORT_BIAS_CONSTANTS.DEFAULT_POPULATION)
+    )
                       / SUPPORT_BIAS_CONSTANTS.POPULATION_LOG_DIVISOR;
     bias += lawDef.support_weights.population_incentive * popFactor * 0.2;
   }

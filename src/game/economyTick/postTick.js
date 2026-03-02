@@ -1,4 +1,4 @@
-import { MARKET_CONSTANTS } from '../constants.js';
+import { TRADE_INCOME_EFFECT_DIVISOR } from '../constants.js';
 import { refillCoalitionAllowance } from '../consumptionToRequisition.js';
 import { computeArmyFulfillment } from '../marketEconomy.js';
 
@@ -14,10 +14,14 @@ export function applyPostMarketUpdates(state, config) {
 
   // Apply coalition modifiers from enacted laws
   if (state.coalitionModifiers && state.empires) {
+    const tradeIncomeRate = Number.isFinite(state.coalitionModifiers.trade_income)
+      ? state.coalitionModifiers.trade_income / TRADE_INCOME_EFFECT_DIVISOR
+      : 0;
+
     state.empires.forEach(empire => {
       // Trade income
-      if (state.coalitionModifiers.trade_income) {
-        empire.budget_credits = (empire.budget_credits || 0) + state.coalitionModifiers.trade_income;
+      if (tradeIncomeRate) {
+        empire.budget_credits = (empire.budget_credits || 0) + tradeIncomeRate;
       }
 
       // Empire approval
@@ -25,29 +29,6 @@ export function applyPostMarketUpdates(state, config) {
         empire.approval = Math.min(100, Math.max(0, empire.approval + state.coalitionModifiers.empire_approval));
       }
 
-      // Population growth (from coalition modifiers - percentage based)
-      if (state.coalitionModifiers.population_growth) {
-        if (!empire.stats) empire.stats = {};
-        const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 0;
-        if (currentPopulation <= 0) return;
-
-        // Initialize growth bank if needed
-        if (!empire.stats.population_growth_bank) {
-          empire.stats.population_growth_bank = 0;
-        }
-
-        // Calculate growth for this tick
-        const growthAmount = currentPopulation * state.coalitionModifiers.population_growth;
-        empire.stats.population_growth_bank += growthAmount;
-
-        // Apply growth only when bank reaches threshold
-        if (empire.stats.population_growth_bank >= MARKET_CONSTANTS.POPULATION_GROWTH_BANK_THRESHOLD) {
-          const bankedGrowth = Math.floor(empire.stats.population_growth_bank);
-          // Ensure population never goes below 1 to prevent division by zero and game breaks
-          empire.stats.population = Math.max(1, currentPopulation + bankedGrowth);
-          empire.stats.population_growth_bank -= bankedGrowth;
-        }
-      }
     });
 
     // Industrial output is applied during production calculations (handled elsewhere)

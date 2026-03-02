@@ -5,6 +5,7 @@
 
 import { createGameState, createEmpire } from '../src/game/types.js';
 import { initializeImprovementsState, getAllImprovementRequests, acceptImprovementRequest, cancelImprovement, processImprovementsTick } from '../src/game/improvements/index.js';
+import { processEconomyTick } from '../src/game/economyTick.js';
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 // Initialize logger with minimal output
@@ -118,9 +119,9 @@ console.log('=== Test 5: Capacity Limits ===');
 console.log('Testing capacity limit...');
 
 // Try to start more builds (limited by building capacity only)
-const request2 = state.improvements.requests[7]; // Ascension Spire (cap 4)
-const request3 = state.improvements.requests[9]; // Grand War Symposium (cap 2)
-const request4 = state.improvements.requests[12]; // Festival of Worlds (cap 3)
+const request2 = state.improvements.requests.find(request => (request.definitionId || request.id) === 'ascension_spire');
+const request3 = state.improvements.requests.find(request => (request.definitionId || request.id) === 'grand_symposium');
+const request4 = state.improvements.requests.find(request => (request.definitionId || request.id) === 'festival_grounds');
 
 const result2 = acceptImprovementRequest(state, request2.id, 'empire1');
 const result3 = acceptImprovementRequest(state, request3.id, 'empire2');
@@ -241,8 +242,81 @@ if (activeWithProduction) {
 }
 console.log();
 
-// Test 10: Determinism
-console.log('=== Test 10: Determinism ===');
+// Test 10: Local production prioritizes improvement sustainment
+console.log('=== Test 10: Local Production Prioritizes Sustainment ===');
+const priorityState = createGameState(777);
+priorityState.improvements = initializeImprovementsState();
+const priorityEmpire = createEmpire('empire3', 'Priority Empire', 50, {}, {}, {
+  budget_credits: 50000,
+  population: 1000,
+  stability: 60,
+  stockpiles: {}
+});
+priorityState.empires = [priorityEmpire];
+
+// Initialize market once, then add production and sustainment content.
+processEconomyTick(priorityState);
+priorityEmpire.production = {
+  outputs_per_tick: {
+    biomass: 0.01
+  }
+};
+priorityState.improvements.queue = [{
+  id: 'imp_local_priority',
+  definitionId: 'imp_local_priority',
+  name: 'Local Priority Lab',
+  empireId: 'empire3',
+  state: 'ACTIVE',
+  sustainmentCost: { biomass: 10 },
+  productionOutputs: {},
+  modifiers: {},
+  requisitionUpkeep: 0,
+  productionBank: {},
+  productionBankThreshold: 1,
+  ticksSinceSustained: 0,
+  completedAtTick: null
+}];
+
+priorityState.turn = 1;
+processImprovementsTick(priorityState);
+
+const preSustainmentOrder = priorityState.marketOrders.buyOrders.find(order =>
+  order.owner_id === 'empire3' &&
+  order.commodity === 'biomass' &&
+  order.tags?.purpose === 'improvement_sustainment_pool'
+);
+const preOrderQty = preSustainmentOrder ? preSustainmentOrder.qty : 0;
+
+processEconomyTick(priorityState);
+
+const postSustainmentOrder = priorityState.marketOrders.buyOrders.find(order =>
+  order.owner_id === 'empire3' &&
+  order.commodity === 'biomass' &&
+  order.tags?.purpose === 'improvement_sustainment_pool'
+);
+const postOrderQty = postSustainmentOrder ? postSustainmentOrder.qty : 0;
+const internalReceipts = priorityState.improvements.fulfilledSustainmentReceipts?.empire3?.biomass || 0;
+const biomassSellOffer = priorityState.marketOrders.sellOffers.find(order =>
+  order.owner_type === 'empire' &&
+  order.owner_id === 'empire3' &&
+  order.commodity === 'biomass'
+);
+
+if (internalReceipts > 0 && postOrderQty < preOrderQty && !biomassSellOffer) {
+  console.log('âœ“ Empire production was routed to local sustainment before market sale');
+  console.log(`  Sustainment receipts credited: ${internalReceipts}`);
+  console.log(`  Buy order reduced: ${preOrderQty} â†’ ${postOrderQty}`);
+} else {
+  console.log('âœ— Expected local production to satisfy sustainment before market');
+  console.log(`  Receipts: ${internalReceipts}`);
+  console.log(`  Buy order: ${preOrderQty} â†’ ${postOrderQty}`);
+  console.log(`  Sell offer present: ${biomassSellOffer ? 'yes' : 'no'}`);
+  process.exit(1);
+}
+console.log();
+
+// Test 11: Determinism
+console.log('=== Test 11: Determinism ===');
 const state2 = createGameState();
 state2.improvements = initializeImprovementsState();
 state2.improvements.requests = getAllImprovementRequests();

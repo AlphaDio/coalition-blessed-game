@@ -1,6 +1,10 @@
 // Scourge prediction system - helps players anticipate attacks and prepare
-import { SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
+import { BATTLE_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
+
+const TARGET_CLARITY_HIGH_GAP = 18;
+const TARGET_CLARITY_MEDIUM_GAP = 10;
+const TARGET_CLARITY_LOW_GAP = 4;
 
 /**
  * Calculate the predicted next Scourge battle and target
@@ -23,6 +27,11 @@ export function calculateScourgePrediction(state, rng) {
 
   // Calculate target confidence modifier based on current game state
   let confidenceModifier = calculateConfidenceModifier(state);
+  if (targetSelection.source === 'calculated') {
+    confidenceModifier = clampConfidenceModifier(
+      confidenceModifier + getTargetClarityConfidenceAdjustment(targetSelection.analysis)
+    );
+  }
 
   // Estimate when the next battle will occur
   const estimatedTurns = estimateTurnsToNextBattle(state, confidenceModifier, rng);
@@ -78,9 +87,11 @@ export function selectScourgeTargetEmpire(state, rng = Math.random) {
     }
   }
 
+  const calculatedSelection = predictNextScourgeTargetByVulnerability(state, rng);
   return {
-    empire: predictNextScourgeTargetByVulnerability(state, rng),
-    source: 'calculated'
+    empire: calculatedSelection.empire,
+    source: 'calculated',
+    analysis: calculatedSelection.analysis
   };
 }
 
@@ -98,43 +109,114 @@ function predictNextScourgeTargetByVulnerability(state, rng) {
   let candidates = state.empires.filter(e => e.id !== state.scourgeTargetEmpireId);
   if (candidates.length === 0) candidates = state.empires;
 
-  // Weight candidates by vulnerability (lower cohesion = more vulnerable = more likely to be targeted)
-  // Also prefer empires with lower approval or stability
-  const weighted = candidates.map(empire => {
-    // Lower approval = higher vulnerability
-    const approvalVulnerability = 100 - empire.approval;
-    
-    // Lower stability = higher vulnerability
-    const stabilityVulnerability = 100 - empire.stability;
-    
-    // Empires with more armies might be prioritized differently
-    const armyCount = state.armies?.filter(a => a.empireId === empire.id).length || 0;
-    
-    // Combine factors: targeting prefers vulnerable empires but still maintains some randomness
-    const vulnerability = (approvalVulnerability * 0.4) + (stabilityVulnerability * 0.4) + (armyCount * 2);
-    
-    return {
-      empire,
-      vulnerability,
-      // Deterministic seed based on turn and empire id for consistency
-      seed: (state.turn * 7919 + empire.id.charCodeAt(0)) % 1000
-    };
-  });
+  const weighted = candidates
+    .map((empire) => buildScourgeTargetAssessment(state, empire))
+    .sort((left, right) => {
+      const scoreDiff = right.score - left.score;
+      if (Math.abs(scoreDiff) > 0.0001) {
+        return scoreDiff;
+      }
+      return left.tieBreaker - right.tieBreaker;
+    });
 
-  // Sort by vulnerability (higher = more likely) and seed for determinism
-  weighted.sort((a, b) => {
-    const vulnDiff = b.vulnerability - a.vulnerability;
-    if (Math.abs(vulnDiff) > 5) return vulnDiff; // Strong vulnerability difference wins
-    return a.seed - b.seed; // Use seed for secondary sort (deterministic)
-  });
+  const best = weighted[0] || null;
+  const runnerUp = weighted[1] || null;
 
-  // Pick from top candidates with slight randomness
-  const numTopCandidates = Math.ceil(weighted.length * 0.3);
-  const topCandidates = weighted.slice(0, Math.max(1, numTopCandidates));
-  
-  // Use rng to pick one, but weight toward the top
-  const selectedIndex = Math.floor(Math.pow(rng(), 0.5) * topCandidates.length);
-  return topCandidates[selectedIndex]?.empire || candidates[0];
+  return {
+    empire: best?.empire || candidates[0] || null,
+    analysis: {
+      topScore: best?.score || 0,
+      runnerUpScore: runnerUp?.score || 0,
+      scoreGap: best && runnerUp ? best.score - runnerUp.score : best?.score || 0
+    }
+  };
+}
+
+function buildScourgeTargetAssessment(state, empire) {
+  const approval = Number.isFinite(empire?.approval) ? empire.approval : 50;
+  const stability = Number.isFinite(empire?.stability) ? empire.stability : 60;
+  const empireArmies = (state.armies || []).filter((army) =>
+    army &&
+    army.empireId === empire.id &&
+    !army.isScourge &&
+    !army.isTemporary &&
+    !army.tempArmy
+  );
+  const readyArmies = empireArmies.filter((army) =>
+    (army.mp?.current || 0) > 0 &&
+    (army.organization || 0) >= BATTLE_CONSTANTS.SCOURGE_TARGET_ARMY_ORG_MIN
+  );
+
+  const totalReadyMP = readyArmies.reduce((sum, army) => sum + (army.mp?.current || 0), 0);
+  const avgReadyOrg = readyArmies.length > 0
+    ? readyArmies.reduce((sum, army) => sum + (army.organization || 0), 0) / readyArmies.length
+    : 0;
+  const avgAggravation = empireArmies.length > 0
+    ? empireArmies.reduce((sum, army) => sum + (army.aggravation || 0), 0) / empireArmies.length
+    : 0;
+
+  const approvalVulnerability = (100 - approval) * 0.35;
+  const stabilityVulnerability = (100 - stability) * 0.30;
+  const defenseWeakness = Math.max(0, 18 - Math.min(18, totalReadyMP / 1200));
+  const organizationWeakness = Math.max(0, 10 - Math.min(10, avgReadyOrg / 10));
+  const armyReadinessPenalty = readyArmies.length === 0 ? 6 : 0;
+  const aggravationPressure = Math.min(8, avgAggravation / 10);
+  const strategicValue = Math.min(6, empireArmies.length * 1.5);
+  const isolationPressure = Math.max(0, 10 - Math.min(10, getAverageMutualSupport(state, empire.id) / 8));
+
+  return {
+    empire,
+    score:
+      approvalVulnerability +
+      stabilityVulnerability +
+      defenseWeakness +
+      organizationWeakness +
+      armyReadinessPenalty +
+      aggravationPressure +
+      strategicValue +
+      isolationPressure,
+    tieBreaker: getTargetTieBreaker(state, empire.id)
+  };
+}
+
+function getAverageMutualSupport(state, empireId) {
+  if (!state.empires || state.empires.length <= 1) {
+    return 0;
+  }
+
+  let total = 0;
+  let count = 0;
+  for (const otherEmpire of state.empires) {
+    if (!otherEmpire || otherEmpire.id === empireId) continue;
+    const outgoing = Number(state.diplomacy?.relations?.[empireId]?.[otherEmpire.id] ?? 0);
+    const incoming = Number(state.diplomacy?.relations?.[otherEmpire.id]?.[empireId] ?? 0);
+    total += Math.max(0, Math.min(outgoing, incoming));
+    count++;
+  }
+
+  return count > 0 ? total / count : 0;
+}
+
+function getTargetTieBreaker(state, empireId) {
+  let hash = Number(state.turn) || 0;
+  for (let index = 0; index < String(empireId).length; index++) {
+    hash = ((hash * 31) + String(empireId).charCodeAt(index)) % 100000;
+  }
+  return hash;
+}
+
+function getTargetClarityConfidenceAdjustment(analysis) {
+  const gap = Number(analysis?.scoreGap) || 0;
+  if (gap >= TARGET_CLARITY_HIGH_GAP) {
+    return 0.25;
+  }
+  if (gap >= TARGET_CLARITY_MEDIUM_GAP) {
+    return 0.12;
+  }
+  if (gap <= TARGET_CLARITY_LOW_GAP) {
+    return -0.08;
+  }
+  return 0;
 }
 
 /**
@@ -191,9 +273,13 @@ function calculateConfidenceModifier(state) {
   }
 
   // Clamp to valid range
+  return clampConfidenceModifier(modifier);
+}
+
+function clampConfidenceModifier(value) {
   return Math.max(
     SCOURGE_PREDICTION_CONSTANTS.MIN_CONFIDENCE_MODIFIER,
-    Math.min(SCOURGE_PREDICTION_CONSTANTS.MAX_CONFIDENCE_MODIFIER, modifier)
+    Math.min(SCOURGE_PREDICTION_CONSTANTS.MAX_CONFIDENCE_MODIFIER, value)
   );
 }
 
@@ -306,4 +392,28 @@ export function boostScourgePredictionConfidence(state, amount) {
   state.scourgePrediction.confidenceLevel = getConfidenceLevel(state.scourgePrediction.confidenceModifier);
   
   return state;
+}
+
+/**
+ * Adjust coalition intel and immediately keep displayed prediction confidence in sync.
+ * @param {Object} state - Game state
+ * @param {number} amount - Intel delta
+ * @returns {number} Applied intel delta
+ */
+export function applyCoalitionIntel(state, amount) {
+  const delta = Number(amount);
+  if (!Number.isFinite(delta) || delta === 0) {
+    return 0;
+  }
+
+  state.coalitionIntel = (Number(state.coalitionIntel) || 0) + delta;
+
+  if (state.scourgePrediction) {
+    boostScourgePredictionConfidence(
+      state,
+      delta * SCOURGE_PREDICTION_CONSTANTS.INTEL_CONFIDENCE_PER_POINT
+    );
+  }
+
+  return delta;
 }

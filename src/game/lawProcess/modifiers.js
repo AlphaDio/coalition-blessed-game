@@ -1,4 +1,5 @@
 import { clampApproval, clampCohesion } from '../cohesion.js';
+import { TRADE_INCOME_EFFECT_DIVISOR } from '../constants.js';
 import { calculateLawReactions } from '../reactions.js';
 
 /**
@@ -51,7 +52,9 @@ export function applyLawModifiers(lawDef, state) {
   // Apply trade income modifier
   if (modifiers.trade_income) {
     state.coalitionModifiers.trade_income += modifiers.trade_income;
-    log.push(`Trade income: +${modifiers.trade_income} credits per tick`);
+    const scaledTradeIncome = modifiers.trade_income / TRADE_INCOME_EFFECT_DIVISOR;
+    const sign = scaledTradeIncome >= 0 ? '+' : '';
+    log.push(`Trade income: ${sign}${scaledTradeIncome.toFixed(3)} credits per tick per empire`);
   }
 
   // Apply population growth modifier
@@ -267,7 +270,7 @@ export function removeLawModifiers(lawDef, state) {
   }
 }
 
-export function applyLawImmediateEffects(lawDef, state, log) {
+export function applyLawImmediateEffects(lawDef, state, log, context = {}) {
   const effects = lawDef.immediate_effects || {};
   if (!effects || Object.keys(effects).length === 0) return;
 
@@ -311,10 +314,61 @@ export function applyLawImmediateEffects(lawDef, state, log) {
     log.push(`Influence: +${effects.influence}`);
   }
 
+  if (effects.coalitionIntel) {
+    state.coalitionIntel = (state.coalitionIntel || 0) + effects.coalitionIntel;
+    log.push(`Intel: ${effects.coalitionIntel >= 0 ? '+' : ''}${effects.coalitionIntel}`);
+  }
+
   if (effects.empire_approval && state.empires) {
     state.empires.forEach(empire => {
       empire.approval = clampApproval(empire.approval + effects.empire_approval);
     });
     log.push(`Empire approval: +${effects.empire_approval} (immediate)`);
+  }
+
+  if (effects.army_organization && state.armies) {
+    state.armies.forEach((army) => {
+      army.organization = Math.max(0, Math.min(100, (army.organization || 0) + effects.army_organization));
+    });
+    log.push(`Army organization surge: +${effects.army_organization}`);
+  }
+
+  if (effects.army_fervor && state.armies) {
+    state.armies.forEach((army) => {
+      const before = Number(army.fervor || 0);
+      army.fervor = Math.max(0, Math.min(100, before + effects.army_fervor));
+    });
+    log.push(`Army fervor surge: +${effects.army_fervor}`);
+  }
+
+  if (effects.army_mp && state.armies) {
+    state.armies.forEach((army) => {
+      if (!army.mp || typeof army.mp !== 'object') return;
+      const max = Number.isFinite(army.mp.max) ? army.mp.max : 0;
+      if (max <= 0) return;
+      const current = Number.isFinite(army.mp.current) ? army.mp.current : max;
+      army.mp.current = Math.max(0, Math.min(max, current + effects.army_mp));
+    });
+    log.push(`Army manpower reinforcement: +${effects.army_mp} current MP`);
+  }
+
+  const sponsorHeroId = context?.lawProcess?.sponsorHeroId || null;
+  if (sponsorHeroId && state.heroes && (effects.hero_popularity || effects.hero_heat || effects.hero_grievance)) {
+    const sponsorHero = state.heroes.find((hero) => hero.id === sponsorHeroId);
+    if (sponsorHero) {
+      sponsorHero.meters = sponsorHero.meters || { heat: 0, grievance: 0, popularity: 50 };
+      if (effects.hero_popularity) {
+        sponsorHero.meters.popularity = Math.max(0, Math.min(100, (sponsorHero.meters.popularity || 0) + effects.hero_popularity));
+        log.push(`Sponsor popularity: ${effects.hero_popularity >= 0 ? '+' : ''}${effects.hero_popularity}`);
+      }
+      if (effects.hero_heat) {
+        sponsorHero.meters.heat = Math.max(0, Math.min(100, (sponsorHero.meters.heat || 0) + effects.hero_heat));
+        log.push(`Sponsor heat: ${effects.hero_heat >= 0 ? '+' : ''}${effects.hero_heat}`);
+      }
+      if (effects.hero_grievance) {
+        sponsorHero.meters.grievance = Math.max(0, Math.min(100, (sponsorHero.meters.grievance || 0) + effects.hero_grievance));
+        log.push(`Sponsor grievance: ${effects.hero_grievance >= 0 ? '+' : ''}${effects.hero_grievance}`);
+      }
+    }
   }
 }

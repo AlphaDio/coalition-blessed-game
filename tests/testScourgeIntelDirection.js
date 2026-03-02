@@ -9,6 +9,7 @@ import {
   maybeSpawnDeepMission,
   handleMissionEventChoice
 } from '../src/game/scourgeMissions.js';
+import { calculateScourgePrediction, selectScourgeTargetEmpire } from '../src/game/scourgePrediction.js';
 import { handleEventChoice } from '../src/game/events.js';
 import { triggerScourgeBattle } from '../src/game/turn/battlePhase.js';
 import { GameManager } from '../src/server/gameManager.js';
@@ -197,6 +198,38 @@ function testDeepMissionThresholdScaling() {
   assert(getDeepMissionThreshold(state) === 132, `Expected third Deep Mission threshold 132, got ${getDeepMissionThreshold(state)}`);
 }
 
+function testEmpirePredictionPrefersClearlyWeakTarget() {
+  const state = createGameState(99);
+  state.empires = [
+    createEmpire('empire_1', 'Fortress Union', 78, {}, {}, { stability: 78 }),
+    createEmpire('empire_2', 'Fractured Reach', 24, {}, {}, { stability: 28 }),
+    createEmpire('empire_3', 'Border League', 58, {}, {}, { stability: 62 })
+  ];
+
+  state.diplomacy = {
+    relations: {
+      empire_1: { empire_2: 70, empire_3: 55 },
+      empire_2: { empire_1: -20, empire_3: -10 },
+      empire_3: { empire_1: 55, empire_2: -10 }
+    }
+  };
+
+  state.armies = [
+    createArmy('army_1a', 'empire_1', 'Fortress Guard', 70, 85, 10, 50, 50, 12000),
+    createArmy('army_1b', 'empire_1', 'Fortress Reserve', 65, 78, 15, 50, 50, 9000),
+    createArmy('army_2a', 'empire_2', 'Fractured Militia', 45, 34, 72, 50, 50, 3500),
+    createArmy('army_3a', 'empire_3', 'Border Guard', 55, 68, 25, 50, 50, 8000)
+  ];
+
+  const selection = selectScourgeTargetEmpire(state, () => 0.99);
+  assert(selection.source === 'calculated', 'Weak-target test should use calculated targeting');
+  assert(selection.empire?.id === 'empire_2', `Expected Fractured Reach to be the top target, got ${selection.empire?.id}`);
+
+  const prediction = calculateScourgePrediction(state, () => 0.25);
+  assert(prediction.targetEmpireId === 'empire_2', `Expected prediction to point at Fractured Reach, got ${prediction.targetEmpireId}`);
+  assert(prediction.confidenceModifier > 1.1, `Expected a stronger confidence signal for a clear weak target, got ${prediction.confidenceModifier}`);
+}
+
 function run() {
   console.log('=== Test: Scourge Intel Direction ===');
 
@@ -220,6 +253,9 @@ function run() {
 
   testDeepMissionThresholdScaling();
   console.log('PASS Deep mission threshold scales permanently and preserves overflow');
+
+  testEmpirePredictionPrefersClearlyWeakTarget();
+  console.log('PASS Empire prediction locks onto the clearly weakest empire');
 }
 
 try {

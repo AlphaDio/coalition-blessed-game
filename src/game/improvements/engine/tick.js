@@ -13,6 +13,9 @@ export function processImprovementsTick(state) {
   const logger = getLogger();
   const log = [];
   const improvements = state.improvements;
+  if (!improvements || !Array.isArray(improvements.queue)) {
+    return { log };
+  }
 
   // Update current capacity (BUILDING improvements only)
   improvements.currentCapacity = improvements.queue
@@ -61,10 +64,6 @@ export function processImprovementsTick(state) {
     }
 
     if (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') {
-      // Release accumulated production from bank to market (happens first)
-      const releaseResult = releaseProductionFromBank(state, improvement);
-      log.push(...releaseResult.log);
-
       // Process requisition upkeep (only for ACTIVE improvements)
       if (improvement.state === 'ACTIVE' && improvement.requisitionUpkeep > 0) {
         if (!state.coalitionEconomy) {
@@ -89,6 +88,11 @@ export function processImprovementsTick(state) {
       // Queue sustainment demand before economy clear; post-market resolution runs later in turn flow.
       const sustainmentResult = processImprovementSustainmentPreMarket(state, improvement);
       log.push(...sustainmentResult.log);
+
+      // Release accumulated production from bank after sustainment demand is queued,
+      // so same-empire output can satisfy improvement upkeep before hitting the market.
+      const releaseResult = releaseProductionFromBank(state, improvement);
+      log.push(...releaseResult.log);
 
       // Process production (only if ACTIVE) - accumulates in productionBank
       if (improvement.state === 'ACTIVE') {

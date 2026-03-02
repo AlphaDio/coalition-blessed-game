@@ -1,4 +1,5 @@
 import { calculateArmyPower } from './power.js';
+import { getEmpireMilitaryModifierSet } from '../empireModifiers.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -68,6 +69,8 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   let rawCommand = 0;
   let rawRecovery = 0;
   let rawReinforcementRate = 0;
+  let totalConsumptionDamageAdd = 0;
+  let rawConsumptionDamageAdd = 0;
 
   normalizedParticipants.forEach(participant => {
     const { army, committedCurrentMP, committedMaxMP, combatWeight } = participant;
@@ -95,6 +98,9 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     totalCommand += command * power;
     totalRecovery += recovery * power;
     totalReinforcementRate += reinforcementRate * power;
+    const consumptionDamageAdd = Number(army.consumptionDamageAdd) || 0;
+    totalConsumptionDamageAdd += consumptionDamageAdd * power;
+    rawConsumptionDamageAdd += consumptionDamageAdd;
     rawOrg += org;
     rawFervor += fervor;
     rawDmgPerUnitMP += dmgPerUnitMP;
@@ -114,14 +120,13 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   const powerDivisor = totalPower > 0 ? totalPower : Math.max(1, normalizedParticipants.length);
   const useRawAverages = totalPower <= 0;
 
-  // Aggregate empire improvement damage modifiers (army_damage_add, army_damage_mult) from participating empires
-  const empireModifiers = state.improvements?.empireModifiers || {};
+  // Aggregate empire damage modifiers (from improvements and tech) from participating empires.
   const participatingEmpireIds = [...new Set(normalizedParticipants.map(p => p.army.empireId).filter(Boolean))];
   let coalitionDamageAdd = 0;
   let coalitionDamageMultSum = 0;
   let coalitionDamageMultCount = 0;
   participatingEmpireIds.forEach(empireId => {
-    const mods = empireModifiers[empireId] || {};
+    const mods = getEmpireMilitaryModifierSet(state, empireId);
     if (Number.isFinite(mods.army_damage_add)) {
       coalitionDamageAdd += mods.army_damage_add;
     }
@@ -177,6 +182,9 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     // Empire damage modifiers (aggregated from participating empires; applied in frontBattles)
     _empireDamageAdd: coalitionDamageAdd,
     _empireDamageMult: coalitionDamageMult,
+    _consumptionDamageAdd: useRawAverages
+      ? (rawConsumptionDamageAdd / Math.max(1, normalizedParticipants.length))
+      : (totalConsumptionDamageAdd / powerDivisor),
 
     // Store reference to original armies for result distribution
     _originalArmies: normalizedParticipants.map(participant => ({

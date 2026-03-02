@@ -1,8 +1,7 @@
-import { IMPROVEMENTS_CONSTANTS } from '../../constants.js';
+import { IMPROVEMENTS_CONSTANTS, TRADE_INCOME_EFFECT_DIVISOR } from '../../constants.js';
 import { createArmy } from '../../types.js';
 import { empireHasTag } from '../../../utils/tags.js';
 import {
-  MODIFIER_ARMY_ORG_SCALE,
   MODIFIER_EMPIRE_APPROVAL_SCALE,
   POPULATION_GROWTH_SCALE,
   BIOLOGIC_TAG,
@@ -15,6 +14,9 @@ import {
  */
 export function applyImprovementModifiers(state) {
   const improvements = state.improvements;
+  if (!improvements || !Array.isArray(improvements.queue)) {
+    return { success: true };
+  }
 
   // Reset per-empire improvement modifiers each tick
   if (!improvements.empireModifiers) {
@@ -74,36 +76,27 @@ export function applyImprovementModifiers(state) {
     // Apply stat modifiers
     for (const [stat, value] of Object.entries(improvement.modifiers)) {
       if (stat === 'army_organization') {
-        // Apply to all armies of this empire (small boost per tick)
-        state.armies
-          .filter(a => a.empireId === improvement.empireId)
-          .forEach(army => {
-            army.organization = Math.min(100, army.organization + value / MODIFIER_ARMY_ORG_SCALE);
-          });
+        // Stored as a per-empire drill modifier; applied in armyPhase with tech modifiers.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'empire_approval') {
         // Very small boost per tick
         empire.approval = Math.min(100, Math.max(0, empire.approval + value / MODIFIER_EMPIRE_APPROVAL_SCALE));
       } else if (stat === 'trade_income') {
         // Generate credits
-        empire.budget_credits = (empire.budget_credits || 0) + value;
+        empire.budget_credits = (empire.budget_credits || 0) + (value / TRADE_INCOME_EFFECT_DIVISOR);
       } else if (stat === 'population_growth') {
         const baseGrowth = value / POPULATION_GROWTH_SCALE;
         const biologicBoost = improvementHasTag(improvement, BIOLOGIC_TAG) && empireHasTag(empire, BIOLOGIC_TAG)
           ? BIOLOGIC_GROWTH_BONUS_MULTIPLIER
           : 1;
         const growthRate = baseGrowth * biologicBoost;
-        if (growthRate !== 0) {
-          const currentPopulation = Number.isFinite(empire.stats.population) ? empire.stats.population : 1;
-          // Ensure population never goes below 1 to prevent division by zero and game breaks
-          empire.stats.population = Math.max(1, Math.floor(currentPopulation * (1 + growthRate)));
-        }
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + growthRate;
       } else if (stat === 'army_fervor') {
-        // Apply fervor bonus to all armies of this empire (gradual boost per tick)
-        state.armies
-          .filter(a => a.empireId === improvement.empireId)
-          .forEach(army => {
-            army.fervor = Math.min(100, army.fervor + value / MODIFIER_ARMY_ORG_SCALE);
-          });
+        // Stored as a per-empire drill modifier; applied in armyPhase with tech modifiers.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'law_progress_speed') {
         // Sum from active improvements (reset each tick above); used in lawProcess/progress.js
         state.coalitionModifiers.law_progress_speed += value;
@@ -135,6 +128,10 @@ export function applyImprovementModifiers(state) {
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'army_damage_mult') {
         // Multiplicative damage bonus for this empire's armies (e.g. 0.1 = +10%); applied in frontBattles.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'army_replenishment_mult' || stat === 'army_consumption_mp_gain_mult') {
+        // Persistent military scaling modifiers applied in armyPhase.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }

@@ -53,7 +53,6 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
         }
         if (!army.supply_state.received) army.supply_state.received = {};
         army.supply_state.received[trade.commodity] = (army.supply_state.received[trade.commodity] || 0) + trade.qty;
-        addArmyGrowthConsumption(army, trade.commodity, trade.qty);
       }
     }
     return;
@@ -73,20 +72,7 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
     }
     if (!army.supply_state.received) army.supply_state.received = {};
     army.supply_state.received[trade.commodity] = (army.supply_state.received[trade.commodity] || 0) + trade.qty;
-    addArmyGrowthConsumption(army, trade.commodity, trade.qty);
   }
-}
-
-function armyCaresAbout(army, commodity) {
-  const needs = army.demands?.needs || {};
-  const wants = army.demands?.wants || {};
-  return (typeof needs[commodity] === 'number' && needs[commodity] > 0) ||
-    (typeof wants[commodity] === 'number' && wants[commodity] > 0);
-}
-
-function addArmyGrowthConsumption(army, commodity, qty) {
-  if (!army || !armyCaresAbout(army, commodity) || !(qty > 0)) return;
-  army.growthConsumptionBank = (army.growthConsumptionBank || 0) + qty;
 }
 
 function applySellTrade(trade, sellOffer, empiresById) {

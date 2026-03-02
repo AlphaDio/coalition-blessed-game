@@ -20,6 +20,7 @@ import { tickEmergencyLaws, getActiveEmergencyModifiers } from '../emergencyLaws
 import { calculateScourgePrediction } from '../scourgePrediction.js';
 import { initializeTurnConsumptionTracking, processConsumptionToRequisition } from '../consumptionToRequisition.js';
 import { applyHeroBudgetSiphon, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters } from '../heroes.js';
+import { generateHeroLawProposals } from '../lawProposals.js';
 import { applyMissionSliderEffects, maybeSpawnDeepMission } from '../scourgeMissions.js';
 import { applyThreatClimateBonuses, resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
 import { tickEmergencyPowers } from '../emergencyPowers.js';
@@ -28,7 +29,7 @@ import { applyDynamicScourgeModifierEffects, tickScourgeRecovery, resolvePending
 import { handleLawProcesses } from './lawPhase.js';
 import { handleEconomyTick, processEmpireStockpileConsumption } from './economyPhase.js';
 import { handleBattlePhase } from './battlePhase.js';
-import { recoverArmyOrganization, replenishArmyManpower } from './armyPhase.js';
+import { applyArmyPassiveStatModifiers, recoverArmyOrganization, replenishArmyManpower } from './armyPhase.js';
 import { applyBasePopulationGrowth } from './population.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 
@@ -95,11 +96,13 @@ export function advanceTurn(state, rng = Math.random) {
 
   // 3.5. Refresh army stats from units after economy
   refreshArmyAggregates(state);
+  applyArmyPassiveStatModifiers(state);
 
   // 4. Hero budget siphon, cooldowns, and meter drift
   applyHeroBudgetSiphon(state, log);
   tickHeroCooldowns(state);
   tickHeroMeters(state, log);
+  generateHeroLawProposals(state, rngFn, log);
 
   // 4.5. Apply cohesion penalty for negative requisition
   const cohesionPenaltyResult = applyNegativeRequisitionCohesionPenalty(state);
@@ -116,7 +119,12 @@ export function advanceTurn(state, rng = Math.random) {
   // Empire improvement suggestions with queue cycling
   // Suggest when an empire has started/completed an improvement, or randomly for empires with no activity
   // Uses queue cycling to maintain a reasonable suggestion queue size
-  if (state.empires && state.improvements) {
+  if (
+    state.empires &&
+    state.improvements &&
+    Array.isArray(state.improvements.queue) &&
+    Array.isArray(state.improvements.requests)
+  ) {
     const activeImprovements = state.improvements.queue.filter(i => i.state === 'BUILDING' || i.state === 'ACTIVE');
     const activeEmpireIds = new Set(activeImprovements.map(i => i.empireId));
 
@@ -363,4 +371,3 @@ export function advanceTurn(state, rng = Math.random) {
 
   return { log };
 }
-

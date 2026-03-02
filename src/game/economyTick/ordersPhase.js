@@ -1,5 +1,6 @@
 import { ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
 import { applyDemandCommodityMultiplier } from '../economyBalance.js';
+import { getEmpireTechModifier } from '../empireModifiers.js';
 
 export function getEffectiveRationing(state) {
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
@@ -26,7 +27,8 @@ export function getSupplyEfficiencyMultiplier(state) {
 export function getEmpireSupplyEfficiency(empire, state) {
   const fromDefinition = empire.modifiers?.supply_efficiency || 0;
   const fromImprovements = state.improvements?.empireModifiers?.[empire.id]?.supply_efficiency || 0;
-  return Math.min(1, fromDefinition + fromImprovements);
+  const fromTech = getEmpireTechModifier(empire, 'supply_efficiency');
+  return Math.min(1, fromDefinition + fromImprovements + fromTech);
 }
 
 function isArmyDamaged(army) {

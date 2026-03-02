@@ -19,6 +19,9 @@ import {
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
+import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
+import { applyBasePopulationGrowth } from '../src/game/turn/population.js';
+import { createSampleContent } from '../src/game/content.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
 initializeLogger({
@@ -362,6 +365,144 @@ console.log('=== Test 5: Large Resource Thresholds Are Preserved ===');
 
   assert(state.coalitionConstruction === 0, 'Large configured thresholds do not trigger early');
   assert((state.consumptionEffectPools?.empire_1?.plasma_fuel || 0) === 150, 'Large-threshold pool keeps full accumulated consumption');
+}
+console.log();
+
+console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And Damage ===');
+{
+  const army = createArmy('army_1', 'empire_1', 'Army One', 50, 60, 0, 50, 50, 1000);
+  army.consumptionRules = [
+    {
+      commodity: 'rare_gases',
+      threshold: 4,
+      effect: { type: 'mp_growth_multiplier_bonus', amount: 0.25 }
+    },
+    {
+      commodity: 'plasma_fuel',
+      threshold: 4,
+      effect: { type: 'army_damage_bonus', amount: 0.05 }
+    },
+    {
+      commodity: 'super_alloys',
+      threshold: 4,
+      effect: { type: 'mp_bonus', amount: 2 }
+    }
+  ];
+  army.supply_state.received = { rare_gases: 4, plasma_fuel: 4, super_alloys: 4 };
+
+  const state = {
+    coalitionIntel: 0,
+    empires: [createEmpireShell('empire_1', 50, 1000)],
+    armies: [army]
+  };
+
+  const log = [];
+  replenishArmyManpower(state, [], log);
+
+  assert(approxEqual(army.consumptionMpGainMultiplier, 1.25), 'Army resource thresholds can increase future MP growth from consumption');
+  assert(approxEqual(army.consumptionDamageAdd, 0.05), 'Army resource thresholds can add persistent army damage');
+  assert(approxEqual(army.mp.current, 1002.5) && approxEqual(army.mp.max, 1002.5), 'Direct MP gain respects the accumulated army consumption growth multiplier');
+  assert((army.consumptionEffectPools?.rare_gases || 0) === 0, 'Army consumption pool spends exact threshold hits without phantom carryover');
+
+  const populousArmy = createArmy('army_2', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
+  populousArmy.consumptionRules = [{
+    commodity: 'super_alloys',
+    threshold: 4,
+    effect: { type: 'mp_bonus', amount: 2 }
+  }];
+  populousArmy.supply_state.received = { super_alloys: 4 };
+
+  const populousState = {
+    coalitionIntel: 0,
+    empires: [createEmpireShell('empire_2', 50, 1000)],
+    armies: [populousArmy]
+  };
+  populousState.empires[0].stats.population = 100000;
+
+  replenishArmyManpower(populousState, [], []);
+  assert(populousArmy.mp.current > 1002, 'Higher population increases army MP gains from consumption');
+}
+console.log();
+
+console.log('=== Test 7: Army Content Thresholds Stay Above Legacy Low Values ===');
+{
+  const content = createSampleContent(42);
+  const thresholds = (content.armies || [])
+    .flatMap((army) => (army.consumptionRules || []).map((rule) => Number(rule.threshold)))
+    .filter((threshold) => Number.isFinite(threshold));
+
+  const minThreshold = thresholds.length > 0 ? Math.min(...thresholds) : 0;
+  assert(minThreshold >= 3600, 'Army consumption thresholds are now 100x higher than the prior values');
+}
+console.log();
+
+console.log('=== Test 8: Sentient Cores Consumption Generates Intel ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const state = {
+    coalitionIntel: 0,
+    coalitionModifiers: {},
+    consumptionEffectPools: {},
+    scourgePrediction: {
+      confidenceModifier: 1.0,
+      confidenceLevel: 'medium'
+    },
+    empires: [{
+      id: 'empire_clockwork',
+      name: 'Quantum Collective',
+      stats: { population: 300, approvalBonus: 0, researchSpeedBonus: 0 },
+      consumptionRules: [{
+        commodity: 'sentient_cores',
+        threshold: 24,
+        effect: { type: 'coalition_intel_bonus', amount: 1 }
+      }]
+    }],
+    armies: []
+  };
+
+  recordConsumption('sentient_cores', 30, 'empire_clockwork', CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT);
+
+  const log = [];
+  processEmpireStockpileConsumption(state, log);
+
+  assert(state.coalitionIntel === 1, 'Sentient core threshold grants coalition intel');
+  assert(approxEqual(state.scourgePrediction.confidenceModifier, 1.05), 'Intel gain also improves current prediction confidence');
+  assert((state.consumptionEffectPools?.empire_clockwork?.sentient_cores || 0) === 6, 'Sentient core pool keeps overflow after intel trigger');
+}
+console.log();
+
+console.log('=== Test 9: Population Growth Uses A Unified Capped Pipeline ===');
+{
+  const state = {
+    coalitionModifiers: { population_growth: 0.003 },
+    activeEmergencyLaws: [],
+    improvements: {
+      empireModifiers: {
+        empire_1: {
+          population_growth: 0.004
+        }
+      }
+    },
+    empires: [
+      createEmpire('empire_1', 'Growth Empire', 50, {}, {}, { population: 10000 })
+    ]
+  };
+
+  state.empires[0].techModifiers.population_growth = 0.002;
+
+  applyBasePopulationGrowth(state);
+  assert(state.empires[0].stats.population > 10050, 'Base, law, tech, and improvement growth stack through one population pipeline');
+
+  state.empires[0].stats.population = 999990;
+  state.empires[0].stats.population_growth_bank = 0;
+
+  for (let i = 0; i < 200; i++) {
+    applyBasePopulationGrowth(state);
+  }
+
+  assert(state.empires[0].stats.population === 1000000, 'Population growth respects the 1,000,000 ceiling');
+  assert((state.empires[0].stats.population_growth_bank || 0) === 0, 'Positive growth bank clears once the population ceiling is reached');
 }
 console.log();
 

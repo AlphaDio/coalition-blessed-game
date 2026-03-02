@@ -2,6 +2,7 @@ import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
 import { applySupplyCommodityMultiplier } from '../../economyBalance.js';
 import { nextOrderId } from './orderIds.js';
+import { allocateSustainmentFromLocalProduction } from './sustainment.js';
 
 const QUANTITY_PRECISION = 1000;
 const QUANTITY_EPSILON = 1 / QUANTITY_PRECISION;
@@ -176,16 +177,29 @@ export function releaseProductionFromBank(state, improvement) {
   for (const [commodity, qty] of Object.entries(improvement.productionBank)) {
     if (qty <= 0) continue;
 
+    const reservedForSustainment = allocateSustainmentFromLocalProduction(state, empire.id, commodity, qty);
+    const qtyForMarket = normalizeQty(qty - reservedForSustainment);
+
+    if (reservedForSustainment > 0) {
+      log.push(`{blue-fg}Produced:{/blue-fg} ${reservedForSustainment.toFixed(3)} ${commodity} -> local sustainment`);
+      logger.info(`Improvement produced: ${improvement.name} (${empire.name}) routed ${reservedForSustainment.toFixed(3)} ${commodity} to local sustainment.`);
+    }
+
+    if (qtyForMarket <= 0) {
+      improvement.productionBank[commodity] = 0;
+      continue;
+    }
+
     // Get market price for this commodity
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     const discountedPrice = sellPrice;
 
-    const sellOrder = upsertEmpireSellOrder(empire.id, commodity, qty, discountedPrice);
+    const sellOrder = upsertEmpireSellOrder(empire.id, commodity, qtyForMarket, discountedPrice);
     if (!sellOrder) continue;
     // Log "Produced" when releasing to market
-    log.push(`{blue-fg}Produced:{/blue-fg} ${normalizeQty(qty).toFixed(3)} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
-    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${normalizeQty(qty).toFixed(3)} ${commodity} to market.`);
+    log.push(`{blue-fg}Produced:{/blue-fg} ${qtyForMarket.toFixed(3)} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
+    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qtyForMarket.toFixed(3)} ${commodity} to market.`);
 
     // Clear from bank after releasing
     improvement.productionBank[commodity] = 0;

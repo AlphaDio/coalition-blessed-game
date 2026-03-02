@@ -37,3 +37,19 @@ declares:
         genomes: 0.0009
       wants:
         rare_gases: 0.00055
+    consumption:
+      biomass:
+        threshold: 6000
+        effect:
+          type: mp_bonus
+          amount: 1.5
+      genomes:
+        threshold: 4200
+        effect:
+          type: mp_growth_multiplier_bonus
+          amount: 0.05
+      rare_gases:
+        threshold: 4800
+        effect:
+          type: replenishment_multiplier_bonus
+          amount: 0.03

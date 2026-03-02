@@ -5,6 +5,15 @@ import { startBattle } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 
+function deriveTargetEmpireId(insurrection, opposingArmies) {
+  if (insurrection?.targetEmpireId) {
+    return insurrection.targetEmpireId;
+  }
+
+  const empireIds = [...new Set((opposingArmies || []).map(army => army?.empireId).filter(Boolean))];
+  return empireIds.length === 1 ? empireIds[0] : null;
+}
+
 function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   if (!army?.mp) return;
 
@@ -33,6 +42,8 @@ function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLoss
  */
 export function startInsurrectionBattle(state, insurrection, opposingArmies, rng = Math.random) {
   const logger = getLogger();
+  const targetEmpireId = deriveTargetEmpireId(insurrection, opposingArmies);
+  const targetEmpire = state.empires.find(empire => empire.id === targetEmpireId) || null;
 
   // Get rebellious armies
   const rebelliousArmyIds = new Set(insurrection.armies || []);
@@ -48,7 +59,8 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
     return { front: null, log: [] };
   }
 
-  logger.info(`Insurrection battle: ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies`);
+  const targetLabel = targetEmpire ? ` targeting ${targetEmpire.name}` : '';
+  logger.info(`Insurrection battle: ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies${targetLabel}`);
   logger.debug(`Insurrection battle starting: ${rebelliousArmies.length} rebellious armies vs ${opposingArmies.length} loyal armies`);
   logger.debug(`Rebellious armies: ${rebelliousArmies.map(a => `${a.name} (Aggravation: ${a.aggravation.toFixed(1)})`).join(', ')}`);
   logger.debug(`Loyal armies: ${opposingArmies.map(a => `${a.name} (Org: ${a.organization.toFixed(1)})`).join(', ')}`);
@@ -61,7 +73,7 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   // Create combined loyal army
   const loyalArmy = createCombinedCoalitionArmy(state, opposingArmies, '_loyal');
   loyalArmy.name = `Loyal Forces (${opposingArmies.length} armies)`;
-  loyalArmy.empireId = '_coalition';
+  loyalArmy.empireId = targetEmpireId || '_coalition';
 
   // Calculate battlefield size based on total forces
   const totalForces = rebelliousArmy.mp.current + loyalArmy.mp.current;
@@ -75,10 +87,11 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   front.insurrectionId = insurrection.id;
   front.rebelliousArmyIds = rebelliousArmies.map(a => a.id);
   front.loyalArmyIds = opposingArmies.map(a => a.id);
+  front.targetEmpireId = targetEmpireId;
 
   const loyalMP = Math.floor(loyalArmy.mp.current);
   const rebelliousMP = Math.floor(rebelliousArmy.mp.current);
-  logger.info(`Insurrection battle: Loyal ${loyalMP} MP vs Rebellious ${rebelliousMP} MP (Field: ${battlefieldSize})`);
+  logger.info(`Insurrection battle: Loyal ${loyalMP} MP vs Rebellious ${rebelliousMP} MP (Field: ${battlefieldSize})${targetLabel}`);
   logger.debug(`Insurrection battle front created: ${front.id}`, {
     battlefieldSize,
     loyalMP: loyalArmy.mp.current,
@@ -119,6 +132,8 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   const rebelliousArmyData = rebelliousArmy._originalArmies || [];
 
   const loyalWon = winnerSide === 'left';
+  const targetEmpireId = front.targetEmpireId || null;
+  const targetedEmpire = state.empires.find(empire => empire.id === targetEmpireId) || null;
 
   // Use permanent losses (kill-rate driven) for lasting capacity damage.
   // Use current retention (post-battle remaining manpower ratio) for current MP.
@@ -203,17 +218,14 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
 
     const approvalShock = INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK;
-    rebelliousArmyData.forEach(armyData => {
-      const army = state.armies.find(a => a.id === armyData.id);
-      if (army) {
-        const empire = state.empires.find(e => e.id === army.empireId);
-        if (empire) {
-          empire.approval = clampApproval(empire.approval - approvalShock);
-        }
-      }
-    });
+    if (targetedEmpire) {
+      targetedEmpire.approval = clampApproval(targetedEmpire.approval - approvalShock);
+    }
 
-    logger.info(`Insurrection battle: Spreads! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), Approval -${approvalShock}`);
+    logger.info(
+      `Insurrection battle: Spreads! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), ` +
+      `${targetedEmpire ? `${targetedEmpire.name} approval` : 'Target approval'} -${approvalShock}`
+    );
   }
 
   // Emit battle summary
