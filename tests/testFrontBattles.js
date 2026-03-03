@@ -439,6 +439,38 @@ function testLowApprovalAndAggravationTriggersInsurrection() {
   console.log('✗ Low approval plus aggravation should trigger an insurrection');
   return false;
 }
+
+// Test 10b: Reset aggravation blocks immediate insurrection spam even if approval stays low
+function testResetAggravationPreventsImmediateRetrigger() {
+  console.log('\n=== Test 10b: Post-insurrection aggravation reset prevents immediate retrigger ===');
+
+  const state = createGameState(12345);
+  state.turn = 8;
+  state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Crisis Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5)];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Recently Rebellious Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+  ];
+
+  checkInsurrections(state);
+
+  const army = state.armies[0];
+  if (state.insurrections.length !== 1 || army.aggravation !== INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
+    console.log('✗ Initial insurrection did not trigger and reset aggravation as expected');
+    return false;
+  }
+
+  state.insurrections = [];
+  checkInsurrections(state);
+
+  if (state.insurrections.length === 0 && army.aggravation === INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
+    console.log('✓ Low approval alone no longer retriggers another immediate insurrection');
+    return true;
+  }
+
+  console.log('✗ Reset aggravation should block immediate retrigger on the next check');
+  return false;
+}
 // Test 11: Rebellion victory still resolves insurrection and resets aggravation
 function testRebellionVictoryResetsAndResolves() {
   console.log('\n=== Test 10: Rebellion victory resolves/reset ===');
@@ -640,6 +672,7 @@ const results = {
   'High aggravation reduces approval before rebellion': testInsurrectionResetsAggravation(),
   'Low approval does not trigger insurrection': testLowApprovalDoesNotTriggerInsurrection(),
   'Low approval plus aggravation triggers insurrection': testLowApprovalAndAggravationTriggersInsurrection(),
+  'Post-insurrection reset prevents immediate retrigger': testResetAggravationPreventsImmediateRetrigger(),
   'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves(),
   'Empire military modifiers increase damage': testEmpireMilitaryModifiersIncreaseDamage(),
   'Insurrection targeting uses hostile relations': testInsurrectionTargetingUsesRelations(),

@@ -188,7 +188,7 @@ export const ECONOMY_CONSTANTS = {
 /**
  * Insurrection pressure and trigger thresholds.
  * High aggravation now erodes the owning empire's approval first. Rebellion only
- * occurs when an army is aggravated enough and its empire's approval has fallen low.
+ * occurs once approval is low and an army still carries at least a modest amount of aggravation.
  * @property {number} THRESHOLD - Minimum aggravation required for a rebellion check
  * @property {number} APPROVAL_THRESHOLD - Maximum approval allowed for rebellion checks
  * @property {number} APPROVAL_PRESSURE_THRESHOLD - High aggravation threshold that converts into approval loss
@@ -199,12 +199,12 @@ export const ECONOMY_CONSTANTS = {
  * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
  */
 export const INSURRECTION_CONSTANTS = {
-  THRESHOLD: 55,
+  THRESHOLD: 20,
   APPROVAL_THRESHOLD: 35,
   APPROVAL_PRESSURE_THRESHOLD: 80,
   APPROVAL_PRESSURE_LOSS_PER_ARMY: 1,
   APPROVAL_PRESSURE_EXCESS_DIVISOR: 10,
-  POST_REBELLION_AGGRAVATION: 30,
+  POST_REBELLION_AGGRAVATION: 0,
   RESOLVED_FERVOR_DROP: 20,
   RESOLVED_APPROVAL_SHOCK: 15
 };
