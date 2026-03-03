@@ -297,6 +297,11 @@ export function simulateBattleTick(front, worldState) {
   applyBattleSustainment(leftArmy, front.moraleBroken.left, front, 'left');
   applyBattleSustainment(rightArmy, front.moraleBroken.right, front, 'right');
 
+  // While the battle is active, keep real participant armies in sync with the live composite snapshot.
+  // Permanent MP cap loss is still only applied once the battle resolves.
+  syncCompositeArmyManpowerToParticipants(worldState, leftArmy);
+  syncCompositeArmyManpowerToParticipants(worldState, rightArmy);
+
   if (leftUnits.length > 0) {
     syncUnitsFromArmy(leftArmy, leftUnits);
   }
@@ -470,6 +475,49 @@ function applyReinforcement(army, inBattle = false) {
     logger.debug(`Reinforcement (battle): ${army.name} +${reinforced.toFixed(0)} MP (reduced rate)`);
   }
   return reinforced;
+}
+
+function syncCompositeArmyManpowerToParticipants(worldState, compositeArmy) {
+  if (!compositeArmy?.isComposite || !Array.isArray(compositeArmy._originalArmies) || !Array.isArray(worldState?.armies)) {
+    return;
+  }
+
+  const originalCommittedCurrent = compositeArmy._originalArmies.reduce((sum, original) => (
+    sum + Math.max(0, Number(original?.originalMP) || 0)
+  ), 0);
+  const currentRetentionRatio = originalCommittedCurrent > 0
+    ? Math.max(0, (Number(compositeArmy.mp?.current) || 0) / originalCommittedCurrent)
+    : 0;
+
+  compositeArmy._originalArmies.forEach((original) => {
+    const army = worldState.armies.find(candidate => candidate.id === original?.id);
+    if (!army?.mp) {
+      return;
+    }
+
+    const committedCurrent = Math.max(0, Number(original?.originalMP) || 0);
+    const committedMax = Math.max(committedCurrent, Number(original?.originalMaxMP) || 0);
+    const reserveCurrent = Number.isFinite(Number(original?.reserveCurrentMP))
+      ? Math.max(0, Number(original.reserveCurrentMP))
+      : Math.max(0, (Number(original?.sourceOriginalMP) || committedCurrent) - committedCurrent);
+    const reserveMax = Number.isFinite(Number(original?.reserveMaxMP))
+      ? Math.max(0, Number(original.reserveMaxMP))
+      : Math.max(0, (Number(original?.sourceOriginalMaxMP) || committedMax) - committedMax);
+    const totalMax = Math.max(1, reserveMax + committedMax);
+    const committedLiveCurrent = Math.max(
+      0,
+      Math.min(committedMax, committedCurrent * currentRetentionRatio)
+    );
+
+    army.mp.current = Math.max(
+      0,
+      Math.min(totalMax, reserveCurrent + committedLiveCurrent)
+    );
+
+    if (!Number.isFinite(Number(army.mp.max)) || Number(army.mp.max) <= 0) {
+      army.mp.max = totalMax;
+    }
+  });
 }
 
 /**

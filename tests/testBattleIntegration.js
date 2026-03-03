@@ -572,9 +572,39 @@ function testPartialSupportCommitments() {
   return true;
 }
 
-// Test 8: Army with no units uses direct manpower
+// Test 9: Active composite battles push live damage onto the real armies
+function testCompositeBattleAppliesLiveDamageToRealArmies() {
+  console.log('\n=== Test 9: Active composite battles damage real armies ===');
+
+  const state = createFullTestState();
+  const army1 = state.armies.find((army) => army.id === 'army1');
+  const army2 = state.armies.find((army) => army.id === 'army2');
+  const initialTotalMP = (army1.mp.current || 0) + (army2.mp.current || 0);
+
+  const { front } = startScourgeBattle(state, [army1, army2], () => 0.5);
+  if (!front) {
+    console.log('X Failed to create scourge battle front');
+    return false;
+  }
+
+  simulateBattleTick(front, state);
+
+  const updatedArmy1 = state.armies.find((army) => army.id === 'army1');
+  const updatedArmy2 = state.armies.find((army) => army.id === 'army2');
+  const updatedTotalMP = (updatedArmy1.mp.current || 0) + (updatedArmy2.mp.current || 0);
+
+  if (updatedTotalMP >= initialTotalMP) {
+    console.log('X Real armies did not lose live MP during the active battle');
+    return false;
+  }
+
+  console.log('PASS Real armies reflect live battle damage before the battle ends');
+  return true;
+}
+
+// Test 10: Army with no units uses direct manpower
 function testDirectManpowerMechanics() {
-  console.log('\n=== Test 9: Army with direct manpower ===');
+  console.log('\n=== Test 10: Army with direct manpower ===');
   
   const state = createFullTestState();
   
@@ -625,6 +655,7 @@ const results = {
   'Scourge army persistence': testScourgeArmyPersistence(),
   'Insurrection battle': testInsurrectionBattle(),
   'Partial support commitments': testPartialSupportCommitments(),
+  'Composite battles damage real armies live': testCompositeBattleAppliesLiveDamageToRealArmies(),
   'Direct manpower mechanics': testDirectManpowerMechanics()
 };
 

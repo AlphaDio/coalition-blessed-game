@@ -1010,12 +1010,23 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
           const { front, side } = entry;
           const opponentId = side === 'left' ? front.rightArmyId : front.leftArmyId;
           const opponentArmy = (state.armies || []).find(a => a.id === opponentId);
+          const sideArmyId = side === 'left' ? front.leftArmyId : front.rightArmyId;
+          const sideArmy = (state.armies || []).find(a => a.id === sideArmyId);
+          const participantMeta = Array.isArray(sideArmy?._originalArmies)
+            ? sideArmy._originalArmies.find(original => original?.id === army.id)
+            : null;
+          const targetEmpire = (state.empires || []).find(empire => empire.id === front.targetEmpireId) || null;
           battle = {
             frontId: front.id,
             opponentArmyId: opponentId || null,
             opponentName: opponentArmy?.name || opponentId || null,
             battlefieldSize: front.battlefieldSize || 0,
-            moraleBroken: front.moraleBroken?.[side] ?? false
+            moraleBroken: front.moraleBroken?.[side] ?? false,
+            battleType: front.isScourgeBattle ? 'scourge' : (front.isInsurrectionBattle ? 'insurrection' : 'front'),
+            isSupport: !!participantMeta?.isSupport,
+            commitRatio: Number.isFinite(Number(participantMeta?.commitRatio)) ? Number(participantMeta.commitRatio) : 1,
+            targetEmpireId: front.targetEmpireId || null,
+            targetEmpireName: targetEmpire?.name || null
           };
         }
 
