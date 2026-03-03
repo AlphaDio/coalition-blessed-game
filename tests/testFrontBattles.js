@@ -361,32 +361,34 @@ function testIsRegularArmy() {
   return false;
 }
 
-// Test 8: Rebellion resets aggravation to prevent immediate retrigger
+// Test 8: High aggravation erodes approval before any rebellion check
 function testInsurrectionResetsAggravation() {
-  console.log('\n=== Test 8: Rebellion resets aggravation ===');
+  console.log('\n=== Test 8: High aggravation reduces approval before rebellion ===');
 
   const state = createGameState(12345);
   state.turn = 42;
   state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Pressured Empire', 60)];
   state.armies = [
-    createArmy('army1', 'empire1', 'Aggravated Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+    createArmy('army1', 'empire1', 'Aggravated Army', 50, 60, INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD + 5)
   ];
 
   checkInsurrections(state);
 
   const army = state.armies[0];
-  const hasInsurrection = state.insurrections.length === 1;
-  const resetApplied = army.aggravation === INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+  const empire = state.empires[0];
+  const noInsurrection = state.insurrections.length === 0;
+  const approvalReduced = empire.approval === 59;
+  const aggravationUnchanged = army.aggravation === INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD + 5;
 
-  if (hasInsurrection && resetApplied) {
-    console.log('✓ Insurrection spawned and aggravation reset');
+  if (noInsurrection && approvalReduced && aggravationUnchanged) {
+    console.log('✓ High aggravation reduced approval without spawning an immediate insurrection');
     return true;
   }
 
-  console.log('✗ Insurrection/aggravation reset behavior is incorrect');
+  console.log('✗ High aggravation should reduce approval before rebellion');
   return false;
 }
-
 // Test 9: Low approval alone should not trigger insurrections
 function testLowApprovalDoesNotTriggerInsurrection() {
   console.log('\n=== Test 9: Low approval alone does not trigger insurrection ===');
@@ -410,14 +412,41 @@ function testLowApprovalDoesNotTriggerInsurrection() {
   return false;
 }
 
-// Test 10: Rebellion victory still resolves insurrection and resets aggravation
+
+// Test 10: Low approval plus aggravation should trigger insurrection
+function testLowApprovalAndAggravationTriggersInsurrection() {
+  console.log('\n=== Test 10: Low approval plus aggravation triggers insurrection ===');
+
+  const state = createGameState(12345);
+  state.turn = 8;
+  state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Crisis Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5)];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Angry Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+  ];
+
+  checkInsurrections(state);
+
+  const army = state.armies[0];
+  const hasInsurrection = state.insurrections.length === 1;
+  const resetApplied = army.aggravation === INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+
+  if (hasInsurrection && resetApplied) {
+    console.log('✓ Low approval and sufficient aggravation now trigger the insurrection gate');
+    return true;
+  }
+
+  console.log('✗ Low approval plus aggravation should trigger an insurrection');
+  return false;
+}
+// Test 11: Rebellion victory still resolves insurrection and resets aggravation
 function testRebellionVictoryResetsAndResolves() {
   console.log('\n=== Test 10: Rebellion victory resolves/reset ===');
 
   const state = createGameState(12345);
   state.turn = 7;
   state.empires = [
-    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire1', 'Rebel Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5),
     createEmpire('empire2', 'Loyal Empire', 60)
   ];
 
@@ -450,7 +479,7 @@ function testRebellionVictoryResetsAndResolves() {
   return true;
 }
 
-// Test 11: Empire military modifiers from improvements and tech increase battle damage
+// Test 12: Empire military modifiers from improvements and tech increase battle damage
 function testEmpireMilitaryModifiersIncreaseDamage() {
   console.log('\n=== Test 11: Empire military modifiers increase battle damage ===');
 
@@ -520,7 +549,7 @@ function testInsurrectionTargetingUsesRelations() {
 
   const state = createGameState(12345);
   state.empires = [
-    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire1', 'Rebel Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5),
     createEmpire('empire2', 'Hated Empire', 60),
     createEmpire('empire3', 'Tolerated Empire', 60)
   ];
@@ -553,7 +582,7 @@ function testInsurrectionOnlyTargetsSingleEmpire() {
 
   const state = createGameState(12345);
   state.empires = [
-    createEmpire('empire1', 'Rebel Empire', 60),
+    createEmpire('empire1', 'Rebel Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5),
     createEmpire('empire2', 'Target Empire', 60),
     createEmpire('empire3', 'Bystander Empire', 60)
   ];
@@ -608,8 +637,9 @@ const results = {
   'Recovery pool mechanics': testRecoveryPool(),
   'collectArmiesInBattle includes all participants': testCollectArmiesInBattle(),
   'isRegularArmy filters temporary armies': testIsRegularArmy(),
-  'Insurrection resets aggravation after rebellion': testInsurrectionResetsAggravation(),
+  'High aggravation reduces approval before rebellion': testInsurrectionResetsAggravation(),
   'Low approval does not trigger insurrection': testLowApprovalDoesNotTriggerInsurrection(),
+  'Low approval plus aggravation triggers insurrection': testLowApprovalAndAggravationTriggersInsurrection(),
   'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves(),
   'Empire military modifiers increase damage': testEmpireMilitaryModifiersIncreaseDamage(),
   'Insurrection targeting uses hostile relations': testInsurrectionTargetingUsesRelations(),
@@ -635,3 +665,5 @@ if (allPassed) {
   process.exit(1);
 }
 console.log('='.repeat(60));
+
+

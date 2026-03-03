@@ -147,18 +147,10 @@ Army sustain stats:
 ### 1st Stellar Battle Fleet (army_1)
 Elite federation fleet.
 - Empire: Stellar Federation
-- Organization: 70
-- Fervor: 60
+- Organization: 76
+- Fervor: 52
 - Aggravation (supply need): 60
-- Recovery: 55 (wounded return after battle)
-
-### 2nd Stellar Defense Fleet (army_2)
-Support fleet for defensive operations.
-- Empire: Stellar Federation
-- Organization: 65
-- Fervor: 55
-- Aggravation (supply need): 50
-- Recovery: 52 (wounded return after battle)
+- Recovery: 62 (wounded return after battle)
 
 ### Verdant Planetary Guard (army_3)
 Ground defense force for the Verdant Colonies.

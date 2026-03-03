@@ -654,6 +654,7 @@ export function migrateGameState(state) {
   
   // Migrate armies - ensure replenishment fields exist
   if (state.armies && Array.isArray(state.armies)) {
+    state.armies = state.armies.filter((army) => army?.id !== 'army_2');
     state.armies.forEach(army => {
       // Add missing replenishment fields with defaults
       if (army.replenishmentMultiplier === undefined) {

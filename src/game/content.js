@@ -93,8 +93,7 @@ export function createSampleContent(seed = 0) {
   });
   
   // Extract armies from modules
-  const armyModules = getModulesByType(registry, 'army')
-    .filter(entry => entry.id !== 'army_2'); // Retire the duplicate Stellar Federation fleet from starting rosters.
+  const armyModules = getModulesByType(registry, 'army');
   const armies = armyModules.map(entry => {
     const moduleDoc = registry.modules[entry.id];
     const data = moduleDoc.declares.army_data;

@@ -164,7 +164,7 @@ Event outcomes can modify aggravation:
 insurrections: [
   {
     id: 'insurrection_150',
-    armies: ['army_1', 'army_2', 'army_3'],
+    armies: ['army_1', 'army_3'],
     strength: 75.3,
     resolved: false
   }

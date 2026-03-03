@@ -109,13 +109,10 @@ This document summarizes the battle system refactoring completed as part of the 
 1. **1st Northern Division** → **1st Stellar Battle Fleet**
    - Elite starship fleet
    
-2. **2nd Northern Division** → **2nd Stellar Defense Fleet**
-   - Support fleet
-   
-3. **Southern Guard** → **Verdant Planetary Guard**
+2. **Southern Guard** → **Verdant Planetary Guard**
    - Defense forces of colonies
    
-4. **Eastern Fleet Marines** → **Nexus Hyperspace Marines**
+3. **Eastern Fleet Marines** → **Nexus Hyperspace Marines**
    - Elite jump troops
 
 **Code Changes:**
@@ -178,7 +175,6 @@ Created `demoRefactoring.js` to showcase:
 - `modules/empires/empire_clockwork.ds.yml` - Quantum Collective
 - `modules/empires/empire_hive.ds.yml` - Synaptic Swarm
 - `modules/armies/army_1.ds.yml` - 1st Stellar Battle Fleet + recovery stat
-- `modules/armies/army_2.ds.yml` - 2nd Stellar Defense Fleet + recovery stat
 - `modules/armies/army_3.ds.yml` - Verdant Planetary Guard + recovery stat
 - `modules/armies/army_4.ds.yml` - Nexus Hyperspace Marines + recovery stat
 

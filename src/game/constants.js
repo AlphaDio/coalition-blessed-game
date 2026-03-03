@@ -186,15 +186,24 @@ export const ECONOMY_CONSTANTS = {
 };
 
 /**
- * Insurrection event thresholds and consequences.
- * Insurrections occur when empire aggravation reaches critical levels.
- * @property {number} THRESHOLD - Aggravation level that triggers insurrection (80+)
+ * Insurrection pressure and trigger thresholds.
+ * High aggravation now erodes the owning empire's approval first. Rebellion only
+ * occurs when an army is aggravated enough and its empire's approval has fallen low.
+ * @property {number} THRESHOLD - Minimum aggravation required for a rebellion check
+ * @property {number} APPROVAL_THRESHOLD - Maximum approval allowed for rebellion checks
+ * @property {number} APPROVAL_PRESSURE_THRESHOLD - High aggravation threshold that converts into approval loss
+ * @property {number} APPROVAL_PRESSURE_LOSS_PER_ARMY - Base approval lost per over-threshold army each turn
+ * @property {number} APPROVAL_PRESSURE_EXCESS_DIVISOR - Additional approval loss per N aggravation over the pressure threshold
  * @property {number} POST_REBELLION_AGGRAVATION - Aggravation reset after armies rebel
  * @property {number} RESOLVED_FERVOR_DROP - Fervor reduction when insurrection is resolved
  * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
  */
 export const INSURRECTION_CONSTANTS = {
-  THRESHOLD: 80,
+  THRESHOLD: 55,
+  APPROVAL_THRESHOLD: 35,
+  APPROVAL_PRESSURE_THRESHOLD: 80,
+  APPROVAL_PRESSURE_LOSS_PER_ARMY: 1,
+  APPROVAL_PRESSURE_EXCESS_DIVISOR: 10,
   POST_REBELLION_AGGRAVATION: 30,
   RESOLVED_FERVOR_DROP: 20,
   RESOLVED_APPROVAL_SHOCK: 15

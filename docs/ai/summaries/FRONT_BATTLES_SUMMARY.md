@@ -157,7 +157,7 @@ Existing tests (testDeterminism.js) also pass, confirming no regressions.
 ```javascript
 import { startBattle } from './src/game/frontBattles.js';
 
-const front = startBattle(worldState, 'army_1', 'army_2', 1200);
+const front = startBattle(worldState, 'army_1', 'army_3', 1200);
 // Emits 'battle_started' event
 ```
 

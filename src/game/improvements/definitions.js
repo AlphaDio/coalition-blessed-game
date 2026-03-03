@@ -24,11 +24,47 @@ export const IMPROVEMENT_TIER_REQUIREMENTS = {
   3: 2  // Need 2 T2 improvements to unlock T3
 };
 
+function normalizeImprovementRole(branch, options = {}) {
+  const productionOutputs = { ...(options.productionOutputs || {}) };
+  const modifiers = { ...(options.modifiers || {}) };
+  const hasModifiers = Object.keys(modifiers).length > 0;
+  const hasCommodityOutputs = Object.entries(productionOutputs)
+    .some(([commodity, qty]) => commodity !== 'requisition' && Number.isFinite(qty) && qty > 0);
+
+  if (!hasModifiers || !hasCommodityOutputs) {
+    return {
+      ...options,
+      productionOutputs,
+      modifiers
+    };
+  }
+
+  if (branch === 'resource') {
+    return {
+      ...options,
+      productionOutputs,
+      modifiers: {}
+    };
+  }
+
+  const trimmedOutputs = {};
+  if (Number.isFinite(productionOutputs.requisition) && productionOutputs.requisition > 0) {
+    trimmedOutputs.requisition = productionOutputs.requisition;
+  }
+
+  return {
+    ...options,
+    productionOutputs: trimmedOutputs,
+    modifiers
+  };
+}
+
 /**
  * Create a tiered improvement request
  */
 export function createTieredImprovementRequest(id, name, description, tier, branch, options = {}) {
-  const request = createImprovementRequest(id, name, description, options);
+  const normalizedOptions = normalizeImprovementRole(branch, options);
+  const request = createImprovementRequest(id, name, description, normalizedOptions);
   return {
     ...request,
     tier,

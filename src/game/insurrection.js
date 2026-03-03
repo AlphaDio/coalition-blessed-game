@@ -2,6 +2,7 @@ import { INSURRECTION_CONSTANTS } from './constants.js';
 import { createInsurrection } from './types.js';
 import { getLogger } from '../modules/logger.js';
 import { isRegularArmy } from './turn/armyUtils.js';
+import { clampApproval } from '../utils/math.js';
 
 function getSourceEmpireIds(armies) {
   return [...new Set((armies || []).map(army => army?.empireId).filter(Boolean))];
@@ -16,6 +17,62 @@ function getHostilityWeight(state, sourceEmpireIds, targetEmpireId) {
     const relation = Number(state.diplomacy?.relations?.[sourceEmpireId]?.[targetEmpireId] ?? 0);
     return sum + Math.max(1, 101 - relation);
   }, 0);
+}
+
+function groupArmiesByEmpire(armies) {
+  const grouped = new Map();
+
+  (armies || []).forEach((army) => {
+    if (!army?.empireId) return;
+    if (!grouped.has(army.empireId)) {
+      grouped.set(army.empireId, []);
+    }
+    grouped.get(army.empireId).push(army);
+  });
+
+  return grouped;
+}
+
+function applyAggravationApprovalPressure(state, log, logger) {
+  const empires = Array.isArray(state.empires) ? state.empires : [];
+  if (empires.length === 0 || !Array.isArray(state.armies)) {
+    return;
+  }
+
+  const empireMap = new Map(empires.map((empire) => [empire.id, empire]));
+  const pressuredArmies = state.armies.filter((army) =>
+    isRegularArmy(army) &&
+    (army.aggravation || 0) >= INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD
+  );
+
+  const armiesByEmpire = groupArmiesByEmpire(pressuredArmies);
+  armiesByEmpire.forEach((armies, empireId) => {
+    const empire = empireMap.get(empireId);
+    if (!empire) return;
+
+    const approvalLoss = armies.reduce((sum, army) => {
+      const aggravation = Number(army?.aggravation || 0);
+      const excess = Math.max(0, aggravation - INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD);
+      return sum
+        + INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_LOSS_PER_ARMY
+        + Math.floor(excess / INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_EXCESS_DIVISOR);
+    }, 0);
+
+    if (approvalLoss <= 0) {
+      return;
+    }
+
+    const previousApproval = Number.isFinite(empire.approval) ? empire.approval : 50;
+    empire.approval = clampApproval(previousApproval - approvalLoss);
+    const appliedLoss = previousApproval - empire.approval;
+    if (appliedLoss <= 0) {
+      return;
+    }
+
+    const msg = `${empire.name} unrest pressure: ${armies.length} high-aggravation arm${armies.length === 1 ? 'y' : 'ies'}, approval ${previousApproval.toFixed(1)} -> ${empire.approval.toFixed(1)} (-${appliedLoss.toFixed(1)})`;
+    log.push(msg);
+    logger.info(msg);
+  });
 }
 
 export function selectInsurrectionTargetEmpire(state, insurrection, rng = Math.random) {
@@ -79,17 +136,28 @@ export function selectInsurrectionTargetEmpire(state, insurrection, rng = Math.r
 export function checkInsurrections(state) {
   const logger = getLogger();
   const log = [];
+  const armies = Array.isArray(state.armies) ? state.armies : [];
   const activeInsurrections = (state.insurrections || []).filter(ins => ins?.active);
+  applyAggravationApprovalPressure(state, log, logger);
+
+  const empireApprovalById = new Map(
+    (state.empires || []).map((empire) => [empire.id, Number.isFinite(empire?.approval) ? empire.approval : 50])
+  );
   
   // Check for armies that should rebel
-  const rebelliousArmies = state.armies.filter(army =>
+  const rebelliousArmies = armies.filter(army =>
     isRegularArmy(army) &&
-    army.aggravation >= INSURRECTION_CONSTANTS.THRESHOLD
+    (army.aggravation || 0) >= INSURRECTION_CONSTANTS.THRESHOLD &&
+    (empireApprovalById.get(army.empireId) ?? 50) <= INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD
   );
   
   if (rebelliousArmies.length > 0) {
     logger.debug(`Found ${rebelliousArmies.length} rebellious armies`, {
-      armies: rebelliousArmies.map(a => ({ name: a.name, aggravation: a.aggravation }))
+      armies: rebelliousArmies.map(a => ({
+        name: a.name,
+        aggravation: a.aggravation,
+        approval: empireApprovalById.get(a.empireId) ?? null
+      }))
     });
   }
   
