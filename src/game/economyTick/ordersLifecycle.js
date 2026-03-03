@@ -54,6 +54,13 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
         if (!army.supply_state.received) army.supply_state.received = {};
         army.supply_state.received[trade.commodity] = (army.supply_state.received[trade.commodity] || 0) + trade.qty;
       }
+    } else {
+      // Track received quantities on the empire supply_state for fulfillment calculations
+      if (!empire.supply_state) {
+        empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
+      }
+      if (!empire.supply_state.received) empire.supply_state.received = {};
+      empire.supply_state.received[trade.commodity] = (empire.supply_state.received[trade.commodity] || 0) + trade.qty;
     }
     return;
   }

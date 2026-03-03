@@ -47,6 +47,14 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     },
     stockpiles: stats.stockpiles || {},
     consumptionRules: parseConsumptionRules(stats.consumption),
+    // Supply fulfillment tracking (needs/wants demand and fill ratios)
+    supply_state: {
+      needs_demand: {},
+      wants_demand: {},
+      received: {},
+      needs_fulfillment: {},
+      wants_fulfillment: {}
+    },
     // Technology fields
     techPoints: 0,
     techThreshold: TECH_CONSTANTS.INITIAL_THRESHOLD,  // Points needed for next tech event
