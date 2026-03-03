@@ -274,12 +274,12 @@ export const RATIONING_CONSTANTS = {
  */
 export const ECONOMY_BALANCE_CONSTANTS = {
   DEMAND_MULTIPLIERS_BY_COMMODITY: {
-    plasma_fuel: 1.35,
-    biomass: 1.30
-  },
-  SUPPLY_MULTIPLIERS_BY_COMMODITY: {
     plasma_fuel: 0.88,
     biomass: 0.90
+  },
+  SUPPLY_MULTIPLIERS_BY_COMMODITY: {
+    plasma_fuel: 1.35,
+    biomass: 1.30
   },
   IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT: 7
 };

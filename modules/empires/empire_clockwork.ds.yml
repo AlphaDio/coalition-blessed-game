@@ -59,34 +59,34 @@ declares:
             type: coalition_intel_bonus
             amount: 1
         wormhole_reactors:
-          threshold: 500
+          threshold: 50
           effect:
             type: army_kill_rate_bonus
             amount: 0.05
         plasma_fuel:
-          threshold: 10000
+          threshold: 500
           effect:
             type: industrial_output_bonus
             amount: 0.05
         rare_gases:
-          threshold: 100000
+          threshold: 200
           effect:
             type: empire_approval_bonus
             amount: 1
         # Quantum Collective has a strong bonus to research speed through Quantum Circuits
         quantum_circuits:
-          threshold: 1000
+          threshold: 100
           effect:
             type: research_speed_bonus
             amount: 0.2
         # Quantum Collective has a strong bonus to defense through super alloys 
         super_alloys:
-          threshold: 100000
+          threshold: 1000
           effect:
             type: army_protection_bonus
             amount: 0.2
         anti_grav_modules:
-          threshold: 1000
+          threshold: 100
           effect:
             type: coalition_construction_bonus
             amount: 1
