@@ -293,8 +293,18 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     const needsAggravationGain = (damageRatio > 0 && supplySignals.needsActive)
       ? ECONOMY_CONSTANTS.ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK * supplySignals.needsDeficit * damageRatio
       : 0;
-    if (needsAggravationGain > 0) {
-      army.aggravation = clampStat((army.aggravation || 0) + needsAggravationGain, 0, 100);
+    const wantsAggravationGain = supplySignals.wantsActive
+      ? ECONOMY_CONSTANTS.ARMY_WANTS_AGGRAVATION_BASE_PER_TICK * supplySignals.wantsDeficit
+      : 0;
+    const totalAggravationGain = needsAggravationGain + wantsAggravationGain;
+
+    const needsMet = !supplySignals.needsActive || supplySignals.needsDeficit < 0.01;
+    const aggravationDecay = needsMet
+      ? ECONOMY_CONSTANTS.ARMY_AGGRAVATION_DECAY_PER_TICK
+      : 0;
+    const netAggravation = totalAggravationGain - aggravationDecay;
+    if (netAggravation !== 0) {
+      army.aggravation = clampStat((army.aggravation || 0) + netAggravation, 0, 100);
     }
 
     const wantsFervorLoss = supplySignals.wantsActive
@@ -302,6 +312,13 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       : 0;
     if (wantsFervorLoss > 0) {
       army.fervor = clampStat((army.fervor || 0) - wantsFervorLoss, 0, 100);
+    }
+
+    const wantsOrgDecay = supplySignals.wantsActive
+      ? ECONOMY_CONSTANTS.ARMY_WANTS_ORG_DECAY_BASE_PER_TICK * supplySignals.wantsDeficit
+      : 0;
+    if (wantsOrgDecay > 0) {
+      army.organization = clampStat((army.organization || 0) - wantsOrgDecay, 0, 100);
     }
     const baseRate = army.reinforcementRate || 100;
 
@@ -338,12 +355,12 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
     const replenished = Math.min(effectiveRate, spaceAvailable);
     army.mp.current += replenished;
 
-    if (replenished > 50 || needsAggravationGain > 0.2 || wantsFervorLoss > 0.2) {
+    if (replenished > 50 || Math.abs(netAggravation) > 0.2 || wantsFervorLoss > 0.2 || wantsOrgDecay > 0.2) {
       logger.debug(
         `Manpower replenishment: ${army.name} +${replenished.toFixed(0)} MP` +
         ` (needs ${(supplySignals.needsFulfillment * 100).toFixed(0)}%, wants ${(supplySignals.wantsFulfillment * 100).toFixed(0)}%,` +
         ` rate ${effectiveRate.toFixed(0)}, cap ${Math.floor(army.mp.max)},` +
-        ` aggravation +${needsAggravationGain.toFixed(2)}, fervor -${wantsFervorLoss.toFixed(2)})`
+        ` aggravation ${netAggravation >= 0 ? '+' : ''}${netAggravation.toFixed(2)}, fervor -${wantsFervorLoss.toFixed(2)}, org -${wantsOrgDecay.toFixed(2)})`
       );
     }
   });
