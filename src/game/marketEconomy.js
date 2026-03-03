@@ -427,3 +427,37 @@ export function computeArmyFulfillment(army, config) {
   
   return { needsFulfillment, wantsFulfillment, shortages, performanceModifier };
 }
+
+/**
+ * Compute empire needs/wants fulfillment ratios from supply_state demand and received maps.
+ * Stores results in empire.supply_state.needs_fulfillment / wants_fulfillment.
+ * @param {Object} empire - The empire object
+ * @returns {{ needsFulfillment: Object, wantsFulfillment: Object }} per-commodity fulfillment ratios
+ */
+export function computeEmpireFulfillment(empire) {
+  const supplyState = empire.supply_state || {};
+  const needsDemandMap = supplyState.needs_demand || {};
+  const wantsDemandMap = supplyState.wants_demand || {};
+  const receivedMap = supplyState.received || {};
+
+  const needsFulfillment = {};
+  const wantsFulfillment = {};
+
+  for (const [commodity, totalNeeded] of Object.entries(needsDemandMap)) {
+    const received = receivedMap[commodity] || 0;
+    needsFulfillment[commodity] = totalNeeded > 0 ? Math.min(1.0, received / totalNeeded) : 1.0;
+  }
+
+  for (const [commodity, totalWanted] of Object.entries(wantsDemandMap)) {
+    const received = receivedMap[commodity] || 0;
+    wantsFulfillment[commodity] = totalWanted > 0 ? Math.min(1.0, received / totalWanted) : 1.0;
+  }
+
+  if (!empire.supply_state) {
+    empire.supply_state = {};
+  }
+  empire.supply_state.needs_fulfillment = needsFulfillment;
+  empire.supply_state.wants_fulfillment = wantsFulfillment;
+
+  return { needsFulfillment, wantsFulfillment };
+}
