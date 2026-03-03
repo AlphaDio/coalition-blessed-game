@@ -49,22 +49,22 @@ declares:
       consumption:
         # Synaptic Swarm has a strong bonus to biomass consumption
         biomass:
-          threshold: 50000
+          threshold: 500
           effect:
             type: population_percent
             amount: 1
         ancient_relics:
-          threshold: 1000
+          threshold: 100
           effect:
             type: army_fervor_bonus
             amount: 10
         super_alloys:
-          threshold: 100000
+          threshold: 1000
           effect:
             type: army_protection_bonus
             amount: 0.1
         psycho_implants:
-          threshold: 1000
+          threshold: 100
           effect:
             type: army_resolve_bonus
             amount: 0.1
@@ -74,28 +74,28 @@ declares:
             type: coalition_intel_bonus
             amount: 1
         wormhole_reactors:
-          threshold: 500
+          threshold: 50
           effect:
             type: army_kill_rate_bonus
             amount: 0.05
         plasma_fuel:
-          threshold: 10000
+          threshold: 500
           effect:
             type: industrial_output_bonus
             amount: 0.05
         rare_gases:
-          threshold: 100000
+          threshold: 200
           effect:
             type: empire_approval_bonus
             amount: 1
         # unique bonus to research speed through genomes consumption
         genomes:
-          threshold: 10000
+          threshold: 500
           effect:
             type: research_speed_bonus
             amount: 0.01
         anti_grav_modules:
-          threshold: 1000
+          threshold: 100
           effect:
             type: coalition_construction_bonus
             amount: 1
