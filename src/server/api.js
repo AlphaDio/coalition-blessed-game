@@ -961,6 +961,110 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Get armies panel data
+  app.get('/api/game/armies', (req, res) => {
+    try {
+      const state = gameManager.getGameState();
+      if (!state) {
+        return res.sendError(
+          ErrorCodes.INVALID_GAME_STATE,
+          'Game is not initialized'
+        );
+      }
+
+      const regularArmies = (state.armies || []).filter(army =>
+        !army.id.startsWith('_scourge') &&
+        !army.id.startsWith('_coalition_combined') &&
+        !army.id.startsWith('_insurrection')
+      );
+
+      const empireMap = new Map((state.empires || []).map(e => [e.id, e]));
+
+      const activeBattleFronts = (state.battleFronts || []).filter(f => f.state === 'ACTIVE');
+
+      // Map each army id to its battle front and which side it is on
+      // Side 'left' = moraleBroken.left, 'right' = moraleBroken.right
+      const armyBattleMap = new Map(); // armyId -> { front, side }
+      activeBattleFronts.forEach(front => {
+        const record = (armyId, side) => {
+          if (armyId) armyBattleMap.set(armyId, { front, side });
+        };
+        record(front.leftArmyId, 'left');
+        record(front.rightArmyId, 'right');
+        // Scourge battles: participatingArmyIds are coalition armies on the left side
+        (front.participatingArmyIds || []).forEach(id => record(id, 'left'));
+        // Insurrection battles: loyalArmyIds are on the left side, rebelliousArmyIds on the right
+        (front.loyalArmyIds || []).forEach(id => record(id, 'left'));
+        (front.rebelliousArmyIds || []).forEach(id => record(id, 'right'));
+      });
+
+      const armies = regularArmies.map(army => {
+        const empire = empireMap.get(army.empireId) || null;
+        const mpCurrent = Math.floor(army.mp?.current ?? army.manpower ?? 0);
+        const mpMax = Math.floor(army.mp?.max ?? army.manpower ?? 1);
+        const mpPercent = mpMax > 0 ? Math.round((mpCurrent / mpMax) * 100) : 0;
+
+        const entry = armyBattleMap.get(army.id) || null;
+        let battle = null;
+        if (entry) {
+          const { front, side } = entry;
+          const opponentId = side === 'left' ? front.rightArmyId : front.leftArmyId;
+          const opponentArmy = (state.armies || []).find(a => a.id === opponentId);
+          battle = {
+            frontId: front.id,
+            opponentArmyId: opponentId || null,
+            opponentName: opponentArmy?.name || opponentId || null,
+            battlefieldSize: front.battlefieldSize || 0,
+            moraleBroken: front.moraleBroken?.[side] ?? false
+          };
+        }
+
+        return {
+          id: army.id,
+          name: army.name,
+          empire: empire ? { id: empire.id, name: empire.name } : null,
+          manpower: {
+            current: mpCurrent,
+            max: mpMax,
+            percent: mpPercent
+          },
+          morale: {
+            current: Math.round(army.mo?.current ?? 100),
+            max: Math.round(army.mo?.max ?? 100)
+          },
+          stats: {
+            organization: Math.round(army.organization ?? 0),
+            fervor: Math.round(army.fervor ?? 0),
+            aggravation: Math.round(army.aggravation ?? 0),
+            command: Math.round(army.command ?? 50)
+          },
+          combat: {
+            dmgPerUnitMP: army.dmgPerUnitMP ?? 1.0,
+            dmgPerTickMO: army.dmgPerTickMO ?? 2.5,
+            protection: army.protection ?? 0.2,
+            resolve: army.resolve ?? 0.3,
+            killRate: army.killRate ?? 0.1
+          },
+          supply: {
+            needsFulfillment: army.supply_state?.needs_fulfillment ?? {},
+            wantsFulfillment: army.supply_state?.wants_fulfillment ?? {}
+          },
+          battle
+        };
+      });
+
+      res.sendSuccess({ armies });
+    } catch (error) {
+      logger.error(`Error getting armies: ${error.message}`);
+      logger.error(error.stack);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to retrieve armies',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Health check
   app.get('/api/health', (req, res) => {
     res.sendSuccess({ status: 'ok' });
