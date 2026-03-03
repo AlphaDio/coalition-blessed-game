@@ -226,7 +226,8 @@ console.log('=== Test 8: fulfillment_growth_modifier contributes to population g
 
   // Simulate zero fulfillment (negative modifier large enough to overcome base)
   const empire2 = createEmpire('e8b', 'Test', 50, {}, {}, { population: 10000 });
-  empire2.stats.fulfillment_growth_modifier = -(FULFILLMENT_CONSTANTS.NEEDS_MAX_GROWTH_PENALTY * 2);
+  // Need net rate < -0.001 so that bank (population * rate) crosses the -10 threshold in one tick
+  empire2.stats.fulfillment_growth_modifier = -(FULFILLMENT_CONSTANTS.NEEDS_MAX_GROWTH_PENALTY * 5);
   const state2 = {
     coalitionModifiers: { population_growth: 0 },
     activeEmergencyLaws: [],
