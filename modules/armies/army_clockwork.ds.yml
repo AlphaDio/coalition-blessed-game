@@ -44,7 +44,7 @@ declares:
           type: army_damage_bonus
           amount: 0.04
       nano_machines:
-        threshold: 30
+        threshold: 18
         effect:
           type: mp_bonus
           amount: 1.5

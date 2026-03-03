@@ -125,3 +125,4 @@ verifyActionsPanelFix.js
 # Save files
 saves/
 autosave.json
+yarn.lock

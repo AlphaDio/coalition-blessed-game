@@ -445,7 +445,7 @@ console.log('=== Test 7: Army MP Thresholds Stay Reachable While Scaling Thresho
   const maxMpThreshold = mpThresholds.length > 0 ? Math.max(...mpThresholds) : 0;
   const minScalingThreshold = scalingThresholds.length > 0 ? Math.min(...scalingThresholds) : 0;
 
-  assert(minMpThreshold >= 24 && maxMpThreshold <= 36, 'Army MP growth thresholds stay in a reachable medium range');
+  assert(minMpThreshold >= 15 && maxMpThreshold <= 22, 'Army MP growth thresholds stay in a reachable medium range');
   assert(minScalingThreshold >= 3600, 'Army non-MP scaling thresholds stay in the high long-tail range');
 }
 console.log();
