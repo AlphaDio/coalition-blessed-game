@@ -10,9 +10,10 @@ import { simulateBattleTick, startBattle, getActiveBattles } from '../src/game/f
 import { collectArmiesInBattle, isRegularArmy } from '../src/game/turn.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
 import { checkInsurrections, selectInsurrectionTargetEmpire } from '../src/game/insurrection.js';
-import { INSURRECTION_CONSTANTS } from '../src/game/constants.js';
+import { INSURRECTION_CONSTANTS, ECONOMY_CONSTANTS } from '../src/game/constants.js';
 import { startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
 import { triggerInsurrectionBattles } from '../src/game/turn/battlePhase.js';
+import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 
 
 // Helper to create a test state with two armies
@@ -656,6 +657,147 @@ function testInsurrectionOnlyTargetsSingleEmpire() {
   return false;
 }
 
+// Test 14: Insurrection threshold requires high aggravation
+function testInsurrectionRequiresHighAggravation() {
+  console.log('\n=== Test 14: Insurrection requires high aggravation (threshold >= 70) ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Crisis Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5)];
+  // Aggravation at 50 - above old threshold of 20, but below new threshold of 70
+  state.armies = [
+    createArmy('army1', 'empire1', 'Moderately Aggravated Army', 50, 60, 50)
+  ];
+
+  checkInsurrections(state);
+
+  if (state.insurrections.length === 0) {
+    console.log('✓ Moderate aggravation (50) does not trigger insurrection with threshold at ' + INSURRECTION_CONSTANTS.THRESHOLD);
+    return true;
+  }
+
+  console.log('✗ Moderate aggravation should not trigger insurrection with high threshold');
+  return false;
+}
+
+// Test 15: Aggravation decays when needs are met
+function testAggravationDecaysWhenNeedsMet() {
+  console.log('\n=== Test 15: Aggravation decays when needs are met ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  const empire = createEmpire('empire1', 'Test Empire', 60);
+  empire.stats = { population: 10000 };
+  state.empires = [empire];
+  const army = createArmy('army1', 'empire1', 'Test Army', 50, 60, 40);
+  army.mp = { current: 5000, max: 5000 };
+  army.manpower = 5000;
+  army.reinforcementRate = 100;
+  // No needs demand → needs are met → aggravation should decay
+  army.supply_state = {
+    needs_demand: {},
+    needs_fulfillment: {},
+    wants_demand: {},
+    wants_fulfillment: {},
+    received: {}
+  };
+  army.consumptionRules = [];
+  state.armies = [army];
+
+  const initialAggravation = army.aggravation;
+  replenishArmyManpower(state, [], []);
+
+  if (army.aggravation < initialAggravation) {
+    console.log(`✓ Aggravation decayed from ${initialAggravation} to ${army.aggravation.toFixed(2)} when needs are met`);
+    return true;
+  }
+
+  console.log(`✗ Aggravation should decay when needs are met (was ${initialAggravation}, now ${army.aggravation})`);
+  return false;
+}
+
+// Test 16: Wants deficit contributes aggravation at lower rate than needs
+function testWantsContributeAggravationAtLowerRate() {
+  console.log('\n=== Test 16: Wants deficit contributes aggravation at lower rate than needs ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  const empire = createEmpire('empire1', 'Test Empire', 60);
+  empire.stats = { population: 10000 };
+  state.empires = [empire];
+
+  // Army at full health (damageRatio=0 → needs aggravation gated out), but needs not met (so no decay)
+  const army = createArmy('army1', 'empire1', 'Wanting Army', 50, 60, 0);
+  army.mp = { current: 5000, max: 5000 };
+  army.manpower = 5000;
+  army.reinforcementRate = 100;
+  army.supply_state = {
+    needs_demand: { food: 10 },
+    needs_fulfillment: { food: 0 },
+    wants_demand: { luxuries: 10 },
+    wants_fulfillment: { luxuries: 0 },
+    received: {}
+  };
+  army.consumptionRules = [];
+  state.armies = [army];
+
+  replenishArmyManpower(state, [], []);
+
+  const wantsRate = ECONOMY_CONSTANTS.ARMY_WANTS_AGGRAVATION_BASE_PER_TICK;
+  const needsRate = ECONOMY_CONSTANTS.ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK;
+  const rateIsLower = wantsRate < needsRate;
+  const expectedAggravation = wantsRate; // full deficit (1.0) * wantsRate
+  const matchesExpected = Math.abs(army.aggravation - expectedAggravation) < 0.01;
+
+  if (army.aggravation > 0 && rateIsLower && matchesExpected) {
+    console.log(`✓ Wants deficit increased aggravation to ${army.aggravation.toFixed(2)} (expected ${expectedAggravation}, wants rate ${wantsRate} < needs rate ${needsRate})`);
+    return true;
+  }
+
+  console.log(`✗ Wants should contribute aggravation at lower rate than needs (aggravation: ${army.aggravation}, expected: ${expectedAggravation}, wantsRate: ${wantsRate}, needsRate: ${needsRate})`);
+  return false;
+}
+
+// Test 17: Wants deficit causes organization decay (performance impact)
+function testWantsDeficitCausesOrgDecay() {
+  console.log('\n=== Test 17: Wants deficit causes organization decay ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  const empire = createEmpire('empire1', 'Test Empire', 60);
+  empire.stats = { population: 10000 };
+  state.empires = [empire];
+
+  const army = createArmy('army1', 'empire1', 'Low Wants Army', 50, 80, 0);
+  army.mp = { current: 4000, max: 5000 };
+  army.manpower = 5000;
+  army.reinforcementRate = 100;
+  army.supply_state = {
+    needs_demand: {},
+    needs_fulfillment: {},
+    wants_demand: { luxuries: 10 },
+    wants_fulfillment: { luxuries: 0 },
+    received: {}
+  };
+  army.consumptionRules = [];
+  state.armies = [army];
+
+  const initialOrg = army.organization;
+  replenishArmyManpower(state, [], []);
+
+  if (army.organization < initialOrg) {
+    console.log(`✓ Wants deficit reduced organization from ${initialOrg} to ${army.organization.toFixed(2)}`);
+    return true;
+  }
+
+  console.log(`✗ Wants deficit should reduce organization (was ${initialOrg}, now ${army.organization})`);
+  return false;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -676,7 +818,11 @@ const results = {
   'Rebellion victory resolves and resets': testRebellionVictoryResetsAndResolves(),
   'Empire military modifiers increase damage': testEmpireMilitaryModifiersIncreaseDamage(),
   'Insurrection targeting uses hostile relations': testInsurrectionTargetingUsesRelations(),
-  'Insurrection only targets one empire': testInsurrectionOnlyTargetsSingleEmpire()
+  'Insurrection only targets one empire': testInsurrectionOnlyTargetsSingleEmpire(),
+  'Insurrection requires high aggravation': testInsurrectionRequiresHighAggravation(),
+  'Aggravation decays when needs are met': testAggravationDecaysWhenNeedsMet(),
+  'Wants contribute aggravation at lower rate': testWantsContributeAggravationAtLowerRate(),
+  'Wants deficit causes organization decay': testWantsDeficitCausesOrgDecay()
 };
 
 

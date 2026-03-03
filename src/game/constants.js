@@ -161,9 +161,13 @@ export const BATTLE_CONSTANTS = {
  * @property {number} SUPPLY_SHORTAGE_AGGRAVATION_INCREASE - Aggravation increase from supply shortage
  * @property {number} SCOURGE_FERVOR_GROWTH - Percentage growth of Scourge fervor per tick (2%)
  * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (2500:1)
+ * @property {number} ARMY_NEEDS_DEFICIT_EPSILON - Threshold below which needs deficit is considered effectively met
  * @property {number} ARMY_NEEDS_DAMAGE_GATE_EPSILON - MP delta required before army needs demand activates
  * @property {number} ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet needs while damaged
+ * @property {number} ARMY_WANTS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet wants (much lower than needs)
  * @property {number} ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK - Base fervor decay from unmet wants
+ * @property {number} ARMY_WANTS_ORG_DECAY_BASE_PER_TICK - Base organization decay from unmet wants (affects army performance)
+ * @property {number} ARMY_AGGRAVATION_DECAY_PER_TICK - Natural aggravation decay per tick when needs are met
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE - Base consumption (of demanded resources) needed to trigger +1 MP capacity; scales so growth ~every dozens of turns
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP - Extra threshold per sqrt(army MP) so larger armies need more stored consumption
  * @property {number} ARMY_GROWTH_MP_PER_TRIGGER - MP capacity added when consumption threshold is reached
@@ -177,9 +181,13 @@ export const ECONOMY_CONSTANTS = {
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
   SCOURGE_FERVOR_GROWTH: 0.02,
   NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500, // For every 2500 req, lose 1 cohesion
+  ARMY_NEEDS_DEFICIT_EPSILON: 0.01,
   ARMY_NEEDS_DAMAGE_GATE_EPSILON: 1,
   ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK: 3.0,
+  ARMY_WANTS_AGGRAVATION_BASE_PER_TICK: 0.5,
   ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK: 0.8,
+  ARMY_WANTS_ORG_DECAY_BASE_PER_TICK: 1.2,
+  ARMY_AGGRAVATION_DECAY_PER_TICK: 1.5,
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE: 110,
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP: 1.5,
   ARMY_GROWTH_MP_PER_TRIGGER: 1
@@ -199,7 +207,7 @@ export const ECONOMY_CONSTANTS = {
  * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
  */
 export const INSURRECTION_CONSTANTS = {
-  THRESHOLD: 20,
+  THRESHOLD: 70,
   APPROVAL_THRESHOLD: 35,
   APPROVAL_PRESSURE_THRESHOLD: 80,
   APPROVAL_PRESSURE_LOSS_PER_ARMY: 1,
