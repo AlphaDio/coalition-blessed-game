@@ -1,5 +1,5 @@
 import { getLogger } from '../../../modules/logger.js';
-import { RATIONING_CONSTANTS } from '../../constants.js';
+import { RATIONING_CONSTANTS, FULFILLMENT_CONSTANTS } from '../../constants.js';
 import { applyDemandCommodityMultiplier } from '../../economyBalance.js';
 import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../economyTick/ordersPhase.js';
 import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
@@ -292,34 +292,44 @@ function resolveSingleImprovementSustainment(state, improvement) {
   }
 
   const pendingNeeds = state.improvements.pendingSustainmentNeedsByImprovement?.[improvement.id] || {};
-  let allSatisfied = true;
+  let totalNeeded = 0;
+  let totalReceived = 0;
   const shortages = [];
 
   for (const [commodity, needed] of Object.entries(pendingNeeds)) {
     let remainingNeed = needed;
     if (needed <= 0) continue;
+    totalNeeded += needed;
 
     if (commodity !== 'requisition') {
       const fromReceipts = consumeSustainmentReceipts(state, empire.id, commodity, remainingNeed);
       remainingNeed -= fromReceipts;
+      totalReceived += needed - remainingNeed;
+    } else {
+      // Requisition is consumed fully or not; count as received if no remainder
+      totalReceived += needed;
     }
 
     if (remainingNeed > 0) {
-      allSatisfied = false;
       shortages.push(commodity);
     }
   }
 
+  // Compute overall sustainment fulfillment ratio (1.0 when nothing is needed)
+  const fulfillmentRatio = totalNeeded > 0 ? Math.min(1.0, totalReceived / totalNeeded) : 1.0;
+  const degradationThreshold = FULFILLMENT_CONSTANTS.IMPROVEMENT_DEGRADATION_FULFILLMENT_THRESHOLD;
+
   // Skip degradation checks during the grace tick after completion.
   const inGracePeriod = improvement.completedAtTick && (state.turn - improvement.completedAtTick) < 1;
   if (inGracePeriod) {
-    if (allSatisfied) {
+    if (fulfillmentRatio >= degradationThreshold) {
       improvement.ticksSinceSustained = 0;
     }
     return { log };
   }
 
-  if (allSatisfied) {
+  if (fulfillmentRatio >= degradationThreshold) {
+    // Sustainment is at or above the degradation threshold – reset unsustained counter
     improvement.ticksSinceSustained = 0;
 
     // Restore to ACTIVE if was DEGRADED
@@ -330,13 +340,14 @@ function resolveSingleImprovementSustainment(state, improvement) {
       logger.info(`Improvement restored: ${improvement.name}`);
     }
   } else {
+    // Sustainment is critically low – accumulate degradation ticks
     improvement.ticksSinceSustained = (improvement.ticksSinceSustained || 0) + 1;
     if (improvement.state !== 'DEGRADED') {
       if (improvement.ticksSinceSustained >= IMPROVEMENT_SUSTAINMENT_TICKS) {
         improvement.state = 'DEGRADED';
         improvement.degradedSince = state.turn;
-        log.push(`{yellow-fg}DEGRADED:{/yellow-fg} ${improvement.name} (Missing: ${shortages.join(', ')}, ${improvement.ticksSinceSustained} ticks)`);
-        logger.warn(`Improvement degraded: ${improvement.name} - shortages: ${shortages.join(', ')}, ${improvement.ticksSinceSustained} ticks without sustainment`);
+        log.push(`{yellow-fg}DEGRADED:{/yellow-fg} ${improvement.name} (Sustainment: ${(fulfillmentRatio * 100).toFixed(0)}%, Missing: ${shortages.join(', ')}, ${improvement.ticksSinceSustained} ticks)`);
+        logger.warn(`Improvement degraded: ${improvement.name} - fulfillment: ${(fulfillmentRatio * 100).toFixed(0)}%, shortages: ${shortages.join(', ')}, ${improvement.ticksSinceSustained} ticks without sufficient sustainment`);
       }
     }
   }

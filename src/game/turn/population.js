@@ -14,7 +14,8 @@ function getEmpirePopulationGrowthRate(state, empire, emergencyPopulationGrowth)
     toFiniteNumber(state?.coalitionModifiers?.population_growth, 0) +
     toFiniteNumber(emergencyPopulationGrowth, 0) +
     getEmpireTechModifier(empire, 'population_growth') +
-    getEmpireImprovementModifier(state, empire.id, 'population_growth')
+    getEmpireImprovementModifier(state, empire.id, 'population_growth') +
+    toFiniteNumber(empire.stats?.fulfillment_growth_modifier, 0)
   );
 }
 

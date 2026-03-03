@@ -495,6 +495,58 @@ export const SCOURGE_MODIFIER_CONSTANTS = {
 };
 
 /**
+ * Empire needs/wants fulfillment effects on game state.
+ *
+ * Needs use a steep curve so that low fulfillment has drastic consequences; wants
+ * use a gentler curve so that partial fulfillment is tolerable but rewarding to
+ * improve.  Both are evaluated every turn and applied as additive modifiers to
+ * empire approval and the empire's effective population growth rate.
+ *
+ * Needs curve (approval & pop-growth penalty below NEEDS_NEUTRAL_THRESHOLD):
+ *   penalty = max_penalty × ((threshold - fulfillment) / threshold) ^ NEEDS_CURVE_POWER
+ * Needs bonus above the threshold scales linearly up to NEEDS_MAX_BONUS.
+ *
+ * Wants curve (approval & pop-growth effect, centred at WANTS_NEUTRAL):
+ *   effect = (fulfillment - WANTS_NEUTRAL) * 2 * wants_max_effect   (clamped)
+ *
+ * Improvement sustainment degradation threshold:
+ *   An improvement only starts accumulating unsustained ticks when its
+ *   sustainment fulfillment ratio falls below
+ *   IMPROVEMENT_DEGRADATION_FULFILLMENT_THRESHOLD.
+ */
+export const FULFILLMENT_CONSTANTS = {
+  // --- Needs ---
+  // Fulfillment ratio below which penalties begin (70%)
+  NEEDS_NEUTRAL_THRESHOLD: 0.70,
+  // Power applied to the penalty ratio (steeper = harsher at very low values)
+  NEEDS_CURVE_POWER: 1.8,
+  // Maximum approval loss per tick at 0% needs fulfillment
+  NEEDS_MAX_APPROVAL_PENALTY: 2.5,
+  // Maximum population-growth-rate penalty per tick at 0% needs fulfillment
+  NEEDS_MAX_GROWTH_PENALTY: 0.004,
+  // Small approval bonus at 100% needs fulfillment
+  NEEDS_MAX_APPROVAL_BONUS: 0.5,
+  // Small population-growth bonus at 100% needs fulfillment
+  NEEDS_MAX_GROWTH_BONUS: 0.0005,
+
+  // --- Wants ---
+  // Fulfillment ratio at which wants have no effect (50%)
+  WANTS_NEUTRAL: 0.50,
+  // Maximum approval bonus per tick at 100% wants fulfillment
+  WANTS_MAX_APPROVAL_BONUS: 1.5,
+  // Maximum population-growth bonus per tick at 100% wants fulfillment
+  WANTS_MAX_GROWTH_BONUS: 0.002,
+  // Mild approval penalty at 0% wants fulfillment (half of bonus)
+  WANTS_MAX_APPROVAL_PENALTY: 0.75,
+  // Mild population-growth penalty at 0% wants fulfillment
+  WANTS_MAX_GROWTH_PENALTY: 0.001,
+
+  // --- Improvement sustainment ---
+  // Fulfillment ratio below which an improvement starts accumulating degradation ticks
+  IMPROVEMENT_DEGRADATION_FULFILLMENT_THRESHOLD: 0.20
+};
+
+/**
  * Valid slider values for mission allocation.
  * Used by server validation, mission logic, and UI components.
  * -1 = withdraw/oppose, 0 = neutral, 1/2/5 = increasing commitment levels

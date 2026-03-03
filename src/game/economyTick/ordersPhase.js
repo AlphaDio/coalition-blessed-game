@@ -48,10 +48,18 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
       empire.economy_spend = { needs: 0, wants: 0, order_fees: 0 };
     }
 
+    // Reset supply state for this tick
+    if (!empire.supply_state) {
+      empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
+    }
+    empire.supply_state.needs_demand = {};
+    empire.supply_state.received = {};
+
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
       const rawNeeded = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       if (totalNeeded > 0) {
+        empire.supply_state.needs_demand[commodity] = totalNeeded;
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice;
 
@@ -68,10 +76,17 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
+    // Ensure supply state exists (needs phase may not have created it for wants-only empires)
+    if (!empire.supply_state) {
+      empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
+    }
+    empire.supply_state.wants_demand = {};
+
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
       const rawWanted = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       if (totalWanted > 0) {
+        empire.supply_state.wants_demand[commodity] = totalWanted;
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice;
 
