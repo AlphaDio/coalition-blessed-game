@@ -161,6 +161,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} SUPPLY_SHORTAGE_AGGRAVATION_INCREASE - Aggravation increase from supply shortage
  * @property {number} SCOURGE_FERVOR_GROWTH - Percentage growth of Scourge fervor per tick (2%)
  * @property {number} NEGATIVE_REQUISITION_COHESION_DIVISOR - Negative requisition to cohesion loss ratio (2500:1)
+ * @property {number} ARMY_NEEDS_DEFICIT_EPSILON - Threshold below which needs deficit is considered effectively met
  * @property {number} ARMY_NEEDS_DAMAGE_GATE_EPSILON - MP delta required before army needs demand activates
  * @property {number} ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet needs while damaged
  * @property {number} ARMY_WANTS_AGGRAVATION_BASE_PER_TICK - Base aggravation gain from unmet wants (much lower than needs)
@@ -180,6 +181,7 @@ export const ECONOMY_CONSTANTS = {
   SUPPLY_SHORTAGE_AGGRAVATION_INCREASE: 5,
   SCOURGE_FERVOR_GROWTH: 0.02,
   NEGATIVE_REQUISITION_COHESION_DIVISOR: 2500, // For every 2500 req, lose 1 cohesion
+  ARMY_NEEDS_DEFICIT_EPSILON: 0.01,
   ARMY_NEEDS_DAMAGE_GATE_EPSILON: 1,
   ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK: 3.0,
   ARMY_WANTS_AGGRAVATION_BASE_PER_TICK: 0.5,

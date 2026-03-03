@@ -298,7 +298,7 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       : 0;
     const totalAggravationGain = needsAggravationGain + wantsAggravationGain;
 
-    const needsMet = !supplySignals.needsActive || supplySignals.needsDeficit < 0.01;
+    const needsMet = !supplySignals.needsActive || supplySignals.needsDeficit < ECONOMY_CONSTANTS.ARMY_NEEDS_DEFICIT_EPSILON;
     const aggravationDecay = needsMet
       ? ECONOMY_CONSTANTS.ARMY_AGGRAVATION_DECAY_PER_TICK
       : 0;

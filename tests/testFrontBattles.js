@@ -749,13 +749,15 @@ function testWantsContributeAggravationAtLowerRate() {
   const wantsRate = ECONOMY_CONSTANTS.ARMY_WANTS_AGGRAVATION_BASE_PER_TICK;
   const needsRate = ECONOMY_CONSTANTS.ARMY_NEEDS_AGGRAVATION_BASE_PER_TICK;
   const rateIsLower = wantsRate < needsRate;
+  const expectedAggravation = wantsRate; // full deficit (1.0) * wantsRate
+  const matchesExpected = Math.abs(army.aggravation - expectedAggravation) < 0.01;
 
-  if (army.aggravation > 0 && rateIsLower) {
-    console.log(`✓ Wants deficit increased aggravation to ${army.aggravation.toFixed(2)} (wants rate ${wantsRate} < needs rate ${needsRate})`);
+  if (army.aggravation > 0 && rateIsLower && matchesExpected) {
+    console.log(`✓ Wants deficit increased aggravation to ${army.aggravation.toFixed(2)} (expected ${expectedAggravation}, wants rate ${wantsRate} < needs rate ${needsRate})`);
     return true;
   }
 
-  console.log(`✗ Wants should contribute aggravation at lower rate than needs (aggravation: ${army.aggravation}, wantsRate: ${wantsRate}, needsRate: ${needsRate})`);
+  console.log(`✗ Wants should contribute aggravation at lower rate than needs (aggravation: ${army.aggravation}, expected: ${expectedAggravation}, wantsRate: ${wantsRate}, needsRate: ${needsRate})`);
   return false;
 }
 
