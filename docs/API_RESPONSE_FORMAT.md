@@ -209,6 +209,59 @@ All API endpoints follow a standardized response format for consistency and bett
 
 ## Endpoint-Specific Responses
 
+### GET /api/game/armies
+
+**Success Response:**
+- Returns a list of all active (non-synthetic) coalition armies with panel-ready data
+- No `notification` field
+- Armies include empire info, manpower, morale, combat stats, supply state, and active battle status
+
+```json
+{
+  "success": true,
+  "data": {
+    "armies": [
+      {
+        "id": "army_1",
+        "name": "1st Stellar Battle Fleet",
+        "empire": { "id": "empire_1", "name": "Stellar Federation" },
+        "manpower": { "current": 9500, "max": 10000, "percent": 95 },
+        "morale": { "current": 80, "max": 100 },
+        "stats": {
+          "organization": 76,
+          "fervor": 52,
+          "aggravation": 42,
+          "command": 58
+        },
+        "combat": {
+          "dmgPerUnitMP": 0.9,
+          "dmgPerTickMO": 2.2,
+          "protection": 0.33,
+          "resolve": 0.43,
+          "killRate": 0.08
+        },
+        "supply": {
+          "needsFulfillment": { "super_alloys": 0.9, "plasma_fuel": 0.85 },
+          "wantsFulfillment": { "rare_gases": 0.7 }
+        },
+        "battle": null
+      }
+    ]
+  },
+  "timestamp": 1674234567890
+}
+```
+
+- `battle` is `null` when the army is not in a battle, or an object with:
+  - `frontId` - battle front identifier
+  - `opponentArmyId` - ID of the opposing army
+  - `opponentName` - Name of the opposing army
+  - `battlefieldSize` - Size of the battlefield
+  - `moraleBroken` - Whether this army's morale is broken
+
+**Error Responses:**
+- `INVALID_GAME_STATE` - game is not initialized
+
 ### GET /api/game/state
 
 **Success Response:**
