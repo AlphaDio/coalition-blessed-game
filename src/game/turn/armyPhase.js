@@ -135,6 +135,33 @@ function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logg
   }
 }
 
+function processArmyPassiveGrowth(army, totalConsumed, inBattle, log, logger) {
+  army.growthConsumptionPool = Math.max(0, Number(army.growthConsumptionPool) || 0) + totalConsumed;
+
+  if (inBattle) return;
+
+  const currentMax = army.mp?.max || army.manpower || 0;
+  const threshold = ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE +
+    ECONOMY_CONSTANTS.ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP * Math.sqrt(currentMax);
+
+  if (threshold <= 0) return;
+
+  const hits = Math.floor(army.growthConsumptionPool / threshold);
+  if (hits <= 0) return;
+
+  army.growthConsumptionPool -= hits * threshold;
+  const mpGain = hits * ECONOMY_CONSTANTS.ARMY_GROWTH_MP_PER_TRIGGER;
+
+  army.mp = army.mp || { current: 0, max: 0 };
+  army.mp.current = Math.max(0, (army.mp.current || 0) + mpGain);
+  army.mp.max = (army.mp.max || 0) + mpGain;
+  army.manpower = Math.max(army.manpower || 0, army.mp.max);
+
+  const msg = `${army.name}: passive growth +${mpGain} MP (${hits} hits, threshold ${threshold.toFixed(1)}, pool ${army.growthConsumptionPool.toFixed(1)})`;
+  log.push(msg);
+  logger.info(msg);
+}
+
 function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log) {
   const logger = getLogger();
 
@@ -148,6 +175,7 @@ function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log
     }
 
     const receivedByCommodity = army.supply_state?.received || {};
+    let totalConsumedThisTurn = 0;
 
     for (const rule of army.consumptionRules) {
       const { commodity, threshold } = rule;
@@ -158,6 +186,7 @@ function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log
       }
 
       const consumedThisTurn = Math.max(0, Number(receivedByCommodity[commodity] || 0));
+      totalConsumedThisTurn += consumedThisTurn;
       const existingPool = Math.max(0, Number(army.consumptionEffectPools[commodity] || 0));
       const updatedPool = existingPool + consumedThisTurn;
 
@@ -173,6 +202,8 @@ function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log
       if (hits <= 0) continue;
       applyArmyConsumptionEffect(state, army, rule, spentFromPool, hits, log, logger);
     }
+
+    processArmyPassiveGrowth(army, totalConsumedThisTurn, armiesInBattle.has(army.id), log, logger);
   });
 }
 
