@@ -81,6 +81,7 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
       empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
     }
     empire.supply_state.wants_demand = {};
+    empire.supply_state.received = {};
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
       const rawWanted = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;

@@ -306,8 +306,8 @@ function resolveSingleImprovementSustainment(state, improvement) {
       remainingNeed -= fromReceipts;
       totalReceived += needed - remainingNeed;
     } else {
-      // Requisition is consumed fully or not; count as received if no remainder
-      totalReceived += needed;
+      // Requisition needs are not fulfilled here; they remain as shortages and do not
+      // contribute to totalReceived until actual payment/fulfillment is tracked elsewhere.
     }
 
     if (remainingNeed > 0) {
