@@ -2,6 +2,7 @@ import { consumeRequisition } from '../economy.js';
 import { processEconomyTick } from '../economyTick.js';
 import { getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
 import { SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
+import { clampApproval } from '../cohesion.js';
 import { applyPopulationDelta } from '../populationUtils.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { getLogger } from '../../modules/logger.js';
@@ -140,11 +141,12 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
   }
 
   if (effect.type === 'empire_approval_bonus') {
-    empire.stats.approvalBonus = (empire.stats.approvalBonus || 0) + scaledAmount;
+    const prevApproval = empire.approval || 0;
+    empire.approval = clampApproval((empire.approval || 0) + scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} approval bonus (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, approval ${prevApproval.toFixed(1)} -> ${empire.approval.toFixed(1)} (+${(empire.approval - prevApproval).toFixed(3)}, ${hits} hits)`
     );
     return;
   }

@@ -39,17 +39,17 @@ declares:
         sentient_cores: 0.00025
     consumption:
       quantum_circuits:
-        threshold: 4200
+        threshold: 45
         effect:
           type: army_damage_bonus
-          amount: 0.04
+          amount: 0.08
       nano_machines:
-        threshold: 18
+        threshold: 12
         effect:
           type: mp_bonus
-          amount: 1.5
+          amount: 2
       sentient_cores:
-        threshold: 6000
+        threshold: 40
         effect:
           type: coalition_intel_bonus
-          amount: 1
+          amount: 2

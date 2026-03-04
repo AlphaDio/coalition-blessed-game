@@ -38,12 +38,12 @@ declares:
         genomes: 0.00035
     consumption:
       psycho_implants:
-        threshold: 18
+        threshold: 12
         effect:
           type: mp_bonus
-          amount: 1.5
+          amount: 2
       genomes:
-        threshold: 5000
+        threshold: 80
         effect:
           type: army_damage_bonus
-          amount: 0.03
+          amount: 0.08

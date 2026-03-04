@@ -86,7 +86,7 @@ function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logg
     army.mp.current = Math.max(0, (army.mp.current || 0) + mpGain);
     army.mp.max = (army.mp.max || 0) + mpGain;
     army.manpower = Math.max(army.manpower || 0, army.mp.max);
-    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${mpGain.toFixed(3)} MP (${prevCurrent}/${prevMax} -> ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)}, ${hits} hits, x${growthMultiplier.toFixed(2)} growth, x${populationMultiplier.toFixed(2)} pop, x${threatPacingMultiplier.toFixed(2)} threat pace)`;
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${mpGain.toFixed(3)} MP (${prevCurrent}/${prevMax} -> ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)}, ${hits} hits, x${growthMultiplier.toFixed(2)} growth, x${populationMultiplier.toFixed(2)} pop, x${threatPacingMultiplier.toFixed(2)} baseline pace)`;
     log.push(msg);
     logger.info(msg);
     return;
@@ -165,7 +165,7 @@ function processArmyPassiveGrowth(state, army, totalConsumed, inBattle, log, log
   army.mp.max = (army.mp.max || 0) + mpGain;
   army.manpower = Math.max(army.manpower || 0, army.mp.max);
 
-  const msg = `${army.name}: passive growth +${mpGain.toFixed(1)} MP (${hits} hits, threshold ${threshold.toFixed(1)}, pool ${army.growthConsumptionPool.toFixed(1)}, x${populationMultiplier.toFixed(2)} pop, x${threatPacingMultiplier.toFixed(2)} threat pace)`;
+  const msg = `${army.name}: passive growth +${mpGain.toFixed(1)} MP (${hits} hits, threshold ${threshold.toFixed(1)}, pool ${army.growthConsumptionPool.toFixed(1)}, x${populationMultiplier.toFixed(2)} pop, x${threatPacingMultiplier.toFixed(2)} baseline pace)`;
   log.push(msg);
   logger.info(msg);
 }

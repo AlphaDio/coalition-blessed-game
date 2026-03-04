@@ -49,56 +49,56 @@ declares:
       consumption:
         # Synaptic Swarm has a strong bonus to biomass consumption
         biomass:
-          threshold: 500
+          threshold: 300
           effect:
             type: population_percent
-            amount: 1
+            amount: 2.5
         ancient_relics:
-          threshold: 100
+          threshold: 60
           effect:
             type: army_fervor_bonus
-            amount: 10
+            amount: 15
         super_alloys:
-          threshold: 1000
+          threshold: 600
           effect:
             type: army_protection_bonus
-            amount: 0.1
+            amount: 0.15
         psycho_implants:
-          threshold: 100
+          threshold: 60
           effect:
             type: army_resolve_bonus
-            amount: 0.1
+            amount: 0.15
         sentient_cores:
-          threshold: 24
+          threshold: 16
           effect:
             type: coalition_intel_bonus
-            amount: 1
+            amount: 1.5
         wormhole_reactors:
-          threshold: 50
+          threshold: 30
           effect:
             type: army_kill_rate_bonus
-            amount: 0.05
+            amount: 0.08
         plasma_fuel:
-          threshold: 500
+          threshold: 350
           effect:
             type: industrial_output_bonus
-            amount: 0.05
+            amount: 0.08
         rare_gases:
-          threshold: 200
+          threshold: 120
           effect:
             type: empire_approval_bonus
-            amount: 1
+            amount: 1.5
         # unique bonus to research speed through genomes consumption
         genomes:
-          threshold: 500
+          threshold: 250
           effect:
             type: research_speed_bonus
-            amount: 0.01
+            amount: 0.08
         anti_grav_modules:
-          threshold: 100
+          threshold: 60
           effect:
             type: coalition_construction_bonus
-            amount: 1
+            amount: 1.5
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15

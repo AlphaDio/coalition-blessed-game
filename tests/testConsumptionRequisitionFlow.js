@@ -466,9 +466,10 @@ console.log('=== Test 7: Army MP Thresholds Stay Reachable While Scaling Thresho
   const minMpThreshold = mpThresholds.length > 0 ? Math.min(...mpThresholds) : 0;
   const maxMpThreshold = mpThresholds.length > 0 ? Math.max(...mpThresholds) : 0;
   const minScalingThreshold = scalingThresholds.length > 0 ? Math.min(...scalingThresholds) : 0;
+  const maxScalingThreshold = scalingThresholds.length > 0 ? Math.max(...scalingThresholds) : 0;
 
-  assert(minMpThreshold >= 15 && maxMpThreshold <= 22, 'Army MP growth thresholds stay in a reachable medium range');
-  assert(minScalingThreshold >= 3600, 'Army non-MP scaling thresholds stay in the high long-tail range');
+  assert(minMpThreshold >= 10 && maxMpThreshold <= 14, 'Army MP growth thresholds stay in a fast, reachable range');
+  assert(minScalingThreshold >= 30 && maxScalingThreshold <= 120, 'Army non-MP scaling thresholds stay in a live but slower range');
 }
 console.log();
 
@@ -508,7 +509,31 @@ console.log('=== Test 8: Sentient Cores Consumption Generates Intel ===');
 }
 console.log();
 
-console.log('=== Test 9: Population Growth Uses A Unified Capped Pipeline ===');
+console.log('=== Test 9: Approval Consumption Effects Apply Immediately ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const empire = createEmpireShell('empire_approval', 50, 1000);
+  empire.consumptionRules = [{
+    commodity: 'rare_gases',
+    threshold: 12,
+    effect: { type: 'empire_approval_bonus', amount: 1.5 }
+  }];
+
+  const state = {
+    consumptionEffectPools: {},
+    empires: [empire],
+    armies: []
+  };
+
+  recordConsumption('rare_gases', 24, 'empire_approval', CONSUMPTION_SOURCES.EMPIRE_WANTS);
+  processEmpireStockpileConsumption(state, []);
+
+  assert(approxEqual(empire.approval, 53), 'Approval consumption effects directly raise approval when the threshold is hit');
+}
+console.log();
+
+console.log('=== Test 10: Population Growth Uses A Unified Capped Pipeline ===');
 {
   const state = {
     coalitionModifiers: { population_growth: 0.003 },

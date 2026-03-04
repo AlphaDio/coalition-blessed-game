@@ -54,42 +54,42 @@ declares:
           wormhole_reactors: 0.0001
       consumption:
         sentient_cores:
-          threshold: 24
+          threshold: 12
           effect:
             type: coalition_intel_bonus
-            amount: 1
+            amount: 2
         wormhole_reactors:
-          threshold: 50
+          threshold: 24
           effect:
             type: army_kill_rate_bonus
-            amount: 0.05
+            amount: 0.1
         plasma_fuel:
-          threshold: 500
+          threshold: 350
           effect:
             type: industrial_output_bonus
-            amount: 0.05
+            amount: 0.08
         rare_gases:
-          threshold: 200
+          threshold: 120
           effect:
             type: empire_approval_bonus
-            amount: 1
+            amount: 1.5
         # Quantum Collective has a strong bonus to research speed through Quantum Circuits
         quantum_circuits:
-          threshold: 100
+          threshold: 50
           effect:
             type: research_speed_bonus
-            amount: 0.2
+            amount: 0.3
         # Quantum Collective has a strong bonus to defense through super alloys 
         super_alloys:
-          threshold: 1000
+          threshold: 600
           effect:
             type: army_protection_bonus
-            amount: 0.2
+            amount: 0.25
         anti_grav_modules:
-          threshold: 100
+          threshold: 50
           effect:
             type: coalition_construction_bonus
-            amount: 1
+            amount: 1.5
     tags: ["Mechanical", "Warped"]
     modifiers:
       intensity: 1.0

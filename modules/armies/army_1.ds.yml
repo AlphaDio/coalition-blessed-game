@@ -39,17 +39,17 @@ declares:
         rare_gases: 0.0009
     consumption:
       super_alloys:
-        threshold: 15
+        threshold: 10
         effect:
           type: mp_bonus
-          amount: 1
+          amount: 1.5
       plasma_fuel:
-        threshold: 4200
+        threshold: 40
         effect:
           type: replenishment_multiplier_bonus
-          amount: 0.05
+          amount: 0.08
       rare_gases:
-        threshold: 5200
+        threshold: 120
         effect:
           type: replenishment_bonus
-          amount: 10
+          amount: 12
