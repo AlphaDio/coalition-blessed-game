@@ -208,7 +208,7 @@ export const ECONOMY_CONSTANTS = {
  * @property {number} COOLDOWN_TICKS - Minimum ticks after an insurrection before another can trigger
  */
 export const INSURRECTION_CONSTANTS = {
-  THRESHOLD: 70,
+  THRESHOLD: 80,
   APPROVAL_THRESHOLD: 35,
   APPROVAL_PRESSURE_THRESHOLD: 80,
   APPROVAL_PRESSURE_LOSS_PER_ARMY: 1,

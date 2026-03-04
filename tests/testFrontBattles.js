@@ -659,13 +659,13 @@ function testInsurrectionOnlyTargetsSingleEmpire() {
 
 // Test 14: Insurrection threshold requires high aggravation
 function testInsurrectionRequiresHighAggravation() {
-  console.log('\n=== Test 14: Insurrection requires high aggravation (threshold >= 70) ===');
+  console.log('\n=== Test 14: Insurrection requires high aggravation (threshold >= 80) ===');
 
   const state = createGameState(12345);
   state.turn = 1;
   state.insurrections = [];
   state.empires = [createEmpire('empire1', 'Crisis Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5)];
-  // Aggravation at 50 - above old threshold of 20, but below new threshold of 70
+  // Aggravation at 50 - below threshold of 80
   state.armies = [
     createArmy('army1', 'empire1', 'Moderately Aggravated Army', 50, 60, 50)
   ];
@@ -840,6 +840,35 @@ function testInsurrectionCooldownPreventsSpam() {
   return true;
 }
 
+// Test 19: Same-tick approval pressure does not enable immediate rebellion
+function testSameTickPressureDoesNotEnableRebellion() {
+  console.log('\n=== Test 19: Same-tick approval pressure does not enable immediate rebellion ===');
+
+  const state = createGameState(12345);
+  state.turn = 1;
+  state.insurrections = [];
+  // Approval just above threshold (36 > 35)
+  state.empires = [createEmpire('empire1', 'Borderline Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD + 1)];
+  // Army with high aggravation that will cause approval pressure
+  state.armies = [
+    createArmy('army1', 'empire1', 'Pressuring Army', 50, 60, INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD + 10)
+  ];
+
+  checkInsurrections(state);
+
+  const empire = state.empires[0];
+  const pressureApplied = empire.approval < INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD + 1;
+  const noInsurrection = state.insurrections.length === 0;
+
+  if (noInsurrection && pressureApplied) {
+    console.log('✓ Same-tick approval pressure did not enable immediate rebellion (approval was above threshold before pressure)');
+    return true;
+  }
+
+  console.log('✗ Same-tick pressure should not enable immediate rebellion');
+  return false;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -865,7 +894,8 @@ const results = {
   'Aggravation decays when needs are met': testAggravationDecaysWhenNeedsMet(),
   'Wants contribute aggravation at lower rate': testWantsContributeAggravationAtLowerRate(),
   'Wants deficit causes organization decay': testWantsDeficitCausesOrgDecay(),
-  'Insurrection cooldown prevents spam': testInsurrectionCooldownPreventsSpam()
+  'Insurrection cooldown prevents spam': testInsurrectionCooldownPreventsSpam(),
+  'Same-tick pressure does not enable immediate rebellion': testSameTickPressureDoesNotEnableRebellion()
 };
 
 
