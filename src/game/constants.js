@@ -171,6 +171,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE - Base consumption (of demanded resources) needed to trigger +1 MP capacity; scales so growth ~every dozens of turns
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP - Extra threshold per sqrt(army MP) so larger armies need more stored consumption
  * @property {number} ARMY_GROWTH_MP_PER_TRIGGER - MP capacity added when consumption threshold is reached
+ * @property {number} ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER - Flat pacing multiplier for army MP growth from consumption (80% of prior defensive-recon baseline)
  */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
@@ -190,7 +191,8 @@ export const ECONOMY_CONSTANTS = {
   ARMY_AGGRAVATION_DECAY_PER_TICK: 0.4,
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE: 110,
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP: 1.5,
-  ARMY_GROWTH_MP_PER_TRIGGER: 3
+  ARMY_GROWTH_MP_PER_TRIGGER: 3,
+  ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8
 };
 
 /**
@@ -593,6 +595,14 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
  * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
  * @property {number} MISSION_INTEL_PER_REQUISITION - Intel gained per requisition diverted into mission budget
+ * @property {number} PRE_ATTACK_DISRUPT_COST - Requisition cost for the defensive pre-strike option
+ * @property {number} PRE_ATTACK_DISRUPT_THREAT_DELTA - Threat swing for the defensive pre-strike option
+ * @property {number} PRE_ATTACK_SAFE_COST - Requisition cost for the recon pre-strike option
+ * @property {number} PRE_ATTACK_SAFE_THREAT_DELTA - Threat swing for the recon pre-strike option
+ * @property {number} PRE_ATTACK_SAFE_INTEL - Intel gained from the recon pre-strike option
+ * @property {number} PRE_ATTACK_ESCALATE_THREAT_DELTA - Threat swing for the aggressive pre-strike option
+ * @property {number} PRE_ATTACK_ESCALATE_REQUISITION - Requisition gained from the aggressive pre-strike option
+ * @property {number} PRE_ATTACK_ESCALATE_GLORY - Glory gained from the aggressive pre-strike option
  * @property {number} DEEP_MISSION_THRESHOLD_BASE - Base mission meter required for the first Deep Mission (100)
  * @property {number} DEEP_MISSION_THRESHOLD_GROWTH_RATE - Permanent threshold growth after each Deep Mission (15%)
  * @property {number} DEEP_STRIKE_MP_PCT - Military power percentage for deep strikes (50%)
@@ -618,6 +628,14 @@ export const SCOURGE_MISSION_CONSTANTS = {
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
   MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
   MISSION_INTEL_PER_REQUISITION: 0.025,
+  PRE_ATTACK_DISRUPT_COST: 40,
+  PRE_ATTACK_DISRUPT_THREAT_DELTA: -4,
+  PRE_ATTACK_SAFE_COST: 25,
+  PRE_ATTACK_SAFE_THREAT_DELTA: 1,
+  PRE_ATTACK_SAFE_INTEL: 1.5,
+  PRE_ATTACK_ESCALATE_THREAT_DELTA: 5,
+  PRE_ATTACK_ESCALATE_REQUISITION: 35,
+  PRE_ATTACK_ESCALATE_GLORY: 6,
   DEEP_MISSION_THRESHOLD_BASE: 140,
   DEEP_MISSION_THRESHOLD_GROWTH_RATE: 0.2,
   DEEP_STRIKE_MP_PCT: 0.5,

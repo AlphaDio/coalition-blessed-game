@@ -21,6 +21,7 @@ import { processImprovementsTick, processImprovementSustainmentPostMarket } from
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
 import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { applyBasePopulationGrowth } from '../src/game/turn/population.js';
+import { SCOURGE_MISSION_CONSTANTS } from '../src/game/constants.js';
 import { createSampleContent } from '../src/game/content.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
@@ -401,7 +402,7 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
 
   assert(approxEqual(army.consumptionMpGainMultiplier, 1.25), 'Army resource thresholds can increase future MP growth from consumption');
   assert(approxEqual(army.consumptionDamageAdd, 0.05), 'Army resource thresholds can add persistent army damage');
-  assert(approxEqual(army.mp.current, 1125) && approxEqual(army.mp.max, 1125), 'Direct MP gain respects the accumulated army consumption growth multiplier');
+  assert(approxEqual(army.mp.current, 1100) && approxEqual(army.mp.max, 1100), 'Direct MP gain uses the fixed 80% baseline pacing multiplier');
   assert((army.consumptionEffectPools?.rare_gases || 0) === 0, 'Army consumption pool spends exact threshold hits without phantom carryover');
 
   const populousArmy = createArmy('army_populous', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
@@ -420,7 +421,28 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   populousState.empires[0].stats.population = 100000;
 
   replenishArmyManpower(populousState, [], []);
-  assert(populousArmy.mp.current > 1125, 'Higher population increases army MP gains from consumption');
+  assert(populousArmy.mp.current > 1100, 'Higher population increases army MP gains from consumption');
+
+  const highThreatArmy = createArmy('army_high_threat', 'empire_3', 'High Threat Army', 50, 60, 0, 50, 50, 1000);
+  highThreatArmy.consumptionRules = [{
+    commodity: 'super_alloys',
+    threshold: 4,
+    effect: { type: 'mp_bonus', amount: 2 }
+  }];
+  highThreatArmy.supply_state.received = { super_alloys: 4 };
+
+  const highThreatState = {
+    coalitionIntel: 0,
+    coalitionThreat: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA + 200,
+    empires: [createEmpireShell('empire_3', 50, 1000)],
+    armies: [highThreatArmy]
+  };
+
+  replenishArmyManpower(highThreatState, [], []);
+  assert(
+    approxEqual(highThreatArmy.mp.current, 1080) && approxEqual(highThreatArmy.mp.max, 1080),
+    'Army MP growth no longer changes with Coalition Threat and stays on the fixed baseline pace'
+  );
 }
 console.log();
 

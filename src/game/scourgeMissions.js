@@ -5,9 +5,24 @@ import { applyCoalitionIntel } from './scourgePrediction.js';
 import { getLogger } from '../modules/logger.js';
 
 const PRE_ATTACK_EFFECTS = {
-  disrupt: { threatDelta: -3, severityDelta: 0, cost: 60 },  // 0 = do not increase (sabotage never reduces except Deep "Sabotage Infrastructure")
-  safe: { threatDelta: 2, severityDelta: 1, cost: 90 },
-  escalate: { threatDelta: 6, severityDelta: 2, cost: 0 }
+  disrupt: {
+    threatDelta: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_DISRUPT_THREAT_DELTA,
+    severityDelta: 0,
+    cost: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_DISRUPT_COST
+  },  // 0 = do not increase (sabotage never reduces except Deep "Sabotage Infrastructure")
+  safe: {
+    threatDelta: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA,
+    severityDelta: 1,
+    cost: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_COST,
+    intelGain: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL
+  },
+  escalate: {
+    threatDelta: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_THREAT_DELTA,
+    severityDelta: 2,
+    cost: 0,
+    requisitionGain: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_REQUISITION,
+    gloryGain: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_GLORY
+  }
 };
 
 const DEEP_MISSION_NAMES = [
@@ -101,19 +116,19 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
         id: 'disrupt',
         text: 'Disrupt the Scourge',
         description: 'Send saboteurs to delay the Scourge buildup. Prevents this modifier from increasing this attack, giving the Coalition time to catch up. Lowers Scourge threat but requires significant resources.',
-        effects: 'Cost: 60 requisition | Threat: -3 | Modifier: no increase this attack'
+        effects: `Cost: ${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_DISRUPT_COST} requisition | Threat: ${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_DISRUPT_THREAT_DELTA} | Modifier: no increase this attack`
       },
       {
         id: 'safe',
         text: 'Defensive Recon',
-        description: 'Deploy scouts to gather intelligence while maintaining safe distance. Increases modifier severity but provides valuable positioning data.',
-        effects: 'Cost: 90 requisition | Threat: +2 | Modifier severity: +1'
+        description: 'Deploy scouts to gather intelligence while maintaining safe distance. Slightly strengthens the enemy adaptation, but yields actionable intel for the Coalition.',
+        effects: `Cost: ${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_COST} requisition | Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA} | Modifier severity: +1`
       },
       {
         id: 'escalate',
         text: 'Aggressive Engagement',
         description: 'Launch a bold strike to seize resources and glory. High risk operation that emboldens the enemy but yields immediate rewards.',
-        effects: 'Gain: +60 requisition, +10 glory | Threat: +6 | Modifier severity: +2'
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_REQUISITION} requisition, +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_GLORY} glory | Threat: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_THREAT_DELTA} | Modifier severity: +2`
       }
     ]
   };
@@ -210,18 +225,28 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
 
     if (choice.id === 'disrupt') {
       log.push(`Saboteurs delayed Scourge buildup - "${modifier.name}" did not increase (severity unchanged)`);
-      log.push(`Coalition threat decreased by 3 (now ${Math.round(state.coalitionThreat)})`);
+      log.push(`Coalition threat decreased by ${Math.abs(effect.threatDelta)} (now ${Math.round(state.coalitionThreat)})`);
     } else if (choice.id === 'safe') {
+      const gainedIntel = effect.intelGain > 0 ? applyCoalitionIntel(state, effect.intelGain) : 0;
       log.push(`Defensive reconnaissance complete - gained positioning data`);
+      if (gainedIntel > 0) {
+        log.push(`Coalition intel gained: +${gainedIntel.toFixed(2)}`);
+      }
       log.push(`"${modifier.name}" severity increased by 1 due to delayed action`);
-      log.push(`Coalition threat increased by 2 (now ${Math.round(state.coalitionThreat)})`);
+      log.push(`Coalition threat increased by ${effect.threatDelta} (now ${Math.round(state.coalitionThreat)})`);
     } else if (choice.id === 'escalate') {
-      state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + 60;
+      const requisitionGain = Number(effect.requisitionGain) || 0;
+      const gloryGain = Number(effect.gloryGain) || 0;
+      state.coalitionEconomy.requisition = (state.coalitionEconomy?.requisition || 0) + requisitionGain;
       log.push(`Aggressive engagement successful - seized enemy supplies`);
-      log.push(`Requisition gained: +60`);
-      addGlory(state, 10, log, 'Escalation bonus');
+      if (requisitionGain > 0) {
+        log.push(`Requisition gained: +${requisitionGain}`);
+      }
+      if (gloryGain > 0) {
+        addGlory(state, gloryGain, log, 'Escalation bonus');
+      }
       log.push(`"${modifier.name}" severity increased by 2 - enemy is now more aggressive`);
-      log.push(`Coalition threat increased by 6 (now ${Math.round(state.coalitionThreat)})`);
+      log.push(`Coalition threat increased by ${effect.threatDelta} (now ${Math.round(state.coalitionThreat)})`);
     }
 
     if (state.pendingScourgeAttack) {

@@ -53,10 +53,42 @@ function testMissionIntelFlow() {
   );
 
   const preAttackEvent = buildPreAttackMissionEvent(state, () => 0);
+  const intelBeforeSafe = state.coalitionIntel;
+  const requisitionBeforeSafe = state.coalitionEconomy.requisition;
+  const threatBeforeSafe = state.coalitionThreat || 0;
+  const safeResult = handleMissionEventChoice(state, preAttackEvent, 1, () => 0);
+  assert(safeResult.success, 'Pre-attack defensive recon choice should succeed');
+  assert(
+    approxEqual(state.coalitionIntel, intelBeforeSafe + SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL),
+    `Expected defensive recon to grant ${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel, got ${state.coalitionIntel - intelBeforeSafe}`
+  );
+  assert(
+    approxEqual(state.coalitionEconomy.requisition, requisitionBeforeSafe - SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_COST),
+    'Defensive recon should spend its tuned requisition cost'
+  );
+  assert(
+    approxEqual(state.coalitionThreat, threatBeforeSafe + SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA),
+    'Defensive recon should use the tuned low threat increase'
+  );
+
+  const secondPreAttackEvent = buildPreAttackMissionEvent(state, () => 0);
   const intelBeforeEscalate = state.coalitionIntel;
-  const escalateResult = handleMissionEventChoice(state, preAttackEvent, 2, () => 0);
+  const requisitionBeforeEscalate = state.coalitionEconomy.requisition;
+  const threatBeforeEscalate = state.coalitionThreat || 0;
+  const escalateResult = handleMissionEventChoice(state, secondPreAttackEvent, 2, () => 0);
   assert(escalateResult.success, 'Pre-attack escalate choice should succeed');
   assert(approxEqual(state.coalitionIntel, intelBeforeEscalate), 'Escalate should no longer grant intel');
+  assert(
+    approxEqual(
+      state.coalitionEconomy.requisition,
+      requisitionBeforeEscalate + SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_REQUISITION
+    ),
+    'Escalate should use the reduced tuned requisition reward'
+  );
+  assert(
+    approxEqual(state.coalitionThreat, threatBeforeEscalate + SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_ESCALATE_THREAT_DELTA),
+    'Escalate should use the tuned threat increase'
+  );
 
   const deepMissionEvent = buildDeepMissionEvent(state, () => 0);
   const intelBeforeHarvest = state.coalitionIntel;
