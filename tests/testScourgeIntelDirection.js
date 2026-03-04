@@ -10,6 +10,7 @@ import {
   handleMissionEventChoice
 } from '../src/game/scourgeMissions.js';
 import { calculateScourgePrediction, selectScourgeTargetEmpire } from '../src/game/scourgePrediction.js';
+import { SCOURGE_MISSION_CONSTANTS } from '../src/game/constants.js';
 import { handleEventChoice } from '../src/game/events.js';
 import { triggerScourgeBattle } from '../src/game/turn/battlePhase.js';
 import { GameManager } from '../src/server/gameManager.js';
@@ -46,6 +47,10 @@ function testMissionIntelFlow() {
 
   applyMissionSliderEffects(state, []);
   assert(approxEqual(state.coalitionIntel, 1.25), `Expected 1.25 intel from mission budget, got ${state.coalitionIntel}`);
+  assert(
+    approxEqual(state.scourgePrediction.confidenceModifier, 1.0625),
+    `Expected mission slider intel to also update confidence immediately, got ${state.scourgePrediction.confidenceModifier}`
+  );
 
   const preAttackEvent = buildPreAttackMissionEvent(state, () => 0);
   const intelBeforeEscalate = state.coalitionIntel;
@@ -172,30 +177,46 @@ function testBattleTriggerHonorsDirective() {
 
 function testDeepMissionThresholdScaling() {
   const state = createBasicState();
+  const baseThreshold = SCOURGE_MISSION_CONSTANTS.DEEP_MISSION_THRESHOLD_BASE;
+  const nextThreshold = Math.round(
+    baseThreshold * (1 + SCOURGE_MISSION_CONSTANTS.DEEP_MISSION_THRESHOLD_GROWTH_RATE)
+  );
+  const thirdThreshold = Math.round(
+    baseThreshold * Math.pow(1 + SCOURGE_MISSION_CONSTANTS.DEEP_MISSION_THRESHOLD_GROWTH_RATE, 2)
+  );
 
-  assert(getDeepMissionThreshold(state) === 100, `Expected initial Deep Mission threshold 100, got ${getDeepMissionThreshold(state)}`);
+  assert(
+    getDeepMissionThreshold(state) === baseThreshold,
+    `Expected initial Deep Mission threshold ${baseThreshold}, got ${getDeepMissionThreshold(state)}`
+  );
 
-  state.missionMeter = 99;
+  state.missionMeter = baseThreshold - 1;
   assert(maybeSpawnDeepMission(state, () => 0) === null, 'Deep mission should not trigger below the base threshold');
   assert(state.deepMissionCount === 0, 'Deep mission count should not change before the first trigger');
 
-  state.missionMeter = 100;
+  state.missionMeter = baseThreshold;
   let deepMission = maybeSpawnDeepMission(state, () => 0);
   assert(deepMission?.id === 'EVT_DEEP_MISSION', 'Deep mission should trigger at the base threshold');
-  assert(state.missionMeter === 0, `Expected mission meter to spend the full 100 cost, got ${state.missionMeter}`);
+  assert(state.missionMeter === 0, `Expected mission meter to spend the full ${baseThreshold} cost, got ${state.missionMeter}`);
   assert(state.deepMissionCount === 1, `Expected deep mission count 1 after first trigger, got ${state.deepMissionCount}`);
-  assert(getDeepMissionThreshold(state) === 115, `Expected second Deep Mission threshold 115, got ${getDeepMissionThreshold(state)}`);
+  assert(
+    getDeepMissionThreshold(state) === nextThreshold,
+    `Expected second Deep Mission threshold ${nextThreshold}, got ${getDeepMissionThreshold(state)}`
+  );
 
-  state.missionMeter = 114;
+  state.missionMeter = nextThreshold - 1;
   assert(maybeSpawnDeepMission(state, () => 0) === null, 'Deep mission should not trigger below the scaled threshold');
   assert(state.deepMissionCount === 1, 'Deep mission count should not increase on a failed trigger');
 
-  state.missionMeter = 130;
+  state.missionMeter = nextThreshold + 15;
   deepMission = maybeSpawnDeepMission(state, () => 0);
   assert(deepMission?.id === 'EVT_DEEP_MISSION', 'Deep mission should trigger once the scaled threshold is met');
   assert(state.missionMeter === 15, `Expected mission meter overflow to be preserved (15), got ${state.missionMeter}`);
   assert(state.deepMissionCount === 2, `Expected deep mission count 2 after second trigger, got ${state.deepMissionCount}`);
-  assert(getDeepMissionThreshold(state) === 132, `Expected third Deep Mission threshold 132, got ${getDeepMissionThreshold(state)}`);
+  assert(
+    getDeepMissionThreshold(state) === thirdThreshold,
+    `Expected third Deep Mission threshold ${thirdThreshold}, got ${getDeepMissionThreshold(state)}`
+  );
 }
 
 function testEmpirePredictionPrefersClearlyWeakTarget() {

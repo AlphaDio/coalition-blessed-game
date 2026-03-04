@@ -1,6 +1,7 @@
 import { SCOURGE_MISSION_CONSTANTS, SCOURGE_MODIFIER_CONSTANTS, MISSION_SLIDER_VALUES } from './constants.js';
 import { applyOrUpdateModifier, adjustModifierSeverity, selectMissionModifier, createModifierFromTemplate } from './scourgeModifiers.js';
 import { getScourgeModifierTemplates } from './scourgeModifiers.js';
+import { applyCoalitionIntel } from './scourgePrediction.js';
 import { getLogger } from '../modules/logger.js';
 
 const PRE_ATTACK_EFFECTS = {
@@ -54,11 +55,10 @@ export function applyMissionSliderEffects(state, log = []) {
       const intelGain = diverted * SCOURGE_MISSION_CONSTANTS.MISSION_INTEL_PER_REQUISITION;
       const prevMeter = state.missionMeter || 0;
       state.missionMeter = clampMeter(prevMeter + meterGain);
-      if (intelGain > 0) {
-        state.coalitionIntel = (state.coalitionIntel || 0) + intelGain;
-      }
+      const appliedIntelGain = intelGain > 0 ? applyCoalitionIntel(state, intelGain) : 0;
       if (meterGain > 0.001) {
-        log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req)`);
+        const intelSuffix = appliedIntelGain > 0 ? `, +${appliedIntelGain.toFixed(2)} intel` : '';
+        log.push(`Mission budget +${meterGain.toFixed(2)} (diverted ${diverted.toFixed(2)} req${intelSuffix})`);
       }
     }
     // If requisition is zero or negative, no diversion happens (nothing to divert)

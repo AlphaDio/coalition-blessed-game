@@ -4,8 +4,8 @@ import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
  * Tier unlock requirements (global history-based unlocks)
  */
 export const TIER_REQUIREMENTS = {
-  2: 1, // Need at least 1 T1 law enacted (ever)
-  3: 1  // Need at least 1 T2 law enacted (ever)
+  2: 3, // Need at least 3 T1 laws enacted (ever)
+  3: 4  // Need at least 4 T2 laws enacted (ever)
 };
 
 function normalizeLawDefinition(moduleDoc, data) {

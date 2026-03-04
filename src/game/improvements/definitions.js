@@ -3,8 +3,8 @@
  *
  * Improvements are organized in tiers (T1, T2, T3) within branches:
  * - T1: Basic infrastructure, available immediately
- * - T2: Advanced mega-structures requiring 2 completed T1 improvements (per empire)
- * - T3: Epic transcendent projects requiring 2 completed T2 improvements (per empire)
+ * - T2: Advanced mega-structures requiring 3 completed T1 improvements (per empire)
+ * - T3: Epic transcendent projects requiring 4 completed T2 improvements (per empire)
  *
  * Unlike laws (which use global tier tracking), improvements use PER-EMPIRE tracking:
  * Each empire must individually complete T1 improvements to unlock T2 for themselves.
@@ -20,8 +20,8 @@ import { createImprovementRequest } from './engine.js';
  * T3 requires this many T2 improvements completed
  */
 export const IMPROVEMENT_TIER_REQUIREMENTS = {
-  2: 2, // Need 2 T1 improvements to unlock T2
-  3: 2  // Need 2 T2 improvements to unlock T3
+  2: 3, // Need 3 T1 improvements to unlock T2
+  3: 4  // Need 4 T2 improvements to unlock T3
 };
 
 function normalizeImprovementRole(branch, options = {}) {

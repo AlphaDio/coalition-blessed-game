@@ -389,16 +389,16 @@ export const REACTION_CONSTANTS = {
 /**
  * Technology research system configuration.
  * @property {number} BASE_POINTS_PER_TICK - Base tech points gained each tick (200)
- * @property {number} INITIAL_THRESHOLD - Points needed for first tech unlock (25000)
- * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for subsequent techs (1.10)
+ * @property {number} INITIAL_THRESHOLD - Points needed for first tech unlock (70000)
+ * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for subsequent techs (1.20)
  *                                          threshold = INITIAL_THRESHOLD * (n+1)^THRESHOLD_EXPONENT
  * @property {number} BASE_RESEARCH_SPEED - Default research speed multiplier (1.0)
  * @property {number} TECH_CHOICES_COUNT - Number of tech options presented when unlocking (3)
  */
 export const TECH_CONSTANTS = {
   BASE_POINTS_PER_TICK: 200,         // Base tech points gained per tick 100 -> 200
-  INITIAL_THRESHOLD: 25000,          // First tech unlocks at ~500 ticks (50000 / 100)
-  THRESHOLD_EXPONENT: 1.10,          // Polynomial exponent: threshold = initial * (n+1)^exp
+  INITIAL_THRESHOLD: 70000,          // First tech unlocks at ~350 turns before research bonuses
+  THRESHOLD_EXPONENT: 1.20,          // Higher exponent stretches advanced tech into mid/late campaign
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
   TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
 };
@@ -613,13 +613,13 @@ export const SCOURGE_MISSION_CONSTANTS = {
   EP_COST_HIGH: 240,
   EP_BASE_DURATION: 400,
   EP_MAX_ACTIVE: 1,
-  MISSION_METER_PER_REQUISITION: 0.1, // 0.05 -> 0.10
+  MISSION_METER_PER_REQUISITION: 0.06,
   MISSION_NEGATIVE_THREAT_INCREASE: 2,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
   MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
   MISSION_INTEL_PER_REQUISITION: 0.025,
-  DEEP_MISSION_THRESHOLD_BASE: 100,
-  DEEP_MISSION_THRESHOLD_GROWTH_RATE: 0.15,
+  DEEP_MISSION_THRESHOLD_BASE: 140,
+  DEEP_MISSION_THRESHOLD_GROWTH_RATE: 0.2,
   DEEP_STRIKE_MP_PCT: 0.5,
   DEEP_SABOTAGE_SEVERITY: 1,
   DEEP_GLORY_SMALL: 40,

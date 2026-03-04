@@ -113,7 +113,7 @@ export function resolveScourgeParticipantPlans(state, participantPlans = []) {
 
 export function handleBattlePhase(state, rng, log, logger) {
   const tier = getCohesionTier(state.coalitionCohesion);
-  const battleChance = getBattleChance(tier?.name);
+  const battleChance = getBattleChance(tier?.name, state.turn || 0);
 
   logger.debug(`Battle check: tier=${tier?.name}, chance=${battleChance}`);
 
