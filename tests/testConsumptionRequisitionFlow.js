@@ -401,7 +401,7 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
 
   assert(approxEqual(army.consumptionMpGainMultiplier, 1.25), 'Army resource thresholds can increase future MP growth from consumption');
   assert(approxEqual(army.consumptionDamageAdd, 0.05), 'Army resource thresholds can add persistent army damage');
-  assert(approxEqual(army.mp.current, 1002.5) && approxEqual(army.mp.max, 1002.5), 'Direct MP gain respects the accumulated army consumption growth multiplier');
+  assert(approxEqual(army.mp.current, 1125) && approxEqual(army.mp.max, 1125), 'Direct MP gain respects the accumulated army consumption growth multiplier');
   assert((army.consumptionEffectPools?.rare_gases || 0) === 0, 'Army consumption pool spends exact threshold hits without phantom carryover');
 
   const populousArmy = createArmy('army_populous', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
@@ -420,7 +420,7 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   populousState.empires[0].stats.population = 100000;
 
   replenishArmyManpower(populousState, [], []);
-  assert(populousArmy.mp.current > 1002, 'Higher population increases army MP gains from consumption');
+  assert(populousArmy.mp.current > 1125, 'Higher population increases army MP gains from consumption');
 }
 console.log();
 

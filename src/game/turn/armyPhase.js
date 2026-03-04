@@ -57,8 +57,7 @@ function getArmySupplySignals(army) {
 
 function getArmyConsumptionPopulationMultiplier(empire) {
   const population = clampPopulation(empire?.stats?.population || 1000, 1000);
-  const logPopulation = Math.log10(population);
-  return clamp(1 + ((logPopulation - 3) * 0.12), 0.8, 1.4);
+  return population / 20;
 }
 
 function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logger) {
@@ -135,7 +134,7 @@ function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logg
   }
 }
 
-function processArmyPassiveGrowth(army, totalConsumed, inBattle, log, logger) {
+function processArmyPassiveGrowth(state, army, totalConsumed, inBattle, log, logger) {
   army.growthConsumptionPool = Math.max(0, Number(army.growthConsumptionPool) || 0) + totalConsumed;
 
   if (inBattle) return;
@@ -150,14 +149,15 @@ function processArmyPassiveGrowth(army, totalConsumed, inBattle, log, logger) {
   if (hits <= 0) return;
 
   army.growthConsumptionPool -= hits * threshold;
-  const mpGain = hits * ECONOMY_CONSTANTS.ARMY_GROWTH_MP_PER_TRIGGER;
+  const populationMultiplier = getArmyConsumptionPopulationMultiplier(getEmpireById(state, army.empireId));
+  const mpGain = hits * ECONOMY_CONSTANTS.ARMY_GROWTH_MP_PER_TRIGGER * populationMultiplier;
 
   army.mp = army.mp || { current: 0, max: 0 };
   army.mp.current = Math.max(0, (army.mp.current || 0) + mpGain);
   army.mp.max = (army.mp.max || 0) + mpGain;
   army.manpower = Math.max(army.manpower || 0, army.mp.max);
 
-  const msg = `${army.name}: passive growth +${mpGain} MP (${hits} hits, threshold ${threshold.toFixed(1)}, pool ${army.growthConsumptionPool.toFixed(1)})`;
+  const msg = `${army.name}: passive growth +${mpGain.toFixed(1)} MP (${hits} hits, threshold ${threshold.toFixed(1)}, pool ${army.growthConsumptionPool.toFixed(1)}, x${populationMultiplier.toFixed(2)} pop)`;
   log.push(msg);
   logger.info(msg);
 }
@@ -203,7 +203,7 @@ function processArmyConsumptionEffects(state, regularArmies, armiesInBattle, log
       applyArmyConsumptionEffect(state, army, rule, spentFromPool, hits, log, logger);
     }
 
-    processArmyPassiveGrowth(army, totalConsumedThisTurn, armiesInBattle.has(army.id), log, logger);
+    processArmyPassiveGrowth(state, army, totalConsumedThisTurn, armiesInBattle.has(army.id), log, logger);
   });
 }
 

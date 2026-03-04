@@ -798,6 +798,48 @@ function testWantsDeficitCausesOrgDecay() {
   return false;
 }
 
+// Test 18: Insurrection cooldown prevents spam within cooldown window
+function testInsurrectionCooldownPreventsSpam() {
+  console.log('\n=== Test 18: Insurrection cooldown prevents spam within cooldown window ===');
+
+  const state = createGameState(12345);
+  state.turn = 100;
+  state.insurrections = [];
+  state.empires = [createEmpire('empire1', 'Crisis Empire', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5)];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Angry Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
+  ];
+
+  // First insurrection should trigger
+  checkInsurrections(state);
+  if (state.insurrections.length !== 1) {
+    console.log('✗ First insurrection should have triggered');
+    return false;
+  }
+
+  // Clear the active insurrection (simulate resolution) and re-aggravate
+  state.insurrections = [];
+  state.armies[0].aggravation = INSURRECTION_CONSTANTS.THRESHOLD + 5;
+  state.turn = 100 + INSURRECTION_CONSTANTS.COOLDOWN_TICKS - 1; // Still within cooldown
+
+  checkInsurrections(state);
+  if (state.insurrections.length !== 0) {
+    console.log('✗ Insurrection should be blocked by cooldown');
+    return false;
+  }
+
+  // Advance past cooldown
+  state.turn = 100 + INSURRECTION_CONSTANTS.COOLDOWN_TICKS;
+  checkInsurrections(state);
+  if (state.insurrections.length !== 1) {
+    console.log('✗ Insurrection should trigger after cooldown expires');
+    return false;
+  }
+
+  console.log('✓ Insurrection cooldown correctly prevents spam within window and allows after');
+  return true;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -822,7 +864,8 @@ const results = {
   'Insurrection requires high aggravation': testInsurrectionRequiresHighAggravation(),
   'Aggravation decays when needs are met': testAggravationDecaysWhenNeedsMet(),
   'Wants contribute aggravation at lower rate': testWantsContributeAggravationAtLowerRate(),
-  'Wants deficit causes organization decay': testWantsDeficitCausesOrgDecay()
+  'Wants deficit causes organization decay': testWantsDeficitCausesOrgDecay(),
+  'Insurrection cooldown prevents spam': testInsurrectionCooldownPreventsSpam()
 };
 
 
