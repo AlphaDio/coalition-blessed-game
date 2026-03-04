@@ -162,25 +162,35 @@ export function checkInsurrections(state) {
   }
   
   if (rebelliousArmies.length > 0 && activeInsurrections.length === 0) {
-    // Spawn new insurrection
-    const avgAggravation = rebelliousArmies.reduce((sum, a) => sum + a.aggravation, 0) / rebelliousArmies.length;
-    const sourceEmpireIds = getSourceEmpireIds(rebelliousArmies);
-    const insurrection = createInsurrection(
-      `insurrection_${state.turn}`,
-      rebelliousArmies.map(a => a.id),
-      avgAggravation,
-      { sourceEmpireIds }
-    );
-    state.insurrections.push(insurrection);
-    // Reset aggravation after rebellion so the same armies don't instantly retrigger.
-    rebelliousArmies.forEach(army => {
-      army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
-    });
-    logger.warn(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`, {
-      avgAggravation: avgAggravation.toFixed(1),
-      armies: rebelliousArmies.map(a => a.name)
-    });
-    log.push(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`);
+    // Enforce cooldown: skip if an insurrection was spawned too recently
+    const cooldown = INSURRECTION_CONSTANTS.COOLDOWN_TICKS || 0;
+    const lastInsurrectionTurn = state.lastInsurrectionTurn || 0;
+    const ticksSinceLast = (state.turn || 0) - lastInsurrectionTurn;
+
+    if (cooldown > 0 && lastInsurrectionTurn > 0 && ticksSinceLast < cooldown) {
+      logger.debug(`Insurrection cooldown active: ${ticksSinceLast}/${cooldown} ticks since last insurrection`);
+    } else {
+      // Spawn new insurrection
+      const avgAggravation = rebelliousArmies.reduce((sum, a) => sum + a.aggravation, 0) / rebelliousArmies.length;
+      const sourceEmpireIds = getSourceEmpireIds(rebelliousArmies);
+      const insurrection = createInsurrection(
+        `insurrection_${state.turn}`,
+        rebelliousArmies.map(a => a.id),
+        avgAggravation,
+        { sourceEmpireIds }
+      );
+      state.insurrections.push(insurrection);
+      state.lastInsurrectionTurn = state.turn || 0;
+      // Reset aggravation after rebellion so the same armies don't instantly retrigger.
+      rebelliousArmies.forEach(army => {
+        army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+      });
+      logger.warn(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`, {
+        avgAggravation: avgAggravation.toFixed(1),
+        armies: rebelliousArmies.map(a => a.name)
+      });
+      log.push(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`);
+    }
   }
   
   // Remove resolved insurrections
