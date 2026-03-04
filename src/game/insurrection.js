@@ -138,11 +138,13 @@ export function checkInsurrections(state) {
   const log = [];
   const armies = Array.isArray(state.armies) ? state.armies : [];
   const activeInsurrections = (state.insurrections || []).filter(ins => ins?.active);
-  applyAggravationApprovalPressure(state, log, logger);
-
+  // Snapshot approval BEFORE pressure is applied so that a single tick of
+  // aggravation-driven pressure cannot immediately enable a rebellion.
   const empireApprovalById = new Map(
     (state.empires || []).map((empire) => [empire.id, Number.isFinite(empire?.approval) ? empire.approval : 50])
   );
+
+  applyAggravationApprovalPressure(state, log, logger);
   
   // Check for armies that should rebel
   const rebelliousArmies = armies.filter(army =>
