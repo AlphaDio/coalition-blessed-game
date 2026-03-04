@@ -57,8 +57,7 @@ function getArmySupplySignals(army) {
 
 function getArmyConsumptionPopulationMultiplier(empire) {
   const population = clampPopulation(empire?.stats?.population || 1000, 1000);
-  const logPopulation = Math.log10(population);
-  return clamp(0.8 + ((logPopulation - 3) * 0.6), 0.8, 2.6);
+  return population / 20;
 }
 
 function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logger) {
