@@ -163,9 +163,9 @@ export function checkInsurrections(state) {
   
   if (rebelliousArmies.length > 0 && activeInsurrections.length === 0) {
     // Enforce cooldown: skip if an insurrection was spawned too recently
-    const cooldown = INSURRECTION_CONSTANTS.COOLDOWN_TICKS || 0;
+    const cooldown = INSURRECTION_CONSTANTS.COOLDOWN_TICKS;
     const lastInsurrectionTurn = state.lastInsurrectionTurn || 0;
-    const ticksSinceLast = (state.turn || 0) - lastInsurrectionTurn;
+    const ticksSinceLast = state.turn - lastInsurrectionTurn;
 
     if (cooldown > 0 && lastInsurrectionTurn > 0 && ticksSinceLast < cooldown) {
       logger.debug(`Insurrection cooldown active: ${ticksSinceLast}/${cooldown} ticks since last insurrection`);
@@ -180,7 +180,7 @@ export function checkInsurrections(state) {
         { sourceEmpireIds }
       );
       state.insurrections.push(insurrection);
-      state.lastInsurrectionTurn = state.turn || 0;
+      state.lastInsurrectionTurn = state.turn;
       // Reset aggravation after rebellion so the same armies don't instantly retrigger.
       rebelliousArmies.forEach(army => {
         army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
