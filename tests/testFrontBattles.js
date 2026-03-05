@@ -36,6 +36,16 @@ function createTestState() {
   return state;
 }
 
+function runInsurrectionChecks(state, turns = 1) {
+  const checks = Math.max(1, Math.floor(turns));
+  for (let i = 0; i < checks; i += 1) {
+    checkInsurrections(state);
+    if (i < checks - 1) {
+      state.turn += 1;
+    }
+  }
+}
+
 // Test 1: Morale regen stops after hitting 0
 function testMoraleRegenStops() {
   console.log('\n=== Test 1: Morale regen stops after hitting 0 ===');
@@ -426,7 +436,7 @@ function testLowApprovalAndAggravationTriggersInsurrection() {
     createArmy('army1', 'empire1', 'Angry Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
   ];
 
-  checkInsurrections(state);
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
 
   const army = state.armies[0];
   const hasInsurrection = state.insurrections.length === 1;
@@ -453,7 +463,7 @@ function testResetAggravationPreventsImmediateRetrigger() {
     createArmy('army1', 'empire1', 'Recently Rebellious Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
   ];
 
-  checkInsurrections(state);
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
 
   const army = state.armies[0];
   if (state.insurrections.length !== 1 || army.aggravation !== INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
@@ -462,7 +472,7 @@ function testResetAggravationPreventsImmediateRetrigger() {
   }
 
   state.insurrections = [];
-  checkInsurrections(state);
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
 
   if (state.insurrections.length === 0 && army.aggravation === INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION) {
     console.log('✓ Low approval alone no longer retriggers another immediate insurrection');
@@ -597,7 +607,11 @@ function testInsurrectionTargetingUsesRelations() {
     }
   };
 
-  checkInsurrections(state);
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
+  if (state.insurrections.length === 0) {
+    console.log('Ã¢Å“â€” Insurrection did not trigger for targeting test');
+    return false;
+  }
   const targetEmpireId = selectInsurrectionTargetEmpire(state, state.insurrections[0], () => 0.4);
 
   if (targetEmpireId === 'empire2') {
@@ -631,7 +645,11 @@ function testInsurrectionOnlyTargetsSingleEmpire() {
     }
   };
 
-  checkInsurrections(state);
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
+  if (state.insurrections.length === 0) {
+    console.log('Ã¢Å“â€” No insurrection spawned for single-target test');
+    return false;
+  }
   const log = [];
   const silentLogger = { debug() {}, info() {}, warn() {}, error() {} };
   triggerInsurrectionBattles(state, () => 0.2, [], log, silentLogger);
@@ -809,28 +827,36 @@ function testInsurrectionCooldownPreventsSpam() {
   state.armies = [
     createArmy('army1', 'empire1', 'Angry Army', 50, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5)
   ];
+  const confirmationTurns = INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS;
 
   // First insurrection should trigger
-  checkInsurrections(state);
+  runInsurrectionChecks(state, confirmationTurns);
   if (state.insurrections.length !== 1) {
     console.log('✗ First insurrection should have triggered');
     return false;
   }
+  const firstSpawnTurn = state.lastInsurrectionTurn;
 
   // Clear the active insurrection (simulate resolution) and re-aggravate
   state.insurrections = [];
   state.armies[0].aggravation = INSURRECTION_CONSTANTS.THRESHOLD + 5;
-  state.turn = 100 + INSURRECTION_CONSTANTS.COOLDOWN_TICKS - 1; // Still within cooldown
+  state.turn = firstSpawnTurn + INSURRECTION_CONSTANTS.COOLDOWN_TICKS - 1; // Still within global cooldown
 
-  checkInsurrections(state);
+  runInsurrectionChecks(state, confirmationTurns);
   if (state.insurrections.length !== 0) {
     console.log('✗ Insurrection should be blocked by cooldown');
     return false;
   }
 
-  // Advance past cooldown
-  state.turn = 100 + INSURRECTION_CONSTANTS.COOLDOWN_TICKS;
-  checkInsurrections(state);
+  // Advance past all cooldown gates
+  const allCooldown = Math.max(
+    INSURRECTION_CONSTANTS.COOLDOWN_TICKS,
+    INSURRECTION_CONSTANTS.ARMY_COOLDOWN_TICKS,
+    INSURRECTION_CONSTANTS.EMPIRE_COOLDOWN_TICKS
+  );
+  state.turn = firstSpawnTurn + allCooldown;
+  state.armies[0].aggravation = INSURRECTION_CONSTANTS.THRESHOLD + 5;
+  runInsurrectionChecks(state, confirmationTurns);
   if (state.insurrections.length !== 1) {
     console.log('✗ Insurrection should trigger after cooldown expires');
     return false;
@@ -839,7 +865,6 @@ function testInsurrectionCooldownPreventsSpam() {
   console.log('✓ Insurrection cooldown correctly prevents spam within window and allows after');
   return true;
 }
-
 // Run all tests
 console.log('='.repeat(60));
 console.log('Front Battles Test Suite');
@@ -887,5 +912,7 @@ if (allPassed) {
   process.exit(1);
 }
 console.log('='.repeat(60));
+
+
 
 

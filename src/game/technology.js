@@ -23,6 +23,11 @@ export function getResearchSpeed(empire, state) {
   if (empire.techModifiers?.research_speed) {
     speed += empire.techModifiers.research_speed;
   }
+
+  // Add unity modifiers
+  if (empire.unityModifiers?.research_speed) {
+    speed += empire.unityModifiers.research_speed;
+  }
   
   // Add empire base tech rate bonus as percentage of base tick
   // Instead of multiplying, add a percentage of the base research speed

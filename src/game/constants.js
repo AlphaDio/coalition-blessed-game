@@ -113,6 +113,8 @@ export const FRONT_BATTLE_MODIFIERS = {
  * @property {number} SCOURGE_RNG_RANGE - Random variance range (+/-) in Scourge power
  * @property {number} SCOURGE_TURN_POWER_GROWTH - Percentage power growth per turn (0.15%)
  * @property {number} SCOURGE_TURN_MP_GROWTH - Military power points gained by Scourge per turn
+ * @property {number} SCOURGE_TURN_GROWTH_CURVE_EXPONENT - Curves turn scaling sublinearly (<1 slows late growth)
+ * @property {number} SCOURGE_COHESION_MP_EXP_DIVISOR - Divisor for cohesion exponential MP scaling (higher = smoother)
  * @property {number} INSURRECTION_RNG_RANGE - Random variance range in insurrection battles
  * @property {number} SCOURGE_TARGET_ARMY_ORG_MIN - Minimum organization for target-empire armies to respond
  * @property {number} SCOURGE_ASSIST_MIN_RELATIONS - Minimum mutual relations required for allied support
@@ -134,8 +136,10 @@ export const BATTLE_CONSTANTS = {
   SCOURGE_BASE_MP: 7000,
   SCOURGE_FERVOR_MULTIPLIER: 2.0,
   SCOURGE_RNG_RANGE: 20,
-  SCOURGE_TURN_POWER_GROWTH: 0.0015,
-  SCOURGE_TURN_MP_GROWTH: 12,
+  SCOURGE_TURN_POWER_GROWTH: 0.00135,
+  SCOURGE_TURN_MP_GROWTH: 10,
+  SCOURGE_TURN_GROWTH_CURVE_EXPONENT: 0.88,
+  SCOURGE_COHESION_MP_EXP_DIVISOR: 30,
   SCOURGE_TARGET_ARMY_ORG_MIN: 30,
   SCOURGE_ASSIST_MIN_RELATIONS: 40,
   SCOURGE_ASSIST_MAX_RATIO: 0.5,
@@ -196,6 +200,58 @@ export const ECONOMY_CONSTANTS = {
 };
 
 /**
+ * Army battle experience and veteran surge tuning.
+ * Armies gain XP after each battle based on outcome and intensity.
+ * On level up they gain a one-round surge for their next battle tick.
+ * @property {number} BASE_THRESHOLD - XP required for level 1
+ * @property {number} THRESHOLD_GROWTH_MULTIPLIER - Multiplier applied per level
+ * @property {number} WIN_XP - Base XP for winning a battle
+ * @property {number} LOSS_XP - Base XP for losing a battle (higher than WIN_XP)
+ * @property {number} DRAW_XP - Base XP for draw outcomes
+ * @property {number} MIN_PARTICIPATION_FACTOR - Minimum XP factor from partial participation
+ * @property {number} MAX_PARTICIPATION_FACTOR - Maximum XP factor from participation
+ * @property {number} MIN_INTENSITY_FACTOR - Minimum XP factor from battle intensity
+ * @property {number} MAX_INTENSITY_FACTOR - Maximum XP factor from battle intensity
+ * @property {number} SURGE_TICKS - Number of battle rounds the surge lasts
+ * @property {number} SURGE_DAMAGE_MULT_BASE - Base damage multiplier bonus on surge
+ * @property {number} SURGE_DAMAGE_MULT_PER_LEVEL - Extra surge damage per level
+ * @property {number} SURGE_DAMAGE_MULT_CAP - Max surge damage multiplier
+ * @property {number} SURGE_KILL_RATE_BONUS_BASE - Base kill-rate bonus on surge
+ * @property {number} SURGE_KILL_RATE_BONUS_PER_LEVEL - Extra kill-rate bonus per level
+ * @property {number} SURGE_KILL_RATE_BONUS_CAP - Max kill-rate surge bonus
+ * @property {number} SURGE_PROTECTION_BONUS_BASE - Base protection bonus on surge
+ * @property {number} SURGE_PROTECTION_BONUS_PER_LEVEL - Extra protection bonus per level
+ * @property {number} SURGE_PROTECTION_BONUS_CAP - Max protection surge bonus
+ * @property {number} SURGE_RESOLVE_BONUS_BASE - Base resolve bonus on surge
+ * @property {number} SURGE_RESOLVE_BONUS_PER_LEVEL - Extra resolve bonus per level
+ * @property {number} SURGE_RESOLVE_BONUS_CAP - Max resolve surge bonus
+ */
+export const ARMY_EXPERIENCE_CONSTANTS = {
+  BASE_THRESHOLD: 120,
+  THRESHOLD_GROWTH_MULTIPLIER: 1.35,
+  WIN_XP: 18,
+  LOSS_XP: 30,
+  DRAW_XP: 24,
+  MIN_PARTICIPATION_FACTOR: 0.3,
+  MAX_PARTICIPATION_FACTOR: 1.0,
+  MIN_INTENSITY_FACTOR: 0.8,
+  MAX_INTENSITY_FACTOR: 1.8,
+  SURGE_TICKS: 1,
+  SURGE_DAMAGE_MULT_BASE: 0.4,
+  SURGE_DAMAGE_MULT_PER_LEVEL: 0.06,
+  SURGE_DAMAGE_MULT_CAP: 0.95,
+  SURGE_KILL_RATE_BONUS_BASE: 0.03,
+  SURGE_KILL_RATE_BONUS_PER_LEVEL: 0.01,
+  SURGE_KILL_RATE_BONUS_CAP: 0.22,
+  SURGE_PROTECTION_BONUS_BASE: 0.04,
+  SURGE_PROTECTION_BONUS_PER_LEVEL: 0.008,
+  SURGE_PROTECTION_BONUS_CAP: 0.2,
+  SURGE_RESOLVE_BONUS_BASE: 0.04,
+  SURGE_RESOLVE_BONUS_PER_LEVEL: 0.008,
+  SURGE_RESOLVE_BONUS_CAP: 0.2
+};
+
+/**
  * Insurrection pressure and trigger thresholds.
  * High aggravation now erodes the owning empire's approval first. Rebellion only
  * occurs once approval is low and an army still carries at least a modest amount of aggravation.
@@ -208,6 +264,9 @@ export const ECONOMY_CONSTANTS = {
  * @property {number} RESOLVED_FERVOR_DROP - Fervor reduction when insurrection is resolved
  * @property {number} RESOLVED_APPROVAL_SHOCK - Approval penalty when insurrection is resolved
  * @property {number} COOLDOWN_TICKS - Minimum ticks after an insurrection before another can trigger
+ * @property {number} TRIGGER_CONFIRMATION_TICKS - Consecutive turns conditions must hold before spawning
+ * @property {number} ARMY_COOLDOWN_TICKS - Per-army cooldown after rebelling
+ * @property {number} EMPIRE_COOLDOWN_TICKS - Per-empire cooldown after any rebellion
  */
 export const INSURRECTION_CONSTANTS = {
   THRESHOLD: 70,
@@ -218,7 +277,10 @@ export const INSURRECTION_CONSTANTS = {
   POST_REBELLION_AGGRAVATION: 0,
   RESOLVED_FERVOR_DROP: 20,
   RESOLVED_APPROVAL_SHOCK: 15,
-  COOLDOWN_TICKS: 80
+  COOLDOWN_TICKS: 80,
+  TRIGGER_CONFIRMATION_TICKS: 3,
+  ARMY_COOLDOWN_TICKS: 180,
+  EMPIRE_COOLDOWN_TICKS: 120
 };
 
 /**
@@ -403,6 +465,20 @@ export const TECH_CONSTANTS = {
   THRESHOLD_EXPONENT: 1.20,          // Higher exponent stretches advanced tech into mid/late campaign
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
   TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
+};
+
+/**
+ * Unity progression system configuration.
+ * Unity is generated primarily by dedicated improvements and unlocks
+ * empire-specific permanent effects in tiered order.
+ * @property {number} INITIAL_THRESHOLD - Unity needed for first unlock
+ * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for later unlocks
+ * @property {number} MAX_TIERS - Maximum number of unity effects per empire
+ */
+export const UNITY_CONSTANTS = {
+  INITIAL_THRESHOLD: 120,
+  THRESHOLD_EXPONENT: 1.45,
+  MAX_TIERS: 5
 };
 
 /**

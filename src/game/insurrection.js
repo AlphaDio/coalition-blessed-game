@@ -2,7 +2,7 @@ import { INSURRECTION_CONSTANTS } from './constants.js';
 import { createInsurrection } from './types.js';
 import { getLogger } from '../modules/logger.js';
 import { isRegularArmy } from './turn/armyUtils.js';
-import { clampApproval } from '../utils/math.js';
+import { clampApproval } from './cohesion.js';
 
 function getSourceEmpireIds(armies) {
   return [...new Set((armies || []).map(army => army?.empireId).filter(Boolean))];
@@ -31,6 +31,50 @@ function groupArmiesByEmpire(armies) {
   });
 
   return grouped;
+}
+
+function getActiveBattleArmyIds(state) {
+  const activeArmyIds = new Set();
+  (state.battleFronts || [])
+    .filter(front => front?.state === 'ACTIVE')
+    .forEach((front) => {
+      if (front.leftArmyId) activeArmyIds.add(front.leftArmyId);
+      if (front.rightArmyId) activeArmyIds.add(front.rightArmyId);
+      (front.participatingArmyIds || []).forEach(id => activeArmyIds.add(id));
+      (front.rebelliousArmyIds || []).forEach(id => activeArmyIds.add(id));
+      (front.loyalArmyIds || []).forEach(id => activeArmyIds.add(id));
+    });
+  return activeArmyIds;
+}
+
+function ensureInsurrectionTracking(state) {
+  if (!Number.isFinite(state.lastInsurrectionTurn) || state.lastInsurrectionTurn < 0) {
+    state.lastInsurrectionTurn = 0;
+  } else {
+    state.lastInsurrectionTurn = Math.floor(state.lastInsurrectionTurn);
+  }
+
+  if (!state.insurrectionEmpireCooldowns || typeof state.insurrectionEmpireCooldowns !== 'object' || Array.isArray(state.insurrectionEmpireCooldowns)) {
+    state.insurrectionEmpireCooldowns = {};
+  }
+
+  if (!Array.isArray(state.armies)) {
+    return;
+  }
+
+  state.armies.forEach((army) => {
+    if (!army || typeof army !== 'object') return;
+    if (!Number.isFinite(army.insurrectionTriggerStreak) || army.insurrectionTriggerStreak < 0) {
+      army.insurrectionTriggerStreak = 0;
+    } else {
+      army.insurrectionTriggerStreak = Math.floor(army.insurrectionTriggerStreak);
+    }
+    if (!Number.isFinite(army.lastInsurrectionTurn) || army.lastInsurrectionTurn < 0) {
+      army.lastInsurrectionTurn = 0;
+    } else {
+      army.lastInsurrectionTurn = Math.floor(army.lastInsurrectionTurn);
+    }
+  });
 }
 
 function applyAggravationApprovalPressure(state, log, logger) {
@@ -137,35 +181,66 @@ export function checkInsurrections(state) {
   const logger = getLogger();
   const log = [];
   const armies = Array.isArray(state.armies) ? state.armies : [];
+  if (!Array.isArray(state.insurrections)) {
+    state.insurrections = [];
+  }
+  ensureInsurrectionTracking(state);
+
   const activeInsurrections = (state.insurrections || []).filter(ins => ins?.active);
+  const activeBattleArmyIds = getActiveBattleArmyIds(state);
   applyAggravationApprovalPressure(state, log, logger);
 
   const empireApprovalById = new Map(
     (state.empires || []).map((empire) => [empire.id, Number.isFinite(empire?.approval) ? empire.approval : 50])
   );
-  
-  // Check for armies that should rebel
-  const rebelliousArmies = armies.filter(army =>
-    isRegularArmy(army) &&
-    (army.aggravation || 0) >= INSURRECTION_CONSTANTS.THRESHOLD &&
-    (empireApprovalById.get(army.empireId) ?? 50) <= INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD
-  );
-  
+
+  const turn = Number.isFinite(Number(state.turn)) ? Number(state.turn) : 0;
+
+  const rebelliousArmies = armies.filter((army) => {
+    if (!isRegularArmy(army)) {
+      return false;
+    }
+
+    const empireApproval = empireApprovalById.get(army.empireId) ?? 50;
+    const aggravation = Number(army.aggravation || 0);
+    const armyLastTurn = Number(army.lastInsurrectionTurn) || 0;
+    const armyCooldownReady = armyLastTurn <= 0
+      || (turn - armyLastTurn >= INSURRECTION_CONSTANTS.ARMY_COOLDOWN_TICKS);
+    const empireLastTurn = Number(state.insurrectionEmpireCooldowns?.[army.empireId] || 0);
+    const empireCooldownReady = empireLastTurn <= 0
+      || (turn - empireLastTurn >= INSURRECTION_CONSTANTS.EMPIRE_COOLDOWN_TICKS);
+    const isEligibleNow =
+      aggravation >= INSURRECTION_CONSTANTS.THRESHOLD &&
+      empireApproval <= INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD &&
+      !activeBattleArmyIds.has(army.id) &&
+      armyCooldownReady &&
+      empireCooldownReady;
+
+    if (isEligibleNow) {
+      army.insurrectionTriggerStreak = (Number(army.insurrectionTriggerStreak) || 0) + 1;
+    } else {
+      army.insurrectionTriggerStreak = 0;
+    }
+
+    return army.insurrectionTriggerStreak >= INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS;
+  });
+
   if (rebelliousArmies.length > 0) {
     logger.debug(`Found ${rebelliousArmies.length} rebellious armies`, {
       armies: rebelliousArmies.map(a => ({
         name: a.name,
         aggravation: a.aggravation,
-        approval: empireApprovalById.get(a.empireId) ?? null
+        approval: empireApprovalById.get(a.empireId) ?? null,
+        triggerStreak: a.insurrectionTriggerStreak
       }))
     });
   }
-  
+
   if (rebelliousArmies.length > 0 && activeInsurrections.length === 0) {
-    // Enforce cooldown: skip if an insurrection was spawned too recently
+    // Enforce global cooldown: skip if an insurrection was spawned too recently
     const cooldown = INSURRECTION_CONSTANTS.COOLDOWN_TICKS;
     const lastInsurrectionTurn = state.lastInsurrectionTurn || 0;
-    const ticksSinceLast = state.turn - lastInsurrectionTurn;
+    const ticksSinceLast = turn - lastInsurrectionTurn;
 
     if (cooldown > 0 && lastInsurrectionTurn > 0 && ticksSinceLast < cooldown) {
       logger.debug(`Insurrection cooldown active: ${ticksSinceLast}/${cooldown} ticks since last insurrection`);
@@ -174,17 +249,27 @@ export function checkInsurrections(state) {
       const avgAggravation = rebelliousArmies.reduce((sum, a) => sum + a.aggravation, 0) / rebelliousArmies.length;
       const sourceEmpireIds = getSourceEmpireIds(rebelliousArmies);
       const insurrection = createInsurrection(
-        `insurrection_${state.turn}`,
+        `insurrection_${turn}`,
         rebelliousArmies.map(a => a.id),
         avgAggravation,
-        { sourceEmpireIds }
+        { sourceEmpireIds, createdAtTurn: turn }
       );
       state.insurrections.push(insurrection);
-      state.lastInsurrectionTurn = state.turn;
-      // Reset aggravation after rebellion so the same armies don't instantly retrigger.
-      rebelliousArmies.forEach(army => {
+      state.lastInsurrectionTurn = turn;
+
+      const rebelliousEmpireIds = new Set();
+      rebelliousArmies.forEach((army) => {
         army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+        army.insurrectionTriggerStreak = 0;
+        army.lastInsurrectionTurn = turn;
+        if (army.empireId) {
+          rebelliousEmpireIds.add(army.empireId);
+        }
       });
+      rebelliousEmpireIds.forEach((empireId) => {
+        state.insurrectionEmpireCooldowns[empireId] = turn;
+      });
+
       logger.warn(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`, {
         avgAggravation: avgAggravation.toFixed(1),
         armies: rebelliousArmies.map(a => a.name)
@@ -192,13 +277,13 @@ export function checkInsurrections(state) {
       log.push(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`);
     }
   }
-  
+
   // Remove resolved insurrections
   const beforeCount = state.insurrections.length;
   state.insurrections = state.insurrections.filter(ins => ins.active);
   if (state.insurrections.length < beforeCount) {
     logger.info(`Resolved ${beforeCount - state.insurrections.length} insurrection(s)`);
   }
-  
+
   return { log };
 }

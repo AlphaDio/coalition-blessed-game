@@ -11,7 +11,7 @@ export function getEmpireById(state, empireId) {
 }
 
 export function getEmpireTechModifier(empire, key) {
-  return toFiniteNumber(empire?.techModifiers?.[key], 0);
+  return toFiniteNumber(empire?.techModifiers?.[key], 0) + toFiniteNumber(empire?.unityModifiers?.[key], 0);
 }
 
 export function getEmpireImprovementModifier(state, empireId, key) {

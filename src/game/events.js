@@ -237,6 +237,28 @@ export function handleEventChoice(state, eventId, choiceIndex) {
         }
       });
     }
+
+    if (expandedEffects.empireBudgetCredits) {
+      Object.entries(expandedEffects.empireBudgetCredits).forEach(([empireId, change]) => {
+        const empire = state.empires.find(e => e.id === empireId);
+        const actualChange = typeof change === 'function' ? change() : change;
+        if (empire && Number.isFinite(actualChange) && actualChange !== 0) {
+          empire.budget_credits = (empire.budget_credits || 0) + actualChange;
+          log.push(`${empire.name} credits ${actualChange >= 0 ? '+' : ''}${actualChange.toFixed(2)}`);
+        }
+      });
+    }
+
+    if (expandedEffects.empireStability) {
+      Object.entries(expandedEffects.empireStability).forEach(([empireId, change]) => {
+        const empire = state.empires.find(e => e.id === empireId);
+        const actualChange = typeof change === 'function' ? change() : change;
+        if (empire && Number.isFinite(actualChange) && actualChange !== 0) {
+          empire.stability = clampStat((empire.stability || 0) + actualChange, 0, 100);
+          log.push(`${empire.name} stability ${actualChange >= 0 ? '+' : ''}${actualChange.toFixed(2)}`);
+        }
+      });
+    }
     
     if (expandedEffects.armyFervor) {
       Object.entries(expandedEffects.armyFervor).forEach(([armyId, change]) => {

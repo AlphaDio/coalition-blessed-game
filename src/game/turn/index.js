@@ -16,6 +16,7 @@ import { getAllImprovementRequests, createImprovementRequestInstance } from '../
 import { getEventTitle, hasValidChoices } from '../../utils/events.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { processTechAccrual, createTechEvent } from '../technology.js';
+import { processUnityAccrual, popNextUnityCelebrationEvent } from '../unity.js';
 import { tickEmergencyLaws, getActiveEmergencyModifiers } from '../emergencyLaws.js';
 import { calculateScourgePrediction } from '../scourgePrediction.js';
 import { initializeTurnConsumptionTracking, processConsumptionToRequisition } from '../consumptionToRequisition.js';
@@ -234,6 +235,21 @@ export function advanceTurn(state, rng = Math.random) {
         logger.info(`Tech event triggered for ${empire.name}`);
         log.push(`Technology breakthrough for ${empire.name}!`);
       }
+    }
+  }
+
+  // 3.5. Process unity accrual and queue celebration events for unlocked effects.
+  const unityResult = processUnityAccrual(state);
+  if (unityResult.log && unityResult.log.length > 0) {
+    log.push(...unityResult.log);
+  }
+
+  if (!state.activeEvent) {
+    const unityCelebration = popNextUnityCelebrationEvent(state);
+    if (unityCelebration) {
+      state.activeEvent = unityCelebration;
+      logger.info(`Unity celebration triggered for ${unityCelebration.empireId}`);
+      log.push(`Unity celebration in ${unityCelebration.title}`);
     }
   }
 

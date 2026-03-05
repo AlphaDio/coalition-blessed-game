@@ -5,6 +5,7 @@ import { startBattle } from '../frontBattles.js';
 import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from '../scourgeModifiers.js';
 import { runHeroBattlePassives } from '../heroes.js';
 import { applyPopulationDelta } from '../populationUtils.js';
+import { awardArmyBattleExperience } from '../armyExperience.js';
 import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
@@ -103,11 +104,17 @@ function removeScourgeForces(state) {
 function createScourgeArmy(state, idSuffix) {
   const scourgeId = `_scourge_army_${idSuffix}`;
   const turnsElapsed = Math.max(0, (state.turn || 1) - 1);
-  const powerScale = 1 + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
-  const baseMP = BATTLE_CONSTANTS.SCOURGE_BASE_MP + (turnsElapsed * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
+  const turnGrowthFactor = Math.pow(
+    turnsElapsed,
+    BATTLE_CONSTANTS.SCOURGE_TURN_GROWTH_CURVE_EXPONENT
+  );
+  const powerScale = 1 + (turnGrowthFactor * BATTLE_CONSTANTS.SCOURGE_TURN_POWER_GROWTH);
+  const baseMP = BATTLE_CONSTANTS.SCOURGE_BASE_MP + (turnGrowthFactor * BATTLE_CONSTANTS.SCOURGE_TURN_MP_GROWTH);
   const fervorMPBonus = state.scourgeFervor * 50;
   // Manpower increases exponentially as cohesion drops
-  const cohesionMultiplier = Math.exp((100 - state.scourgeCohesion) / 25);
+  const cohesionMultiplier = Math.exp(
+    (100 - state.scourgeCohesion) / BATTLE_CONSTANTS.SCOURGE_COHESION_MP_EXP_DIVISOR
+  );
   const manpowerPct = Math.max(0, Math.min(100, state.scourgeManpower ?? 100)) / 100;
   const scaledTotalMP = (baseMP + fervorMPBonus) * cohesionMultiplier * manpowerPct;
   const missionDamagePct = Math.max(0, Math.min(1, state.scourgeNextAttackManpowerDamagePct || 0));
@@ -284,6 +291,10 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   );
   const coalitionCurrentRetentionRatio = Math.max(0, (coalitionArmy.mp.current || 0) / coalitionOriginalCurrent);
   const coalitionMPLossRatio = coalitionArmy.mp.max > 0 ? coalitionPermanentLoss / coalitionArmy.mp.max : 0;
+  const coalitionBattleIntensity = 1 + Math.min(
+    1.5,
+    (coalitionMPLossRatio + (1 - coalitionCurrentRetentionRatio)) * 0.9
+  );
 
   // Distribute results to original armies
   originalArmyData.forEach(armyData => {
@@ -314,6 +325,18 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
       if (isTargetEmpireArmy) {
         army.fervor = clampStat(army.fervor - BATTLE_CONSTANTS.LOSS_FERVOR_LOSS);
       }
+    }
+
+    const experienceResult = awardArmyBattleExperience(army, {
+      won: coalitionWon,
+      participation: Number.isFinite(Number(armyData?.commitRatio)) ? Number(armyData.commitRatio) : 1,
+      intensity: coalitionBattleIntensity
+    });
+    if (experienceResult.levelsGained > 0) {
+      const surgePct = Math.round((experienceResult.surge?.damageMult || 0) * 100);
+      const message = `${army.name} reaches Veteran ${experienceResult.level} (+${surgePct}% next battle round surge)`;
+      log.push(message);
+      logger.info(message);
     }
   });
 

@@ -822,14 +822,17 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
   app.get('/api/game/definitions/improvements', async (req, res) => {
     try {
       const { getTieredImprovementRequests } = await import('../game/improvements/definitions.js');
-      const improvementRequests = getTieredImprovementRequests();
-      const improvements = improvementRequests.map((imp) => ({
+      const improvementRequestsByTier = getTieredImprovementRequests();
+      const improvements = Object.values(improvementRequestsByTier)
+        .flat()
+        .map((imp) => ({
         id: imp.id,
         name: imp.name,
         description: imp.description,
         tier: imp.tier,
         branch: imp.branch,
         supplyUpkeep: imp.supplyUpkeep,
+        unityOutput: imp.unityOutput || 0,
         modifiers: imp.modifiers
       }));
       res.sendSuccess({ improvements });
@@ -1048,6 +1051,13 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
             fervor: Math.round(army.fervor ?? 0),
             aggravation: Math.round(army.aggravation ?? 0),
             command: Math.round(army.command ?? 50)
+          },
+          experience: {
+            level: Math.max(0, Math.floor(army.experienceLevel ?? 0)),
+            current: Math.max(0, Math.floor(army.experience ?? 0)),
+            threshold: Math.max(1, Math.floor(army.experienceThreshold ?? 1)),
+            surgeReady: (army.experienceSurge?.ticksRemaining ?? 0) > 0,
+            surgeDamagePct: Math.max(0, Math.round((army.experienceSurge?.damageMult ?? 0) * 100))
           },
           combat: {
             dmgPerUnitMP: army.dmgPerUnitMP ?? 1.0,

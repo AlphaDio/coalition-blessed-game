@@ -18,6 +18,7 @@ export function createImprovementRequest(id, name, description, {
   capacity = 1,
   sustainmentCost = {}, // { commodity_key: qty_per_tick }
   productionOutputs = {}, // { commodity_key: qty_per_tick }
+  unityOutput = 0, // unity generated per tick for the owning empire
   modifiers = {}, // { stat_key: value }
   tags = [],
   suggestedBy = null,
@@ -41,6 +42,7 @@ export function createImprovementRequest(id, name, description, {
     capacity,
     sustainmentCost,
     productionOutputs,
+    unityOutput,
     modifiers,
     tags,
     suggestedBy,
@@ -89,6 +91,7 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     // Costs and outputs
     sustainmentCost: { ...request.sustainmentCost },
     productionOutputs: { ...request.productionOutputs },
+    unityOutput: Number.isFinite(Number(request.unityOutput)) ? Number(request.unityOutput) : 0,
     modifiers: { ...request.modifiers },
     requisitionUpkeep: request.requisitionUpkeep || 0,
     requiredLawId: request.requiredLawId || null,

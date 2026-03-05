@@ -4,6 +4,7 @@ import { getLogger } from '../../modules/logger.js';
 import { startBattle } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
+import { awardArmyBattleExperience } from '../armyExperience.js';
 
 function deriveTargetEmpireId(insurrection, opposingArmies) {
   if (insurrection?.targetEmpireId) {
@@ -151,6 +152,14 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   const rebelliousCurrentRetentionRatio = Math.max(0, (rebelliousArmy.mp.current || 0) / rebelliousOriginalCurrent);
   const loyalMPLossRatio = loyalArmy.mp.max > 0 ? loyalPermanentLoss / loyalArmy.mp.max : 0;
   const rebelliousMPLossRatio = rebelliousArmy.mp.max > 0 ? rebelliousPermanentLoss / rebelliousArmy.mp.max : 0;
+  const loyalIntensity = 1 + Math.min(
+    1.5,
+    (loyalMPLossRatio + (1 - loyalCurrentRetentionRatio)) * 0.9
+  );
+  const rebelliousIntensity = 1 + Math.min(
+    1.5,
+    (rebelliousMPLossRatio + (1 - rebelliousCurrentRetentionRatio)) * 0.9
+  );
 
   // Distribute results to loyal armies
   loyalArmyData.forEach(armyData => {
@@ -169,6 +178,18 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     const currentLoss = Math.max(0, prevCurrent - Number(army.mp?.current || 0));
     if (maxLoss > 0.01 || currentLoss > 0.01) {
       log.push(`${army.name}: permanent battle losses -> MP ${Math.floor(army.mp.current)}/${Math.floor(army.mp.max)} (-${Math.floor(maxLoss)} cap, -${Math.floor(currentLoss)} current)`);
+    }
+
+    const experienceResult = awardArmyBattleExperience(army, {
+      won: loyalWon,
+      participation: Number.isFinite(Number(armyData?.commitRatio)) ? Number(armyData.commitRatio) : 1,
+      intensity: loyalIntensity
+    });
+    if (experienceResult.levelsGained > 0) {
+      const surgePct = Math.round((experienceResult.surge?.damageMult || 0) * 100);
+      const message = `${army.name} reaches Veteran ${experienceResult.level} (+${surgePct}% next battle round surge)`;
+      log.push(message);
+      logger.info(message);
     }
   });
 
@@ -197,12 +218,25 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     }
     // Rebellion pressure is tracked by aggravation and is reset after an insurrection resolves.
     army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+
+    const experienceResult = awardArmyBattleExperience(army, {
+      won: !loyalWon,
+      participation: Number.isFinite(Number(armyData?.commitRatio)) ? Number(armyData.commitRatio) : 1,
+      intensity: rebelliousIntensity
+    });
+    if (experienceResult.levelsGained > 0) {
+      const surgePct = Math.round((experienceResult.surge?.damageMult || 0) * 100);
+      const message = `${army.name} reaches Veteran ${experienceResult.level} (+${surgePct}% next battle round surge)`;
+      log.push(message);
+      logger.info(message);
+    }
   });
 
   // Mark insurrection as resolved regardless of winner.
   const insurrection = state.insurrections.find(ins => ins.id === front.insurrectionId);
   if (insurrection) {
     insurrection.active = false;
+    insurrection.resolvedAtTurn = state.turn;
   }
 
   // Apply cohesion and approval changes

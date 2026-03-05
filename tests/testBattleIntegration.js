@@ -13,9 +13,11 @@
 
 import { createGameState, createArmy, createEmpire } from '../src/game/types.js';
 import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
-import { simulateBattleTick, getActiveBattles } from '../src/game/frontBattles.js';
+import { simulateBattleTick, getActiveBattles, startBattle } from '../src/game/frontBattles.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
 import { INSURRECTION_CONSTANTS } from '../src/game/constants.js';
+import { awardArmyBattleExperience } from '../src/game/armyExperience.js';
+import { checkInsurrections } from '../src/game/insurrection.js';
 
 // Helper to create a full test state with empires and armies
 function createFullTestState(seed = 12345) {
@@ -640,6 +642,172 @@ function testDirectManpowerMechanics() {
   }
 }
 
+// Test 11: Losing grants more XP than winning
+function testBattleExperienceOutcomeBias() {
+  console.log('\n=== Test 11: Battle experience outcome bias ===');
+
+  const winnerArmy = createArmy('xp_win', 'empire1', 'Winner Army', 60, 70, 0, 50, 50, 5000);
+  const loserArmy = createArmy('xp_lose', 'empire1', 'Loser Army', 60, 70, 0, 50, 50, 5000);
+
+  const winnerResult = awardArmyBattleExperience(winnerArmy, {
+    won: true,
+    participation: 1,
+    intensity: 1
+  });
+  const loserResult = awardArmyBattleExperience(loserArmy, {
+    won: false,
+    participation: 1,
+    intensity: 1
+  });
+
+  if (loserResult.xpGain <= winnerResult.xpGain) {
+    console.log(`X Losing should grant more XP (win=${winnerResult.xpGain}, loss=${loserResult.xpGain})`);
+    return false;
+  }
+
+  console.log(`PASS Losing grants more XP (win=${winnerResult.xpGain}, loss=${loserResult.xpGain})`);
+  return true;
+}
+
+// Test 12: Level-up surge affects the very next battle tick and is consumed
+function testExperienceSurgeNextTick() {
+  console.log('\n=== Test 12: Experience surge applies to next tick ===');
+
+  const buildState = (withSurge = false) => {
+    const state = createGameState(98765);
+    state.empires = [
+      createEmpire('empire1', 'Empire One', 60),
+      createEmpire('empire2', 'Empire Two', 60)
+    ];
+    const attacker = createArmy('attacker', 'empire1', 'Attacker', 65, 80, 0, 50, 50, 4000);
+    const defender = createArmy('defender', 'empire2', 'Defender', 65, 80, 0, 50, 50, 4000);
+    attacker.dmgPerUnitMP = 1.0;
+    attacker.dmgPerTickMO = 2.5;
+    attacker.killRate = 0.1;
+    attacker.protection = 0.2;
+    attacker.resolve = 0.3;
+    defender.dmgPerUnitMP = 1.0;
+    defender.dmgPerTickMO = 2.5;
+    defender.killRate = 0.1;
+    defender.protection = 0.2;
+    defender.resolve = 0.3;
+
+    if (withSurge) {
+      attacker.experience = Math.max(0, (attacker.experienceThreshold || 120) - 1);
+      awardArmyBattleExperience(attacker, { won: false, participation: 1, intensity: 1 });
+      if (!(attacker.experienceSurge?.ticksRemaining > 0)) {
+        console.log('X Failed to prime surge for test');
+        return null;
+      }
+    }
+
+    state.armies = [attacker, defender];
+    refreshArmyAggregates(state);
+    return state;
+  };
+
+  const baselineState = buildState(false);
+  const surgedState = buildState(true);
+  if (!surgedState) {
+    return false;
+  }
+
+  const baselineFront = startBattle(baselineState, 'attacker', 'defender', 1200);
+  const surgedFront = startBattle(surgedState, 'attacker', 'defender', 1200);
+  const baselineDefender = baselineState.armies.find(a => a.id === 'defender');
+  const surgedDefender = surgedState.armies.find(a => a.id === 'defender');
+  const surgedAttacker = surgedState.armies.find(a => a.id === 'attacker');
+  const baselineInitial = baselineDefender.mp.current;
+  const surgedInitial = surgedDefender.mp.current;
+
+  simulateBattleTick(baselineFront, baselineState);
+  simulateBattleTick(surgedFront, surgedState);
+
+  const baselineDamage = baselineInitial - baselineDefender.mp.current;
+  const surgedDamage = surgedInitial - surgedDefender.mp.current;
+  const surgeConsumed = !surgedAttacker.experienceSurge || surgedAttacker.experienceSurge.ticksRemaining <= 0;
+
+  if (!surgeConsumed) {
+    console.log('X Experience surge was not consumed on next tick');
+    return false;
+  }
+  if (surgedDamage <= baselineDamage * 1.2) {
+    console.log(`X Surge damage not meaningfully higher (base=${baselineDamage.toFixed(2)}, surge=${surgedDamage.toFixed(2)})`);
+    return false;
+  }
+
+  console.log(`PASS Surge boosted next tick damage (base=${baselineDamage.toFixed(2)}, surge=${surgedDamage.toFixed(2)})`);
+  return true;
+}
+
+// Test 13: Insurrections require sustained valid conditions and obey cooldowns
+function testInsurrectionAntiSpamGuards() {
+  console.log('\n=== Test 13: Insurrection anti-spam guards ===');
+
+  const state = createGameState(22222);
+  state.turn = 1;
+  state.empires = [
+    createEmpire('empire1', 'Empire One', 80),
+    createEmpire('empire2', 'Empire Two', 60)
+  ];
+  const army = createArmy('army1', 'empire1', 'First Legion', 60, 70, 0, 50, 50, 6000);
+  state.armies = [army];
+  state.insurrections = [];
+
+  // High aggravation alone should not spawn while approval is healthy.
+  army.aggravation = INSURRECTION_CONSTANTS.THRESHOLD + 10;
+  for (let i = 0; i < 10; i += 1) {
+    checkInsurrections(state);
+    if (state.insurrections.length > 0) {
+      console.log('X Insurrection spawned despite approval being above threshold');
+      return false;
+    }
+    state.turn += 1;
+  }
+
+  // Conditions must hold for consecutive confirmation turns.
+  state.empires[0].approval = INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5;
+  const confirmationTurns = INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS;
+  for (let i = 0; i < confirmationTurns - 1; i += 1) {
+    checkInsurrections(state);
+    if (state.insurrections.length > 0) {
+      console.log('X Insurrection spawned before confirmation window completed');
+      return false;
+    }
+    state.turn += 1;
+  }
+
+  checkInsurrections(state);
+  if (state.insurrections.length !== 1) {
+    console.log('X Insurrection did not spawn after sustained valid conditions');
+    return false;
+  }
+
+  // Resolve and verify per-army cooldown prevents immediate respawn.
+  state.insurrections[0].active = false;
+  state.turn += 1;
+  checkInsurrections(state);
+  if (state.insurrections.length !== 0) {
+    console.log('X Resolved insurrection was not cleaned up');
+    return false;
+  }
+
+  army.aggravation = INSURRECTION_CONSTANTS.THRESHOLD + 20;
+  state.empires[0].approval = INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 10;
+  const shortWindow = Math.floor(INSURRECTION_CONSTANTS.ARMY_COOLDOWN_TICKS / 2);
+  for (let i = 0; i < shortWindow; i += 1) {
+    checkInsurrections(state);
+    if (state.insurrections.length > 0) {
+      console.log('X Insurrection respawned during army cooldown window');
+      return false;
+    }
+    state.turn += 1;
+  }
+
+  console.log('PASS Insurrection trigger now respects sustained conditions and cooldown gates');
+  return true;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Battle Integration Test Suite');
@@ -656,7 +824,10 @@ const results = {
   'Insurrection battle': testInsurrectionBattle(),
   'Partial support commitments': testPartialSupportCommitments(),
   'Composite battles damage real armies live': testCompositeBattleAppliesLiveDamageToRealArmies(),
-  'Direct manpower mechanics': testDirectManpowerMechanics()
+  'Direct manpower mechanics': testDirectManpowerMechanics(),
+  'Battle experience outcome bias': testBattleExperienceOutcomeBias(),
+  'Experience surge next tick': testExperienceSurgeNextTick(),
+  'Insurrection anti-spam guards': testInsurrectionAntiSpamGuards()
 };
 
 console.log('\n' + '='.repeat(60));

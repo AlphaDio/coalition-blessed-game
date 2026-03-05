@@ -304,8 +304,13 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
 
     if (!targetEmpireId || rebelliousArmies.length === 0) {
       if (!targetEmpireId) {
-        logger.warn(`Insurrection ${insurrection.id} has no valid target empire`);
+        logger.warn(`Insurrection ${insurrection.id} has no valid target empire, resolving without battle`);
       }
+      if (rebelliousArmies.length === 0) {
+        logger.warn(`Insurrection ${insurrection.id} has no remaining rebellious armies, resolving`);
+      }
+      insurrection.active = false;
+      insurrection.resolvedAtTurn = state.turn;
       return;
     }
 
@@ -320,6 +325,7 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
       }
 
       insurrection.active = false;
+      insurrection.resolvedAtTurn = state.turn;
       const targetLabel = targetEmpire ? targetEmpire.name : targetEmpireId;
       const message =
         `Insurrection spreads into ${targetLabel} unopposed! ` +

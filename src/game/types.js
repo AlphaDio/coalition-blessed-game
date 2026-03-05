@@ -1,5 +1,11 @@
 // Type definitions and initializers
-import { TECH_CONSTANTS, IMPROVEMENTS_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
+import {
+  TECH_CONSTANTS,
+  UNITY_CONSTANTS,
+  IMPROVEMENTS_CONSTANTS,
+  SCOURGE_PREDICTION_CONSTANTS,
+  ARMY_EXPERIENCE_CONSTANTS
+} from './constants.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 
 function parseConsumptionRules(consumption) {
@@ -8,6 +14,13 @@ function parseConsumptionRules(consumption) {
     commodity,
     ...rule
   }));
+}
+
+function getArmyExperienceThreshold(level = 0) {
+  const normalizedLevel = Math.max(0, Math.floor(Number(level) || 0));
+  const threshold = ARMY_EXPERIENCE_CONSTANTS.BASE_THRESHOLD
+    * Math.pow(ARMY_EXPERIENCE_CONSTANTS.THRESHOLD_GROWTH_MULTIPLIER, normalizedLevel);
+  return Math.max(1, Math.round(threshold));
 }
 
 export function createEmpire(id, name, initialApproval = 50, traits = {}, values = {}, stats = {}, tags = [], modifiers = {}) {
@@ -59,7 +72,13 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     techPoints: 0,
     techThreshold: TECH_CONSTANTS.INITIAL_THRESHOLD,  // Points needed for next tech event
     technologies: [],      // Array of unlocked tech IDs
-    techModifiers: {}      // Aggregate modifiers from unlocked technologies
+    techModifiers: {},     // Aggregate modifiers from unlocked technologies
+    // Unity fields
+    unityPoints: 0,
+    unityThreshold: UNITY_CONSTANTS.INITIAL_THRESHOLD,
+    unityLevel: 0,
+    unityEffects: [],      // Ordered list of unlocked unity effect IDs
+    unityModifiers: {}     // Aggregate modifiers from unlocked unity effects
   };
 }
 
@@ -101,6 +120,12 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     consumptionEffectPools: {},
     consumptionMpGainMultiplier: 1.0,
     consumptionDamageAdd: 0,
+    experience: 0,
+    experienceLevel: 0,
+    experienceThreshold: getArmyExperienceThreshold(0),
+    experienceSurge: null,
+    insurrectionTriggerStreak: 0,
+    lastInsurrectionTurn: 0,
     
     // MP and MO pools for Front Battles
     mp: {
@@ -381,7 +406,9 @@ export function createInsurrection(id, armies = [], strength = 0, options = {}) 
     strength,
     active: true,
     sourceEmpireIds: Array.isArray(options.sourceEmpireIds) ? [...options.sourceEmpireIds] : [],
-    targetEmpireId: options.targetEmpireId || null
+    targetEmpireId: options.targetEmpireId || null,
+    createdAtTurn: Number.isFinite(Number(options.createdAtTurn)) ? Number(options.createdAtTurn) : null,
+    resolvedAtTurn: null
   };
 }
 
@@ -447,6 +474,8 @@ export function createGameState(seed = 0) {
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
     scourgeDirectedTargetEmpireId: null,
+    lastInsurrectionTurn: 0,
+    insurrectionEmpireCooldowns: {},
     
     // Scourge prediction system
     scourgePrediction: {
@@ -465,6 +494,7 @@ export function createGameState(seed = 0) {
     battleFronts: [],
     events: [],
     activeEvent: null,
+    unityPendingCelebrations: [],
     turn: 1,
     log: [],
     selectedLawIndex: 0,
@@ -657,6 +687,32 @@ export function migrateGameState(state) {
         empire.stats.population = 1000;
       }
       ensurePopulationStats(empire);
+      if (!Number.isFinite(empire.unityPoints) || empire.unityPoints < 0) {
+        empire.unityPoints = 0;
+      }
+      if (!Number.isFinite(empire.unityLevel) || empire.unityLevel < 0) {
+        empire.unityLevel = 0;
+      } else {
+        empire.unityLevel = Math.floor(empire.unityLevel);
+      }
+      if (!Array.isArray(empire.unityEffects)) {
+        empire.unityEffects = [];
+      }
+      if (!empire.unityModifiers || typeof empire.unityModifiers !== 'object') {
+        empire.unityModifiers = {};
+      }
+      const unityThresholdBaseline = Math.floor(
+        UNITY_CONSTANTS.INITIAL_THRESHOLD * Math.pow((empire.unityLevel || 0) + 1, UNITY_CONSTANTS.THRESHOLD_EXPONENT)
+      );
+      if (!Number.isFinite(empire.unityThreshold) || empire.unityThreshold <= 0) {
+        empire.unityThreshold = Math.max(1, unityThresholdBaseline);
+      } else {
+        empire.unityThreshold = Math.max(1, Math.round(empire.unityThreshold));
+      }
+      if ((empire.unityLevel || 0) >= UNITY_CONSTANTS.MAX_TIERS) {
+        empire.unityThreshold = Number.MAX_SAFE_INTEGER;
+        empire.unityPoints = 0;
+      }
     });
   }
   
@@ -676,6 +732,47 @@ export function migrateGameState(state) {
       }
       if (army.consumptionDamageAdd === undefined) {
         army.consumptionDamageAdd = 0;
+      }
+      if (!Number.isFinite(army.experience) || army.experience < 0) {
+        army.experience = 0;
+      }
+      if (!Number.isFinite(army.experienceLevel) || army.experienceLevel < 0) {
+        army.experienceLevel = 0;
+      } else {
+        army.experienceLevel = Math.floor(army.experienceLevel);
+      }
+      const minimumThreshold = getArmyExperienceThreshold(army.experienceLevel);
+      if (!Number.isFinite(army.experienceThreshold) || army.experienceThreshold <= 0) {
+        army.experienceThreshold = minimumThreshold;
+      } else {
+        army.experienceThreshold = Math.max(minimumThreshold, Math.round(army.experienceThreshold));
+      }
+      if (!army.experienceSurge || typeof army.experienceSurge !== 'object') {
+        army.experienceSurge = null;
+      } else {
+        const ticksRemaining = Math.max(0, Math.floor(Number(army.experienceSurge.ticksRemaining) || 0));
+        if (ticksRemaining <= 0) {
+          army.experienceSurge = null;
+        } else {
+          army.experienceSurge = {
+            level: Math.max(army.experienceLevel, Math.floor(Number(army.experienceSurge.level) || army.experienceLevel)),
+            ticksRemaining,
+            damageMult: Math.max(0, Number(army.experienceSurge.damageMult) || 0),
+            killRateBonus: Math.max(0, Number(army.experienceSurge.killRateBonus) || 0),
+            protectionBonus: Math.max(0, Number(army.experienceSurge.protectionBonus) || 0),
+            resolveBonus: Math.max(0, Number(army.experienceSurge.resolveBonus) || 0)
+          };
+        }
+      }
+      if (!Number.isFinite(army.insurrectionTriggerStreak) || army.insurrectionTriggerStreak < 0) {
+        army.insurrectionTriggerStreak = 0;
+      } else {
+        army.insurrectionTriggerStreak = Math.floor(army.insurrectionTriggerStreak);
+      }
+      if (!Number.isFinite(army.lastInsurrectionTurn) || army.lastInsurrectionTurn < 0) {
+        army.lastInsurrectionTurn = 0;
+      } else {
+        army.lastInsurrectionTurn = Math.floor(army.lastInsurrectionTurn);
       }
       
       // Ensure timed fervor bonuses array exists
@@ -725,12 +822,29 @@ export function migrateGameState(state) {
       if (insurrection.targetEmpireId === undefined) {
         insurrection.targetEmpireId = null;
       }
+      if (insurrection.createdAtTurn === undefined) {
+        insurrection.createdAtTurn = null;
+      }
+      if (insurrection.resolvedAtTurn === undefined) {
+        insurrection.resolvedAtTurn = null;
+      }
     });
+  }
+  if (!Number.isFinite(state.lastInsurrectionTurn) || state.lastInsurrectionTurn < 0) {
+    state.lastInsurrectionTurn = 0;
+  } else {
+    state.lastInsurrectionTurn = Math.floor(state.lastInsurrectionTurn);
+  }
+  if (!state.insurrectionEmpireCooldowns || typeof state.insurrectionEmpireCooldowns !== 'object' || Array.isArray(state.insurrectionEmpireCooldowns)) {
+    state.insurrectionEmpireCooldowns = {};
   }
   
   // Ensure state has timedModifiers array for expired modifier cleanup
   if (!Array.isArray(state.timedModifiers)) {
     state.timedModifiers = [];
+  }
+  if (!Array.isArray(state.unityPendingCelebrations)) {
+    state.unityPendingCelebrations = [];
   }
 
   if (!Array.isArray(state.enactedLaws)) {
@@ -968,6 +1082,13 @@ export function migrateGameState(state) {
   }
 
   if (state.improvements && typeof state.improvements === 'object') {
+    if (Array.isArray(state.improvements.queue)) {
+      state.improvements.queue.forEach(improvement => {
+        if (!Number.isFinite(improvement?.unityOutput)) {
+          improvement.unityOutput = 0;
+        }
+      });
+    }
     if (!state.improvements.pendingSustainmentDemand || typeof state.improvements.pendingSustainmentDemand !== 'object') {
       state.improvements.pendingSustainmentDemand = {};
     }

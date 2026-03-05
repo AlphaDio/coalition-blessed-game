@@ -294,6 +294,10 @@ export function expandEffectTargets(effects, context, state) {
   for (const [key, value] of Object.entries(effects)) {
     if (key === 'empireApproval' && value && typeof value === 'object') {
       expanded.empireApproval = expandEntityEffects(value, context, 'empire', state);
+    } else if (key === 'empireBudgetCredits' && value && typeof value === 'object') {
+      expanded.empireBudgetCredits = expandEntityEffects(value, context, 'empire', state);
+    } else if (key === 'empireStability' && value && typeof value === 'object') {
+      expanded.empireStability = expandEntityEffects(value, context, 'empire', state);
     } else if (key === 'armyFervor' && value && typeof value === 'object') {
       expanded.armyFervor = expandEntityEffects(value, context, 'army', state);
     } else if (key === 'empireRelations' && value && typeof value === 'object') {
