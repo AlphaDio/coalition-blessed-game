@@ -1,8 +1,35 @@
 // Technology system - accrual, selection, and granting logic
 import { TECH_CONSTANTS } from './constants.js';
-import { GENERAL_TECHS, ALIGNED_TECHS, UNIQUE_TECHS, TECH_BY_ID } from './technologyDefinitions.js';
+import { applyScaledCoalitionCohesionDelta } from './cohesion.js';
+import { ALL_TECHNOLOGIES, TECH_BY_ID } from './technologyDefinitions.js';
 import { getLogger } from '../modules/logger.js';
 import { triggerHeroPassives } from './heroes.js';
+
+function getUnlockedTechCount(empire) {
+  if (!Array.isArray(empire?.technologies)) {
+    return 0;
+  }
+  return empire.technologies.length;
+}
+
+function getTechTier(tech) {
+  return Number.isFinite(tech?.tier) ? Math.max(1, Math.floor(tech.tier)) : 1;
+}
+
+function isTechTierUnlocked(tech, empire) {
+  const tier = getTechTier(tech);
+  if (tier <= 1) {
+    return true;
+  }
+
+  const requirements = TECH_CONSTANTS.TIER_REQUIREMENTS || {};
+  const requiredUnlockedTechs = Number(requirements[tier] || 0);
+  if (requiredUnlockedTechs <= 0) {
+    return true;
+  }
+
+  return getUnlockedTechCount(empire) >= requiredUnlockedTechs;
+}
 
 /**
  * Calculate effective research speed for an empire
@@ -61,8 +88,15 @@ export function calculateTechPointsPerTick(empire, state) {
  * @returns {boolean} Whether empire can unlock this tech
  */
 export function isTechAvailable(tech, empire) {
+  const unlockedTechs = Array.isArray(empire.technologies) ? empire.technologies : [];
+
   // Already unlocked?
-  if (empire.technologies.includes(tech.id)) {
+  if (unlockedTechs.includes(tech.id)) {
+    return false;
+  }
+
+  // Check tier unlock requirements
+  if (!isTechTierUnlocked(tech, empire)) {
     return false;
   }
   
@@ -92,7 +126,7 @@ export function isTechAvailable(tech, empire) {
   // Check prerequisite techs
   if (tech.requirements.techs && tech.requirements.techs.length > 0) {
     const hasAllPrereqs = tech.requirements.techs.every(prereqId => 
-      empire.technologies.includes(prereqId)
+      unlockedTechs.includes(prereqId)
     );
     if (!hasAllPrereqs) {
       return false;
@@ -108,8 +142,7 @@ export function isTechAvailable(tech, empire) {
  * @returns {Array} Array of available technology definitions
  */
 export function getAvailableTechs(empire) {
-  const allTechs = [...GENERAL_TECHS, ...ALIGNED_TECHS, ...UNIQUE_TECHS];
-  return allTechs.filter(tech => isTechAvailable(tech, empire));
+  return ALL_TECHNOLOGIES.filter((tech) => isTechAvailable(tech, empire));
 }
 
 /**
@@ -131,6 +164,8 @@ export function selectTechChoices(empire, count = TECH_CONSTANTS.TECH_CHOICES_CO
     let weight = 1;
     if (tech.category === 'aligned') weight = 1.5;
     if (tech.category === 'unique') weight = 2;
+    const tier = getTechTier(tech);
+    weight *= 1 + ((tier - 1) * 0.2);
     return { tech, weight };
   });
   
@@ -195,8 +230,7 @@ export function grantTechnology(empire, techId, state) {
   }
   
   if (effects.cohesion) {
-    state.coalitionCohesion = Math.min(100, Math.max(0, state.coalitionCohesion + effects.cohesion));
-    appliedEffects.cohesion = effects.cohesion;
+    appliedEffects.cohesion = applyScaledCoalitionCohesionDelta(state, effects.cohesion);
   }
   
   // Aggregate tech modifiers
@@ -390,6 +424,10 @@ function generateTechChoice(tech) {
 
   // Combine description with hints and effects
   let choiceText = tech.name;
+  const tier = getTechTier(tech);
+  if (tier > 1) {
+    choiceText = `T${tier} | ${choiceText}`;
+  }
   if (hints.length > 0) {
     choiceText += ` (${hints.join(', ')})`;
   }

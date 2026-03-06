@@ -1,4 +1,7 @@
-import { clampApproval, clampCohesion } from '../cohesion.js';
+import {
+  clampApproval,
+  applyScaledCoalitionCohesionDelta
+} from '../cohesion.js';
 import { TRADE_INCOME_EFFECT_DIVISOR } from '../constants.js';
 import { calculateLawReactions } from '../reactions.js';
 
@@ -276,8 +279,8 @@ export function applyLawImmediateEffects(lawDef, state, log, context = {}) {
 
   if (effects.cohesion) {
     const before = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + effects.cohesion);
-    log.push(`Cohesion: ${before.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
+    const appliedDelta = applyScaledCoalitionCohesionDelta(state, effects.cohesion);
+    log.push(`Cohesion: ${before.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (${appliedDelta >= 0 ? '+' : ''}${appliedDelta.toFixed(2)})`);
   }
 
   if (effects.coalition_credits) {

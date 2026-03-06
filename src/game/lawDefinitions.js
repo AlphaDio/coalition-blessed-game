@@ -5,7 +5,8 @@ import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
  */
 export const TIER_REQUIREMENTS = {
   2: 3, // Need at least 3 T1 laws enacted (ever)
-  3: 4  // Need at least 4 T2 laws enacted (ever)
+  3: 4, // Need at least 4 T2 laws enacted (ever)
+  4: 3  // Need at least 3 T3 laws enacted (ever)
 };
 
 function normalizeLawDefinition(moduleDoc, data) {
@@ -39,6 +40,17 @@ function loadLawDefinitions() {
 }
 
 export const TIERED_LAW_DEFINITIONS = loadLawDefinitions();
+const LAW_TIERS = Array.from(
+  new Set(TIERED_LAW_DEFINITIONS.map((law) => Number.isFinite(law.tier) ? law.tier : 1))
+).sort((left, right) => left - right);
+
+function createTierCountRecord() {
+  const counts = {};
+  LAW_TIERS.forEach((tier) => {
+    counts[tier] = 0;
+  });
+  return counts;
+}
 
 export function getSampleLawDefinitions() {
   return TIERED_LAW_DEFINITIONS;
@@ -46,11 +58,12 @@ export function getSampleLawDefinitions() {
 
 export function countEnactedByTier(state) {
   const enactedHistory = state.enactedLawsHistory || [];
-  const counts = { 1: 0, 2: 0, 3: 0 };
+  const counts = createTierCountRecord();
   enactedHistory.forEach(lawId => {
     const law = TIERED_LAW_DEFINITIONS.find(l => l.id === lawId);
     if (law) {
-      counts[law.tier]++;
+      const tier = Number.isFinite(law.tier) ? law.tier : 1;
+      counts[tier] = (counts[tier] || 0) + 1;
     }
   });
   return counts;
@@ -114,25 +127,34 @@ export function canStartLaw(lawId, state) {
 
 export function getTierStatus(state) {
   const counts = countEnactedByTier(state);
-  return [
-    { tier: 1, unlocked: true, enacted: counts[1], required: 0, description: 'Foundational laws' },
-    {
-      tier: 2,
-      unlocked: isTierUnlocked(2, state),
-      enacted: counts[2],
-      required: TIER_REQUIREMENTS[2],
-      previousEnacted: counts[1],
-      description: 'Advanced laws'
-    },
-    {
-      tier: 3,
-      unlocked: isTierUnlocked(3, state),
-      enacted: counts[3],
-      required: TIER_REQUIREMENTS[3],
-      previousEnacted: counts[2],
-      description: 'Transformative laws'
+  const tierDescriptions = {
+    1: 'Foundational laws',
+    2: 'Advanced laws',
+    3: 'Transformative laws',
+    4: 'Doctrine-defining laws'
+  };
+
+  return LAW_TIERS.map((tier) => {
+    if (tier <= 1) {
+      return {
+        tier,
+        unlocked: true,
+        enacted: counts[tier] || 0,
+        required: 0,
+        description: tierDescriptions[tier] || `Tier ${tier} laws`
+      };
     }
-  ];
+
+    const previousTier = tier - 1;
+    return {
+      tier,
+      unlocked: isTierUnlocked(tier, state),
+      enacted: counts[tier] || 0,
+      required: TIER_REQUIREMENTS[tier] || 0,
+      previousEnacted: counts[previousTier] || 0,
+      description: tierDescriptions[tier] || `Tier ${tier} laws`
+    };
+  });
 }
 
 export function getBranchInfo() {

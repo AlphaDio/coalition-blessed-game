@@ -1,6 +1,11 @@
 import { EVENT_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
-import { clampApproval, clampCohesion, clampStat } from './cohesion.js';
+import {
+  clampApproval,
+  clampStat,
+  applyScaledCoalitionCohesionDelta,
+  applyScaledScourgeCohesionDelta
+} from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { resolveEventVariables, expandEffectTargets, interpolateText } from './selectors.js';
 import { getEventTitle, hasValidChoices } from '../utils/events.js';
@@ -141,6 +146,45 @@ function applyLinkedIntelAndPrediction(state, confidenceDelta = 0, intelDelta = 
   }
 }
 
+function scaleEventRelationDelta(rawDelta, currentRelation) {
+  const numericDelta = Number(rawDelta);
+  if (!Number.isFinite(numericDelta) || numericDelta === 0) {
+    return 0;
+  }
+
+  const scalar = Number(EVENT_CONSTANTS.RELATION_EFFECT_SCALAR || 1);
+  const absCap = Math.max(0, Number(EVENT_CONSTANTS.RELATION_EFFECT_ABS_CAP || 0));
+  const diminishingFloor = clampStat(Number(EVENT_CONSTANTS.RELATION_DIMINISHING_FLOOR || 0), 0, 1);
+  const recoveryBias = Math.max(0, Number(EVENT_CONSTANTS.RELATION_RECOVERY_BIAS || 1));
+  const hostilityDamping = clampStat(Number(EVENT_CONSTANTS.RELATION_HOSTILITY_DAMPING || 1), 0, 1);
+  const minStep = Math.max(0, Number(EVENT_CONSTANTS.RELATION_MIN_STEP || 0));
+
+  let scaled = numericDelta * scalar;
+  if (absCap > 0) {
+    scaled = clampStat(scaled, -absCap, absCap);
+  }
+
+  const relation = clampStat(Number(currentRelation) || 0, -100, 100);
+  const positiveHeadroom = clampStat((100 - relation) / 100, 0, 1);
+  const negativeHeadroom = clampStat((relation + 100) / 100, 0, 1);
+  const diminishingFactor = scaled >= 0 ? positiveHeadroom : negativeHeadroom;
+  scaled *= Math.max(diminishingFloor, diminishingFactor);
+
+  // Let players recover broken ties a bit faster than they can deepen hostility.
+  if (scaled > 0 && relation < 0) {
+    scaled *= recoveryBias;
+  }
+  if (scaled < 0 && relation < 0) {
+    scaled *= hostilityDamping;
+  }
+
+  if (Math.abs(scaled) < minStep) {
+    scaled = Math.sign(scaled) * minStep;
+  }
+
+  return Number(scaled.toFixed(2));
+}
+
 export function handleEventChoice(state, eventId, choiceIndex) {
   const logger = getLogger();
   
@@ -214,8 +258,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
         ? expandedEffects.coalitionCohesion() 
         : expandedEffects.coalitionCohesion;
       const reducedChange = change * 0.5;  // Reduce cohesion changes by 50%
-      state.coalitionCohesion = clampCohesion(state.coalitionCohesion + reducedChange);
-      log.push(`Coalition Cohesion ${reducedChange >= 0 ? '+' : ''}${reducedChange.toFixed(2)}`);
+      const appliedChange = applyScaledCoalitionCohesionDelta(state, reducedChange);
+      log.push(`Coalition Cohesion ${appliedChange >= 0 ? '+' : ''}${appliedChange.toFixed(2)}`);
     }
     
     // Handle scourgeCohesion (function or number)
@@ -224,8 +268,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
         ? expandedEffects.scourgeCohesion() 
         : expandedEffects.scourgeCohesion;
       const reducedChange = change * 0.5;  // Reduce cohesion changes by 50%
-      state.scourgeCohesion = clampStat(state.scourgeCohesion + reducedChange, 0, 100);
-      log.push(`Scourge Cohesion ${reducedChange >= 0 ? '+' : ''}${reducedChange.toFixed(2)}`);
+      const appliedChange = applyScaledScourgeCohesionDelta(state, reducedChange);
+      log.push(`Scourge Cohesion ${appliedChange >= 0 ? '+' : ''}${appliedChange.toFixed(2)}`);
     }
     
     if (expandedEffects.empireApproval) {
@@ -298,9 +342,13 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       Object.entries(expandedEffects.empireRelations).forEach(([fromEmpireId, targets]) => {
         Object.entries(targets).forEach(([toEmpireId, change]) => {
           if (state.diplomacy?.relations?.[fromEmpireId]?.[toEmpireId] !== undefined) {
-            const actualChange = typeof change === 'function' ? change() : change;
+            const rawChange = typeof change === 'function' ? change() : change;
             const oldValue = state.diplomacy.relations[fromEmpireId][toEmpireId];
-            state.diplomacy.relations[fromEmpireId][toEmpireId] = Math.max(-100, Math.min(100, oldValue + actualChange));
+            const actualChange = scaleEventRelationDelta(rawChange, oldValue);
+            if (!Number.isFinite(actualChange) || actualChange === 0) {
+              return;
+            }
+            state.diplomacy.relations[fromEmpireId][toEmpireId] = clampStat(oldValue + actualChange, -100, 100);
 
             const fromEmpire = state.empires.find(e => e.id === fromEmpireId);
             const toEmpire = state.empires.find(e => e.id === toEmpireId);

@@ -34,9 +34,9 @@ declares:
         effects:
           empireRelations:
             "$sanctioner":
-              "@all": 8
+              "@all": 6
             "$target":
-              "@all": -15
+              "@all": -12
           timedModifiers:
             empire_production_multiplier:
               value: -0.15
@@ -46,16 +46,16 @@ declares:
         effects:
           empireRelations:
             "$sanctioner":
-              "$target": -5
+              "$target": -4
             "$target":
-              "$sanctioner": -5
+              "$sanctioner": -4
       - text: "Side with ${target.name} (reverse sanctions)"
         effects:
           empireRelations:
             "$target":
-              "@all": 10
+              "@all": 8
             "$sanctioner":
-              "@all": -12
+              "@all": -10
           timedModifiers:
             army_organization:
               value: -3

@@ -15,6 +15,18 @@ export const COHESION_TIERS = {
 };
 
 /**
+ * Cohesion pacing across the whole game.
+ * Used to keep aggregate cohesion gains/losses balanced for long runs.
+ * With a 2000-tick target, each individual cohesion delta is scaled down versus
+ * the previous 1000-tick baseline.
+ */
+export const COHESION_PACING = {
+  BASELINE_TICKS: 1000,
+  TARGET_TICKS: 2000,
+  MIN_DELTA_ABS: 0.05
+};
+
+/**
  * Initial game state values when starting a new game.
  * @property {number} coalitionCohesion - Starting cohesion for the player coalition (0-100)
  * @property {number} scourgeCohesion - Starting cohesion for the enemy Scourge faction
@@ -126,6 +138,7 @@ export const FRONT_BATTLE_MODIFIERS = {
  * @property {number} SCOURGE_WIN_COHESION_LOSS - Coalition cohesion lost when Scourge wins
  * @property {number} SCOURGE_LOSS_COHESION_LOSS - Coalition cohesion lost even when Scourge loses
  * @property {number} SCOURGE_WIN_APPROVAL_LOSS - Empire approval lost when Scourge wins
+ * @property {number} SCOURGE_DEFENSE_HERO_POPULARITY_GAIN - Popularity gained by the targeted empire's hero when Coalition defeats the Scourge
  * @property {number} INSURRECTION_WIN_COHESION_LOSS - Cohesion lost when putting down insurrection
  * @property {number} INSURRECTION_LOSS_COHESION_LOSS - Cohesion lost when insurrection succeeds
  */
@@ -151,6 +164,7 @@ export const BATTLE_CONSTANTS = {
   SCOURGE_WIN_COHESION_LOSS: 4,
   SCOURGE_LOSS_COHESION_LOSS: 5,
   SCOURGE_WIN_APPROVAL_LOSS: 10,
+  SCOURGE_DEFENSE_HERO_POPULARITY_GAIN: 6,
   INSURRECTION_WIN_COHESION_LOSS: 3,
   INSURRECTION_LOSS_COHESION_LOSS: 12
 };
@@ -289,11 +303,23 @@ export const INSURRECTION_CONSTANTS = {
  * @property {number} TIER_1_FREQUENCY - Event chance when Stable (5%)
  * @property {number} TIER_2_FREQUENCY - Event chance when Strained (10%)
  * @property {number} TIER_3_FREQUENCY - Event chance when Desperate (15%)
+ * @property {number} RELATION_EFFECT_SCALAR - Global scalar for event-driven relation deltas
+ * @property {number} RELATION_EFFECT_ABS_CAP - Absolute max relation delta an event can apply per edge
+ * @property {number} RELATION_DIMINISHING_FLOOR - Minimum remaining impact when near relation caps
+ * @property {number} RELATION_RECOVERY_BIAS - Positive-delta multiplier when repairing negative relations
+ * @property {number} RELATION_HOSTILITY_DAMPING - Negative-delta damping when relation is already hostile
+ * @property {number} RELATION_MIN_STEP - Minimum absolute non-zero relation delta after scaling
  */
 export const EVENT_CONSTANTS = {
   TIER_1_FREQUENCY: 0.05,  // 5% chance (was 10%)
   TIER_2_FREQUENCY: 0.10,  // 10% chance (was 20%)
-  TIER_3_FREQUENCY: 0.15   // 15% chance (was 30%)
+  TIER_3_FREQUENCY: 0.15,  // 15% chance (was 30%)
+  RELATION_EFFECT_SCALAR: 0.7,
+  RELATION_EFFECT_ABS_CAP: 9,
+  RELATION_DIMINISHING_FLOOR: 0.2,
+  RELATION_RECOVERY_BIAS: 1.15,
+  RELATION_HOSTILITY_DAMPING: 0.8,
+  RELATION_MIN_STEP: 0.4
 };
 
 /**
@@ -458,27 +484,52 @@ export const REACTION_CONSTANTS = {
  *                                          threshold = INITIAL_THRESHOLD * (n+1)^THRESHOLD_EXPONENT
  * @property {number} BASE_RESEARCH_SPEED - Default research speed multiplier (1.0)
  * @property {number} TECH_CHOICES_COUNT - Number of tech options presented when unlocking (3)
+ * @property {Object} TIER_REQUIREMENTS - Minimum unlocked tech counts required for each tier
  */
 export const TECH_CONSTANTS = {
   BASE_POINTS_PER_TICK: 200,         // Base tech points gained per tick 100 -> 200
   INITIAL_THRESHOLD: 70000,          // First tech unlocks at ~350 turns before research bonuses
   THRESHOLD_EXPONENT: 1.20,          // Higher exponent stretches advanced tech into mid/late campaign
   BASE_RESEARCH_SPEED: 1.0,          // Default research_speed modifier
-  TECH_CHOICES_COUNT: 3              // Number of tech choices offered per event
+  TECH_CHOICES_COUNT: 3,             // Number of tech choices offered per event
+  TIER_REQUIREMENTS: {
+    1: 0,
+    2: 2,
+    3: 5,
+    4: 8
+  }
 };
 
 /**
  * Unity progression system configuration.
- * Unity is generated primarily by dedicated improvements and unlocks
- * empire-specific permanent effects in tiered order.
+ * Unity generation pipeline:
+ * 1) Population baseline
+ * 2) Additive boosts (laws, improvements, unity effects)
+ * 3) Multiplicative boosts (laws, improvements, unity effects)
+ * 4) Hero popularity multiplier
+ *
+ * This keeps population as the default driver while allowing strategy layers
+ * (laws, infrastructure, heroes) to accelerate progression.
  * @property {number} INITIAL_THRESHOLD - Unity needed for first unlock
  * @property {number} THRESHOLD_EXPONENT - Polynomial scaling for later unlocks
  * @property {number} MAX_TIERS - Maximum number of unity effects per empire
+ * @property {number} POPULATION_BASE_MIN - Minimum unity per turn from population baseline
+ * @property {number} POPULATION_BASE_MAX - Maximum unity per turn from population baseline at population cap
+ * @property {number} POPULATION_BASE_CURVE_EXPONENT - Curve exponent for population baseline scaling
+ * @property {number} HERO_POPULARITY_MULT_SPAN - Half-span applied around x1 from hero popularity (0.2 => x0.8..x1.2)
+ * @property {number} HERO_POPULARITY_MULT_MIN - Minimum multiplier from hero popularity contribution
+ * @property {number} HERO_POPULARITY_MULT_MAX - Maximum multiplier from hero popularity contribution
  */
 export const UNITY_CONSTANTS = {
   INITIAL_THRESHOLD: 120,
   THRESHOLD_EXPONENT: 1.45,
-  MAX_TIERS: 5
+  MAX_TIERS: 5,
+  POPULATION_BASE_MIN: 0.35,
+  POPULATION_BASE_MAX: 2.5,
+  POPULATION_BASE_CURVE_EXPONENT: 0.55,
+  HERO_POPULARITY_MULT_SPAN: 0.2,
+  HERO_POPULARITY_MULT_MIN: 0.8,
+  HERO_POPULARITY_MULT_MAX: 1.2
 };
 
 /**
@@ -661,11 +712,12 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} THREAT_THRESHOLD_2 - Second threat tier boundary (60)
  * @property {number} THREAT_THRESHOLD_3 - Third/highest threat tier boundary (80)
  * @property {number} GLORY_BASE_PER_SCOURGE_WIN - Base glory earned for defeating Scourge (100)
- * @property {number} EP_COST_MEDIUM - Expedition point cost for medium missions (120)
- * @property {number} EP_COST_MEDIUM_HIGH - EP cost for medium-high missions (180)
- * @property {number} EP_COST_HIGH - EP cost for high-difficulty missions (240)
- * @property {number} EP_BASE_DURATION - Base duration for expedition point regeneration (400)
- * @property {number} EP_MAX_ACTIVE - Maximum concurrent active expeditions (1)
+ * @property {number} EP_COST_MEDIUM - Intel cost for medium emergency powers
+ * @property {number} EP_COST_MEDIUM_HIGH - Intel cost for medium-high emergency powers
+ * @property {number} EP_COST_HIGH - Intel cost for high-impact emergency powers
+ * @property {number} EP_COST_EXTREME - Intel cost for apex emergency powers
+ * @property {number} EP_BASE_DURATION - Base duration for emergency powers
+ * @property {number} EP_MAX_ACTIVE - Maximum concurrent active emergency powers
  * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.10)
  * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase from negative outcomes (+2)
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
@@ -694,11 +746,12 @@ export const SCOURGE_MISSION_CONSTANTS = {
   THREAT_THRESHOLD_2: 60,
   THREAT_THRESHOLD_3: 80,
   GLORY_BASE_PER_SCOURGE_WIN: 100,
-  EP_COST_MEDIUM: 120,
-  EP_COST_MEDIUM_HIGH: 180,
-  EP_COST_HIGH: 240,
-  EP_BASE_DURATION: 400,
-  EP_MAX_ACTIVE: 1,
+  EP_COST_MEDIUM: 8,
+  EP_COST_MEDIUM_HIGH: 12,
+  EP_COST_HIGH: 16,
+  EP_COST_EXTREME: 22,
+  EP_BASE_DURATION: 140,
+  EP_MAX_ACTIVE: 2,
   MISSION_METER_PER_REQUISITION: 0.06,
   MISSION_NEGATIVE_THREAT_INCREASE: 2,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,

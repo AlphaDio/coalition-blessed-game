@@ -29,7 +29,7 @@ declares:
         effects:
           empireRelations:
             "$proposer":
-              "@all": 15
+              "@all": 14
           coalitionEconomy:
             requisition: -200
           empireApproval:
@@ -38,11 +38,11 @@ declares:
         effects:
           empireRelations:
             "$proposer":
-              "@all": 8
+              "@all": 7
       - text: "Reject the initiative (damage relations, keep requisition)"
         effects:
           empireRelations:
             "$proposer":
-              "@all": -15
+              "@all": -12
           coalitionEconomy:
             requisition: 100

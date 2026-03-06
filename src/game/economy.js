@@ -1,5 +1,5 @@
 import { ECONOMY_CONSTANTS } from './constants.js';
-import { clampStat, clampCohesion } from './cohesion.js';
+import { clampStat, applyScaledCoalitionCohesionDelta } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 
 /**
@@ -65,14 +65,15 @@ export function applyNegativeRequisitionCohesionPenalty(state) {
     // Apply cohesion penalty based on configurable constant
     const cohesionLoss = Math.abs(requisition) / ECONOMY_CONSTANTS.NEGATIVE_REQUISITION_COHESION_DIVISOR;
     const prevCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+    const appliedCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+    const appliedCohesionLoss = Math.abs(appliedCohesionDelta);
     
-    if (cohesionLoss > 0.01) { // Only log if significant
-      logger.warn(`Negative requisition penalty: ${requisition.toFixed(1)} req -> -${cohesionLoss.toFixed(2)} cohesion (${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)})`);
-      log.push(`{red-fg}Negative Requisition:{/red-fg} Coalition Cohesion ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss.toFixed(2)})`);
+    if (appliedCohesionLoss > 0.01) { // Only log if significant
+      logger.warn(`Negative requisition penalty: ${requisition.toFixed(1)} req -> -${appliedCohesionLoss.toFixed(2)} cohesion (${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)})`);
+      log.push(`{red-fg}Negative Requisition:{/red-fg} Coalition Cohesion ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)})`);
     }
     
-    return { log, cohesionLoss };
+    return { log, cohesionLoss: appliedCohesionLoss };
   }
   
   return { log, cohesionLoss: 0 };

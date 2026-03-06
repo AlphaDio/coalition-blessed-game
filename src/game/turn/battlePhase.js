@@ -1,5 +1,8 @@
 import { BATTLE_CONSTANTS, INSURRECTION_CONSTANTS } from '../constants.js';
-import { clampCohesion, clampApproval } from '../cohesion.js';
+import {
+  clampApproval,
+  applyScaledCoalitionCohesionDelta
+} from '../cohesion.js';
 import { getCohesionTier } from '../cohesion.js';
 import { getActiveBattles, simulateBattleTick } from '../frontBattles.js';
 import { selectInsurrectionTargetEmpire } from '../insurrection.js';
@@ -251,15 +254,16 @@ export function triggerScourgeBattle(state, rng, battleChance, activeBattles, lo
   logger.warn('Scourge battle: No armies available! Scourge victory by default');
   const cohesionLoss = BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS;
   const prevCoalitionCohesion = state.coalitionCohesion;
-  state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+  const appliedCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+  const appliedCohesionLoss = Math.abs(appliedCohesionDelta);
 
   const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
   state.empires.forEach(empire => {
     empire.approval = clampApproval(empire.approval - approvalLoss);
   });
 
-  log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
-  logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}`);
+  log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
+  logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
   // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
   for (const army of state.armies) {
     army.fervorBonus = 0;
@@ -318,7 +322,8 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
       const targetEmpire = state.empires.find(empire => empire.id === targetEmpireId) || null;
       const cohesionLoss = BATTLE_CONSTANTS.INSURRECTION_LOSS_COHESION_LOSS;
       const prevCoalitionCohesion = state.coalitionCohesion;
-      state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+      const appliedCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+      const appliedCohesionLoss = Math.abs(appliedCohesionDelta);
 
       if (targetEmpire) {
         targetEmpire.approval = clampApproval(targetEmpire.approval - INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK);
@@ -329,7 +334,7 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
       const targetLabel = targetEmpire ? targetEmpire.name : targetEmpireId;
       const message =
         `Insurrection spreads into ${targetLabel} unopposed! ` +
-        `Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), ` +
+        `Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), ` +
         `Approval -${INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK}`;
       log.push(message);
       logger.warn(message);

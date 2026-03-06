@@ -134,6 +134,14 @@ export function applyImprovementModifiers(state) {
         // Persistent military scaling modifiers applied in armyPhase.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'unity_gain_add') {
+        // Additive per-turn unity gain modifier for this empire.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'unity_gain_mult') {
+        // Multiplicative per-turn unity gain modifier (stored as additive ratio, e.g. 0.15 => +15%).
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }
       // Other modifiers can be stored and applied elsewhere as needed
     }

@@ -1,12 +1,112 @@
-import { UNITY_CONSTANTS } from './constants.js';
+import { POPULATION_CONSTANTS, UNITY_CONSTANTS } from './constants.js';
 import { clampApproval, clampStat } from './cohesion.js';
 import { getLogger } from '../modules/logger.js';
 import { getUnityEffectForEmpire } from './unityDefinitions.js';
+import { HERO_STATUS } from './heroes/constants.js';
+import { ensureHeroMeters, getPopularityCap } from './heroes/utils.js';
 
 function sanitizeNonNegativeNumber(value, fallback = 0) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric < 0) return fallback;
   return numeric;
+}
+
+function readUnityGainAdd(modifiers = {}) {
+  const candidates = [
+    modifiers.unity_gain_add,
+    modifiers.unity_add
+  ];
+  for (const value of candidates) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric !== 0) {
+      return numeric;
+    }
+  }
+  return 0;
+}
+
+function readUnityGainMult(modifiers = {}) {
+  const candidates = [
+    modifiers.unity_gain_mult,
+    modifiers.unity_mult
+  ];
+  for (const value of candidates) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric !== 0) {
+      return Math.max(0, 1 + numeric);
+    }
+  }
+  return 1;
+}
+
+function getEmpirePopulationUnityBaseline(empire) {
+  const population = Math.max(0, Number(empire?.stats?.population || 0));
+  if (population <= 0) {
+    return 0;
+  }
+
+  const populationCap = Math.max(1, Number(POPULATION_CONSTANTS.MAX_POPULATION || 1_000_000));
+  const normalizedPopulation = Math.max(0, Math.min(1, population / populationCap));
+  const curvedPopulation = Math.pow(normalizedPopulation, UNITY_CONSTANTS.POPULATION_BASE_CURVE_EXPONENT || 1);
+  const minGain = Math.max(0, Number(UNITY_CONSTANTS.POPULATION_BASE_MIN || 0));
+  const maxGain = Math.max(minGain, Number(UNITY_CONSTANTS.POPULATION_BASE_MAX || minGain));
+  return minGain + ((maxGain - minGain) * curvedPopulation);
+}
+
+function getLawUnityModifiers(state) {
+  if (!Array.isArray(state?.activeLaws) || state.activeLaws.length === 0) {
+    return { add: 0, mult: 1 };
+  }
+
+  let add = 0;
+  let mult = 1;
+
+  state.activeLaws.forEach((law) => {
+    const modifiers = law?.modifiers || {};
+    add += readUnityGainAdd(modifiers);
+    mult *= readUnityGainMult(modifiers);
+  });
+
+  return { add, mult };
+}
+
+function getImprovementUnityModifiers(state, empireId) {
+  const modifiers = state?.improvements?.empireModifiers?.[empireId] || {};
+  return {
+    add: readUnityGainAdd(modifiers),
+    mult: readUnityGainMult(modifiers)
+  };
+}
+
+function getEmpireHeroPopularityUnityMultiplier(state, empireId) {
+  if (!Array.isArray(state?.heroes) || state.heroes.length === 0) {
+    return 1;
+  }
+
+  const heroes = state.heroes.filter((hero) =>
+    hero &&
+    hero.empireId === empireId &&
+    hero.status !== HERO_STATUS.EXILED
+  );
+
+  if (heroes.length === 0) {
+    return 1;
+  }
+
+  const normalizedPopularityValues = heroes.map((hero) => {
+    ensureHeroMeters(hero);
+    const cap = Math.max(1, Number(getPopularityCap(hero) || 100));
+    const effectivePopularity = Math.max(0, Math.min(cap, Number(hero.meters?.popularity || 0)));
+    return effectivePopularity / cap;
+  });
+
+  const averagePopularity = normalizedPopularityValues.reduce((sum, value) => sum + value, 0) / normalizedPopularityValues.length;
+  const centered = (averagePopularity - 0.5) * 2; // -1..1
+  const span = Math.max(0, Number(UNITY_CONSTANTS.HERO_POPULARITY_MULT_SPAN || 0));
+  const rawMultiplier = 1 + (centered * span);
+  const minMultiplier = Math.max(0, Number(UNITY_CONSTANTS.HERO_POPULARITY_MULT_MIN || 0));
+  const maxMultiplier = Math.max(minMultiplier, Number(UNITY_CONSTANTS.HERO_POPULARITY_MULT_MAX || minMultiplier));
+  return Math.max(minMultiplier, Math.min(maxMultiplier, rawMultiplier));
 }
 
 function getRegularEmpireArmies(state, empireId) {
@@ -60,27 +160,47 @@ export function ensureEmpireUnityState(empire) {
 }
 
 export function getEmpireUnityGainPerTurn(state, empireId) {
-  if (!state?.improvements || !Array.isArray(state.improvements.queue)) {
-    return 0;
-  }
+  const empire = (state.empires || []).find(candidate => candidate.id === empireId);
+  if (!empire) return 0;
 
-  let baseGain = 0;
-  for (const improvement of state.improvements.queue) {
-    if (!improvement || improvement.state !== 'ACTIVE' || improvement.empireId !== empireId) continue;
-    const output = Number(improvement.unityOutput);
-    if (Number.isFinite(output) && output > 0) {
-      baseGain += output;
+  const populationBaseline = getEmpirePopulationUnityBaseline(empire);
+
+  let improvementUnityOutput = 0;
+  const improvements = state?.improvements?.queue;
+  if (Array.isArray(improvements)) {
+    for (const improvement of improvements) {
+      if (!improvement || improvement.state !== 'ACTIVE' || improvement.empireId !== empireId) continue;
+      const output = Number(improvement.unityOutput);
+      if (Number.isFinite(output) && output > 0) {
+        improvementUnityOutput += output;
+      }
     }
   }
 
-  const empire = (state.empires || []).find(candidate => candidate.id === empireId);
-  if (!empire) return Math.max(0, baseGain);
+  const lawUnityModifiers = getLawUnityModifiers(state);
+  const improvementUnityModifiers = getImprovementUnityModifiers(state, empireId);
+  const unityEffectModifiers = empire.unityModifiers || {};
+  const unityEffectGainAdd = readUnityGainAdd(unityEffectModifiers);
+  const unityEffectGainMult = readUnityGainMult(unityEffectModifiers);
+  const heroPopularityMultiplier = getEmpireHeroPopularityUnityMultiplier(state, empireId);
 
-  const unityMods = empire.unityModifiers || {};
-  const gainAdd = Number(unityMods.unity_gain_add) || 0;
-  const gainMult = Math.max(0, 1 + (Number(unityMods.unity_gain_mult) || 0));
+  const additiveGain = Math.max(
+    0,
+    populationBaseline +
+    improvementUnityOutput +
+    lawUnityModifiers.add +
+    improvementUnityModifiers.add +
+    unityEffectGainAdd
+  );
+  const multiplicativeGain = Math.max(
+    0,
+    lawUnityModifiers.mult *
+    improvementUnityModifiers.mult *
+    unityEffectGainMult *
+    heroPopularityMultiplier
+  );
 
-  return Math.max(0, (baseGain * gainMult) + gainAdd);
+  return Math.max(0, additiveGain * multiplicativeGain);
 }
 
 function applyUnityImmediateEffects(state, empire, immediateEffects = {}) {

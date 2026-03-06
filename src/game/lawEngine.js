@@ -11,7 +11,7 @@
  * MAX_PHASE_PROGRESS is set to 2.0 to allow for flexibility in event weighting.
  */
 
-import { clamp } from './cohesion.js';
+import { clamp, applyScaledCoalitionCohesionDelta } from './cohesion.js';
 
 /**
  * Phase progression thresholds
@@ -361,9 +361,10 @@ export function applyUnrestExternalities(lawProcess, state) {
   const unrestSeverity = (unrest - 0.3) / 0.7;  // 0 to 1 for unrest 0.3 to 1.0
   
   // Cohesion loss: up to -2 per tick at max unrest
-  const cohesionLoss = Math.floor(unrestSeverity * 2 * damageMultiplier);
-  if (cohesionLoss > 0) {
-    state.coalitionCohesion = clamp(state.coalitionCohesion - cohesionLoss, 0, 100);
+  const rawCohesionLoss = Math.floor(unrestSeverity * 2 * damageMultiplier);
+  let cohesionLoss = 0;
+  if (rawCohesionLoss > 0) {
+    cohesionLoss = Math.abs(applyScaledCoalitionCohesionDelta(state, -rawCohesionLoss));
   }
   
   // Approval loss to all empires: up to -3 per tick at max unrest

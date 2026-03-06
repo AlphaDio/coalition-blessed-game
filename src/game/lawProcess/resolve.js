@@ -44,7 +44,20 @@ function ensureLawStateDefaults(state) {
     state.enactedLawsByCategory = {};
   }
   if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
-    state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+    state.lawTierUnlocks = { 1: true, 2: false, 3: false, 4: false };
+  } else {
+    if (state.lawTierUnlocks[1] !== true) {
+      state.lawTierUnlocks[1] = true;
+    }
+    if (state.lawTierUnlocks[2] === undefined) {
+      state.lawTierUnlocks[2] = false;
+    }
+    if (state.lawTierUnlocks[3] === undefined) {
+      state.lawTierUnlocks[3] = false;
+    }
+    if (state.lawTierUnlocks[4] === undefined) {
+      state.lawTierUnlocks[4] = false;
+    }
   }
   if (!Array.isArray(state.activeLaws)) {
     state.activeLaws = [];
@@ -388,8 +401,11 @@ export function resolveLawProcess(lawProcess, state, rng) {
       state.enactedLawsHistory.push(lawProcess.lawId);
     }
     rebuildActiveLaws(state);
-    if (lawDef.tier === 1) state.lawTierUnlocks[2] = true;
-    if (lawDef.tier === 2) state.lawTierUnlocks[3] = true;
+    const enactedTier = Number.isFinite(lawDef.tier) ? lawDef.tier : 1;
+    const nextTier = enactedTier + 1;
+    if ((state.lawDefinitions || []).some((law) => (Number.isFinite(law.tier) ? law.tier : 1) === nextTier)) {
+      state.lawTierUnlocks[nextTier] = true;
+    }
 
     // Apply law modifiers to coalition
     const modifierLog = applyLawModifiers(lawDef, state);

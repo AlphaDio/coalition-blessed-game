@@ -185,7 +185,12 @@ export class GameManager {
       this.state.enactedLawsHistory = Array.isArray(this.state.enactedLaws) ? [...this.state.enactedLaws] : [];
     }
     if (force || !this.state.lawTierUnlocks || typeof this.state.lawTierUnlocks !== 'object') {
-      this.state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+      this.state.lawTierUnlocks = { 1: true, 2: false, 3: false, 4: false };
+    } else {
+      this.state.lawTierUnlocks[1] = true;
+      if (this.state.lawTierUnlocks[2] === undefined) this.state.lawTierUnlocks[2] = false;
+      if (this.state.lawTierUnlocks[3] === undefined) this.state.lawTierUnlocks[3] = false;
+      if (this.state.lawTierUnlocks[4] === undefined) this.state.lawTierUnlocks[4] = false;
     }
     if (this.state.scourgeTargetEmpireId === undefined) {
       this.state.scourgeTargetEmpireId = null;

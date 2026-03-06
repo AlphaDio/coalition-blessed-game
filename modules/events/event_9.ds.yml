@@ -29,7 +29,7 @@ declares:
         effects:
           empireRelations:
             "$initiator":
-              "@all": 15
+              "@all": 14
           timedModifiers:
             relations_strength_modifier:
               value: 0.5
@@ -38,7 +38,7 @@ declares:
         effects:
           empireRelations:
             "$initiator":
-              "@all": 15
+              "@all": 10
           timedModifiers:
             army_organization:
               value: 5
@@ -47,5 +47,5 @@ declares:
         effects:
           empireRelations:
             "$initiator":
-              "@all": -8
+              "@all": -7
           scourgeCohesion: 3

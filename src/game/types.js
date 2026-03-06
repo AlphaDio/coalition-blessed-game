@@ -213,14 +213,25 @@ export function createHero(id, empireId, name, options = {}) {
  * @param {Object} requirements - Optional requirements (axis alignment, tags, etc.)
  * @param {Object} immediateEffects - One-time effects when unlocked
  * @param {Object} modifiers - Ongoing modifier bonuses
+ * @param {Object} options - Extra metadata (tier)
  * @returns {Object} Technology definition
  */
-export function createTechnology(id, name, description, category = 'general', requirements = {}, immediateEffects = {}, modifiers = {}) {
+export function createTechnology(
+  id,
+  name,
+  description,
+  category = 'general',
+  requirements = {},
+  immediateEffects = {},
+  modifiers = {},
+  options = {}
+) {
   return {
     id,
     name,
     description,
     category,  // 'general' | 'aligned' | 'unique'
+    tier: Number.isFinite(options.tier) ? Math.max(1, Math.floor(options.tier)) : 1,
     requirements: {
       axis: requirements.axis || null,        // e.g., { axis: 'natural_mechanical', direction: 1, threshold: 0.3 }
       tags: requirements.tags || [],          // e.g., ['mechanical', 'hive']
@@ -514,7 +525,7 @@ export function createGameState(seed = 0) {
     enactedLaws: [], // Array of enacted law IDs (removed from available options)
     enactedLawsByCategory: {}, // Map category -> active lawId
     enactedLawsHistory: [], // Array of law IDs ever enacted (for tier unlocks)
-    lawTierUnlocks: { 1: true, 2: false, 3: false },
+    lawTierUnlocks: { 1: true, 2: false, 3: false, 4: false },
     
     // Coalition global modifiers (from laws, improvements, etc.)
     coalitionModifiers: {
@@ -881,7 +892,18 @@ export function migrateGameState(state) {
     state.enactedLawsHistory = [...state.enactedLaws];
   }
   if (!state.lawTierUnlocks || typeof state.lawTierUnlocks !== 'object') {
-    state.lawTierUnlocks = { 1: true, 2: false, 3: false };
+    state.lawTierUnlocks = { 1: true, 2: false, 3: false, 4: false };
+  } else {
+    state.lawTierUnlocks[1] = true;
+    if (state.lawTierUnlocks[2] === undefined) {
+      state.lawTierUnlocks[2] = false;
+    }
+    if (state.lawTierUnlocks[3] === undefined) {
+      state.lawTierUnlocks[3] = false;
+    }
+    if (state.lawTierUnlocks[4] === undefined) {
+      state.lawTierUnlocks[4] = false;
+    }
   }
   if (state.coalitionThreat === undefined) {
     state.coalitionThreat = 0;

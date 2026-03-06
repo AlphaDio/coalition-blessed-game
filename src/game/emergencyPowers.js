@@ -5,28 +5,42 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_MOBILIZATION',
     name: 'Mobilization Surge',
-    cost_glory: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
     duration_ticks: SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION,
     effects: [
-      { target: 'coalition.requisition_gen', op: 'mul', value: 0.25 }
+      { target: 'coalition.requisition_gen', op: 'mul', value: 0.55 },
+      { target: 'coalition.law_enact_speed', op: 'mul', value: 0.12 }
     ]
   },
   {
     id: 'EP_WAR_INDUSTRY',
     name: 'War Industry Overdrive',
-    cost_glory: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM_HIGH,
-    duration_ticks: SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION,
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM_HIGH,
+    duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 1.1),
     effects: [
-      { target: 'coalition.improvement_build_speed', op: 'mul', value: 0.25 }
+      { target: 'coalition.improvement_build_speed', op: 'mul', value: 0.7 },
+      { target: 'coalition.requisition_gen', op: 'mul', value: 0.2 }
     ]
   },
   {
     id: 'EP_MANDATE',
     name: 'Emergency Mandate',
-    cost_glory: SCOURGE_MISSION_CONSTANTS.EP_COST_HIGH,
-    duration_ticks: SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION,
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_HIGH,
+    duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 0.9),
     effects: [
-      { target: 'coalition.law_enact_speed', op: 'mul', value: 0.25 }
+      { target: 'coalition.law_enact_speed', op: 'mul', value: 0.5 },
+      { target: 'coalition.requisition_gen', op: 'mul', value: 0.25 }
+    ]
+  },
+  {
+    id: 'EP_SIGNAL_NET',
+    name: 'Signal Supremacy Net',
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_EXTREME,
+    duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 0.8),
+    effects: [
+      { target: 'coalition.intel_gain_per_turn', op: 'add', value: 1.5 },
+      { target: 'coalition.law_enact_speed', op: 'mul', value: 0.18 },
+      { target: 'coalition.requisition_gen', op: 'mul', value: 0.15 }
     ]
   }
 ];
@@ -38,9 +52,16 @@ export function getEmergencyPowerDefinitions() {
 function scaleByThreat(value, state) {
   const threat = getThreatScalar(state?.coalitionThreat || 0);
   const climateSlots = state?.threatClimate?.activeSlots || 0;
-  const threatMultiplier = 1 + (threat / 200);
-  const climateMultiplier = 1 + (climateSlots * 0.1);
-  return value * threatMultiplier * climateMultiplier;
+  const threatBonus = Math.min(0.35, threat / 350);
+  const climateBonus = Math.min(0.2, climateSlots * 0.08);
+  const multiplier = 1 + threatBonus + climateBonus;
+  return value * multiplier;
+}
+
+function getPowerIntelCost(def) {
+  if (!def) return 0;
+  const normalized = Number(def.cost_intel ?? def.cost_glory ?? 0);
+  return Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
 }
 
 export function canActivateEmergencyPower(state, powerId) {
@@ -52,9 +73,10 @@ export function canActivateEmergencyPower(state, powerId) {
     return { canActivate: false, reason: 'Max active emergency powers reached' };
   }
 
-  const availableGlory = state.coalitionGlory || 0;
-  if (availableGlory < def.cost_glory) {
-    return { canActivate: false, reason: 'Insufficient Glory' };
+  const availableIntel = Number(state.coalitionIntel || 0);
+  const intelCost = getPowerIntelCost(def);
+  if (availableIntel < intelCost) {
+    return { canActivate: false, reason: `Insufficient Intel (need ${intelCost.toFixed(1)})` };
   }
 
   return { canActivate: true, reason: '' };
@@ -77,8 +99,8 @@ export function activateEmergencyPower(state, powerId) {
     value: scaleByThreat(effect.value, state)
   }));
 
-  state.coalitionGlory = Math.max(0, (state.coalitionGlory || 0) - def.cost_glory);
-  state.coalitionPrestige = (state.coalitionPrestige || 0) + Math.round(def.cost_glory * 0.25);
+  const intelCost = getPowerIntelCost(def);
+  state.coalitionIntel = Math.max(0, (state.coalitionIntel || 0) - intelCost);
 
   if (!Array.isArray(state.activeEmergencyPowers)) {
     state.activeEmergencyPowers = [];
@@ -87,6 +109,7 @@ export function activateEmergencyPower(state, powerId) {
   state.activeEmergencyPowers.push({
     id: def.id,
     name: def.name,
+    costIntel: intelCost,
     remainingDuration: scaledDuration,
     totalDuration: scaledDuration,
     effects: scaledEffects
@@ -116,7 +139,8 @@ export function getActiveEmergencyPowerModifiers(state) {
   const aggregate = {
     requisitionGenMult: 1.0,
     improvementBuildSpeedMult: 1.0,
-    lawProgressSpeedBonus: 0
+    lawProgressSpeedBonus: 0,
+    intelGainPerTurn: 0
   };
 
   (state.activeEmergencyPowers || []).forEach(power => {
@@ -129,6 +153,9 @@ export function getActiveEmergencyPowerModifiers(state) {
       }
       if (effect.target === 'coalition.law_enact_speed' && effect.op === 'mul') {
         aggregate.lawProgressSpeedBonus += effect.value;
+      }
+      if (effect.target === 'coalition.intel_gain_per_turn' && effect.op === 'add') {
+        aggregate.intelGainPerTurn += effect.value;
       }
     });
   });

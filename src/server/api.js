@@ -779,7 +779,8 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         id,
         name: tech.name || id,
         description: tech.description || '',
-        category: tech.category || 'general'
+        category: tech.category || 'general',
+        tier: Number.isFinite(tech.tier) ? tech.tier : 1
       }));
       res.sendSuccess({ technologies });
     } catch (error) {
@@ -924,7 +925,8 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       const emergencyPowers = getEmergencyPowerDefinitions().map((power) => ({
         id: power.id,
         name: power.name,
-        cost_glory: power.cost_glory,
+        cost_intel: power.cost_intel ?? power.cost_glory ?? 0,
+        cost_glory: power.cost_glory ?? 0,
         duration_ticks: power.duration_ticks,
         effects: power.effects
       }));
@@ -1067,6 +1069,9 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
             killRate: army.killRate ?? 0.1
           },
           supply: {
+            needsDemand: army.supply_state?.needs_demand ?? {},
+            wantsDemand: army.supply_state?.wants_demand ?? {},
+            received: army.supply_state?.received ?? {},
             needsFulfillment: army.supply_state?.needs_fulfillment ?? {},
             wantsFulfillment: army.supply_state?.wants_fulfillment ?? {}
           },

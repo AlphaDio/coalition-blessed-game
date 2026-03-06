@@ -675,9 +675,83 @@ function testInsurrectionOnlyTargetsSingleEmpire() {
   return false;
 }
 
-// Test 14: Insurrection threshold requires high aggravation
+// Test 14: Eligible armies from different empires spawn separate insurrections
+function testInsurrectionsSplitPerSourceEmpire() {
+  console.log('\n=== Test 14: Insurrections split per source empire ===');
+
+  const state = createGameState(12345);
+  state.turn = 90;
+  state.insurrections = [];
+  state.empires = [
+    createEmpire('empire1', 'Empire One', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5),
+    createEmpire('empire2', 'Empire Two', INSURRECTION_CONSTANTS.APPROVAL_THRESHOLD - 5),
+    createEmpire('empire3', 'Target Empire', 65)
+  ];
+  state.armies = [
+    createArmy('rebel_a', 'empire1', 'Rebel A', 60, 60, INSURRECTION_CONSTANTS.THRESHOLD + 5),
+    createArmy('rebel_b', 'empire2', 'Rebel B', 60, 60, INSURRECTION_CONSTANTS.THRESHOLD + 8),
+    createArmy('target_army', 'empire3', 'Target Army', 60, 65, 0)
+  ];
+  state.diplomacy = {
+    relations: {
+      empire1: { empire2: -20, empire3: -70 },
+      empire2: { empire1: -20, empire3: -80 },
+      empire3: { empire1: -20, empire2: -20 }
+    }
+  };
+
+  runInsurrectionChecks(state, INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS);
+
+  if (state.insurrections.length !== 2) {
+    console.log(`âœ— Expected 2 insurrections, found ${state.insurrections.length}`);
+    return false;
+  }
+
+  const sourceSets = state.insurrections.map((insurrection) => (insurrection.sourceEmpireIds || []).join(','));
+  const sourceEmpireSet = new Set(sourceSets);
+  const splitBySource = sourceEmpireSet.has('empire1') && sourceEmpireSet.has('empire2');
+  const singleArmyEach = state.insurrections.every((insurrection) => (insurrection.armies || []).length === 1);
+
+  if (splitBySource && singleArmyEach) {
+    console.log('âœ“ Rebellions are split into one insurrection per source empire');
+    return true;
+  }
+
+  console.log('âœ— Rebellions were not split by source empire correctly');
+  return false;
+}
+
+function testActiveBattleArmiesDoNotApplyApprovalPressure() {
+  console.log('\n=== Test 15: Active-battle armies do not apply approval pressure ===');
+
+  const state = createGameState(12345);
+  state.turn = 120;
+  state.insurrections = [];
+  state.empires = [
+    createEmpire('empire1', 'Pressured Empire', 60),
+    createEmpire('empire2', 'Opponent Empire', 60)
+  ];
+  state.armies = [
+    createArmy('army1', 'empire1', 'Frontline Army', 60, 60, INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD + 10, 50, 50, 5000),
+    createArmy('army2', 'empire2', 'Opponent Army', 60, 60, 0, 50, 50, 5000)
+  ];
+
+  startBattle(state, 'army1', 'army2', 1000);
+  const approvalBefore = state.empires[0].approval;
+  checkInsurrections(state);
+  const approvalAfter = state.empires[0].approval;
+
+  if (approvalAfter === approvalBefore) {
+    console.log('âœ“ Approval pressure skipped armies already in active battles');
+    return true;
+  }
+
+  console.log(`âœ— Approval should not change from active-battle pressure (${approvalBefore} -> ${approvalAfter})`);
+  return false;
+}
+
 function testInsurrectionRequiresHighAggravation() {
-  console.log('\n=== Test 14: Insurrection requires high aggravation (threshold >= 70) ===');
+  console.log('\n=== Test 16: Insurrection requires high aggravation (threshold >= 70) ===');
 
   const state = createGameState(12345);
   state.turn = 1;
@@ -699,9 +773,9 @@ function testInsurrectionRequiresHighAggravation() {
   return false;
 }
 
-// Test 15: Aggravation decays when needs are met
+// Test 17: Aggravation decays when needs are met
 function testAggravationDecaysWhenNeedsMet() {
-  console.log('\n=== Test 15: Aggravation decays when needs are met ===');
+  console.log('\n=== Test 17: Aggravation decays when needs are met ===');
 
   const state = createGameState(12345);
   state.turn = 1;
@@ -736,9 +810,9 @@ function testAggravationDecaysWhenNeedsMet() {
   return false;
 }
 
-// Test 16: Wants deficit contributes aggravation at lower rate than needs
+// Test 18: Wants deficit contributes aggravation at lower rate than needs
 function testWantsContributeAggravationAtLowerRate() {
-  console.log('\n=== Test 16: Wants deficit contributes aggravation at lower rate than needs ===');
+  console.log('\n=== Test 18: Wants deficit contributes aggravation at lower rate than needs ===');
 
   const state = createGameState(12345);
   state.turn = 1;
@@ -779,9 +853,9 @@ function testWantsContributeAggravationAtLowerRate() {
   return false;
 }
 
-// Test 17: Wants deficit causes organization decay (performance impact)
+// Test 19: Wants deficit causes organization decay (performance impact)
 function testWantsDeficitCausesOrgDecay() {
-  console.log('\n=== Test 17: Wants deficit causes organization decay ===');
+  console.log('\n=== Test 19: Wants deficit causes organization decay ===');
 
   const state = createGameState(12345);
   state.turn = 1;
@@ -816,9 +890,9 @@ function testWantsDeficitCausesOrgDecay() {
   return false;
 }
 
-// Test 18: Insurrection cooldown prevents spam within cooldown window
+// Test 20: Insurrection cooldown prevents spam within cooldown window
 function testInsurrectionCooldownPreventsSpam() {
-  console.log('\n=== Test 18: Insurrection cooldown prevents spam within cooldown window ===');
+  console.log('\n=== Test 20: Insurrection cooldown prevents spam within cooldown window ===');
 
   const state = createGameState(12345);
   state.turn = 100;
@@ -886,6 +960,8 @@ const results = {
   'Empire military modifiers increase damage': testEmpireMilitaryModifiersIncreaseDamage(),
   'Insurrection targeting uses hostile relations': testInsurrectionTargetingUsesRelations(),
   'Insurrection only targets one empire': testInsurrectionOnlyTargetsSingleEmpire(),
+  'Insurrections split per source empire': testInsurrectionsSplitPerSourceEmpire(),
+  'Active-battle armies skip approval pressure': testActiveBattleArmiesDoNotApplyApprovalPressure(),
   'Insurrection requires high aggravation': testInsurrectionRequiresHighAggravation(),
   'Aggravation decays when needs are met': testAggravationDecaysWhenNeedsMet(),
   'Wants contribute aggravation at lower rate': testWantsContributeAggravationAtLowerRate(),

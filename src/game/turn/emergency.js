@@ -1,8 +1,13 @@
-import { clampCohesion, clampStat, clampApproval } from '../cohesion.js';
+import {
+  clampStat,
+  clampApproval,
+  applyScaledCoalitionCohesionDelta
+} from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { isRegularArmy } from './armyUtils.js';
 import { resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
 import { getActiveEmergencyPowerModifiers } from '../emergencyPowers.js';
+import { applyCoalitionIntel } from '../scourgePrediction.js';
 
 /**
  * Apply emergency law modifiers to game state
@@ -19,15 +24,15 @@ export function applyEmergencyModifiers(state, modifiers, log) {
   // Apply cohesion modifiers (drain or bonus)
   if (modifiers.cohesion_drain) {
     const prevCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + modifiers.cohesion_drain);
-    if (modifiers.cohesion_drain < 0) {
+    const appliedDelta = applyScaledCoalitionCohesionDelta(state, modifiers.cohesion_drain);
+    if (appliedDelta < 0) {
       logger.debug(`Emergency law cohesion drain: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
     }
   }
 
   if (modifiers.cohesion_bonus) {
     const prevCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + modifiers.cohesion_bonus);
+    applyScaledCoalitionCohesionDelta(state, modifiers.cohesion_bonus);
     logger.debug(`Emergency law cohesion bonus: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
   }
 
@@ -81,5 +86,8 @@ export function applyEmergencyPowerDynamicModifiers(state) {
   state.coalitionModifiers.dynamic.requisition_gen_mult *= modifiers.requisitionGenMult;
   state.coalitionModifiers.dynamic.improvement_build_speed_mult *= modifiers.improvementBuildSpeedMult;
   state.coalitionModifiers.dynamic.law_progress_speed_bonus += modifiers.lawProgressSpeedBonus;
+  if (modifiers.intelGainPerTurn > 0) {
+    applyCoalitionIntel(state, modifiers.intelGainPerTurn);
+  }
 }
 

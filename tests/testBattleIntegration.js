@@ -11,7 +11,7 @@
  * Note: Units have been removed from the game. Armies now manage manpower directly.
  */
 
-import { createGameState, createArmy, createEmpire } from '../src/game/types.js';
+import { createGameState, createArmy, createEmpire, createHero } from '../src/game/types.js';
 import { startScourgeBattle, handleScourgeBattleEnd, startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
 import { simulateBattleTick, getActiveBattles, startBattle } from '../src/game/frontBattles.js';
 import { refreshArmyAggregates } from '../src/game/armyComposition.js';
@@ -234,6 +234,137 @@ function testFullBattleSimulation() {
     }
   }
   
+  return true;
+}
+
+// Test 4b: Coalition victory drops Scourge cohesion, grants requisition, and boosts targeted hero popularity
+function testScourgeVictoryRewardsAndTargetedHeroPopularity() {
+  console.log('\n=== Test 4b: Coalition victory rewards and targeted hero popularity ===');
+
+  const state = createFullTestState();
+  state.scourgeTargetEmpireId = 'empire1';
+  state.heroes = [
+    createHero('hero_target', 'empire1', 'Target Defender'),
+    createHero('hero_other', 'empire2', 'Other Leader')
+  ];
+  const participatingArmies = state.armies.filter(a => a.organization > 30);
+  const initialCoalitionCohesion = state.coalitionCohesion;
+  const initialScourgeCohesion = state.scourgeCohesion;
+  const initialRequisition = state.coalitionEconomy?.requisition || 0;
+  const targetHeroBefore = state.heroes[0].meters.popularity;
+  const otherHeroBefore = state.heroes[1].meters.popularity;
+
+  const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
+  if (!front) {
+    console.log('X Failed to start Scourge battle');
+    return false;
+  }
+
+  const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
+  const scourgeArmy = state.armies.find(a => a.id === front.rightArmyId);
+  if (!coalitionArmy || !scourgeArmy) {
+    console.log('X Missing temporary battle armies');
+    return false;
+  }
+
+  // Force a deterministic coalition victory outcome with meaningful casualties.
+  front.permanentLosses.left = coalitionArmy.mp.max * 0.25;
+  front.permanentLosses.right = scourgeArmy.mp.max * 0.35;
+  coalitionArmy.mp.current = coalitionArmy.mp.max * 0.6;
+  scourgeArmy.mp.current = scourgeArmy.mp.max * 0.2;
+
+  handleScourgeBattleEnd(state, front, 'left');
+
+  const coalitionKeptCohesion = state.coalitionCohesion === initialCoalitionCohesion;
+  const scourgeLostCohesion = state.scourgeCohesion < initialScourgeCohesion;
+  const requisitionIncreased = (state.coalitionEconomy?.requisition || 0) > initialRequisition;
+  const targetHeroGainedPopularity = state.heroes[0].meters.popularity > targetHeroBefore;
+  const otherHeroUnchanged = state.heroes[1].meters.popularity === otherHeroBefore;
+
+  if (!coalitionKeptCohesion) {
+    console.log(`X Coalition cohesion should not drop on victory (${initialCoalitionCohesion} -> ${state.coalitionCohesion})`);
+    return false;
+  }
+  if (!scourgeLostCohesion) {
+    console.log(`X Scourge cohesion should drop on coalition victory (${initialScourgeCohesion} -> ${state.scourgeCohesion})`);
+    return false;
+  }
+  if (!requisitionIncreased) {
+    console.log(`X Coalition should gain requisition on victory (${initialRequisition} -> ${state.coalitionEconomy?.requisition || 0})`);
+    return false;
+  }
+  if (!targetHeroGainedPopularity) {
+    console.log(`X Targeted empire hero should gain popularity (${targetHeroBefore} -> ${state.heroes[0].meters.popularity})`);
+    return false;
+  }
+  if (!otherHeroUnchanged) {
+    console.log(`X Non-target hero popularity should stay unchanged (${otherHeroBefore} -> ${state.heroes[1].meters.popularity})`);
+    return false;
+  }
+
+  console.log(`PASS Coalition victory applied rewards correctly (req ${initialRequisition.toFixed(3)} -> ${(state.coalitionEconomy?.requisition || 0).toFixed(3)})`);
+  return true;
+}
+
+// Test 4c: Coalition defeat penalizes only targeted empire approval and population
+function testScourgeDefeatAppliesTargetedPenalties() {
+  console.log('\n=== Test 4c: Coalition defeat applies targeted penalties ===');
+
+  const state = createFullTestState();
+  // Add an extra empire to ensure non-target approvals remain untouched.
+  const thirdEmpire = createEmpire('empire3', 'Empire Three', 50);
+  thirdEmpire.stats.population = 12000;
+  state.empires.push(thirdEmpire);
+
+  state.scourgeTargetEmpireId = 'empire1';
+  state.empires[0].stats.population = 15000;
+
+  const initialCoalitionCohesion = state.coalitionCohesion;
+  const initialTargetApproval = state.empires[0].approval;
+  const initialOtherApproval = state.empires[1].approval;
+  const initialThirdApproval = state.empires[2].approval;
+  const initialTargetPopulation = state.empires[0].stats.population;
+
+  const participatingArmies = state.armies.filter(a => a.organization > 30);
+  const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
+  if (!front) {
+    console.log('X Failed to start Scourge battle');
+    return false;
+  }
+
+  const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
+  const scourgeArmy = state.armies.find(a => a.id === front.rightArmyId);
+  if (!coalitionArmy || !scourgeArmy) {
+    console.log('X Missing temporary battle armies');
+    return false;
+  }
+
+  // Force a deterministic coalition defeat outcome.
+  front.permanentLosses.left = coalitionArmy.mp.max * 0.35;
+  front.permanentLosses.right = scourgeArmy.mp.max * 0.1;
+  coalitionArmy.mp.current = coalitionArmy.mp.max * 0.2;
+  scourgeArmy.mp.current = scourgeArmy.mp.max * 0.7;
+
+  handleScourgeBattleEnd(state, front, 'right');
+
+  if (!(state.coalitionCohesion < initialCoalitionCohesion)) {
+    console.log(`X Coalition cohesion should drop on defeat (${initialCoalitionCohesion} -> ${state.coalitionCohesion})`);
+    return false;
+  }
+  if (!(state.empires[0].approval < initialTargetApproval)) {
+    console.log(`X Targeted empire approval should drop on defeat (${initialTargetApproval} -> ${state.empires[0].approval})`);
+    return false;
+  }
+  if (state.empires[1].approval !== initialOtherApproval || state.empires[2].approval !== initialThirdApproval) {
+    console.log('X Non-target empire approvals should not be reduced by Scourge defeat');
+    return false;
+  }
+  if (!(state.empires[0].stats.population < initialTargetPopulation)) {
+    console.log(`X Targeted empire population should receive shock (${initialTargetPopulation} -> ${state.empires[0].stats.population})`);
+    return false;
+  }
+
+  console.log('PASS Coalition defeat applied cohesion loss + targeted approval/population penalties');
   return true;
 }
 
@@ -818,6 +949,8 @@ const results = {
   'Scourge stats scale with turns': testScourgeStatsScaling(),
   'Coalition combined army aggregation': testCoalitionCombinedArmy(),
   'Full battle simulation': testFullBattleSimulation(),
+  'Coalition victory rewards and targeted hero popularity': testScourgeVictoryRewardsAndTargetedHeroPopularity(),
+  'Coalition defeat targeted penalties': testScourgeDefeatAppliesTargetedPenalties(),
   'Damage distribution after battle': testDamageDistributionAfterBattle(),
   'Permanent loss reduces MP capacity': testPermanentLossReducesCapacity(),
   'Scourge army persistence': testScourgeArmyPersistence(),

@@ -77,15 +77,17 @@ function ensureInsurrectionTracking(state) {
   });
 }
 
-function applyAggravationApprovalPressure(state, log, logger) {
+function applyAggravationApprovalPressure(state, activeBattleArmyIds, log, logger) {
   const empires = Array.isArray(state.empires) ? state.empires : [];
   if (empires.length === 0 || !Array.isArray(state.armies)) {
     return;
   }
 
   const empireMap = new Map(empires.map((empire) => [empire.id, empire]));
+  const blockedArmyIds = activeBattleArmyIds instanceof Set ? activeBattleArmyIds : new Set();
   const pressuredArmies = state.armies.filter((army) =>
     isRegularArmy(army) &&
+    !blockedArmyIds.has(army.id) &&
     (army.aggravation || 0) >= INSURRECTION_CONSTANTS.APPROVAL_PRESSURE_THRESHOLD
   );
 
@@ -188,7 +190,7 @@ export function checkInsurrections(state) {
 
   const activeInsurrections = (state.insurrections || []).filter(ins => ins?.active);
   const activeBattleArmyIds = getActiveBattleArmyIds(state);
-  applyAggravationApprovalPressure(state, log, logger);
+  applyAggravationApprovalPressure(state, activeBattleArmyIds, log, logger);
 
   const empireApprovalById = new Map(
     (state.empires || []).map((empire) => [empire.id, Number.isFinite(empire?.approval) ? empire.approval : 50])
@@ -237,7 +239,7 @@ export function checkInsurrections(state) {
   }
 
   if (rebelliousArmies.length > 0 && activeInsurrections.length === 0) {
-    // Enforce global cooldown: skip if an insurrection was spawned too recently
+    // Enforce global cooldown: if ready, all eligible source empires can spawn this turn.
     const cooldown = INSURRECTION_CONSTANTS.COOLDOWN_TICKS;
     const lastInsurrectionTurn = state.lastInsurrectionTurn || 0;
     const ticksSinceLast = turn - lastInsurrectionTurn;
@@ -245,36 +247,44 @@ export function checkInsurrections(state) {
     if (cooldown > 0 && lastInsurrectionTurn > 0 && ticksSinceLast < cooldown) {
       logger.debug(`Insurrection cooldown active: ${ticksSinceLast}/${cooldown} ticks since last insurrection`);
     } else {
-      // Spawn new insurrection
-      const avgAggravation = rebelliousArmies.reduce((sum, a) => sum + a.aggravation, 0) / rebelliousArmies.length;
-      const sourceEmpireIds = getSourceEmpireIds(rebelliousArmies);
-      const insurrection = createInsurrection(
-        `insurrection_${turn}`,
-        rebelliousArmies.map(a => a.id),
-        avgAggravation,
-        { sourceEmpireIds, createdAtTurn: turn }
-      );
-      state.insurrections.push(insurrection);
-      state.lastInsurrectionTurn = turn;
+      const rebelliousArmiesByEmpire = groupArmiesByEmpire(rebelliousArmies);
+      let spawnedInsurrectionCount = 0;
 
-      const rebelliousEmpireIds = new Set();
-      rebelliousArmies.forEach((army) => {
-        army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
-        army.insurrectionTriggerStreak = 0;
-        army.lastInsurrectionTurn = turn;
-        if (army.empireId) {
-          rebelliousEmpireIds.add(army.empireId);
+      rebelliousArmiesByEmpire.forEach((empireArmies, sourceEmpireId) => {
+        if (!sourceEmpireId || !Array.isArray(empireArmies) || empireArmies.length === 0) {
+          return;
         }
-      });
-      rebelliousEmpireIds.forEach((empireId) => {
-        state.insurrectionEmpireCooldowns[empireId] = turn;
+
+        const avgAggravation = empireArmies.reduce((sum, army) => sum + Number(army.aggravation || 0), 0) / empireArmies.length;
+        spawnedInsurrectionCount += 1;
+        const insurrectionId = `insurrection_${turn}_${sourceEmpireId}_${spawnedInsurrectionCount}`;
+        const insurrection = createInsurrection(
+          insurrectionId,
+          empireArmies.map(army => army.id),
+          avgAggravation,
+          { sourceEmpireIds: [sourceEmpireId], createdAtTurn: turn }
+        );
+        state.insurrections.push(insurrection);
+
+        empireArmies.forEach((army) => {
+          army.aggravation = INSURRECTION_CONSTANTS.POST_REBELLION_AGGRAVATION;
+          army.insurrectionTriggerStreak = 0;
+          army.lastInsurrectionTurn = turn;
+        });
+        state.insurrectionEmpireCooldowns[sourceEmpireId] = turn;
+
+        const sourceEmpireName = state.empires?.find(empire => empire.id === sourceEmpireId)?.name || sourceEmpireId;
+        logger.warn(`INSURRECTION! ${empireArmies.length} armies from ${sourceEmpireName} rebel!`, {
+          sourceEmpireId,
+          avgAggravation: avgAggravation.toFixed(1),
+          armies: empireArmies.map(army => army.name)
+        });
+        log.push(`INSURRECTION! ${empireArmies.length} armies from ${sourceEmpireName} rebel!`);
       });
 
-      logger.warn(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`, {
-        avgAggravation: avgAggravation.toFixed(1),
-        armies: rebelliousArmies.map(a => a.name)
-      });
-      log.push(`INSURRECTION! ${rebelliousArmies.length} armies rebel!`);
+      if (spawnedInsurrectionCount > 0) {
+        state.lastInsurrectionTurn = turn;
+      }
     }
   }
 

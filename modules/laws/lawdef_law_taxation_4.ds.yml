@@ -1,0 +1,56 @@
+module:
+  id: "lawdef_law_taxation_4"
+  name: "Supreme War Revenue Code"
+  description: "Supreme War Revenue Code"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "taxation"
+    - "requisition"
+    - "war-finance"
+  created_at: "2026-03-05T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_taxation_4"
+    name: "Supreme War Revenue Code"
+    tier: 4
+    category: "economy"
+    law_type: "Taxation"
+    axis_vector:
+      authoritarian_liberal: 0.7
+      pacifist_militaristic: 0.5
+    law_tags:
+      - "taxation"
+      - "requisition"
+      - "war-finance"
+    support_weights:
+      economy_incentive: 0.95
+      security_incentive: 0.5
+      population_incentive: -0.2
+    phase_tags:
+      DEBATE:
+        - "taxation"
+        - "economic"
+      FALLOUT:
+        - "social"
+        - "economic"
+      VOTING:
+        - "procedural"
+        - "economic"
+    modifiers:
+      consumptionShareMultiplier: 2.0
+      requisition_uptick: 1.2
+      requisition_gain_multiplier: 1.35
+      empire_approval: -2.4
+    immediate_effects:
+      requisition: 1500
+      cohesion: 2
+      coalitionIntel: 6

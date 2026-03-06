@@ -1,0 +1,55 @@
+module:
+  id: "lawdef_law_conscription_4"
+  name: "Total War Reserve Act"
+  description: "Total War Reserve Act"
+  version: "1.0.0"
+  type: "law_definition"
+  category: "policy"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags:
+    - "conscription"
+    - "military"
+    - "requisition"
+  created_at: "2026-03-05T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  law_definition:
+    id: "law_conscription_4"
+    name: "Total War Reserve Act"
+    tier: 4
+    category: "military"
+    law_type: "Conscription"
+    axis_vector:
+      pacifist_militaristic: 0.9
+      authoritarian_liberal: 0.55
+    law_tags:
+      - "conscription"
+      - "military"
+    support_weights:
+      security_incentive: 1.0
+      population_incentive: -0.3
+    phase_tags:
+      DEBATE:
+        - "military"
+        - "security"
+      FALLOUT:
+        - "social"
+        - "security"
+      VOTING:
+        - "security"
+    modifiers:
+      supply_efficiency: 0.15
+      army_organization: 18
+      empire_approval: -2.8
+      requisition_uptick: 1.0
+      requisition_gain_multiplier: 1.18
+    immediate_effects:
+      requisition: 1600
+      cohesion: 2
+      army_fervor: 8
+      army_mp: 400

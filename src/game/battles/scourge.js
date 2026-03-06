@@ -1,5 +1,10 @@
 import { BATTLE_CONSTANTS, SCOURGE_MISSION_CONSTANTS } from '../constants.js';
-import { clampStat, clampCohesion, clampApproval } from '../cohesion.js';
+import {
+  clampStat,
+  clampApproval,
+  applyScaledCoalitionCohesionDelta,
+  applyScaledScourgeCohesionDelta
+} from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { startBattle } from '../frontBattles.js';
 import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from '../scourgeModifiers.js';
@@ -9,6 +14,8 @@ import { awardArmyBattleExperience } from '../armyExperience.js';
 import { calculateArmyPower, calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
+import { ensureHeroMeters } from '../heroes/utils.js';
+import { HERO_STATUS } from '../heroes/constants.js';
 
 function projectBattleResult(originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   const clampedLossRatio = Math.max(0, Math.min(1, Number(permanentLossRatio) || 0));
@@ -93,6 +100,51 @@ function normalizeParticipant(entry) {
     isSupport: !!entry?.isSupport,
     supportRelation: Number.isFinite(entry?.supportRelation) ? entry.supportRelation : null
   };
+}
+
+function awardTargetEmpireDefensePopularity(state, targetEmpireId, log, logger) {
+  if (!targetEmpireId || !Array.isArray(state.heroes) || state.heroes.length === 0) {
+    return;
+  }
+
+  const candidates = state.heroes.filter((hero) =>
+    hero &&
+    hero.empireId === targetEmpireId &&
+    hero.status !== HERO_STATUS.EXILED
+  );
+
+  if (candidates.length === 0) {
+    return;
+  }
+
+  // Favor active leaders first, then highest current popularity.
+  candidates.sort((left, right) => {
+    const leftActive = left.status === HERO_STATUS.ACTIVE ? 1 : 0;
+    const rightActive = right.status === HERO_STATUS.ACTIVE ? 1 : 0;
+    if (leftActive !== rightActive) {
+      return rightActive - leftActive;
+    }
+    return Number(right?.meters?.popularity || 0) - Number(left?.meters?.popularity || 0);
+  });
+
+  const hero = candidates[0];
+  ensureHeroMeters(hero);
+
+  const gain = Number(BATTLE_CONSTANTS.SCOURGE_DEFENSE_HERO_POPULARITY_GAIN || 0);
+  if (!Number.isFinite(gain) || gain <= 0) {
+    return;
+  }
+
+  const previousPopularity = Number(hero.meters.popularity || 0);
+  hero.meters.popularity = clampStat(previousPopularity + gain, 0, 100);
+  const appliedGain = hero.meters.popularity - previousPopularity;
+  if (appliedGain <= 0) {
+    return;
+  }
+
+  const message = `${hero.name} gains +${appliedGain.toFixed(1)} popularity (Scourge defense)`;
+  log.push(message);
+  logger.info(message);
 }
 
 function removeScourgeForces(state) {
@@ -264,6 +316,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   const log = [];
   const coalitionArmy = state.armies.find(a => a.id === front.leftArmyId);
   const scourgeArmy = state.armies.find(a => a.id === front.rightArmyId);
+  const targetEmpireId = front.targetEmpireId || state.scourgeTargetEmpireId || null;
+  const targetEmpire = state.empires.find(e => e.id === targetEmpireId) || null;
 
   if (!coalitionArmy || !scourgeArmy) {
     logger.error('Scourge battle end: missing armies', { frontId: front.id });
@@ -345,8 +399,17 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const margin = (coalitionArmy.mp.current / coalitionArmy.mp.max) - 0.5; // How decisively won
     const cohesionLoss = Math.max(1, Math.floor(BATTLE_CONSTANTS.SCOURGE_WIN_COHESION_LOSS * (1 - margin)));
     const prevScourgeCohesion = state.scourgeCohesion;
-    state.scourgeCohesion = clampStat(state.scourgeCohesion - cohesionLoss, 0, 100);
-    logger.info(`Scourge battle: Victory! Scourge Cohesion ${prevScourgeCohesion.toFixed(1)} -> ${state.scourgeCohesion.toFixed(1)} (-${cohesionLoss})`);
+    const appliedScourgeCohesionDelta = applyScaledScourgeCohesionDelta(state, -cohesionLoss);
+    const appliedScourgeCohesionLoss = Math.abs(appliedScourgeCohesionDelta);
+
+    // Grant requisition from destroyed Scourge forces when Coalition wins.
+    const requisitionGainMultiplier = (state.coalitionModifiers?.requisition_gain_multiplier ?? 1.0) *
+      (state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0);
+    const requisitionGain = scourgeDestroyed * 0.001 * requisitionGainMultiplier;
+    if (!state.coalitionEconomy || typeof state.coalitionEconomy !== 'object') {
+      state.coalitionEconomy = { requisition: 0 };
+    }
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + requisitionGain;
 
     const threat = getThreatScalar(state.coalitionThreat || 0);
     const totalSeverity = (state.scourgeModifiers || []).reduce((sum, mod) => sum + (mod.severity || 0), 0);
@@ -357,20 +420,26 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     const payout = basePayout * threatFactor * modifierFactor * gloryMultiplier;
     state.coalitionGlory = (state.coalitionGlory || 0) + payout;
     state.coalitionPrestige = (state.coalitionPrestige || 0) + Math.round(payout * 0.25);
+    awardTargetEmpireDefensePopularity(state, targetEmpireId, log, logger);
     log.push(`Glory gained: +${Math.round(payout)}`);
+    log.push(`Requisition gained: +${requisitionGain.toFixed(3)} (Scourge casualties)`);
+    logger.info(
+      `Scourge battle: Victory! Scourge Cohesion ${prevScourgeCohesion.toFixed(1)} -> ${state.scourgeCohesion.toFixed(1)} (-${appliedScourgeCohesionLoss.toFixed(2)}), ` +
+      `${scourgeDestroyed} Scourge destroyed (+${requisitionGain.toFixed(3)} req)`
+    );
   } else {
     const lossRatio = Math.max(0, Math.min(1, coalitionMPLossRatio));
-    const cohesionLoss = Math.max(1, Math.round(BATTLE_CONSTANTS.SCOURGE_LOSS_COHESION_LOSS * lossRatio));
+    const cohesionLoss = Math.max(1, Math.round(BATTLE_CONSTANTS.SCOURGE_WIN_COHESION_LOSS * lossRatio));
     const prevCoalitionCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+    const appliedCoalitionCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+    const appliedCoalitionCohesionLoss = Math.abs(appliedCoalitionCohesionDelta);
 
     const approvalLoss = BATTLE_CONSTANTS.SCOURGE_WIN_APPROVAL_LOSS;
-    state.empires.forEach(empire => {
-      empire.approval = clampApproval(empire.approval - approvalLoss);
-    });
+    if (targetEmpire) {
+      targetEmpire.approval = clampApproval(targetEmpire.approval - approvalLoss);
+    }
 
     // Apply population reduction to target empire
-    const targetEmpire = state.empires.find(e => e.id === state.scourgeTargetEmpireId);
     if (targetEmpire) {
       const prevPop = targetEmpire.stats.population;
       const popLoss = Math.max(
@@ -379,14 +448,10 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
       );
       logger.debug(`Scourge battle: ${targetEmpire.name} population ${prevPop} -> ${targetEmpire.stats.population} (-${popLoss})`);
     }
-
-    // Grant requisition based on Scourge destroyed
-    const requisitionGainMultiplier = (state.coalitionModifiers?.requisition_gain_multiplier ?? 1.0) *
-      (state.coalitionModifiers?.dynamic?.requisition_gen_mult ?? 1.0);
-    const requisitionGain = scourgeDestroyed * 0.001 * requisitionGainMultiplier;
-    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + requisitionGain;
-
-    logger.info(`Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), All Empires Approval -${approvalLoss}, ${scourgeDestroyed} Scourge destroyed (+${requisitionGain.toFixed(3)} req)`);
+    logger.info(
+      `Scourge battle: Defeat! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCoalitionCohesionLoss.toFixed(2)}), ` +
+      `${targetEmpire ? `${targetEmpire.name} approval` : 'Target empire approval'} -${approvalLoss}`
+    );
   }
 
   // Emit battle summary

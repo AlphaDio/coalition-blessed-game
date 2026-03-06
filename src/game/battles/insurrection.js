@@ -1,5 +1,9 @@
 import { BATTLE_CONSTANTS, INSURRECTION_CONSTANTS } from '../constants.js';
-import { clampStat, clampCohesion, clampApproval } from '../cohesion.js';
+import {
+  clampStat,
+  clampApproval,
+  applyScaledCoalitionCohesionDelta
+} from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { startBattle } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
@@ -243,13 +247,15 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
   if (loyalWon) {
     const cohesionLoss = BATTLE_CONSTANTS.INSURRECTION_WIN_COHESION_LOSS;
     const prevCoalitionCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+    const appliedCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+    const appliedCohesionLoss = Math.abs(appliedCohesionDelta);
 
-    logger.info(`Insurrection battle: Quelled! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss})`);
+    logger.info(`Insurrection battle: Quelled! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)})`);
   } else {
     const cohesionLoss = BATTLE_CONSTANTS.INSURRECTION_LOSS_COHESION_LOSS;
     const prevCoalitionCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion - cohesionLoss);
+    const appliedCohesionDelta = applyScaledCoalitionCohesionDelta(state, -cohesionLoss);
+    const appliedCohesionLoss = Math.abs(appliedCohesionDelta);
 
     const approvalShock = INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK;
     if (targetedEmpire) {
@@ -257,7 +263,7 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     }
 
     logger.info(
-      `Insurrection battle: Spreads! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${cohesionLoss}), ` +
+      `Insurrection battle: Spreads! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), ` +
       `${targetedEmpire ? `${targetedEmpire.name} approval` : 'Target approval'} -${approvalShock}`
     );
   }

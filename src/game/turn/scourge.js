@@ -1,4 +1,4 @@
-import { clampCohesion, clampStat } from '../cohesion.js';
+import { clampStat, applyScaledCoalitionCohesionDelta } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
 import { startScourgeBattle } from '../battles.js';
 import { collectScourgeModifierEffects } from '../scourgeModifiers.js';
@@ -17,8 +17,8 @@ export function applyDynamicScourgeModifierEffects(state, log) {
 
   if (effects.coalitionCohesionAdd) {
     const prevCohesion = state.coalitionCohesion;
-    state.coalitionCohesion = clampCohesion(state.coalitionCohesion + effects.coalitionCohesionAdd);
-    log.push(`Cohesion ${effects.coalitionCohesionAdd >= 0 ? '+' : ''}${effects.coalitionCohesionAdd.toFixed(2)} (Scourge pressure)`);
+    const appliedDelta = applyScaledCoalitionCohesionDelta(state, effects.coalitionCohesionAdd);
+    log.push(`Cohesion ${appliedDelta >= 0 ? '+' : ''}${appliedDelta.toFixed(2)} (Scourge pressure)`);
     const logger = getLogger();
     logger.debug(`Scourge modifier cohesion: ${prevCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)}`);
   }

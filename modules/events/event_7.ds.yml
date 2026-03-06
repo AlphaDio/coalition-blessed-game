@@ -33,7 +33,7 @@ declares:
         effects:
           empireRelations:
             "$favored":
-              "@all": 10
+              "@all": 8
           coalitionEconomy:
             requisition: 50
       - text: "Maintain equal distribution (slight approval boost)"
@@ -42,13 +42,13 @@ declares:
             "@all": 5
           empireRelations:
             "$favored":
-              "@all": 5
+              "@all": 4
       - text: "Reduce everyone's requisition funds (-25 each, gain resources)"
         effects:
           empireApproval:
             "@all": -10
           empireRelations:
             "$favored":
-              "@all": -10
+              "@all": -8
           coalitionEconomy:
             requisition: -75

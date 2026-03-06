@@ -18,6 +18,9 @@ declares:
   law_definition:
     id: "law_ai_citizenship"
     name: "AI Citizenship Rights"
+    tier: 1
+    category: "governance"
+    law_type: "Rights"
     axis_vector:
       natural_mechanical: 0.9
       essentialist_constructivist: 0.6
@@ -41,3 +44,12 @@ declares:
       VOTING:
         - "procedural"
         - "compromise"
+    modifiers:
+      research_speed: 0.08
+      law_progress_speed: 0.05
+      empire_approval: 0.5
+      requisition_uptick: 0.1
+    immediate_effects:
+      cohesion: 2
+      coalitionIntel: 8
+      empire_approval: 1

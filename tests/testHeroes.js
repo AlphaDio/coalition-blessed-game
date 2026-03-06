@@ -28,6 +28,7 @@ import {
   computeAlignmentScore,
   HERO_RECRUIT_DELAY_RANGE
 } from '../src/game/heroes.js';
+import { HERO_CONSTANTS } from '../src/game/heroes/constants.js';
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 // Initialize logger with minimal output
@@ -434,8 +435,11 @@ console.log('=== Test 11: Heat Amplitude Scales with Axis Difference ===');
   assert(heatSmall < heatMax, `Small opposition (${heatSmall.toFixed(2)}) < Max (${heatMax.toFixed(2)})`);
   assert(heatMedium <= heatMax, `Medium opposition (${heatMedium.toFixed(2)}) <= Max (${heatMax.toFixed(2)})`);
 
-  // Verify max opposition produces expected heat (HEAT_BASE * 1.0 * 1.0 * 1.0 = 2.4)
-  assert(approxEqual(heatMax, 2.4), `Max heat is ~2.4 (got ${heatMax.toFixed(2)})`);
+  // Verify max opposition produces expected heat from current HEAT_BASE tuning.
+  assert(
+    approxEqual(heatMax, HERO_CONSTANTS.HEAT_BASE),
+    `Max heat is ~${HERO_CONSTANTS.HEAT_BASE.toFixed(2)} (got ${heatMax.toFixed(2)})`
+  );
 }
 console.log();
 
