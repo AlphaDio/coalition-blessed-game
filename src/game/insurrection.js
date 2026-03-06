@@ -190,11 +190,13 @@ export function checkInsurrections(state) {
 
   const activeInsurrections = (state.insurrections || []).filter(ins => ins?.active);
   const activeBattleArmyIds = getActiveBattleArmyIds(state);
-  applyAggravationApprovalPressure(state, activeBattleArmyIds, log, logger);
-
+  // Snapshot approval BEFORE pressure is applied so that a single tick of
+  // aggravation-driven pressure cannot immediately enable a rebellion.
   const empireApprovalById = new Map(
     (state.empires || []).map((empire) => [empire.id, Number.isFinite(empire?.approval) ? empire.approval : 50])
   );
+
+  applyAggravationApprovalPressure(state, activeBattleArmyIds, log, logger);
 
   const turn = Number.isFinite(Number(state.turn)) ? Number(state.turn) : 0;
 
@@ -226,7 +228,6 @@ export function checkInsurrections(state) {
 
     return army.insurrectionTriggerStreak >= INSURRECTION_CONSTANTS.TRIGGER_CONFIRMATION_TICKS;
   });
-
   if (rebelliousArmies.length > 0) {
     logger.debug(`Found ${rebelliousArmies.length} rebellious armies`, {
       armies: rebelliousArmies.map(a => ({
