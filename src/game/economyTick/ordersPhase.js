@@ -1,6 +1,7 @@
 import { ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
 import { applyDemandCommodityMultiplier } from '../economyBalance.js';
 import { getEmpireTechModifier } from '../empireModifiers.js';
+import { getArmyPopulationDemandMultiplier, getEmpireEffectiveDemandPopulation } from '../consumptionScaling.js';
 
 export function getEffectiveRationing(state) {
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
@@ -40,7 +41,7 @@ function isArmyDamaged(army) {
 export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
   state.empires.forEach(empire => {
     if (!empire.needs || !empire.needs.per_pop) return;
-    const population = empire.stats?.population || 0;
+    const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
@@ -72,7 +73,7 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
 export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
   state.empires.forEach(empire => {
     if (!empire.wants || !empire.wants.per_pop) return;
-    const population = empire.stats?.population || 0;
+    const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
@@ -103,6 +104,10 @@ export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, sup
     const empire = state.empires?.find(e => e.id === army.empireId);
     if (!empire) return;
 
+    const population = Math.max(1000, Number(empire.stats?.population || 0));
+    // Armies inherit demand pressure from their empire's population base with
+    // diminishing scaling so large populations do not explode market volumes.
+    const populationDemandMultiplier = getArmyPopulationDemandMultiplier(population);
     const maxMP = Number.isFinite(army?.mp?.max) ? army.mp.max : (army.manpower || 0);
     const currentMP = Number.isFinite(army?.mp?.current) ? army.mp.current : maxMP;
     const missingMP = Math.max(0, maxMP - currentMP);
@@ -130,7 +135,7 @@ export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, sup
     // Needs are only requested when army is damaged and replacing losses.
     Object.entries(army.demands.needs || {}).forEach(([commodity, qtyPerManpower]) => {
       const rawNeeded = needsActive
-        ? qtyPerManpower * missingMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult
+        ? qtyPerManpower * missingMP * populationDemandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult
         : 0;
       const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       army.supply_state.needs_demand[commodity] = totalNeeded;
@@ -146,7 +151,7 @@ export function emitArmyOrders(state, aggregateBuyOrder, effectiveRationing, sup
 
     // Wants are persistent and represent ongoing readiness/upgrade pressure.
     Object.entries(army.demands.wants || {}).forEach(([commodity, qtyPerManpower]) => {
-      const rawWanted = qtyPerManpower * maxMP * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawWanted = qtyPerManpower * maxMP * populationDemandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       army.supply_state.wants_demand[commodity] = totalWanted;
 

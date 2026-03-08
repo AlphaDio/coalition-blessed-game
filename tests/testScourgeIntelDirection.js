@@ -97,6 +97,53 @@ function testMissionIntelFlow() {
   assert(approxEqual(state.coalitionIntel, intelBeforeHarvest), 'Deep harvest should no longer grant intel');
 }
 
+function testNegativeMissionSliderPlayableAndBalanced() {
+  const state = createBasicState();
+  state.missionSlider = -1;
+  state.coalitionEconomy.requisition = 1000;
+  state.coalitionThreat = 0;
+
+  applyMissionSliderEffects(state, []);
+
+  const expectedBonus = Math.min(
+    SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_BONUS_CAP,
+    SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_BASE_BONUS
+      + (1000 * SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_RATE)
+  );
+  assert(
+    approxEqual(state.coalitionEconomy.requisition, 1000 + expectedBonus),
+    `Expected emergency slider to grant ${expectedBonus} requisition, got ${state.coalitionEconomy.requisition - 1000}`
+  );
+  assert(
+    approxEqual(state.coalitionThreat, SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE),
+    'Emergency slider should apply the tuned low threat increase'
+  );
+  assert(
+    approxEqual(state.coalitionModifiers.glory_gain_multiplier, SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL),
+    'Emergency slider should apply glory gain penalty once'
+  );
+  assert(state.timedModifiers.length === 1, `Expected a single timed penalty modifier, got ${state.timedModifiers.length}`);
+
+  state.turn += 1;
+  applyMissionSliderEffects(state, []);
+
+  assert(state.timedModifiers.length === 1, 'Emergency slider penalty should refresh, not stack each tick');
+  assert(
+    approxEqual(state.coalitionModifiers.glory_gain_multiplier, SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL),
+    'Emergency slider should keep glory penalty at tuned level without compounding'
+  );
+
+  const debtState = createBasicState();
+  debtState.missionSlider = -1;
+  debtState.coalitionEconomy.requisition = -20;
+  applyMissionSliderEffects(debtState, []);
+
+  assert(
+    debtState.coalitionEconomy.requisition > -20,
+    'Emergency slider should still provide requisition while in debt so it remains playable'
+  );
+}
+
 function testDirectTargetUsesIntel() {
   const manager = new GameManager();
   manager.state = createBasicState();
@@ -288,6 +335,9 @@ function run() {
 
   testMissionIntelFlow();
   console.log('PASS Mission budget generates intel and mission rewards no longer do');
+
+  testNegativeMissionSliderPlayableAndBalanced();
+  console.log('PASS -1 mission slider is now playable and uses non-stacking penalties');
 
   testDirectTargetUsesIntel();
   console.log('PASS Direct target spends intel and updates prediction');

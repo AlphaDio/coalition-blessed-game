@@ -1,6 +1,7 @@
 import { TRADE_INCOME_EFFECT_DIVISOR, FULFILLMENT_CONSTANTS } from '../constants.js';
 import { refillCoalitionAllowance } from '../consumptionToRequisition.js';
 import { computeArmyFulfillment, computeEmpireFulfillment } from '../marketEconomy.js';
+import { scalePositiveApprovalGain } from '../approvalUtils.js';
 
 /**
  * Compute the average fulfillment across all commodities in a fulfillment map.
@@ -79,7 +80,10 @@ export function applyEmpireFulfillmentEffects(empire) {
   // Apply approval effect (clamped to [0, 100])
   const totalApprovalEffect = needsApprovalEffect + wantsApprovalEffect;
   if (totalApprovalEffect !== 0) {
-    empire.approval = Math.max(0, Math.min(100, (empire.approval ?? 50) + totalApprovalEffect));
+    const approvalDelta = totalApprovalEffect > 0
+      ? scalePositiveApprovalGain(empire.approval, totalApprovalEffect)
+      : totalApprovalEffect;
+    empire.approval = Math.max(0, Math.min(100, (empire.approval ?? 50) + approvalDelta));
   }
 
   // Store growth modifier so population.js can pick it up
@@ -127,7 +131,11 @@ export function applyPostMarketUpdates(state, config) {
 
       // Empire approval
       if (state.coalitionModifiers.empire_approval) {
-        empire.approval = Math.min(100, Math.max(0, empire.approval + state.coalitionModifiers.empire_approval));
+        const rawApprovalDelta = Number(state.coalitionModifiers.empire_approval) || 0;
+        const approvalDelta = rawApprovalDelta > 0
+          ? scalePositiveApprovalGain(empire.approval, rawApprovalDelta)
+          : rawApprovalDelta;
+        empire.approval = Math.min(100, Math.max(0, empire.approval + approvalDelta));
       }
 
     });

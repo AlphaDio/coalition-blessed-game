@@ -8,6 +8,7 @@ import { isRegularArmy } from './armyUtils.js';
 import { resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
 import { getActiveEmergencyPowerModifiers } from '../emergencyPowers.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
+import { scalePositiveApprovalGain } from '../approvalUtils.js';
 
 /**
  * Apply emergency law modifiers to game state
@@ -42,7 +43,11 @@ export function applyEmergencyModifiers(state, modifiers, log) {
       // Apply approval modifier
       if (modifiers.empire_approval) {
         const prevApproval = empire.approval;
-        empire.approval = clampApproval(empire.approval + modifiers.empire_approval);
+        const rawApprovalDelta = Number(modifiers.empire_approval) || 0;
+        const approvalDelta = rawApprovalDelta > 0
+          ? scalePositiveApprovalGain(empire.approval, rawApprovalDelta)
+          : rawApprovalDelta;
+        empire.approval = clampApproval(empire.approval + approvalDelta);
         if (Math.abs(modifiers.empire_approval) > 3) {
           logger.debug(`Emergency law approval impact on ${empire.name}: ${prevApproval.toFixed(1)} -> ${empire.approval.toFixed(1)}`);
         }

@@ -5,6 +5,7 @@ import { SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
 import { clampApproval } from '../cohesion.js';
 import { applyPopulationDelta } from '../populationUtils.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
+import { scalePositiveApprovalGain } from '../approvalUtils.js';
 import { getLogger } from '../../modules/logger.js';
 
 export function handleEconomyTick(state, log, logger) {
@@ -142,7 +143,10 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
 
   if (effect.type === 'empire_approval_bonus') {
     const prevApproval = empire.approval || 0;
-    empire.approval = clampApproval((empire.approval || 0) + scaledAmount);
+    const approvalDelta = scaledAmount > 0
+      ? scalePositiveApprovalGain(empire.approval, scaledAmount)
+      : scaledAmount;
+    empire.approval = clampApproval((empire.approval || 0) + approvalDelta);
     logConsumptionEffect(
       logger,
       log,

@@ -56,6 +56,41 @@ function applyTimedModifier(state, key, value, duration) {
   });
 }
 
+function upsertTimedModifier(state, key, value, duration, source) {
+  if (!source) {
+    applyTimedModifier(state, key, value, duration);
+    return;
+  }
+  if (!state.timedModifiers) state.timedModifiers = [];
+  if (!state.coalitionModifiers) state.coalitionModifiers = {};
+  if (state.coalitionModifiers[key] === undefined) {
+    state.coalitionModifiers[key] = 0;
+  }
+
+  const existing = state.timedModifiers.find(
+    modifier => modifier.key === key && modifier.source === source
+  );
+
+  if (existing) {
+    const previousValue = Number(existing.value) || 0;
+    const delta = value - previousValue;
+    if (Math.abs(delta) > 1e-9) {
+      state.coalitionModifiers[key] += delta;
+    }
+    existing.value = value;
+    existing.expiresAt = state.turn + duration;
+    return;
+  }
+
+  state.coalitionModifiers[key] += value;
+  state.timedModifiers.push({
+    key,
+    value,
+    source,
+    expiresAt: state.turn + duration
+  });
+}
+
 export function applyMissionSliderEffects(state, log = []) {
   const slider = MISSION_SLIDER_VALUES.includes(state.missionSlider) ? state.missionSlider : 0;
   if (!state.coalitionEconomy) return;
@@ -78,24 +113,27 @@ export function applyMissionSliderEffects(state, log = []) {
     }
     // If requisition is zero or negative, no diversion happens (nothing to divert)
   } else if (slider === -1) {
-    // Negative slider: grants extra requisition but increases threat and reduces glory
-    // Only grant bonus if requisition is positive (no bonus when at zero or negative)
+    // Emergency budget mode: grants requisition, but increases threat and suppresses glory gains.
+    // Penalty is refreshable and non-stacking while slider remains at -1.
     const requisition = state.coalitionEconomy.requisition || 0;
-    const bonus = requisition > 0 ? requisition * 0.01 : 0; // 1% bonus only from positive requisition
-    if (bonus > 0) {
-      state.coalitionEconomy.requisition = requisition + bonus;
-      log.push(`Mission budget emergency: +${bonus.toFixed(2)} req, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
-    } else {
-      // Still apply threat/glory penalties even without bonus (cost of desperation)
-      log.push(`Mission budget emergency: No req to divert, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE}`);
-    }
+    const positiveRequisition = Math.max(0, requisition);
+    const bonus = Math.min(
+      SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_BONUS_CAP,
+      SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_BASE_BONUS
+        + (positiveRequisition * SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_REQUISITION_RATE)
+    );
+    state.coalitionEconomy.requisition = requisition + bonus;
+    log.push(
+      `Mission budget emergency: +${bonus.toFixed(2)} req, Threat +${SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE.toFixed(2)}`
+    );
     state.coalitionThreat = clampThreat((state.coalitionThreat || 0) + SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_THREAT_INCREASE);
     const taxValue = SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_GAIN_MUL - 1.0;
-    applyTimedModifier(
+    upsertTimedModifier(
       state,
       'glory_gain_multiplier',
       taxValue,
-      SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_TAX_DURATION
+      SCOURGE_MISSION_CONSTANTS.MISSION_NEGATIVE_GLORY_TAX_DURATION,
+      'mission_slider_emergency_budget'
     );
   }
 }

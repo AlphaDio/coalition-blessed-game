@@ -1008,6 +1008,43 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         const mpCurrent = Math.floor(army.mp?.current ?? army.manpower ?? 0);
         const mpMax = Math.floor(army.mp?.max ?? army.manpower ?? 1);
         const mpPercent = mpMax > 0 ? Math.round((mpCurrent / mpMax) * 100) : 0;
+        const consumptionRules = Array.isArray(army.consumptionRules)
+          ? army.consumptionRules
+            .map((rule) => {
+              const commodity = typeof rule?.commodity === 'string' ? rule.commodity : null;
+              const threshold = Number(rule?.threshold);
+              if (!commodity || !Number.isFinite(threshold) || threshold <= 0) {
+                return null;
+              }
+
+              return {
+                commodity,
+                threshold: Math.max(1, threshold)
+              };
+            })
+            .filter(Boolean)
+          : [];
+        const rawPools = (army.consumptionEffectPools && typeof army.consumptionEffectPools === 'object')
+          ? army.consumptionEffectPools
+          : {};
+        const consumptionPools = {};
+        Object.entries(rawPools).forEach(([commodity, value]) => {
+          const pool = Number(value);
+          if (typeof commodity === 'string' && Number.isFinite(pool) && pool > 0) {
+            consumptionPools[commodity] = pool;
+          }
+        });
+        const consumptionEffects = consumptionRules.map((rule) => {
+          const pool = Math.max(0, Number(consumptionPools[rule.commodity] || 0));
+          const progress = Math.max(0, Math.min(1, pool / rule.threshold));
+          return {
+            commodity: rule.commodity,
+            pool,
+            threshold: rule.threshold,
+            progressPct: progress * 100,
+            remaining: Math.max(0, rule.threshold - pool)
+          };
+        });
 
         const entry = armyBattleMap.get(army.id) || null;
         let battle = null;
@@ -1074,6 +1111,11 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
             received: army.supply_state?.received ?? {},
             needsFulfillment: army.supply_state?.needs_fulfillment ?? {},
             wantsFulfillment: army.supply_state?.wants_fulfillment ?? {}
+          },
+          consumption: {
+            rules: consumptionRules,
+            pools: consumptionPools,
+            effects: consumptionEffects
           },
           battle
         };

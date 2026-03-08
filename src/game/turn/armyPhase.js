@@ -6,6 +6,7 @@ import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { getLogger } from '../../modules/logger.js';
 import { MODIFIER_ARMY_ORG_SCALE } from '../improvements/types.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
+import { getArmyPopulationDemandMultiplier } from '../consumptionScaling.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -56,8 +57,7 @@ function getArmySupplySignals(army) {
 }
 
 function getArmyConsumptionPopulationMultiplier(empire) {
-  const population = clampPopulation(empire?.stats?.population || 1000, 1000);
-  return population / 20;
+  return getArmyPopulationDemandMultiplier(clampPopulation(empire?.stats?.population || 1000, 1000));
 }
 
 function getArmyGrowthPacingMultiplier() {

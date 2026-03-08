@@ -8,6 +8,7 @@ import {
   BIOLOGIC_GROWTH_BONUS_MULTIPLIER,
   improvementHasTag
 } from '../types.js';
+import { scalePositiveApprovalGain } from '../../approvalUtils.js';
 
 /**
  * Apply improvement modifiers to game state
@@ -80,8 +81,12 @@ export function applyImprovementModifiers(state) {
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'empire_approval') {
-        // Very small boost per tick
-        empire.approval = Math.min(100, Math.max(0, empire.approval + value / MODIFIER_EMPIRE_APPROVAL_SCALE));
+        // Very small boost per tick with positive-gain pacing.
+        const rawApprovalDelta = value / MODIFIER_EMPIRE_APPROVAL_SCALE;
+        const approvalDelta = rawApprovalDelta > 0
+          ? scalePositiveApprovalGain(empire.approval, rawApprovalDelta)
+          : rawApprovalDelta;
+        empire.approval = Math.min(100, Math.max(0, empire.approval + approvalDelta));
       } else if (stat === 'trade_income') {
         // Generate credits
         empire.budget_credits = (empire.budget_credits || 0) + (value / TRADE_INCOME_EFFECT_DIVISOR);

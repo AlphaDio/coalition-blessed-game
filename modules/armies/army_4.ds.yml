@@ -26,7 +26,7 @@ declares:
     recoveryRate: 45
     reinforcementRate: 68
     manpower: 5000
-    dmgPerUnitMP: 4.1 # Highest damage per unit per MP in the game
+    dmgPerUnitMP: 3.8 # Highest damage per unit per MP in the game
     dmgPerTickMO: 2.7
     protection: 0.20
     resolve: 0.35

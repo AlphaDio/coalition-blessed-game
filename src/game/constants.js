@@ -190,6 +190,9 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP - Extra threshold per sqrt(army MP) so larger armies need more stored consumption
  * @property {number} ARMY_GROWTH_MP_PER_TRIGGER - MP capacity added when consumption threshold is reached
  * @property {number} ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER - Flat pacing multiplier for army MP growth from consumption (80% of prior defensive-recon baseline)
+ * @property {number} EMPIRE_DEMAND_POPULATION_EXPONENT - Diminishing population exponent for empire needs/wants demand
+ * @property {number} ARMY_POPULATION_DEMAND_BASE - Base multiplier for army demand pressure
+ * @property {number} ARMY_POPULATION_DEMAND_LOG_SCALE - Extra multiplier from log10(population) for army demand pressure
  */
 export const ECONOMY_CONSTANTS = {
   ORG_PER_PERCENT_SHARE: 0.3,
@@ -210,7 +213,10 @@ export const ECONOMY_CONSTANTS = {
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_BASE: 110,
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP: 1.5,
   ARMY_GROWTH_MP_PER_TRIGGER: 3,
-  ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8
+  ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8,
+  EMPIRE_DEMAND_POPULATION_EXPONENT: 0.9,
+  ARMY_POPULATION_DEMAND_BASE: 1.0,
+  ARMY_POPULATION_DEMAND_LOG_SCALE: 2.5
 };
 
 /**
@@ -699,6 +705,22 @@ export const FULFILLMENT_CONSTANTS = {
 };
 
 /**
+ * Approval gain pacing for recurring per-tick positive effects.
+ *
+ * Positive approval deltas are scaled by:
+ *   scale = max(POSITIVE_GAIN_MIN_SCALE, POSITIVE_GAIN_BASE_SCALE * headroom^POSITIVE_GAIN_HEADROOM_EXPONENT)
+ * where headroom = (100 - approval) / 100.
+ *
+ * This keeps recovery possible when approval is low while preventing runaway
+ * stacking at high approval.
+ */
+export const APPROVAL_BALANCE_CONSTANTS = {
+  POSITIVE_GAIN_BASE_SCALE: 0.40,
+  POSITIVE_GAIN_MIN_SCALE: 0.05,
+  POSITIVE_GAIN_HEADROOM_EXPONENT: 1.2
+};
+
+/**
  * Valid slider values for mission allocation.
  * Used by server validation, mission logic, and UI components.
  * -1 = withdraw/oppose, 0 = neutral, 1/2/5 = increasing commitment levels
@@ -719,9 +741,12 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} EP_BASE_DURATION - Base duration for emergency powers
  * @property {number} EP_MAX_ACTIVE - Maximum concurrent active emergency powers
  * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.10)
- * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase from negative outcomes (+2)
- * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration of glory penalty after failure (600)
- * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during penalty period (0.85x)
+ * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase per tick while using emergency budget mode
+ * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration (ticks) of the emergency glory penalty after last use
+ * @property {number} MISSION_NEGATIVE_GLORY_GAIN_MUL - Glory multiplier during emergency budget penalty window
+ * @property {number} MISSION_NEGATIVE_REQUISITION_BASE_BONUS - Flat requisition bonus per tick in emergency budget mode
+ * @property {number} MISSION_NEGATIVE_REQUISITION_RATE - Percent bonus from current positive requisition in emergency mode
+ * @property {number} MISSION_NEGATIVE_REQUISITION_BONUS_CAP - Maximum requisition bonus per tick from emergency mode
  * @property {number} MISSION_INTEL_PER_REQUISITION - Intel gained per requisition diverted into mission budget
  * @property {number} PRE_ATTACK_DISRUPT_COST - Requisition cost for the defensive pre-strike option
  * @property {number} PRE_ATTACK_DISRUPT_THREAT_DELTA - Threat swing for the defensive pre-strike option
@@ -753,9 +778,12 @@ export const SCOURGE_MISSION_CONSTANTS = {
   EP_BASE_DURATION: 140,
   EP_MAX_ACTIVE: 2,
   MISSION_METER_PER_REQUISITION: 0.06,
-  MISSION_NEGATIVE_THREAT_INCREASE: 2,
-  MISSION_NEGATIVE_GLORY_TAX_DURATION: 600,
-  MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.85,
+  MISSION_NEGATIVE_THREAT_INCREASE: 0.45,
+  MISSION_NEGATIVE_GLORY_TAX_DURATION: 90,
+  MISSION_NEGATIVE_GLORY_GAIN_MUL: 0.92,
+  MISSION_NEGATIVE_REQUISITION_BASE_BONUS: 2,
+  MISSION_NEGATIVE_REQUISITION_RATE: 0.006,
+  MISSION_NEGATIVE_REQUISITION_BONUS_CAP: 15,
   MISSION_INTEL_PER_REQUISITION: 0.025,
   PRE_ATTACK_DISRUPT_COST: 40,
   PRE_ATTACK_DISRUPT_THREAT_DELTA: -4,
