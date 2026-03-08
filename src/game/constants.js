@@ -190,6 +190,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP - Extra threshold per sqrt(army MP) so larger armies need more stored consumption
  * @property {number} ARMY_GROWTH_MP_PER_TRIGGER - MP capacity added when consumption threshold is reached
  * @property {number} ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER - Flat pacing multiplier for army MP growth from consumption (80% of prior defensive-recon baseline)
+ * @property {number} ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER - Global multiplier applied to army consumption effect thresholds at content load
  * @property {number} EMPIRE_DEMAND_POPULATION_EXPONENT - Diminishing population exponent for empire needs/wants demand
  * @property {number} ARMY_POPULATION_DEMAND_BASE - Base multiplier for army demand pressure
  * @property {number} ARMY_POPULATION_DEMAND_LOG_SCALE - Extra multiplier from log10(population) for army demand pressure
@@ -214,6 +215,7 @@ export const ECONOMY_CONSTANTS = {
   ARMY_GROWTH_CONSUMPTION_THRESHOLD_PER_SQRT_MP: 1.5,
   ARMY_GROWTH_MP_PER_TRIGGER: 3,
   ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8,
+  ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER: 20,
   EMPIRE_DEMAND_POPULATION_EXPONENT: 0.9,
   ARMY_POPULATION_DEMAND_BASE: 1.0,
   ARMY_POPULATION_DEMAND_LOG_SCALE: 2.5

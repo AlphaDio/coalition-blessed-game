@@ -1,8 +1,13 @@
 import { createEmpire, createArmy, createLaw, createEvent } from './types.js';
 import { createModuleRegistry, getModulesByType } from '../modules/loader.js';
 import { DeterministicRNG } from '../modules/rng.js';
+import { ECONOMY_CONSTANTS } from './constants.js';
 
 const EVENT_EFFECT_RANGE_MULTIPLIER = 2;
+const ARMY_CONSUMPTION_THRESHOLD_MULTIPLIER = Math.max(
+  1,
+  Number(ECONOMY_CONSTANTS.ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER) || 1
+);
 
 const RELATION_BASE = 100;
 const RELATION_RANGE = 200;
@@ -123,7 +128,10 @@ export function createSampleContent(seed = 0) {
     if (data.consumption) {
       army.consumptionRules = Object.entries(data.consumption).map(([commodity, rule]) => ({
         commodity,
-        ...rule
+        ...rule,
+        threshold: Number.isFinite(Number(rule?.threshold))
+          ? Number(rule.threshold) * ARMY_CONSUMPTION_THRESHOLD_MULTIPLIER
+          : rule?.threshold
       }));
     }
     // reinforcementRate = reserves joining the line during battle; recovery/recoveryRate = fraction of wounded that return after battle (0-100)
