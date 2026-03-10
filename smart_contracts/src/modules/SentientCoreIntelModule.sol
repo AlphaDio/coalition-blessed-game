@@ -2,15 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {ICoalitionEventModule} from "../interfaces/ICoalitionEventModule.sol";
-import {ICoalitionModuleHost} from "../interfaces/ICoalitionModuleHost.sol";
 import {CoalitionHooks} from "../libraries/CoalitionHooks.sol";
 
 contract SentientCoreIntelModule is ICoalitionEventModule {
     uint8 public constant RESOURCE_SENTIENT_CORES = 8;
+    uint8 public constant OP_GRANT_INTEL = 1;
 
     address public owner;
     address public immutable game;
-    ICoalitionModuleHost public immutable host;
 
     uint256 public threshold;
     uint256 public intelPerTrigger;
@@ -36,9 +35,16 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
         require(intelGainPerTrigger > 0, "SentientCoreIntelModule: intel=0");
         owner = msg.sender;
         game = gameAddress;
-        host = ICoalitionModuleHost(gameAddress);
         threshold = thresholdAmount;
         intelPerTrigger = intelGainPerTrigger;
+    }
+
+    function moduleVersion() external pure returns (uint256) {
+        return 1;
+    }
+
+    function supportsHook(bytes32 hookId) external pure returns (bool) {
+        return hookId == CoalitionHooks.HOOK_ARMY_CONSUMED || hookId == CoalitionHooks.HOOK_EMPIRE_CONSUMED;
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
@@ -56,15 +62,19 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
         emit ConfigUpdated(thresholdAmount, intelGainPerTrigger);
     }
 
-    function onGameHook(bytes32 hookId, bytes calldata payload) external onlyGame {
+    function onGameHook(bytes32 hookId, bytes calldata payload)
+        external
+        onlyGame
+        returns (HostCall[] memory hostCalls)
+    {
         if (hookId != CoalitionHooks.HOOK_ARMY_CONSUMED && hookId != CoalitionHooks.HOOK_EMPIRE_CONSUMED) {
-            return;
+            return hostCalls;
         }
 
         CoalitionHooks.ConsumptionHookPayload memory consumed =
             abi.decode(payload, (CoalitionHooks.ConsumptionHookPayload));
         if (consumed.resource != RESOURCE_SENTIENT_CORES) {
-            return;
+            return hostCalls;
         }
 
         bytes32 key = keccak256(abi.encodePacked(hookId, consumed.entityId));
@@ -72,12 +82,15 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
         uint256 triggerCount = nextPool / threshold;
         if (triggerCount == 0) {
             pools[key] = nextPool;
-            return;
+            return hostCalls;
         }
 
         uint256 intelGrant = triggerCount * intelPerTrigger;
         pools[key] = nextPool % threshold;
-        host.moduleGrantIntel(intelGrant);
         emit SentientCoreTrigger(key, triggerCount, intelGrant, pools[key]);
+
+        hostCalls = new HostCall[](1);
+        hostCalls[0] = HostCall({op: OP_GRANT_INTEL, a: int256(intelGrant), b: 0, c: 0, d: bytes32(0)});
+        return hostCalls;
     }
 }

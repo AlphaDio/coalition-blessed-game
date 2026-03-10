@@ -1,44 +1,41 @@
-# Coalition Game Solidity (Anvil-Ready)
+# Coalition Game Solidity (Deterministic + Extensible)
 
-This folder contains an EVM-friendly Coalition game core implemented in Solidity, designed to be played through transactions on a local Anvil chain.
+This folder contains an EVM-friendly Coalition game core designed for local Anvil gameplay via transactions.
 
-## What is implemented
+## Current model
+
+- Deterministic simulation:
+  - No block entropy is used for gameplay outcomes.
+  - Each turn must have an explicit seed (`setTurnSeed`).
+  - Battle rolls derive from turn seed + deterministic state inputs.
+- On-chain consumption:
+  - Empire and army consumption now debit tracked on-chain resource balances.
+  - Owner-funded grant functions (`grantEmpireResource`, `grantArmyResource`) seed MVP balances.
+  - Requisition gain is based on configured per-resource value plus the selected valid consumption source.
+- Extensible events:
+  - Anyone can register a deployed event contract with `registerEventModule`.
+  - Event modules receive game hooks and return whitelisted host-call instructions.
+  - The core interprets those instructions and applies bounded state updates.
+
+## Main contracts
 
 - `src/CoalitionGame.sol`
-  - Empire and army creation/state.
-  - Turn progression (`advanceTurn`) with pooled requisition release cadence (default every 15 turns).
-  - Resource consumption APIs for empires and armies:
-    - `consumeEmpireResource(...)`
-    - `consumeArmyResource(...)`
-  - Per-resource threshold consumption rules with configurable effects.
-  - Battle resolution that damages real army state (`currentMP`), not snapshots.
-  - Army experience and level-based surge bonus for next battles.
-  - Coalition intel/confidence/requisition state.
+  - Core game state, resource balances, consumption, turns, battles, module registry.
+  - Core-state digest endpoint: `gameStateDigest()`.
+- `src/interfaces/ICoalitionEventModule.sol`
+  - Event-module interface with `onGameHook` returning `HostCall[]`.
+- `src/libraries/CoalitionHooks.sol`
+  - Hook IDs and payload structs.
+- `src/modules/SentientCoreIntelModule.sol`
+  - Example event module that grants intel from sentient core consumption.
 
-- Event extensibility (expandable events side)
-  - Hook pipeline for core lifecycle points:
-    - `HOOK_EMPIRE_CONSUMED`
-    - `HOOK_ARMY_CONSUMED`
-    - `HOOK_BATTLE_RESOLVED`
-    - `HOOK_TURN_ADVANCED`
-  - `upsertEventTemplate(...)` for data-driven event definitions (metadata URI + hook binding).
-  - External module interface (`ICoalitionEventModule`) and registry.
-  - Registered modules receive hook payloads and can mutate core via module host API (`ICoalitionModuleHost`).
+## MVP Trust Model
 
-- Example module
-  - `src/modules/SentientCoreIntelModule.sol`
-  - Demonstrates extending behavior by awarding intel when sentient core consumption reaches module-defined thresholds.
-
-- Tests
-  - `test/CoalitionGame.t.sol`
-  - Covers requisition cadence, army threshold effects, battle MP damage, and module-driven intel gain.
-
-## Project layout
-
-- `foundry.toml` Foundry config
-- `src/` contracts
-- `test/` solidity tests
-- `scripts/play_local.ps1` one-command local demo flow
+- Consumption is authoritative only when backed by the contract's tracked resource balances.
+- MVP balance funding is administrative: the owner seeds empire and army balances through grant functions.
+- Modules remain permissionless for MVP and can mutate bounded core state through host calls after registration.
+- `gameStateDigest()` covers core contract state and config, but does not include module-local storage inside external module contracts.
+- Production hardening still requires governance/allowlisting, dispute controls, and a richer settlement pipeline.
 
 ## Run locally with Anvil
 
@@ -56,14 +53,14 @@ forge build
 forge test
 ```
 
-3. Run sample gameplay transactions (PowerShell):
+3. Run the PowerShell sample flow:
 
 ```powershell
 cd smart_contracts
 ./scripts/play_local.ps1
 ```
 
-## Manual `cast` flow (minimal)
+## Manual flow (minimal)
 
 ```bash
 cd smart_contracts
@@ -75,17 +72,19 @@ GAME=$(forge create src/CoalitionGame.sol:CoalitionGame --rpc-url $RPC_URL --pri
 PLAYER=$(cast wallet address --private-key $PK)
 
 cast send $GAME "createEmpire(string,address,uint256,int256)" "Stellar Federation" $PLAYER 500000 40 --rpc-url $RPC_URL --private-key $PK
+cast send $GAME "createEmpire(string,address,uint256,int256)" "Verdant Colonies" $PLAYER 450000 30 --rpc-url $RPC_URL --private-key $PK
 cast send $GAME "createArmy(uint256,string,uint256,uint256,uint256,uint256,uint256)" 1 "First Legion" 1200 1200 130 60 200 --rpc-url $RPC_URL --private-key $PK
-cast send $GAME "consumeArmyResource(uint256,uint8,uint256,uint8)" 1 0 300 2 --rpc-url $RPC_URL --private-key $PK
-cast send $GAME "advanceTurn(uint256)" 15 --rpc-url $RPC_URL --private-key $PK
-cast call $GAME "coalitionRequisition()(uint256)" --rpc-url $RPC_URL
+cast send $GAME "createArmy(uint256,string,uint256,uint256,uint256,uint256,uint256)" 2 "Verdant Guard" 1150 1150 125 65 200 --rpc-url $RPC_URL --private-key $PK
+cast send $GAME "grantArmyResource(uint256,uint8,uint256)" 1 0 260 --rpc-url $RPC_URL --private-key $PK
+cast send $GAME "consumeArmyResource(uint256,uint8,uint256,uint8)" 1 0 260 2 --rpc-url $RPC_URL --private-key $PK
+cast send $GAME "setTurnSeed(uint256,bytes32)" 0 0x0000000000000000000000000000000000000000000000000000000000000123 --rpc-url $RPC_URL --private-key $PK
+cast send $GAME "resolveBattle(uint256,uint256)" 1 2 --rpc-url $RPC_URL --private-key $PK
+cast call $GAME "gameStateDigest()(bytes32)" --rpc-url $RPC_URL
 ```
 
-## Notes for expansion
+## Future hardening (documented, not implemented yet)
 
-- Add new event systems by deploying modules implementing `ICoalitionEventModule`, then calling `registerEventModule(moduleAddress)`.
-- Add richer event authoring/UI by indexing:
-  - `EventTemplateUpserted`
-  - `EventTemplateTriggered`
-  - domain events such as `BattleResolved`, `ConsumptionEffectTriggered`.
-- Add more resources/effects by extending `Resource` and `EffectType`, then handling in `_applyEmpireRule`/`_applyArmyRule`.
+- Add module registration bonds.
+- Add slash/dispute flows for malicious modules.
+- Add cooldown-based module exits.
+- Add governance controls for module curation and emergency disable policy.

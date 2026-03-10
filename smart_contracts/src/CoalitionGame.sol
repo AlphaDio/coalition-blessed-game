@@ -2,13 +2,16 @@
 pragma solidity ^0.8.24;
 
 import {ICoalitionEventModule} from "./interfaces/ICoalitionEventModule.sol";
-import {ICoalitionModuleHost} from "./interfaces/ICoalitionModuleHost.sol";
 import {CoalitionHooks} from "./libraries/CoalitionHooks.sol";
 
-contract CoalitionGame is ICoalitionModuleHost {
+contract CoalitionGame {
     uint256 public constant POPULATION_CAP = 1_000_000;
     uint256 public constant CONFIDENCE_MIN = 0;
     uint256 public constant CONFIDENCE_MAX = 100;
+    uint256 public constant RESOURCE_COUNT = 10;
+    uint256 public constant MAX_MODULE_HOST_CALLS_PER_HOOK = 32;
+    int256 public constant MAX_MODULE_ABS_DELTA = 1_000;
+    uint256 public constant MAX_MODULE_REQUISITION_PER_CALL = 50_000;
     uint8 public constant RESOURCE_SENTIENT_CORES = uint8(Resource.SentientCores);
 
     enum Resource {
@@ -44,6 +47,19 @@ contract CoalitionGame is ICoalitionModuleHost {
         ArmyNeeds,
         ArmyWants,
         ImprovementSustainment
+    }
+
+    enum ModuleOp {
+        None,
+        GrantIntel,
+        GrantConfidence,
+        QueueRequisition,
+        ApplyEmpireApproval,
+        ApplyEmpireAggravation,
+        ApplyArmyAttack,
+        ApplyArmyDefense,
+        ApplyArmyCurrentMP,
+        ApplyArmyMaxMP
     }
 
     struct Empire {
@@ -110,6 +126,7 @@ contract CoalitionGame is ICoalitionModuleHost {
     uint256 public coalitionConfidence = 50;
     uint256 public requisitionPool;
     uint256 public requisitionPayoutCadence = 15;
+    uint256 public battleNonce;
 
     RequisitionRates public requisitionRates = RequisitionRates({
         empireNeedsBp: 200,
@@ -125,15 +142,24 @@ contract CoalitionGame is ICoalitionModuleHost {
     mapping(uint8 => EffectRule) public empireConsumptionRules;
     mapping(uint8 => EffectRule) public armyConsumptionRules;
 
+    mapping(uint256 => mapping(uint8 => uint256)) public empireResourceBalances;
+    mapping(uint256 => mapping(uint8 => uint256)) public armyResourceBalances;
     mapping(uint256 => mapping(uint8 => uint256)) public empireConsumptionPools;
     mapping(uint256 => mapping(uint8 => uint256)) public armyConsumptionPools;
 
+    mapping(uint8 => uint256) public resourceRequisitionValues;
     mapping(address => bool) public isEventModule;
+    mapping(address => address) public moduleOwnerOf;
     address[] public eventModules;
+    mapping(address => uint256) private eventModuleIndexPlusOne;
 
     mapping(bytes32 => EventTemplate) public eventTemplates;
     mapping(bytes32 => bool) public eventTemplateExists;
     bytes32[] public eventTemplateIds;
+
+    mapping(uint256 => bytes32) private turnSeeds;
+    mapping(uint256 => bool) public isTurnSeedKnown;
+    uint256[] public seededTurns;
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event EmpireCreated(
@@ -157,16 +183,25 @@ contract CoalitionGame is ICoalitionModuleHost {
     event ArmyConsumptionRuleSet(
         uint8 indexed resource, uint256 threshold, EffectType effectType, int256 magnitude, bool enabled
     );
+    event ResourceRequisitionValueSet(uint8 indexed resource, uint256 value);
+    event EmpireResourceGranted(uint256 indexed empireId, uint8 indexed resource, uint256 amount, uint256 balanceAfter);
+    event ArmyResourceGranted(uint256 indexed armyId, uint8 indexed resource, uint256 amount, uint256 balanceAfter);
     event EventTemplateUpserted(bytes32 indexed templateId, bytes32 indexed hookId, string metadataURI, bool enabled);
     event EventTemplateTriggered(bytes32 indexed templateId, bytes32 indexed hookId, bytes payload);
-    event EventModuleRegistered(address indexed module);
-    event EventModuleUnregistered(address indexed module);
+    event EventModuleRegistered(address indexed module, address indexed registeredBy);
+    event EventModuleUnregistered(address indexed module, address indexed unregisteredBy);
     event HookDispatchFailed(address indexed module, bytes32 indexed hookId, bytes reason);
+    event TurnSeedSet(uint256 indexed turnNumber, bytes32 seed);
+    event ModuleHostCallApplied(
+        address indexed module, bytes32 indexed hookId, uint8 indexed op, int256 a, int256 b, uint256 c, bytes32 d
+    );
+    event ModuleHostCallRejected(address indexed module, bytes32 indexed hookId, uint8 indexed op, bytes32 reasonCode);
     event EmpireResourceConsumed(
         uint256 indexed empireId,
         uint8 indexed resource,
         uint8 source,
         uint256 amount,
+        uint256 balanceAfter,
         uint256 poolAfter,
         uint256 requisitionQueued
     );
@@ -175,6 +210,7 @@ contract CoalitionGame is ICoalitionModuleHost {
         uint8 indexed resource,
         uint8 source,
         uint256 amount,
+        uint256 balanceAfter,
         uint256 poolAfter,
         uint256 requisitionQueued
     );
@@ -216,11 +252,6 @@ contract CoalitionGame is ICoalitionModuleHost {
         _;
     }
 
-    modifier onlyModule() {
-        require(isEventModule[msg.sender], "CoalitionGame: only module");
-        _;
-    }
-
     modifier onlyEmpireController(uint256 empireId) {
         Empire storage empire = empires[empireId];
         require(empire.exists, "CoalitionGame: unknown empire");
@@ -230,6 +261,9 @@ contract CoalitionGame is ICoalitionModuleHost {
 
     constructor() {
         owner = msg.sender;
+        for (uint8 resourceKey = 0; resourceKey < RESOURCE_COUNT; resourceKey++) {
+            resourceRequisitionValues[resourceKey] = 1;
+        }
     }
 
     function transferOwnership(address newOwner) external onlyOwner {
@@ -327,6 +361,32 @@ contract CoalitionGame is ICoalitionModuleHost {
         });
     }
 
+    function setResourceRequisitionValue(Resource resource, uint256 value) external onlyOwner {
+        uint8 resourceKey = uint8(resource);
+        resourceRequisitionValues[resourceKey] = value;
+        emit ResourceRequisitionValueSet(resourceKey, value);
+    }
+
+    function grantEmpireResource(uint256 empireId, Resource resource, uint256 amount) external onlyOwner {
+        require(amount > 0, "CoalitionGame: amount must be > 0");
+        Empire storage empire = empires[empireId];
+        require(empire.exists, "CoalitionGame: unknown empire");
+
+        uint8 resourceKey = uint8(resource);
+        empireResourceBalances[empireId][resourceKey] += amount;
+        emit EmpireResourceGranted(empireId, resourceKey, amount, empireResourceBalances[empireId][resourceKey]);
+    }
+
+    function grantArmyResource(uint256 armyId, Resource resource, uint256 amount) external onlyOwner {
+        require(amount > 0, "CoalitionGame: amount must be > 0");
+        Army storage army = armies[armyId];
+        require(army.exists, "CoalitionGame: unknown army");
+
+        uint8 resourceKey = uint8(resource);
+        armyResourceBalances[armyId][resourceKey] += amount;
+        emit ArmyResourceGranted(armyId, resourceKey, amount, armyResourceBalances[armyId][resourceKey]);
+    }
+
     function setEmpireConsumptionRule(
         Resource resource,
         uint256 threshold,
@@ -367,29 +427,71 @@ contract CoalitionGame is ICoalitionModuleHost {
         emit EventTemplateUpserted(templateId, hookId, metadataURI, enabled);
     }
 
-    function registerEventModule(address module) external onlyOwner {
+    function setTurnSeed(uint256 turnNumber, bytes32 seed) external onlyOwner {
+        require(seed != bytes32(0), "CoalitionGame: empty seed");
+        require(turnNumber >= turn, "CoalitionGame: past turn seed");
+        require(!isTurnSeedKnown[turnNumber], "CoalitionGame: seed already set");
+        turnSeeds[turnNumber] = seed;
+        isTurnSeedKnown[turnNumber] = true;
+        seededTurns.push(turnNumber);
+        emit TurnSeedSet(turnNumber, seed);
+    }
+
+    function getTurnSeed(uint256 turnNumber) external view returns (bytes32) {
+        return turnSeeds[turnNumber];
+    }
+
+    // MVP trust model: modules remain permissionless and can apply bounded host calls.
+    function registerEventModule(address module) external {
         require(module != address(0), "CoalitionGame: zero module");
+        require(module.code.length > 0, "CoalitionGame: module must be contract");
         require(!isEventModule[module], "CoalitionGame: module already registered");
+        require(eventModuleIndexPlusOne[module] == 0, "CoalitionGame: module already tracked");
+        require(moduleOwnerOf[module] == address(0), "CoalitionGame: module already owned");
         isEventModule[module] = true;
+        moduleOwnerOf[module] = msg.sender;
         eventModules.push(module);
-        emit EventModuleRegistered(module);
+        eventModuleIndexPlusOne[module] = eventModules.length;
+        emit EventModuleRegistered(module, msg.sender);
     }
 
-    function unregisterEventModule(address module) external onlyOwner {
+    function unregisterEventModule(address module) external {
         require(isEventModule[module], "CoalitionGame: module not registered");
+        address moduleOwner = moduleOwnerOf[module];
+        require(msg.sender == owner || msg.sender == moduleOwner, "CoalitionGame: not owner/admin for unregister");
         isEventModule[module] = false;
-        emit EventModuleUnregistered(module);
+        moduleOwnerOf[module] = address(0);
+
+        uint256 moduleIndex = eventModuleIndexPlusOne[module];
+        require(moduleIndex > 0, "CoalitionGame: missing module index");
+        uint256 arrayIndex = moduleIndex - 1;
+        uint256 lastIndex = eventModules.length - 1;
+        if (arrayIndex != lastIndex) {
+            address lastModule = eventModules[lastIndex];
+            eventModules[arrayIndex] = lastModule;
+            eventModuleIndexPlusOne[lastModule] = moduleIndex;
+        }
+        eventModules.pop();
+        delete eventModuleIndexPlusOne[module];
+
+        emit EventModuleUnregistered(module, msg.sender);
     }
 
+    // Consumption is authoritative only when backed by tracked on-chain balances.
     function consumeEmpireResource(uint256 empireId, Resource resource, uint256 amount, ConsumptionSource source)
         external
         onlyEmpireController(empireId)
     {
         require(amount > 0, "CoalitionGame: amount must be > 0");
+        _requireEmpireSource(source);
 
         uint8 resourceKey = uint8(resource);
-        uint16 reqBp = _requisitionBpForSource(source);
-        uint256 reqGain = (amount * reqBp) / 10_000;
+        uint256 balanceBefore = empireResourceBalances[empireId][resourceKey];
+        require(balanceBefore >= amount, "CoalitionGame: insufficient empire resource");
+        uint256 balanceAfter = balanceBefore - amount;
+        empireResourceBalances[empireId][resourceKey] = balanceAfter;
+
+        uint256 reqGain = _calculateRequisitionGain(resourceKey, amount, source);
         if (reqGain > 0) {
             _queueRequisition(reqGain);
         }
@@ -405,7 +507,7 @@ contract CoalitionGame is ICoalitionModuleHost {
         }
         empireConsumptionPools[empireId][resourceKey] = pool;
 
-        emit EmpireResourceConsumed(empireId, resourceKey, uint8(source), amount, pool, reqGain);
+        emit EmpireResourceConsumed(empireId, resourceKey, uint8(source), amount, balanceAfter, pool, reqGain);
 
         CoalitionHooks.ConsumptionHookPayload memory payload = CoalitionHooks.ConsumptionHookPayload({
             entityId: empireId,
@@ -422,14 +524,19 @@ contract CoalitionGame is ICoalitionModuleHost {
         external
     {
         require(amount > 0, "CoalitionGame: amount must be > 0");
+        _requireArmySource(source);
         Army storage army = armies[armyId];
         require(army.exists, "CoalitionGame: unknown army");
         Empire storage empire = empires[army.empireId];
         require(msg.sender == owner || msg.sender == empire.controller, "CoalitionGame: not authorized for army");
 
         uint8 resourceKey = uint8(resource);
-        uint16 reqBp = _requisitionBpForSource(source);
-        uint256 reqGain = (amount * reqBp) / 10_000;
+        uint256 balanceBefore = armyResourceBalances[armyId][resourceKey];
+        require(balanceBefore >= amount, "CoalitionGame: insufficient army resource");
+        uint256 balanceAfter = balanceBefore - amount;
+        armyResourceBalances[armyId][resourceKey] = balanceAfter;
+
+        uint256 reqGain = _calculateRequisitionGain(resourceKey, amount, source);
         if (reqGain > 0) {
             _queueRequisition(reqGain);
         }
@@ -445,7 +552,7 @@ contract CoalitionGame is ICoalitionModuleHost {
         }
         armyConsumptionPools[armyId][resourceKey] = pool;
 
-        emit ArmyResourceConsumed(armyId, resourceKey, uint8(source), amount, pool, reqGain);
+        emit ArmyResourceConsumed(armyId, resourceKey, uint8(source), amount, balanceAfter, pool, reqGain);
 
         CoalitionHooks.ConsumptionHookPayload memory payload = CoalitionHooks.ConsumptionHookPayload({
             entityId: armyId,
@@ -461,6 +568,8 @@ contract CoalitionGame is ICoalitionModuleHost {
     function advanceTurn(uint256 turnsToAdvance) external onlyOwner {
         require(turnsToAdvance > 0 && turnsToAdvance <= 500, "CoalitionGame: invalid turn delta");
         for (uint256 i = 0; i < turnsToAdvance; i++) {
+            uint256 nextTurn = turn + 1;
+            require(isTurnSeedKnown[nextTurn], "CoalitionGame: missing next turn seed");
             turn += 1;
             _recoverArmies();
 
@@ -483,12 +592,16 @@ contract CoalitionGame is ICoalitionModuleHost {
         }
     }
 
-    function resolveBattle(uint256 attackerArmyId, uint256 defenderArmyId, uint256 randomnessSalt)
+    function resolveBattle(uint256 attackerArmyId, uint256 defenderArmyId)
         external
         onlyOwner
         returns (BattleOutcome memory outcome)
     {
         require(attackerArmyId != defenderArmyId, "CoalitionGame: same army");
+        require(isTurnSeedKnown[turn], "CoalitionGame: missing current turn seed");
+        bytes32 seed = turnSeeds[turn];
+        uint256 nonce = battleNonce;
+        battleNonce += 1;
         Army storage attacker = armies[attackerArmyId];
         Army storage defender = armies[defenderArmyId];
         require(attacker.exists && defender.exists, "CoalitionGame: unknown army");
@@ -499,8 +612,8 @@ contract CoalitionGame is ICoalitionModuleHost {
         attacker.pendingSurgeBp = 0;
         defender.pendingSurgeBp = 0;
 
-        uint256 attackerPower = _rollBattlePower(attacker, attackerSurgeBp, randomnessSalt, 1);
-        uint256 defenderPower = _rollBattlePower(defender, defenderSurgeBp, randomnessSalt, 2);
+        uint256 attackerPower = _rollBattlePower(attackerArmyId, attacker, attackerSurgeBp, seed, nonce, 1);
+        uint256 defenderPower = _rollBattlePower(defenderArmyId, defender, defenderSurgeBp, seed, nonce, 2);
         uint256 totalPower = attackerPower + defenderPower;
         if (totalPower == 0) {
             attackerPower = 1;
@@ -562,22 +675,6 @@ contract CoalitionGame is ICoalitionModuleHost {
         });
     }
 
-    function moduleGrantIntel(uint256 amount) external onlyModule {
-        _adjustCoalitionIntel(_toInt256(amount));
-    }
-
-    function moduleSpendIntel(uint256 amount) external onlyModule {
-        _adjustCoalitionIntel(-_toInt256(amount));
-    }
-
-    function moduleGrantConfidence(uint256 amount) external onlyModule {
-        _adjustCoalitionConfidence(_toInt256(amount));
-    }
-
-    function moduleQueueRequisition(uint256 amount) external onlyModule {
-        _queueRequisition(amount);
-    }
-
     function getEmpire(uint256 empireId) external view returns (Empire memory) {
         return empires[empireId];
     }
@@ -592,6 +689,123 @@ contract CoalitionGame is ICoalitionModuleHost {
 
     function getEventTemplateCount() external view returns (uint256) {
         return eventTemplateIds.length;
+    }
+
+    function getSeededTurnCount() external view returns (uint256) {
+        return seededTurns.length;
+    }
+
+    // This digest covers core contract state only; external module-local state is documented separately.
+    function gameStateDigest() external view returns (bytes32 digest) {
+        digest = keccak256(
+            abi.encode(
+                owner,
+                turn,
+                nextEmpireId,
+                nextArmyId,
+                coalitionRequisition,
+                coalitionIntel,
+                coalitionConfidence,
+                requisitionPool,
+                requisitionPayoutCadence,
+                battleNonce,
+                requisitionRates.empireNeedsBp,
+                requisitionRates.empireWantsBp,
+                requisitionRates.armyNeedsBp,
+                requisitionRates.armyWantsBp,
+                requisitionRates.improvementBp
+            )
+        );
+
+        for (uint8 resourceKey = 0; resourceKey < RESOURCE_COUNT; resourceKey++) {
+            EffectRule storage empireRule = empireConsumptionRules[resourceKey];
+            EffectRule storage armyRule = armyConsumptionRules[resourceKey];
+            digest = keccak256(
+                abi.encode(
+                    digest,
+                    resourceKey,
+                    resourceRequisitionValues[resourceKey],
+                    empireRule.threshold,
+                    empireRule.effectType,
+                    empireRule.magnitude,
+                    empireRule.enabled,
+                    armyRule.threshold,
+                    armyRule.effectType,
+                    armyRule.magnitude,
+                    armyRule.enabled
+                )
+            );
+        }
+
+        for (uint256 empireId = 1; empireId < nextEmpireId; empireId++) {
+            Empire storage empire = empires[empireId];
+            digest = keccak256(
+                abi.encode(
+                    digest,
+                    empireId,
+                    empire.name,
+                    empire.controller,
+                    empire.population,
+                    empire.approval,
+                    empire.aggravation,
+                    empire.exists
+                )
+            );
+            for (uint8 resourceKey = 0; resourceKey < RESOURCE_COUNT; resourceKey++) {
+                digest = keccak256(
+                    abi.encode(
+                        digest,
+                        empireResourceBalances[empireId][resourceKey],
+                        empireConsumptionPools[empireId][resourceKey]
+                    )
+                );
+            }
+        }
+
+        for (uint256 armyId = 1; armyId < nextArmyId; armyId++) {
+            Army storage army = armies[armyId];
+            digest = keccak256(
+                abi.encode(
+                    digest,
+                    armyId,
+                    army.name,
+                    army.empireId,
+                    army.currentMP,
+                    army.maxMP,
+                    army.attack,
+                    army.defense,
+                    army.recoveryBp,
+                    army.experience,
+                    army.level,
+                    army.nextXpThreshold,
+                    army.pendingSurgeBp,
+                    army.exists
+                )
+            );
+            for (uint8 resourceKey = 0; resourceKey < RESOURCE_COUNT; resourceKey++) {
+                digest = keccak256(
+                    abi.encode(
+                        digest, armyResourceBalances[armyId][resourceKey], armyConsumptionPools[armyId][resourceKey]
+                    )
+                );
+            }
+        }
+
+        for (uint256 i = 0; i < eventTemplateIds.length; i++) {
+            bytes32 templateId = eventTemplateIds[i];
+            EventTemplate storage template = eventTemplates[templateId];
+            digest = keccak256(abi.encode(digest, templateId, template.hookId, template.metadataURI, template.enabled));
+        }
+
+        for (uint256 i = 0; i < eventModules.length; i++) {
+            address module = eventModules[i];
+            digest = keccak256(abi.encode(digest, module, isEventModule[module], moduleOwnerOf[module]));
+        }
+
+        for (uint256 i = 0; i < seededTurns.length; i++) {
+            uint256 seededTurn = seededTurns[i];
+            digest = keccak256(abi.encode(digest, seededTurn, turnSeeds[seededTurn]));
+        }
     }
 
     function getArmyIdsForEmpire(uint256 empireId) external view returns (uint256[] memory ids) {
@@ -775,11 +989,14 @@ contract CoalitionGame is ICoalitionModuleHost {
         }
     }
 
-    function _rollBattlePower(Army storage army, uint256 surgeBp, uint256 randomnessSalt, uint256 sideNonce)
-        internal
-        view
-        returns (uint256 power)
-    {
+    function _rollBattlePower(
+        uint256 armyId,
+        Army storage army,
+        uint256 surgeBp,
+        bytes32 seed,
+        uint256 nonce,
+        uint256 sideNonce
+    ) internal view returns (uint256 power) {
         uint256 attackStat = army.attack;
         if (surgeBp > 0) {
             attackStat = (attackStat * (10_000 + surgeBp)) / 10_000;
@@ -789,8 +1006,22 @@ contract CoalitionGame is ICoalitionModuleHost {
 
         uint256 roll = 9_000
             + (
-                uint256(keccak256(abi.encodePacked(block.prevrandao, randomnessSalt, turn, sideNonce, army.currentMP)))
-                    % 2_001
+                uint256(
+                    keccak256(
+                        abi.encode(
+                            seed,
+                            nonce,
+                            sideNonce,
+                            armyId,
+                            army.currentMP,
+                            army.maxMP,
+                            army.attack,
+                            army.defense,
+                            army.level,
+                            army.pendingSurgeBp
+                        )
+                    )
+                ) % 2_001
             );
         power = army.currentMP * attackStat;
         power = (power * roll) / 10_000;
@@ -803,6 +1034,17 @@ contract CoalitionGame is ICoalitionModuleHost {
         return (loss * 10_000) / divisor;
     }
 
+    function _calculateRequisitionGain(uint8 resourceKey, uint256 amount, ConsumptionSource source)
+        internal
+        view
+        returns (uint256 reqGain)
+    {
+        uint256 resourceValue = resourceRequisitionValues[resourceKey];
+        if (resourceValue == 0) return 0;
+        uint16 reqBp = _requisitionBpForSource(source);
+        reqGain = (amount * resourceValue * reqBp) / 10_000;
+    }
+
     function _requisitionBpForSource(ConsumptionSource source) internal view returns (uint16) {
         if (source == ConsumptionSource.EmpireNeeds) return requisitionRates.empireNeedsBp;
         if (source == ConsumptionSource.EmpireWants) return requisitionRates.empireWantsBp;
@@ -811,6 +1053,7 @@ contract CoalitionGame is ICoalitionModuleHost {
         return requisitionRates.improvementBp;
     }
 
+    // MVP trust model: permissionless modules can mutate bounded core state through host calls.
     function _dispatchHook(bytes32 hookId, bytes memory payload) internal {
         for (uint256 i = 0; i < eventTemplateIds.length; i++) {
             bytes32 templateId = eventTemplateIds[i];
@@ -823,11 +1066,127 @@ contract CoalitionGame is ICoalitionModuleHost {
         for (uint256 i = 0; i < eventModules.length; i++) {
             address module = eventModules[i];
             if (!isEventModule[module]) continue;
-            try ICoalitionEventModule(module).onGameHook(hookId, payload) {}
-            catch (bytes memory reason) {
+            try ICoalitionEventModule(module).onGameHook(hookId, payload) returns (
+                ICoalitionEventModule.HostCall[] memory hostCalls
+            ) {
+                _applyModuleHostCalls(module, hookId, hostCalls);
+            } catch (bytes memory reason) {
                 emit HookDispatchFailed(module, hookId, reason);
             }
         }
+    }
+
+    function _applyModuleHostCalls(address module, bytes32 hookId, ICoalitionEventModule.HostCall[] memory hostCalls)
+        internal
+    {
+        if (hostCalls.length > MAX_MODULE_HOST_CALLS_PER_HOOK) {
+            emit ModuleHostCallRejected(module, hookId, 0, "TOO_MANY_CALLS");
+            return;
+        }
+
+        for (uint256 i = 0; i < hostCalls.length; i++) {
+            _applySingleModuleCall(module, hookId, hostCalls[i]);
+        }
+    }
+
+    function _applySingleModuleCall(address module, bytes32 hookId, ICoalitionEventModule.HostCall memory callData)
+        internal
+    {
+        ModuleOp op = ModuleOp(callData.op);
+
+        if (op == ModuleOp.GrantIntel) {
+            int256 delta = _clampModuleDelta(callData.a);
+            _adjustCoalitionIntel(delta);
+        } else if (op == ModuleOp.GrantConfidence) {
+            int256 delta = _clampModuleDelta(callData.a);
+            _adjustCoalitionConfidence(delta);
+        } else if (op == ModuleOp.QueueRequisition) {
+            uint256 amount = callData.c;
+            if (amount > MAX_MODULE_REQUISITION_PER_CALL) amount = MAX_MODULE_REQUISITION_PER_CALL;
+            _queueRequisition(amount);
+        } else if (op == ModuleOp.ApplyEmpireApproval) {
+            uint256 empireId = callData.c;
+            Empire storage empire = empires[empireId];
+            if (!empire.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_EMPIRE");
+                return;
+            }
+            empire.approval = _clampInt(empire.approval + _clampModuleDelta(callData.a), -100, 100);
+        } else if (op == ModuleOp.ApplyEmpireAggravation) {
+            uint256 empireId = callData.c;
+            Empire storage empire = empires[empireId];
+            if (!empire.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_EMPIRE");
+                return;
+            }
+            empire.aggravation = _clampInt(empire.aggravation + _clampModuleDelta(callData.a), 0, 100);
+        } else if (op == ModuleOp.ApplyArmyAttack) {
+            uint256 armyId = callData.c;
+            Army storage army = armies[armyId];
+            if (!army.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                return;
+            }
+            int256 delta = _clampModuleDelta(callData.a);
+            uint256 nextAttack = _applySignedToUint(army.attack, delta);
+            if (nextAttack == 0) nextAttack = 1;
+            army.attack = nextAttack;
+        } else if (op == ModuleOp.ApplyArmyDefense) {
+            uint256 armyId = callData.c;
+            Army storage army = armies[armyId];
+            if (!army.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                return;
+            }
+            army.defense = _applySignedToUint(army.defense, _clampModuleDelta(callData.a));
+        } else if (op == ModuleOp.ApplyArmyCurrentMP) {
+            uint256 armyId = callData.c;
+            Army storage army = armies[armyId];
+            if (!army.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                return;
+            }
+            uint256 nextCurrent = _applySignedToUint(army.currentMP, _clampModuleDelta(callData.a));
+            if (nextCurrent > army.maxMP) nextCurrent = army.maxMP;
+            army.currentMP = nextCurrent;
+        } else if (op == ModuleOp.ApplyArmyMaxMP) {
+            uint256 armyId = callData.c;
+            Army storage army = armies[armyId];
+            if (!army.exists) {
+                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                return;
+            }
+            uint256 nextMax = _applySignedToUint(army.maxMP, _clampModuleDelta(callData.a));
+            if (nextMax == 0) nextMax = 1;
+            army.maxMP = nextMax;
+            if (army.currentMP > army.maxMP) army.currentMP = army.maxMP;
+        } else {
+            emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_OP");
+            return;
+        }
+
+        emit ModuleHostCallApplied(module, hookId, callData.op, callData.a, callData.b, callData.c, callData.d);
+    }
+
+    function _clampModuleDelta(int256 delta) internal pure returns (int256) {
+        if (delta > MAX_MODULE_ABS_DELTA) return MAX_MODULE_ABS_DELTA;
+        if (delta < -MAX_MODULE_ABS_DELTA) return -MAX_MODULE_ABS_DELTA;
+        return delta;
+    }
+
+    function _requireEmpireSource(ConsumptionSource source) internal pure {
+        require(
+            source == ConsumptionSource.EmpireNeeds || source == ConsumptionSource.EmpireWants
+                || source == ConsumptionSource.ImprovementSustainment,
+            "CoalitionGame: invalid empire source"
+        );
+    }
+
+    function _requireArmySource(ConsumptionSource source) internal pure {
+        require(
+            source == ConsumptionSource.ArmyNeeds || source == ConsumptionSource.ArmyWants,
+            "CoalitionGame: invalid army source"
+        );
     }
 
     function _applySignedToUint(uint256 value, int256 delta) internal pure returns (uint256) {
