@@ -28,6 +28,8 @@ This folder contains an EVM-friendly Coalition game core designed for local Anvi
   - Hook IDs and payload structs.
 - `src/modules/SentientCoreIntelModule.sol`
   - Example event module that grants intel from sentient core consumption.
+- `CONTRACT_COMPLEXITY.md`
+  - Contract-count and complexity guidance for a Coalition-like on-chain game.
 
 ## MVP Trust Model
 
