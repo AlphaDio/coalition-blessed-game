@@ -3,6 +3,9 @@
  * 
  * Tests the per-empire tier unlock system for improvements.
  * Key difference from laws: each empire tracks tier progress independently.
+ *
+ * Legacy manual test script: this file is not part of the package test suite.
+ * Active queue and ownership regressions are covered in tests/testImprovementSuggestions.js.
  */
 
 import { createGameState, createEmpire } from '../src/game/types.js';

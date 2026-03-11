@@ -14,9 +14,25 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     return { success: false, error: 'Request not found', log: [] };
   }
 
+  const requestEmpireId = request.empireId || empireId || null;
+  if (!requestEmpireId) {
+    return { success: false, error: 'Request has no empire assignment', log: [] };
+  }
+  if (request.empireId && empireId && request.empireId !== empireId) {
+    return {
+      success: false,
+      error: `Request belongs to ${request.empireId}, not ${empireId}`,
+      log: []
+    };
+  }
+  const empireExists = state.empires?.some(empire => empire.id === requestEmpireId);
+  if (!empireExists) {
+    return { success: false, error: `Empire not found: ${requestEmpireId}`, log: [] };
+  }
+
   // Check tier requirements for this empire (if tier is defined)
   if (request.tier && request.tier > 1) {
-    const tierCheck = canStartImprovement(request.definitionId || request.id, state, empireId);
+    const tierCheck = canStartImprovement(request.definitionId || request.id, state, requestEmpireId);
     if (!tierCheck.canStart) {
       return { success: false, error: tierCheck.reason, log: [] };
     }
@@ -48,7 +64,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   }
 
   // Create improvement instance
-  const improvement = createImprovement(request.id, empireId, state.turn, request);
+  const improvement = createImprovement(request.id, requestEmpireId, state.turn, request);
   improvements.queue.push(improvement);
   const activeLawProcess = (state.lawProcesses || []).find(lp => lp.phase !== 'ENACTED' && lp.phase !== 'BURIED') || null;
   const activeLawDef = activeLawProcess
@@ -56,7 +72,7 @@ export function acceptImprovementRequest(state, requestId, empireId) {
     : null;
   const passiveLog = [];
   triggerHeroPassives(state, 'IMPROVEMENT_STARTED', {
-    empireId,
+    empireId: requestEmpireId,
     improvement,
     lawProcess: activeLawProcess,
     lawDef: activeLawDef
@@ -69,13 +85,13 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   }
 
   // Generate a replacement suggestion for this empire
-  const replacement = generateReplacementSuggestion(state, empireId);
+  const replacement = generateReplacementSuggestion(state, requestEmpireId);
   if (replacement) {
     state.improvements.requests.push(replacement);
-    logger.debug(`Replacement suggestion added for ${empireId}: ${replacement.name}`);
+    logger.debug(`Replacement suggestion added for ${requestEmpireId}: ${replacement.name}`);
   }
 
-  logger.info(`Improvement started: ${improvement.name} (Empire: ${empireId}, Requisition: ${request.suppliesCost}, Tier: ${improvement.tier})`);
+  logger.info(`Improvement started: ${improvement.name} (Empire: ${requestEmpireId}, Requisition: ${request.suppliesCost}, Tier: ${improvement.tier})`);
 
   return {
     success: true,

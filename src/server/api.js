@@ -450,13 +450,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         );
       }
       
-      if (action === 'accept' && !empireId) {
-        return res.sendError(
-          ErrorCodes.MISSING_PARAMETER,
-          'Missing required parameter for accept action: empireId'
-        );
-      }
-      
       if (action !== 'accept' && action !== 'cancel') {
         return res.sendError(
           ErrorCodes.INVALID_PARAMETER,

@@ -47,9 +47,10 @@ export function createTieredImprovementRequest(id, name, description, tier, bran
   };
 }
 
-export function createImprovementRequestInstance(definition, empireId, turn, rng = Math.random) {
+export function createImprovementRequestInstance(definition, empireId, turn, rng = Math.random, nonce = 0) {
   const definitionId = definition.definitionId || definition.id;
-  const instanceId = `req_${definitionId}_${empireId}_${turn}_${Math.floor(rng() * 1e6)}`;
+  const normalizedNonce = Number.isFinite(nonce) ? Math.max(0, Math.floor(nonce)) : 0;
+  const instanceId = `req_${definitionId}_${empireId}_${turn}_${normalizedNonce}_${Math.floor(rng() * 1e6)}`;
   return {
     ...definition,
     id: instanceId,
@@ -880,6 +881,26 @@ export function canStartImprovement(improvementId, state, empireId) {
  */
 export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
 
+function createSuggestionBatchForEmpire(state, empireId, count, rng = Math.random) {
+  if (!Number.isFinite(count) || count <= 0) {
+    return [];
+  }
+
+  const available = getAvailableImprovementsForEmpire(state, empireId, rng);
+  if (available.length === 0) {
+    return [];
+  }
+
+  const turn = Number.isFinite(state.turn) ? state.turn : 0;
+  const suggestions = [];
+  for (let i = 0; i < count; i++) {
+    const definition = available[i % available.length];
+    suggestions.push(createImprovementRequestInstance(definition, empireId, turn, rng, i));
+  }
+
+  return suggestions;
+}
+
 /**
  * Generate improvement suggestions for empires
  * Simple system: each empire gets up to MAX_SUGGESTIONS_PER_EMPIRE suggestions
@@ -887,7 +908,6 @@ export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
   const suggestions = [];
-  const turn = Number.isFinite(state.turn) ? state.turn : 0;
 
   // Count existing suggestions per empire
   const currentCounts = {};
@@ -902,17 +922,10 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
   state.empires.forEach(empire => {
     const currentCount = currentCounts[empire.id] || 0;
     const slotsNeeded = MAX_SUGGESTIONS_PER_EMPIRE - currentCount;
-    
+
     if (slotsNeeded <= 0) return;
 
-    // Get available improvements for this empire
-    const available = getAvailableImprovementsForEmpire(state, empire.id, rng);
-    
-    // Take up to slotsNeeded suggestions
-    const newSuggestions = available.slice(0, slotsNeeded);
-    newSuggestions.forEach(def => {
-      suggestions.push(createImprovementRequestInstance(def, empire.id, turn, rng));
-    });
+    suggestions.push(...createSuggestionBatchForEmpire(state, empire.id, slotsNeeded, rng));
   });
 
   return suggestions;
@@ -925,23 +938,12 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
 export function generateReplacementSuggestion(state, empireId, rng = Math.random) {
   // Count current suggestions for this empire
   const currentCount = state.improvements.requests.filter(r => r.empireId === empireId).length;
-  
+
   if (currentCount >= MAX_SUGGESTIONS_PER_EMPIRE) {
     return null; // Already at max
   }
 
-  // Get available improvements for this empire
-  const available = getAvailableImprovementsForEmpire(state, empireId, rng);
-  
-  if (available.length === 0) {
-    return null; // No improvements available
-  }
-
-  // Pick one and return it
-  const turn = Number.isFinite(state.turn) ? state.turn : 0;
-  const suggestion = createImprovementRequestInstance(available[0], empireId, turn, rng);
-
-  return suggestion;
+  return createSuggestionBatchForEmpire(state, empireId, 1, rng)[0] || null;
 }
 
 /**
@@ -1051,21 +1053,12 @@ export function isImprovementTierUnlocked(tier, state, empireId) {
  */
 export function refreshImprovementSuggestions(state, rng = Math.random) {
   if (!state.improvements) {
-    return;
+    return [];
   }
-  const existing = state.improvements.requests || [];
-  const existingKeys = new Set(
-    existing.map(request => `${request.empireId || 'none'}:${request.id}`)
-  );
-  const additions = generateImprovementSuggestions(state, rng).filter(request => {
-    const key = `${request.empireId || 'none'}:${request.id}`;
-    if (existingKeys.has(key)) {
-      return false;
-    }
-    existingKeys.add(key);
-    return true;
-  });
+  const existing = Array.isArray(state.improvements.requests) ? state.improvements.requests : [];
+  const additions = generateImprovementSuggestions(state, rng);
   state.improvements.requests = [...existing, ...additions];
+  return additions;
 }
 
 /**
