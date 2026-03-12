@@ -1080,7 +1080,7 @@ contract CoalitionGame {
         internal
     {
         if (hostCalls.length > MAX_MODULE_HOST_CALLS_PER_HOOK) {
-            emit ModuleHostCallRejected(module, hookId, 0, "TOO_MANY_CALLS");
+            emit ModuleHostCallRejected(module, hookId, 0, bytes32("TOO_MANY_CALLS"));
             return;
         }
 
@@ -1108,7 +1108,7 @@ contract CoalitionGame {
             uint256 empireId = callData.c;
             Empire storage empire = empires[empireId];
             if (!empire.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_EMPIRE");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_EMPIRE"));
                 return;
             }
             empire.approval = _clampInt(empire.approval + _clampModuleDelta(callData.a), -100, 100);
@@ -1116,7 +1116,7 @@ contract CoalitionGame {
             uint256 empireId = callData.c;
             Empire storage empire = empires[empireId];
             if (!empire.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_EMPIRE");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_EMPIRE"));
                 return;
             }
             empire.aggravation = _clampInt(empire.aggravation + _clampModuleDelta(callData.a), 0, 100);
@@ -1124,7 +1124,7 @@ contract CoalitionGame {
             uint256 armyId = callData.c;
             Army storage army = armies[armyId];
             if (!army.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_ARMY"));
                 return;
             }
             int256 delta = _clampModuleDelta(callData.a);
@@ -1135,7 +1135,7 @@ contract CoalitionGame {
             uint256 armyId = callData.c;
             Army storage army = armies[armyId];
             if (!army.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_ARMY"));
                 return;
             }
             army.defense = _applySignedToUint(army.defense, _clampModuleDelta(callData.a));
@@ -1143,7 +1143,7 @@ contract CoalitionGame {
             uint256 armyId = callData.c;
             Army storage army = armies[armyId];
             if (!army.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_ARMY"));
                 return;
             }
             uint256 nextCurrent = _applySignedToUint(army.currentMP, _clampModuleDelta(callData.a));
@@ -1153,7 +1153,7 @@ contract CoalitionGame {
             uint256 armyId = callData.c;
             Army storage army = armies[armyId];
             if (!army.exists) {
-                emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_ARMY");
+                emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_ARMY"));
                 return;
             }
             uint256 nextMax = _applySignedToUint(army.maxMP, _clampModuleDelta(callData.a));
@@ -1161,7 +1161,7 @@ contract CoalitionGame {
             army.maxMP = nextMax;
             if (army.currentMP > army.maxMP) army.currentMP = army.maxMP;
         } else {
-            emit ModuleHostCallRejected(module, hookId, callData.op, "UNKNOWN_OP");
+            emit ModuleHostCallRejected(module, hookId, callData.op, bytes32("UNKNOWN_OP"));
             return;
         }
 
