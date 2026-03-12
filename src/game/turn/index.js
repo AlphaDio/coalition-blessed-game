@@ -10,9 +10,9 @@ import {
   processImprovementsTick,
   applyImprovementModifiers,
   removeExpiredSuggestions,
-  processImprovementSustainmentPostMarket
+  processImprovementSustainmentPostMarket,
+  refreshImprovementSuggestions
 } from '../improvements/index.js';
-import { getAllImprovementRequests, createImprovementRequestInstance } from '../improvements/definitions.js';
 import { getEventTitle, hasValidChoices } from '../../utils/events.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { processTechAccrual, createTechEvent } from '../technology.js';
@@ -117,92 +117,20 @@ export function advanceTurn(state, rng = Math.random) {
     logger.debug(`Removed ${expiredCount} expired improvement suggestions`);
   }
 
-  // Empire improvement suggestions with queue cycling
-  // Suggest when an empire has started/completed an improvement, or randomly for empires with no activity
-  // Uses queue cycling to maintain a reasonable suggestion queue size
+  // Keep each empire filled to the configured suggestion count.
   if (
     state.empires &&
     state.improvements &&
-    Array.isArray(state.improvements.queue) &&
     Array.isArray(state.improvements.requests)
   ) {
-    const activeImprovements = state.improvements.queue.filter(i => i.state === 'BUILDING' || i.state === 'ACTIVE');
-    const activeEmpireIds = new Set(activeImprovements.map(i => i.empireId));
-
-    // Queue cycling parameters
-    const MAX_SUGGESTIONS_PER_EMPIRE = 3;  // Hard limit per empire
-    const MAX_TOTAL_SUGGESTIONS = 10;      // Hard global limit
-
-    // Count existing requests per empire
-    const empireRequestCounts = {};
-    state.improvements.requests.forEach(r => {
-      if (r.empireId) {
-        empireRequestCounts[r.empireId] = (empireRequestCounts[r.empireId] || 0) + 1;
+    const newSuggestions = refreshImprovementSuggestions(state, rngFn);
+    newSuggestions.forEach(request => {
+      const empire = state.empires.find(entry => entry.id === request.empireId);
+      if (!empire) {
+        return;
       }
-    });
-
-    // If at max global capacity, cycle out oldest suggestion from empire with most suggestions
-    if (state.improvements.requests.length >= MAX_TOTAL_SUGGESTIONS) {
-      // Find empire with most suggestions
-      let empireWithMost = null;
-      let maxCount = 0;
-      for (const [empireId, count] of Object.entries(empireRequestCounts)) {
-        if (count >= MAX_SUGGESTIONS_PER_EMPIRE && count > maxCount) {
-          empireWithMost = empireId;
-          maxCount = count;
-        }
-      }
-
-      // If an empire has too many, remove its oldest suggestion
-      if (empireWithMost) {
-        const oldest = state.improvements.requests
-          .filter(r => r.empireId === empireWithMost)
-          .sort((a, b) => (a.requestedAt || 0) - (b.requestedAt || 0))[0];
-
-        if (oldest) {
-          const removedName = oldest.name;
-          state.improvements.requests = state.improvements.requests.filter(r => r.id !== oldest.id);
-          logger.debug(`Queue cycling: removed "${removedName}" from ${empireWithMost} to make room for new suggestions`);
-          // Update count
-          empireRequestCounts[empireWithMost]--;
-        }
-      }
-    }
-
-    state.empires.forEach(empire => {
-      // Check if this empire has active improvements
-      const hasActiveImprovement = activeEmpireIds.has(empire.id);
-
-      // Reduce generation chance to prevent queue overflow
-      // 30% chance if empire has active improvement, 10% otherwise (was 60%/20%)
-      const suggestionChance = hasActiveImprovement ? 0.3 : 0.1;
-
-      // Enforce per-empire limit
-      if ((empireRequestCounts[empire.id] || 0) >= MAX_SUGGESTIONS_PER_EMPIRE) return;
-
-      // Don't generate if already at capacity
-      if (state.improvements.requests.length >= MAX_TOTAL_SUGGESTIONS) return;
-
-      if (rngFn() < suggestionChance) {
-        const availableDefinitions = getAllImprovementRequests().filter(def => {
-          // Check requirements
-          if (def.requirements?.cohesion && state.coalitionCohesion < def.requirements.cohesion) return false;
-          if (def.requirements?.supplies && (state.coalitionEconomy?.requisition || 0) < def.requirements.supplies) return false;
-          // Check if already requested or active
-          const existingRequest = state.improvements.requests.find(r => (r.definitionId || r.id) === def.id);
-          if (existingRequest) return false;
-          const active = state.improvements.queue.find(q => (q.definitionId || q.requestId) === def.id);
-          if (active) return false;
-          return true;
-        });
-        if (availableDefinitions.length > 0) {
-          const randomDef = availableDefinitions[Math.floor(rngFn() * availableDefinitions.length)];
-          const req = createImprovementRequestInstance(randomDef, empire.id, state.turn, rngFn);
-          state.improvements.requests.push(req);
-          log.push(`${empire.name} suggests improvement: ${randomDef.name}`);
-          logger.debug(`${empire.name} suggested improvement: ${randomDef.name}`);
-        }
-      }
+      log.push(`${empire.name} suggests improvement: ${request.name}`);
+      logger.debug(`${empire.name} suggested improvement: ${request.name}`);
     });
   }
 

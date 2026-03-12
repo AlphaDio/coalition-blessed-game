@@ -47,9 +47,10 @@ export function createTieredImprovementRequest(id, name, description, tier, bran
   };
 }
 
-export function createImprovementRequestInstance(definition, empireId, turn, rng = Math.random) {
+export function createImprovementRequestInstance(definition, empireId, turn, rng = Math.random, nonce = 0) {
   const definitionId = definition.definitionId || definition.id;
-  const instanceId = `req_${definitionId}_${empireId}_${turn}_${Math.floor(rng() * 1e6)}`;
+  const normalizedNonce = Number.isFinite(nonce) ? Math.max(0, Math.floor(nonce)) : 0;
+  const instanceId = `req_${definitionId}_${empireId}_${turn}_${normalizedNonce}_${Math.floor(rng() * 1e6)}`;
   return {
     ...definition,
     id: instanceId,
@@ -484,7 +485,7 @@ const ECONOMIC_BRANCH = [
        capacity: 2,
        sustainmentCost: { plasma_fuel: 2.5, super_alloys: 1.5 },
        productionOutputs: { rare_gases: 0.028 },
-       modifiers: { trade_income: 35 },
+       modifiers: { trade_income: 140 },
       tags: ['mega_structure', 'economic', 'trade', 'relay'],
       requisitionUpkeep: 2
     }
@@ -503,7 +504,7 @@ const ECONOMIC_BRANCH = [
       capacity: 2,
       sustainmentCost: { plasma_fuel: 5, rare_gases: 3 },
       productionOutputs: { rare_gases: 0.056, quantum_circuits: 0.019 },
-      modifiers: { trade_income: 180, market_efficiency: 0.08 },
+      modifiers: { trade_income: 360, market_efficiency: 0.08 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace'],
       requisitionUpkeep: 7
     }
@@ -522,7 +523,7 @@ const ECONOMIC_BRANCH = [
       capacity: 6,
       sustainmentCost: { quantum_circuits: 6, psycho_implants: 7, sentient_cores: 8 },
       productionOutputs: { sentient_cores: 0.1, quantum_circuits: 0.04, psycho_implants: 0.06 },
-       modifiers: { trade_income: 450, market_efficiency: 0.12, industrial_output: 0.05 },
+       modifiers: { trade_income: 900, market_efficiency: 0.12, industrial_output: 0.05 },
        tags: ['mega_structure', 'economic', 'wealth', 'transcendent'],
        requisitionUpkeep: 10
      }
@@ -616,7 +617,7 @@ const GOVERNANCE_BRANCH = [
        sustainmentCost: { super_alloys: 2.5, plasma_fuel: 1.5 },
        productionOutputs: { rare_gases: 0.019, super_alloys: 0.016 },
        unityOutput: 0.2,
-       modifiers: { law_progress_speed: 0.14, improvement_queue_capacity: 3 },
+        modifiers: { law_progress_speed: 0.14, improvement_queue_capacity: 3, trade_income: 60 },
        tags: ['mega_structure', 'governance', 'administration', 'arcology'],
        requisitionUpkeep: 4
      }
@@ -636,7 +637,7 @@ const GOVERNANCE_BRANCH = [
        sustainmentCost: { sentient_cores: 4, quantum_circuits: 3, rare_gases: 3 },
        productionOutputs: { sentient_cores: 0.042, quantum_circuits: 0.033 },
        unityOutput: 0.8,
-       modifiers: { law_progress_speed: 0.24, tick_delay_multiplier: 0.60, improvement_queue_capacity: 2 },
+        modifiers: { law_progress_speed: 0.24, tick_delay_multiplier: 0.60, improvement_queue_capacity: 2, trade_income: 180 },
        tags: ['mega_structure', 'governance', 'council', 'sentient'],
        requisitionUpkeep: 7
      }
@@ -655,7 +656,7 @@ const GOVERNANCE_BRANCH = [
        sustainmentCost: { quantum_circuits: 3, rare_gases: 3 },
        productionOutputs: { sentient_cores: 0.058 },
        unityOutput: 0.65,
-       modifiers: { law_progress_speed: 0.18, market_efficiency: 0.06, research_speed: 0.08 },
+        modifiers: { law_progress_speed: 0.18, market_efficiency: 0.06, research_speed: 0.08, trade_income: 120 },
        tags: ['mega_structure', 'governance', 'sentient', 'intel'],
        requisitionUpkeep: 6
      }
@@ -675,7 +676,7 @@ const GOVERNANCE_BRANCH = [
         sustainmentCost: { sentient_cores: 8, quantum_circuits: 5, psycho_implants: 5 },
         productionOutputs: { sentient_cores: 0.1, quantum_circuits: 0.04 },
        unityOutput: 1.3,
-       modifiers: { law_progress_speed: 0.38, tick_delay_multiplier: 0.70, cohesionModifier: 1.05, improvement_queue_capacity: 4 },
+        modifiers: { law_progress_speed: 0.38, tick_delay_multiplier: 0.70, cohesionModifier: 1.05, improvement_queue_capacity: 4, trade_income: 420 },
        tags: ['mega_structure', 'governance', 'transcendent', 'sentient'],
        requisitionUpkeep: 10
      }
@@ -880,6 +881,26 @@ export function canStartImprovement(improvementId, state, empireId) {
  */
 export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
 
+function createSuggestionBatchForEmpire(state, empireId, count, rng = Math.random) {
+  if (!Number.isFinite(count) || count <= 0) {
+    return [];
+  }
+
+  const available = getAvailableImprovementsForEmpire(state, empireId, rng);
+  if (available.length === 0) {
+    return [];
+  }
+
+  const turn = Number.isFinite(state.turn) ? state.turn : 0;
+  const suggestions = [];
+  for (let i = 0; i < count; i++) {
+    const definition = available[i % available.length];
+    suggestions.push(createImprovementRequestInstance(definition, empireId, turn, rng, i));
+  }
+
+  return suggestions;
+}
+
 /**
  * Generate improvement suggestions for empires
  * Simple system: each empire gets up to MAX_SUGGESTIONS_PER_EMPIRE suggestions
@@ -887,7 +908,6 @@ export const MAX_SUGGESTIONS_PER_EMPIRE = 3;
  */
 export function generateImprovementSuggestions(state, rng = Math.random) {
   const suggestions = [];
-  const turn = Number.isFinite(state.turn) ? state.turn : 0;
 
   // Count existing suggestions per empire
   const currentCounts = {};
@@ -902,17 +922,10 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
   state.empires.forEach(empire => {
     const currentCount = currentCounts[empire.id] || 0;
     const slotsNeeded = MAX_SUGGESTIONS_PER_EMPIRE - currentCount;
-    
+
     if (slotsNeeded <= 0) return;
 
-    // Get available improvements for this empire
-    const available = getAvailableImprovementsForEmpire(state, empire.id, rng);
-    
-    // Take up to slotsNeeded suggestions
-    const newSuggestions = available.slice(0, slotsNeeded);
-    newSuggestions.forEach(def => {
-      suggestions.push(createImprovementRequestInstance(def, empire.id, turn, rng));
-    });
+    suggestions.push(...createSuggestionBatchForEmpire(state, empire.id, slotsNeeded, rng));
   });
 
   return suggestions;
@@ -925,23 +938,12 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
 export function generateReplacementSuggestion(state, empireId, rng = Math.random) {
   // Count current suggestions for this empire
   const currentCount = state.improvements.requests.filter(r => r.empireId === empireId).length;
-  
+
   if (currentCount >= MAX_SUGGESTIONS_PER_EMPIRE) {
     return null; // Already at max
   }
 
-  // Get available improvements for this empire
-  const available = getAvailableImprovementsForEmpire(state, empireId, rng);
-  
-  if (available.length === 0) {
-    return null; // No improvements available
-  }
-
-  // Pick one and return it
-  const turn = Number.isFinite(state.turn) ? state.turn : 0;
-  const suggestion = createImprovementRequestInstance(available[0], empireId, turn, rng);
-
-  return suggestion;
+  return createSuggestionBatchForEmpire(state, empireId, 1, rng)[0] || null;
 }
 
 /**
@@ -1051,21 +1053,12 @@ export function isImprovementTierUnlocked(tier, state, empireId) {
  */
 export function refreshImprovementSuggestions(state, rng = Math.random) {
   if (!state.improvements) {
-    return;
+    return [];
   }
-  const existing = state.improvements.requests || [];
-  const existingKeys = new Set(
-    existing.map(request => `${request.empireId || 'none'}:${request.id}`)
-  );
-  const additions = generateImprovementSuggestions(state, rng).filter(request => {
-    const key = `${request.empireId || 'none'}:${request.id}`;
-    if (existingKeys.has(key)) {
-      return false;
-    }
-    existingKeys.add(key);
-    return true;
-  });
+  const existing = Array.isArray(state.improvements.requests) ? state.improvements.requests : [];
+  const additions = generateImprovementSuggestions(state, rng);
   state.improvements.requests = [...existing, ...additions];
+  return additions;
 }
 
 /**

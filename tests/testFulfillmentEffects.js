@@ -22,6 +22,7 @@ import {
 } from '../src/game/improvements/engine/sustainment.js';
 import { initializeTurnConsumptionTracking } from '../src/game/consumptionToRequisition.js';
 import { applyBasePopulationGrowth } from '../src/game/turn/population.js';
+import { emitEmpireNeedsOrders, emitEmpireWantsOrders } from '../src/game/economyTick/ordersPhase.js';
 import { createEmpire } from '../src/game/types.js';
 
 initializeLogger({
@@ -240,8 +241,101 @@ console.log('=== Test 8: fulfillment_growth_modifier contributes to population g
 }
 console.log();
 
-// ─── Test 9: Improvement does NOT degrade at moderate sustainment ─────────────
-console.log('=== Test 9: Improvement stays ACTIVE with moderate (50%) sustainment ===');
+// ─── Test 9: Empire needs and wants scale linearly with population ────────────
+console.log('=== Test 9: Empire needs and wants scale linearly with population ===');
+{
+  const collectOrders = [];
+  const aggregateBuyOrder = (_ownerType, _ownerId, commodity, qty, _maxPrice, category) => {
+    collectOrders.push({ commodity, qty, category });
+  };
+  const makeEmpire = (id, population) => {
+    const empire = createEmpire(id, 'Demand Test', 50, {}, {}, { population });
+    empire.needs = { per_pop: { biomass: 1 } };
+    empire.wants = { per_pop: { nano_machines: 2 } };
+    return empire;
+  };
+  const buildState = (empire) => ({
+    empires: [empire],
+    armies: [],
+    market: {
+      biomass: { price: 1.0 },
+      nano_machines: { price: 1.0 }
+    },
+    coalitionModifiers: {},
+    improvements: { empireModifiers: {} }
+  });
+
+  const lowPopulationState = buildState(makeEmpire('e9a', 1_000));
+  emitEmpireNeedsOrders(lowPopulationState, aggregateBuyOrder, 1, 1);
+  emitEmpireWantsOrders(lowPopulationState, aggregateBuyOrder, 1, 1);
+  const lowNeeds = lowPopulationState.empires[0].supply_state.needs_demand.biomass;
+  const lowWants = lowPopulationState.empires[0].supply_state.wants_demand.nano_machines;
+
+  const highPopulationState = buildState(makeEmpire('e9b', 2_000));
+  emitEmpireNeedsOrders(highPopulationState, aggregateBuyOrder, 1, 1);
+  emitEmpireWantsOrders(highPopulationState, aggregateBuyOrder, 1, 1);
+  const highNeeds = highPopulationState.empires[0].supply_state.needs_demand.biomass;
+  const highWants = highPopulationState.empires[0].supply_state.wants_demand.nano_machines;
+
+  assert(approxEqual(highNeeds, lowNeeds * 2, 1e-6), 'Empire needs demand doubles when population doubles');
+  assert(approxEqual(highWants, lowWants * 2, 1e-6), 'Empire wants demand doubles when population doubles');
+}
+console.log();
+
+// ─── Test 10: Improvement sustainment scales linearly with population ─────────
+console.log('=== Test 10: Improvement sustainment demand scales linearly with population ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const buildState = (empireId, population, improvementId) => {
+    const empire = createEmpire(empireId, 'Sustain Test', 50, {}, {}, { population });
+    const improvement = {
+      id: improvementId,
+      empireId,
+      name: 'Population Relay',
+      state: 'ACTIVE',
+      completedAtTick: 0,
+      ticksSinceSustained: 0,
+      sustainmentCost: { biomass: 5 },
+      productionOutputs: {},
+      productionBank: {},
+      productionBankThreshold: 10,
+      requisitionUpkeep: 0,
+      modifiers: {}
+    };
+    const state = {
+      turn: 12,
+      empires: [empire],
+      armies: [],
+      coalitionEconomy: { requisition: 500 },
+      coalitionModifiers: { rationing_add: 0, rationing_mult: 1.0, supply_efficiency: 0 },
+      market: { biomass: { price: 1.0 } },
+      marketOrders: { buyOrders: [], sellOffers: [] },
+      improvements: {
+        queue: [improvement],
+        requests: [],
+        pendingSustainmentDemand: {},
+        pendingSustainmentNeedsByImprovement: {},
+        fulfilledSustainmentReceipts: {}
+      }
+    };
+    return { state, improvement };
+  };
+
+  const low = buildState('e10a', 1_000, 'imp_10a');
+  processImprovementSustainmentPreMarket(low.state, low.improvement);
+  const lowNeed = low.state.improvements.pendingSustainmentNeedsByImprovement.imp_10a.biomass;
+
+  const high = buildState('e10b', 2_000, 'imp_10b');
+  processImprovementSustainmentPreMarket(high.state, high.improvement);
+  const highNeed = high.state.improvements.pendingSustainmentNeedsByImprovement.imp_10b.biomass;
+
+  assert(approxEqual(highNeed, lowNeed * 2, 1e-6), 'Improvement sustainment doubles when population doubles');
+}
+console.log();
+
+// ─── Test 11: Improvement does NOT degrade at moderate sustainment ────────────
+console.log('=== Test 11: Improvement stays ACTIVE with moderate (50%) sustainment ===');
 {
   initializeTurnConsumptionTracking();
 
@@ -296,8 +390,8 @@ console.log('=== Test 9: Improvement stays ACTIVE with moderate (50%) sustainmen
 }
 console.log();
 
-// ─── Test 10: Improvement DOES degrade at very low sustainment ───────────────
-console.log('=== Test 10: Improvement degrades after sustained ticks at <20% sustainment ===');
+// ─── Test 12: Improvement DOES degrade at very low sustainment ────────────────
+console.log('=== Test 12: Improvement degrades after sustained ticks at <20% sustainment ===');
 {
   initializeTurnConsumptionTracking();
 
@@ -349,8 +443,8 @@ console.log('=== Test 10: Improvement degrades after sustained ticks at <20% sus
 }
 console.log();
 
-// ─── Test 11: Improvement restores when sustainment rises above threshold ────
-console.log('=== Test 11: Degraded improvement restores when sustainment exceeds threshold ===');
+// ─── Test 13: Improvement restores when sustainment rises above threshold ─────
+console.log('=== Test 13: Degraded improvement restores when sustainment exceeds threshold ===');
 {
   initializeTurnConsumptionTracking();
 
