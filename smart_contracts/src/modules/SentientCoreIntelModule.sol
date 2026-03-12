@@ -39,11 +39,11 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
         intelPerTrigger = intelGainPerTrigger;
     }
 
-    function moduleVersion() external pure returns (uint256) {
+    function moduleVersion() external pure override returns (uint256) {
         return 1;
     }
 
-    function supportsHook(bytes32 hookId) external pure returns (bool) {
+    function supportsHook(bytes32 hookId) external pure override returns (bool) {
         return hookId == CoalitionHooks.HOOK_ARMY_CONSUMED || hookId == CoalitionHooks.HOOK_EMPIRE_CONSUMED;
     }
 
@@ -64,6 +64,7 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
 
     function onGameHook(bytes32 hookId, bytes calldata payload)
         external
+        override
         onlyGame
         returns (HostCall[] memory hostCalls)
     {
@@ -89,8 +90,9 @@ contract SentientCoreIntelModule is ICoalitionEventModule {
         pools[key] = nextPool % threshold;
         emit SentientCoreTrigger(key, triggerCount, intelGrant, pools[key]);
 
+        int256 intelDelta = intelGrant > uint256(type(int256).max) ? type(int256).max : int256(intelGrant);
         hostCalls = new HostCall[](1);
-        hostCalls[0] = HostCall({op: OP_GRANT_INTEL, a: int256(intelGrant), b: 0, c: 0, d: bytes32(0)});
+        hostCalls[0] = HostCall({op: OP_GRANT_INTEL, a: intelDelta, b: 0, c: 0, d: bytes32(0)});
         return hostCalls;
     }
 }
