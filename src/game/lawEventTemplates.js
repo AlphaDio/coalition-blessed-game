@@ -958,6 +958,184 @@ export const VOTING_CHOICE_EVENTS = [
 ];
 
 /**
+ * Hero-focused law choice events
+ * These events create decisions that interact directly with the hero system,
+ * forcing players to weigh political capital against law progress.
+ */
+export const HERO_CHOICE_EVENTS = [
+  // DEBATE: Sponsor's Gambit - the sponsoring hero makes a bold public declaration
+  createLawEvent(
+    'debate_choice_sponsors_gambit',
+    'Sponsor\'s Bold Declaration',
+    'LAW',
+    ['DEBATE'],
+    'NEUTRAL',
+    'MAJOR',
+    [],
+    0.85,
+    null,
+    [],
+    'The law\'s sponsor has made a fiery public declaration, rallying passionate supporters but also inflaming opposition. Do you back their aggressive stance?',
+    [
+      {
+        text: 'Back the sponsor\'s gambit (fast progress, but stoke unrest)',
+        effects_summary: 'Major progress boost | Momentum boost | Unrest increase | Polarization increase',
+        effects: {
+          progress: 0.3,
+          meters: {
+            momentum: 0.2,
+            unrest: 0.12,
+            polarization: 0.1
+          }
+        }
+      },
+      {
+        text: 'Temper their message (slower but steadier)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Polarization drop',
+        effects: {
+          progress: 0.08,
+          meters: {
+            legitimacy: 0.15,
+            momentum: 0.05,
+            polarization: -0.05
+          }
+        }
+      }
+    ]
+  ),
+
+  // DEBATE: Ideological Flashpoint - the law hits a deep ideological nerve
+  createLawEvent(
+    'debate_choice_ideological_flashpoint',
+    'Ideological Flashpoint',
+    'LAW',
+    ['DEBATE'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'polarization', threshold: 0.25 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law has exposed a deep ideological divide between coalition heroes. One faction demands the law go further; another insists it is already too radical. How do you navigate this?',
+    [
+      {
+        text: 'Lean into the controversy (energize supporters, alienate moderates)',
+        effects_summary: 'Progress boost | Momentum boost | Polarization increase | Unrest increase',
+        effects: {
+          progress: 0.2,
+          meters: {
+            momentum: 0.15,
+            polarization: 0.15,
+            unrest: 0.1
+          }
+        }
+      },
+      {
+        text: 'Seek middle ground (calm tensions, but lose momentum)',
+        effects_summary: 'Legitimacy boost | Polarization drop | Unrest drop | Momentum drop',
+        effects: {
+          progress: 0.05,
+          meters: {
+            legitimacy: 0.12,
+            polarization: -0.1,
+            unrest: -0.08,
+            momentum: -0.05
+          }
+        }
+      }
+    ]
+  ),
+
+  // FALLOUT: Coalition Fracture Warning
+  createLawEvent(
+    'fallout_choice_coalition_fracture',
+    'Coalition Fracture Warning',
+    'LAW',
+    ['FALLOUT'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.35 }
+    ],
+    0.9,
+    null,
+    [],
+    'Intelligence reports that the law\'s consequences are straining coalition bonds. Several heroes have privately expressed alarm. Do you press forward or amend the law to address their concerns?',
+    [
+      {
+        text: 'Press forward regardless (maintain vision at risk of fracture)',
+        effects_summary: 'Progress boost | Momentum boost | Polarization increase | Unrest increase',
+        effects: {
+          progress: 0.18,
+          meters: {
+            momentum: 0.15,
+            polarization: 0.2,
+            unrest: 0.15
+          }
+        }
+      },
+      {
+        text: 'Amend to address concerns (sacrifice progress for stability)',
+        effects_summary: 'Legitimacy boost | Unrest drop | Polarization drop | Progress drop | Momentum drop',
+        effects: {
+          progress: -0.08,
+          meters: {
+            legitimacy: 0.2,
+            unrest: -0.15,
+            polarization: -0.12,
+            momentum: -0.1
+          }
+        }
+      }
+    ]
+  ),
+
+  // VOTING: Military-Economic Standoff
+  createLawEvent(
+    'voting_choice_faction_standoff',
+    'Military-Economic Standoff',
+    'LAW',
+    ['VOTING'],
+    'NEUTRAL',
+    'MAJOR',
+    [],
+    0.75,
+    null,
+    [],
+    'Military and economic factions within the coalition have reached an impasse over the law\'s impact. Each side has hero champions threatening to derail the vote unless their concerns are prioritized.',
+    [
+      {
+        text: 'Side with the military faction (security allies rally, economic allies waver)',
+        effects_summary: 'Progress boost | Momentum boost | Reject pressure increase | Polarization increase',
+        effects: {
+          progress: 0.2,
+          meters: {
+            momentum: 0.15,
+            reject_pressure: 0.1,
+            polarization: 0.12
+          }
+        }
+      },
+      {
+        text: 'Side with the economic faction (broad legitimacy, but military faction withdraws support)',
+        effects_summary: 'Legitimacy boost | Reject pressure drop | Momentum drop | Unrest slight increase',
+        effects: {
+          progress: 0.1,
+          meters: {
+            legitimacy: 0.15,
+            reject_pressure: -0.1,
+            momentum: -0.1,
+            unrest: 0.05
+          }
+        }
+      }
+    ]
+  )
+];
+
+/**
  * Get all law events
  */
 export function getAllLawEvents() {
@@ -968,6 +1146,7 @@ export function getAllLawEvents() {
     ...EXTERNALITY_EVENTS,
     ...DEBATE_CHOICE_EVENTS,
     ...FALLOUT_CHOICE_EVENTS,
-    ...VOTING_CHOICE_EVENTS
+    ...VOTING_CHOICE_EVENTS,
+    ...HERO_CHOICE_EVENTS
   ];
 }
