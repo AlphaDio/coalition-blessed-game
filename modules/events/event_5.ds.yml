@@ -20,17 +20,23 @@ declares:
     name: "Requisition Discovery"
     description: "A cache of coalition requisition funds has been discovered."
     choices:
-      - text: "Secure immediately (gain requisition)"
+      - text: "Secure immediately"
+        description: "Seize the full cache for coalition reserves. Maximum economic gain."
+        effects_summary: "Gain: +200 requisition"
         effects:
           coalitionEconomy:
             requisition: 200
-      - text: "Distribute to struggling allies (gain approval from weaker empires)"
+      - text: "Distribute to struggling allies"
+        description: "Share the discovery with empires most in need. Less requisition but builds strong goodwill."
+        effects_summary: "Gain: +50 requisition | Poorest empires: +12 approval"
         effects:
           coalitionEconomy:
             requisition: 50
           empireApproval:
             "@poorest": 12
-      - text: "Reward strong partners (incentivize wealthy allies)"
+      - text: "Reward strong partners"
+        description: "Allocate bonus resources to wealthy allies. Moderate requisition gain and strengthens key relationships."
+        effects_summary: "Gain: +75 requisition | Richest empires: +10 approval"
         effects:
           coalitionEconomy:
             requisition: 75

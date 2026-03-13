@@ -96,7 +96,9 @@ export function checkEvent(state, rng = Math.random) {
         text: interpolateText(event.text, resolvedContext, state),
         choices: event.choices.map(choice => ({
           ...choice,
-          text: interpolateText(choice.text, resolvedContext, state)
+          text: interpolateText(choice.text, resolvedContext, state),
+          ...(choice.effects_summary ? { effects_summary: interpolateText(choice.effects_summary, resolvedContext, state) } : {}),
+          ...(choice.description ? { description: interpolateText(choice.description, resolvedContext, state) } : {})
         }))
       };
     }

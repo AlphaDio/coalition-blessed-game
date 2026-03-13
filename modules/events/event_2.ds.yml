@@ -25,11 +25,16 @@ declares:
         count: 1
         as: heroArmy
     choices:
-      - text: "Publicize the victory (gain fervor across the coalition)"
+      - text: "Publicize the victory"
+        description: "Spread word of the heroic stand across all forces. A massive morale boost for the whole coalition."
+        effects_summary: "All armies: +10 fervor"
         effects:
           armyFervor:
             "@all": 10
-      - text: "Rotate forces (trade fervor for reorganization)"
+      - text: "Rotate forces and rest"
+        description: "Pull back exhausted troops for recovery. Dampens battle fervor but strengthens coalition unity through disciplined coordination."
+        effects_summary: "All armies: -3 fervor | Coalition cohesion: +3"
         effects:
           armyFervor:
-            "@all": -5
+            "@all": -3
+          coalitionCohesion: 3

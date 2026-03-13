@@ -20,11 +20,19 @@ declares:
     name: "Desertion Crisis"
     description: "Reports of desertions are increasing across coalition fleets and garrisons."
     choices:
-      - text: "Boost requisition and equipment (lose requisition)"
+      - text: "Increase pay and equipment"
+        description: "Spend heavily on better pay, food, and gear to stem the desertions. Expensive but directly boosts morale."
+        effects_summary: "Cost: 100 requisition | All armies: +5 fervor | All empires: +3 approval"
         effects:
           coalitionEconomy:
             requisition: -100
-      - text: "Target support to weakest allies (preserve resources, help struggling empires)"
+          armyFervor:
+            "@all": 5
+          empireApproval:
+            "@all": 3
+      - text: "Target support to weakest allies"
+        description: "Focus aid on struggling empires and their forces. Moderate cost with broad benefits."
+        effects_summary: "Cost: 50 requisition | Poorest empires: +6 approval | All armies: +3 fervor"
         effects:
           coalitionEconomy:
             requisition: -50
@@ -32,7 +40,9 @@ declares:
             "@poorest": 6
           armyFervor:
             "@all": 3
-      - text: "Propaganda campaign (gain fervor, lose approval)"
+      - text: "Propaganda campaign"
+        description: "Launch a morale-boosting media blitz. Inspires troops but citizens see through the messaging."
+        effects_summary: "Cost: Free | All armies: +8 fervor | All empires: -5 approval"
         effects:
           armyFervor:
             "@all": 8

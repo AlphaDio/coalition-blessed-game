@@ -29,21 +29,27 @@ declares:
         exclude: ["$favored"]
         as: others
     choices:
-      - text: "Grant ${favored.name} priority requisition funds (+50 requisition)"
+      - text: "Grant ${favored.name} priority funds"
+        description: "Redirect coalition resources to ${favored.name}'s war effort. Boosts their relations with everyone and increases total output."
+        effects_summary: "Gain: +50 requisition | ${favored.name} relations: +8 with all"
         effects:
           empireRelations:
             "$favored":
               "@all": 8
           coalitionEconomy:
             requisition: 50
-      - text: "Maintain equal distribution (slight approval boost)"
+      - text: "Maintain equal distribution"
+        description: "Keep the current allocation balanced. Everyone is moderately satisfied."
+        effects_summary: "All empires: +5 approval | ${favored.name} relations: +4 with all"
         effects:
           empireApproval:
             "@all": 5
           empireRelations:
             "$favored":
               "@all": 4
-      - text: "Reduce everyone's requisition funds (-25 each, gain resources)"
+      - text: "Centralize all funds"
+        description: "Override individual allocations and pool everything centrally. Angers empires but consolidates resources."
+        effects_summary: "Gain: +75 requisition | All empires: -10 approval | ${favored.name} relations: -8 with all"
         effects:
           empireApproval:
             "@all": -10
@@ -51,4 +57,4 @@ declares:
             "$favored":
               "@all": -8
           coalitionEconomy:
-            requisition: -75
+            requisition: 75

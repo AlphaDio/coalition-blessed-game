@@ -20,19 +20,25 @@ declares:
     name: "Requisition Convoy Attacked"
     description: "A requisition convoy bound for coalition forces has been ambushed by Scourge forces. Analysis of the attack reveals information about Scourge tactics. How do you respond?"
     choices:
-      - text: "Send reinforcements + analyze tactics (lose requisition, gain intel confidence)"
+      - text: "Send reinforcements and analyze tactics"
+        description: "Protect the convoy and analyze the Scourge attack patterns. Costly but builds confidence and goodwill."
+        effects_summary: "Cost: 100 requisition | All empires: +5 approval | Intel confidence: moderate boost"
         effects:
           coalitionEconomy:
             requisition: -100
           empireApproval:
             "@all": 5
           scourgePredictionConfidence: 0.15
-      - text: "Abandon convoy but help struggling allies (free, boost weaker empires)"
+      - text: "Abandon convoy but help struggling allies"
+        description: "Write off the supplies and redirect aid to empires most in need. No cost but angers wealthy partners."
+        effects_summary: "Cost: Free | Poorest empires: +8 approval | Richest empires: -8 approval"
         effects:
           empireApproval:
             "@poorest": 8
             "@richest": -8
-      - text: "Ambush the ambushers (lose cohesion, gain intel confidence from combat)"
+      - text: "Ambush the ambushers"
+        description: "Launch a counter-attack on the Scourge forces. Risky but yields valuable intelligence and weakens the enemy."
+        effects_summary: "Coalition cohesion: -5 | Scourge cohesion: -3 | Intel confidence: notable boost"
         effects:
           coalitionCohesion: -5
           scourgePredictionConfidence: 0.2

@@ -25,7 +25,9 @@ declares:
         count: 1
         as: initiator
     choices:
-      - text: "Form comprehensive alliance network (timed relations boost)"
+      - text: "Form comprehensive alliance network"
+        description: "Build a broad military alliance. Greatly improves ${initiator.name}'s relations and temporarily strengthens all diplomatic ties."
+        effects_summary: "Cost: Free | ${initiator.name} relations: +14 with all | Relations strength: +0.5 for 10 turns"
         effects:
           empireRelations:
             "$initiator":
@@ -34,7 +36,9 @@ declares:
             relations_strength_modifier:
               value: 0.5
               duration: 10
-      - text: "Create targeted alliances only (selective relations boost)"
+      - text: "Create targeted alliances only"
+        description: "Form select military partnerships. Improves ${initiator.name}'s standing and temporarily boosts army discipline."
+        effects_summary: "Cost: Free | ${initiator.name} relations: +10 with all | Army organization: +5 for 5 turns"
         effects:
           empireRelations:
             "$initiator":
@@ -43,7 +47,9 @@ declares:
             army_organization:
               value: 5
               duration: 5
-      - text: "Decline alliances (maintain independence)"
+      - text: "Decline alliances"
+        description: "Maintain independence from formal alliances. Disappoints ${initiator.name} and emboldens the Scourge."
+        effects_summary: "${initiator.name} relations: -7 with all | Scourge cohesion: +3"
         effects:
           empireRelations:
             "$initiator":

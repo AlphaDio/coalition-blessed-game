@@ -28,6 +28,7 @@ declares:
     base_weight: 0.9
     choices:
       - text: "Hold an open forum (slow progress, gain legitimacy)"
+        effects_summary: "Progress: +0.05 | Momentum: -0.05 | Legitimacy: +0.2 | Unrest: -0.1 | Polarization: -0.05"
         effects:
           progress: 0.05
           meters:
@@ -36,6 +37,7 @@ declares:
             unrest: -0.1
             polarization: -0.05
       - text: "Decline and expedite voting (fast progress, lose legitimacy)"
+        effects_summary: "Progress: +0.35 | Momentum: +0.15 | Legitimacy: -0.15 | Unrest: +0.15 | Reject pressure: +0.1"
         effects:
           progress: 0.35
           meters:

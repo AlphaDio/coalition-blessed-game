@@ -28,6 +28,7 @@ declares:
     base_weight: 1.0
     choices:
       - text: "Accept amendment (high chance of passing, changes law intent)"
+        effects_summary: "Progress: +0.4 | Momentum: +0.2 | Legitimacy: +0.05 | Reject pressure: -0.2 | Polarization: -0.1"
         effects:
           progress: 0.4
           meters:
@@ -36,6 +37,7 @@ declares:
             reject_pressure: -0.2
             polarization: -0.1
       - text: "Reject amendment (maintain original vision, risk failure)"
+        effects_summary: "Progress: +0.1 | Momentum: -0.1 | Legitimacy: +0.1 | Reject pressure: +0.15 | Polarization: +0.15"
         effects:
           progress: 0.1
           meters:
