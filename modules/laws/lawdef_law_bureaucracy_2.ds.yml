@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_bureaucracy_2"
   name: "Central Coordination Office"
-  description: "Central Coordination Office"
+  description: "Establishes a central coordination office that streamlines research and logistics, but rigid protocols hamper military agility and frustrate citizens."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       supply_efficiency: 0.07
       law_progress_speed: 0.06
       requisition_uptick: 0.08
+      army_organization: -2
+      empire_approval: -0.3
     immediate_effects:
       influence: 40
       cohesion: 3

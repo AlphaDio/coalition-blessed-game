@@ -1,7 +1,7 @@
 module:
   id: "lawdef_ai_citizenship"
   name: "AI Citizenship Rights (Law Definition)"
-  description: "Law definition for AI Citizenship Rights in the law enactment system"
+  description: "Grants full citizenship rights to artificial intelligences. Unlocks advanced research potential and AI labor, but deeply divides organic populations and reduces security trust."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -49,6 +49,8 @@ declares:
       law_progress_speed: 0.05
       empire_approval: 0.5
       requisition_uptick: 0.1
+      cohesionModifier: 0.96
+      army_organization: -3
     immediate_effects:
       cohesion: 2
       coalitionIntel: 8

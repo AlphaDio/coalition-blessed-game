@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_unity_3"
   name: "Singular Council Doctrine"
-  description: "Singular Council Doctrine"
+  description: "Empowers a singular governing council to enforce harmony. Cohesion soars, but dissenting research and industrial output are suppressed."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       empire_approval: 1.7
       population_growth: 0.0007
       requisition_uptick: 0.14
+      research_speed: -0.06
+      industrial_output: -0.06
     immediate_effects:
       cohesion: 6
       empire_approval: 3

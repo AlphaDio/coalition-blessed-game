@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_market_open_1"
   name: "Open Markets Act"
-  description: "Open Markets Act"
+  description: "Opens coalition markets to free trade. Revenue flows in but open borders complicate military logistics and defense."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -43,6 +43,7 @@ declares:
       trade_income: 140
       supply_efficiency: 0.04
       requisition_gain_multiplier: 1.05
+      army_organization: -2
     immediate_effects:
       coalition_credits: 1300
       requisition: 150

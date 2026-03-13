@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_unity_4"
   name: "Transcendent Unity Accord"
-  description: "Transcendent Unity Accord"
+  description: "Achieves near-spiritual unity across the coalition. Unparalleled cohesion, but free thought, innovation, and military independence are all sacrificed."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -50,6 +50,8 @@ declares:
       population_growth: 0.001
       requisition_uptick: 0.24
       law_progress_speed: 0.08
+      research_speed: -0.1
+      army_organization: -4
     immediate_effects:
       cohesion: 9
       empire_approval: 5

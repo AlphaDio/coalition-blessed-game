@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_intel_1"
   name: "Strategic Recon Bureau"
-  description: "Strategic Recon Bureau"
+  description: "Creates a strategic reconnaissance bureau. Better intelligence gathering, but surveillance programs unsettle the populace."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,7 @@ declares:
       relations_strength_modifier: 1.05
       research_speed: 0.05
       law_progress_speed: 0.03
+      empire_approval: -0.3
     immediate_effects:
       cohesion: 2
       coalition_credits: 900

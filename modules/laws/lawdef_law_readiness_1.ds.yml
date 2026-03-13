@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_readiness_1"
   name: "Rapid Response Charter"
-  description: "Rapid Response Charter"
+  description: "Establishes rapid response protocols for military emergencies. Readiness improves but standing costs burden the trade economy."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -43,6 +43,8 @@ declares:
       army_maintenance_cost_modifier: 0.9
       cohesionModifier: 1.02
       requisition_gain_multiplier: 1.06
+      trade_income: -30
+      empire_approval: -0.2
     immediate_effects:
       requisition: 280
       cohesion: 2

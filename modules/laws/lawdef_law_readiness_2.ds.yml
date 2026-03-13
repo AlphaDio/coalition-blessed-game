@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_readiness_2"
   name: "Fleet Readiness Mandate"
-  description: "Fleet Readiness Mandate"
+  description: "Mandates permanent fleet readiness across all sectors. Military logistics improve but trade routes are disrupted and citizens grow weary."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       cohesionModifier: 1.05
       supply_efficiency: 0.04
       requisition_gain_multiplier: 1.12
+      trade_income: -60
+      empire_approval: -0.4
     immediate_effects:
       requisition: 560
       cohesion: 3

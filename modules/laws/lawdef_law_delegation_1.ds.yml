@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_delegation_1"
   name: "Delegated Authority Pact"
-  description: "Delegated Authority Pact"
+  description: "Grants local authorities more autonomy in governance. Improves relations and trade but loosens central control over the coalition."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -43,6 +43,7 @@ declares:
       relations_strength_modifier: 1.06
       trade_income: 40
       empire_approval: 0.3
+      cohesionModifier: 0.97
     immediate_effects:
       coalition_credits: 900
       cohesion: 2

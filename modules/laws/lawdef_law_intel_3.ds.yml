@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_intel_3"
   name: "Total Surveillance Accord"
-  description: "Total Surveillance Accord"
+  description: "Implements total surveillance across all member worlds. Nothing escapes notice, but citizens live under constant scrutiny and civil liberties erode."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -45,6 +45,8 @@ declares:
       research_speed: 0.14
       law_progress_speed: 0.1
       requisition_gain_multiplier: 1.12
+      empire_approval: -1.0
+      population_growth: -0.0003
     immediate_effects:
       cohesion: 4
       coalition_credits: 3200

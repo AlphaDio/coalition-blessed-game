@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_taxation_3"
   name: "Total War Tithe"
-  description: "Total War Tithe"
+  description: "Demands total war contributions from all members. Enormous requisition flow, but the economy bleeds and population growth collapses."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -48,6 +48,8 @@ declares:
       requisition_uptick: 0.8
       requisition_gain_multiplier: 1.2
       empire_approval: -1.5
+      trade_income: -100
+      population_growth: -0.0005
     immediate_effects:
       requisition: 900
       cohesion: 3

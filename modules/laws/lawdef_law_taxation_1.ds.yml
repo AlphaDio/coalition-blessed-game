@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_taxation_1"
   name: "War Contribution Levy"
-  description: "War Contribution Levy"
+  description: "Imposes a modest war levy to fund military operations. Revenue rises but trade is dampened and population growth slows."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -47,6 +47,8 @@ declares:
       consumptionShareMultiplier: 1.2
       requisition_uptick: 0.2
       empire_approval: -0.4
+      trade_income: -20
+      population_growth: -0.0001
     immediate_effects:
       requisition: 220
       cohesion: 1

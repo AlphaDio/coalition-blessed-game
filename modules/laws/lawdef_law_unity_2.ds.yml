@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_unity_2"
   name: "Coalition Solidarity Act"
-  description: "Coalition Solidarity Act"
+  description: "Mandates shared social programs that deepen cohesion. Unity comes at the cost of industrial efficiency and military readiness."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       empire_approval: 1.1
       population_growth: 0.0004
       requisition_uptick: 0.06
+      industrial_output: -0.04
+      supply_efficiency: -0.03
     immediate_effects:
       cohesion: 4
       empire_approval: 2

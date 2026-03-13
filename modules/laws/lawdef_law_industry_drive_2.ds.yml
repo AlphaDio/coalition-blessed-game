@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_industry_drive_2"
   name: "Total Output Directive"
-  description: "Total Output Directive"
+  description: "Pushes all factories to maximum output. Impressive production numbers, but workers suffer and pollution rises across member worlds."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       industrial_output: 0.18
       empire_production_multiplier: 0.08
       consumptionShareMultiplier: 1.1
+      empire_approval: -0.5
+      population_growth: -0.0002
     immediate_effects:
       coalition_credits: 2200
       requisition: 420

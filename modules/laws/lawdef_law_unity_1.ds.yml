@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_unity_1"
   name: "Unity Charter"
-  description: "Unity Charter"
+  description: "Promotes coalition-wide solidarity through shared cultural programs. Strengthens bonds but diverts resources from supply logistics."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -43,6 +43,7 @@ declares:
       cohesionModifier: 1.08
       empire_approval: 0.6
       population_growth: 0.0002
+      supply_efficiency: -0.02
     immediate_effects:
       cohesion: 3
       empire_approval: 1

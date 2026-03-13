@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_bureaucracy_4"
   name: "Hyper-Administrative Nexus"
-  description: "Hyper-Administrative Nexus"
+  description: "An omnipresent administrative AI network optimizes every coalition process. Extraordinary efficiency, but dissent is crushed and military operations are micromanaged into paralysis."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -50,6 +50,9 @@ declares:
       law_progress_speed: 0.16
       requisition_uptick: 0.32
       requisition_gain_multiplier: 1.1
+      army_organization: -6
+      empire_approval: -1.0
+      population_growth: -0.0005
     immediate_effects:
       influence: 90
       cohesion: 5

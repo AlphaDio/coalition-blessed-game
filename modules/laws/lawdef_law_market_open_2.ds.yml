@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_market_open_2"
   name: "Unified Exchange Protocol"
-  description: "Unified Exchange Protocol"
+  description: "Standardizes trade protocols across the coalition. Markets thrive but open supply lines expose military vulnerabilities."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -43,6 +43,8 @@ declares:
       trade_income: 260
       supply_efficiency: 0.08
       consumptionShareBonus: 0.03
+      army_organization: -3
+      empire_approval: -0.2
     immediate_effects:
       coalition_credits: 2600
       requisition: 320
