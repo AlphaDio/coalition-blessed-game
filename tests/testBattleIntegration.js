@@ -423,7 +423,7 @@ function testDamageDistributionAfterBattle() {
 
 // Test 6b: Permanent losses reduce MP max/manpower on original armies
 function testPermanentLossReducesCapacity() {
-  console.log('\n=== Test 6b: Scourge defeat preserves army max, defeat reduces capacity ===');
+  console.log('\n=== Test 6b: Scourge defeat preserves army max, coalition loss reduces capacity ===');
 
   const state = createFullTestState();
   state.scourgeFervor = 60;
