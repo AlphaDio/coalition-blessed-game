@@ -39,17 +39,17 @@ declares:
         quantum_circuits: 0.00025
     consumption:
       super_alloys:
-        threshold: 10
+        threshold: 15
         effect:
           type: mp_bonus
-          amount: 1.5
+          amount: 3
       rare_gases:
-        threshold: 50
+        threshold: 80
         effect:
           type: army_damage_bonus
-          amount: 0.1
+          amount: 0.2
       quantum_circuits:
-        threshold: 30
+        threshold: 50
         effect:
           type: mp_growth_multiplier_bonus
-          amount: 0.12
+          amount: 0.24

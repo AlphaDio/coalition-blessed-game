@@ -53,10 +53,9 @@ function calculateEngagedUnits(army, battlefieldSize, isBroken) {
  * @returns {number} Modified kill rate
  */
 function getEffectiveKillRate(army) {
-  // Simple: base killRate with minor fervor modifier
   const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
-  const fervor = typeof army.fervor === 'number' && !isNaN(army.fervor) ? army.fervor : 0;
-  const fervorBonus = (fervor / 100) * 0.05; // Up to +5% at max fervor
+  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervorBonus = (fervor / 100) * 0.10; // Up to +10% at max fervor
   const bonus = army.killRateBonus || 0;
   return Math.min(1, killRate + fervorBonus + bonus);
 }
@@ -70,7 +69,10 @@ function calculateMoraleRegen(army) {
   // Organization boosts regen: 0.5 to 2.0 per tick
   const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
   const orgFactor = org / 100;
-  return 0.5 + (orgFactor * 1.5);
+  // Fervor contributes to morale resilience: up to +0.5 per tick at max fervor
+  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervorFactor = fervor / 100;
+  return 0.5 + (orgFactor * 1.5) + (fervorFactor * 0.5);
 }
 
 /**
@@ -185,10 +187,10 @@ function applyRoundExperienceSurges(front, leftArmy, rightArmy, worldState, log,
  * @param {Object} army - Attacking army
  * @returns {number} Modified damage
  * 
- * Modifier ranges:
- * - Fervor: 0.8x to 1.2x (±20% at extremes, representing morale and fighting spirit)
- * - Organization: 0.9x to 1.1x (±10% at extremes, representing coordination and tactics)
- * These ranges are balanced to make fervor more impactful than organization
+ * Modifier ranges (from FRONT_BATTLE_MODIFIERS constants):
+ * - Fervor: 0.85x to 2.1x (representing morale and fighting spirit)
+ * - Organization: 0.9x to 1.1x (representing coordination and tactics)
+ * Fervor has a much larger damage swing than organization by design
  * 
  * Note: Expects army.fervor and army.organization to be in 0-100 range
  */

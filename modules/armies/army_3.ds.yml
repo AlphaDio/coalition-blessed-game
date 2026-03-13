@@ -39,17 +39,17 @@ declares:
         rare_gases: 0.00055
     consumption:
       biomass:
-        threshold: 14
+        threshold: 21
         effect:
           type: mp_bonus
-          amount: 2
+          amount: 4
       genomes:
-        threshold: 45
+        threshold: 70
         effect:
           type: mp_growth_multiplier_bonus
-          amount: 0.1
+          amount: 0.2
       rare_gases:
-        threshold: 90
+        threshold: 140
         effect:
           type: replenishment_multiplier_bonus
-          amount: 0.08
+          amount: 0.16
