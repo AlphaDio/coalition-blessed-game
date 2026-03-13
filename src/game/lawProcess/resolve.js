@@ -7,7 +7,8 @@ import {
   checkPhaseAdvancement,
   filterEligibleEvents,
   MAX_PHASE_PROGRESS,
-  pickEvents
+  pickEvents,
+  weightedPick
 } from '../lawEngine.js';
 import { canStartLaw } from '../lawDefinitions.js';
 import { clamp } from '../cohesion.js';
@@ -215,13 +216,14 @@ export function startLawProcessFromProposal(state, proposalId, influenceCost = 1
 export function resolveLawProcess(lawProcess, state, rng) {
   const log = [];
 
-  // Skip if law is already finished
-  if (lawProcess.phase === 'ENACTED' || lawProcess.phase === 'BURIED') {
+  // Skip if waiting for player choice on a law event (checked first so
+  // pending enactment events are waited on before the ENACTED early-return)
+  if (lawProcess.pendingEvent) {
     return log;
   }
 
-  // Skip if waiting for player choice on a law event
-  if (lawProcess.pendingEvent) {
+  // Skip if law is already finished
+  if (lawProcess.phase === 'ENACTED' || lawProcess.phase === 'BURIED') {
     return log;
   }
 
@@ -430,6 +432,26 @@ export function resolveLawProcess(lawProcess, state, rng) {
     triggerHeroPassives(state, 'LAW_ENACTED', { lawProcess, lawDef }, log);
     logger.info(`Law ENACTED: ${lawDef.name}`);
     log.push('\n*** LAW ENACTED ***');
+
+    // Select an enactment event based on final meter values
+    const enactmentContext = buildLawContext(lawProcess, lawDef, state);
+    enactmentContext.phase = 'ENACTED';
+    const enactmentEligible = filterEligibleEvents(allLawEvents, enactmentContext);
+    if (enactmentEligible.length > 0) {
+      const enactmentEvent = weightedPick(enactmentEligible, enactmentContext, rng);
+      if (enactmentEvent && enactmentEvent.choices && Array.isArray(enactmentEvent.choices) && enactmentEvent.choices.length > 0) {
+        lawProcess.pendingEvent = enactmentEvent.id;
+        state.activeEvent = {
+          ...enactmentEvent,
+          title: enactmentEvent.name,
+          text: enactmentEvent.description || enactmentEvent.name,
+          isLawEvent: true,
+          lawProcessId: lawProcess.lawId,
+          lawProcessPhase: 'ENACTED'
+        };
+        log.push(`\n>>> Enactment Event: ${enactmentEvent.name}`);
+      }
+    }
   }
 
   return log;

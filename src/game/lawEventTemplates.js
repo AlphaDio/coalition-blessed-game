@@ -1136,6 +1136,292 @@ export const HERO_CHOICE_EVENTS = [
 ];
 
 /**
+ * ENACTMENT EVENTS - Fire after a law is enacted based on final meter values.
+ * These events make the meters at enactment matter by producing game-state
+ * consequences (coalition cohesion, empire approval) weighted by
+ * reject_pressure, legitimacy, polarization, and unrest.
+ *
+ * Natures map to meter drivers during ENACTED phase:
+ *   APPROVE  → boosted by high legitimacy
+ *   REJECT   → boosted by high reject_pressure
+ *   NEUTRAL  → boosted by high polarization
+ *   EXTERNALITY → boosted by high unrest
+ */
+const ENACTMENT_EVENTS = [
+  // High legitimacy: the law passed with broad validation
+  createLawEvent(
+    'enactment_popular_mandate',
+    'Popular Mandate',
+    'LAW',
+    ['ENACTED'],
+    'APPROVE',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'legitimacy', threshold: 0.5 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. How do you capitalise on this goodwill?',
+    [
+      {
+        text: 'Celebrate publicly (boost approval across empires)',
+        effects_summary: 'Approval boost to all empires',
+        effects: {
+          approval: 3
+        }
+      },
+      {
+        text: 'Reinforce institutions (strengthen coalition cohesion)',
+        effects_summary: 'Coalition cohesion boost',
+        effects: {
+          coalitionCohesion: 3
+        }
+      }
+    ]
+  ),
+
+  // Very high legitimacy: a resounding mandate
+  createLawEvent(
+    'enactment_resounding_mandate',
+    'Resounding Mandate',
+    'LAW',
+    ['ENACTED'],
+    'APPROVE',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'legitimacy', threshold: 0.8 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law was enacted through an exemplary process that even sceptics respect. The coalition radiates confidence. How do you channel this energy?',
+    [
+      {
+        text: 'Rally the people (major approval surge)',
+        effects_summary: 'Major approval boost to all empires',
+        effects: {
+          approval: 5
+        }
+      },
+      {
+        text: 'Shore up the coalition (major cohesion boost)',
+        effects_summary: 'Major coalition cohesion boost',
+        effects: {
+          coalitionCohesion: 5
+        }
+      }
+    ]
+  ),
+
+  // High reject pressure: the opposition is bitter
+  createLawEvent(
+    'enactment_bitter_passage',
+    'Bitter Passage',
+    'LAW',
+    ['ENACTED'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law scraped through despite fierce opposition. Detractors seethe and threaten non-compliance. How do you respond?',
+    [
+      {
+        text: 'Offer concessions to the opposition (limit approval loss)',
+        effects_summary: 'Minor cohesion loss | Approval preserved',
+        effects: {
+          coalitionCohesion: -2,
+          approval: 1
+        }
+      },
+      {
+        text: 'Dismiss their concerns (maintain authority, risk backlash)',
+        effects_summary: 'Approval drop across empires',
+        effects: {
+          approval: -3
+        }
+      }
+    ]
+  ),
+
+  // Very high reject pressure: deep opposition backlash
+  createLawEvent(
+    'enactment_opposition_backlash',
+    'Opposition Backlash',
+    'LAW',
+    ['ENACTED'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law was forced through over massive resistance. Opposition factions are organising protests and demanding repeal. The coalition\'s unity is under strain.',
+    [
+      {
+        text: 'Address their grievances (sacrifice cohesion for stability)',
+        effects_summary: 'Cohesion drop | Approval stabilised',
+        effects: {
+          coalitionCohesion: -4,
+          approval: 2
+        }
+      },
+      {
+        text: 'Stand firm (keep cohesion, lose approval)',
+        effects_summary: 'Major approval drop',
+        effects: {
+          approval: -5
+        }
+      }
+    ]
+  ),
+
+  // High polarization: the coalition is divided
+  createLawEvent(
+    'enactment_ideological_fault_lines',
+    'Ideological Fault Lines',
+    'LAW',
+    ['ENACTED'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'polarization', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law has been enacted, but it exposed deep ideological rifts within the coalition. Factions are pulling in opposite directions. How do you manage the fallout?',
+    [
+      {
+        text: 'Bridge the divide (spend cohesion to restore unity)',
+        effects_summary: 'Cohesion drop | Approval slight boost',
+        effects: {
+          coalitionCohesion: -2,
+          approval: 2
+        }
+      },
+      {
+        text: 'Let factions sort it out (risk further division)',
+        effects_summary: 'Cohesion drop | Approval drop',
+        effects: {
+          coalitionCohesion: -3,
+          approval: -1
+        }
+      }
+    ]
+  ),
+
+  // Very high polarization: coalition schism
+  createLawEvent(
+    'enactment_coalition_schism',
+    'Coalition Schism',
+    'LAW',
+    ['ENACTED'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'polarization', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law\'s passage has split the coalition into hardened camps. Key figures threaten to withdraw support entirely. The very fabric of cooperation is at stake.',
+    [
+      {
+        text: 'Mediate aggressively (costly but preserves unity)',
+        effects_summary: 'Major cohesion drop | Approval preserved',
+        effects: {
+          coalitionCohesion: -4,
+          approval: 1
+        }
+      },
+      {
+        text: 'Accept the rift (approval plummets but coalition holds)',
+        effects_summary: 'Cohesion slight drop | Major approval drop',
+        effects: {
+          coalitionCohesion: -1,
+          approval: -4
+        }
+      }
+    ]
+  ),
+
+  // High unrest: turbulent implementation
+  createLawEvent(
+    'enactment_turbulent_implementation',
+    'Turbulent Implementation',
+    'LAW',
+    ['ENACTED'],
+    'EXTERNALITY',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law has passed, but civil unrest makes implementation chaotic. Protests flare in several systems and public order is deteriorating.',
+    [
+      {
+        text: 'Deploy peacekeepers (restore order at cohesion cost)',
+        effects_summary: 'Cohesion drop | Approval slight boost',
+        effects: {
+          coalitionCohesion: -3,
+          approval: 1
+        }
+      },
+      {
+        text: 'Let it settle naturally (risk approval loss)',
+        effects_summary: 'Major approval drop',
+        effects: {
+          approval: -4
+        }
+      }
+    ]
+  ),
+
+  // Very high unrest: public disorder
+  createLawEvent(
+    'enactment_public_disorder',
+    'Public Disorder',
+    'LAW',
+    ['ENACTED'],
+    'EXTERNALITY',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'Widespread unrest erupts as the new law takes effect. Riots and civil disobedience threaten to overwhelm local authorities. Emergency measures may be necessary.',
+    [
+      {
+        text: 'Declare emergency measures (cohesion hit, restore some order)',
+        effects_summary: 'Major cohesion drop | Approval slight recovery',
+        effects: {
+          coalitionCohesion: -5,
+          approval: 2
+        }
+      },
+      {
+        text: 'Ride out the storm (severe approval hit)',
+        effects_summary: 'Major approval drop across empires',
+        effects: {
+          approval: -6
+        }
+      }
+    ]
+  )
+];
+
+/**
  * Get all law events
  */
 export function getAllLawEvents() {
@@ -1147,6 +1433,7 @@ export function getAllLawEvents() {
     ...DEBATE_CHOICE_EVENTS,
     ...FALLOUT_CHOICE_EVENTS,
     ...VOTING_CHOICE_EVENTS,
-    ...HERO_CHOICE_EVENTS
+    ...HERO_CHOICE_EVENTS,
+    ...ENACTMENT_EVENTS
   ];
 }

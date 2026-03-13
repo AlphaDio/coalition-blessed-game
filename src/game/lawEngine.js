@@ -180,6 +180,26 @@ export function computeEventWeight(event, context) {
   if (nature === 'EXTERNALITY') {
     weight *= 1 + (unrest * 2.0);  // 1x to 3x at full unrest
   }
+
+  // ENACTED phase: meters influence enactment event selection
+  // Makes the final meter values at enactment matter for post-enactment consequences
+  if (context.phase === 'ENACTED') {
+    const legitimacy = context.meters.legitimacy || 0.5;
+    const polarization = context.meters.polarization || 0.25;
+
+    if (nature === 'APPROVE' || nature === 'ADVANCE') {
+      weight *= 1 + (legitimacy * 1.5);  // 1x to 2.5x at full legitimacy
+    }
+    if (nature === 'REJECT') {
+      weight *= 1 + (rejectPressure * 2.0);  // 1x to 3x at full reject pressure
+    }
+    if (nature === 'EXTERNALITY') {
+      weight *= 1 + (unrest * 2.5);  // stacks with above: high unrest = very likely turmoil
+    }
+    if (nature === 'NEUTRAL') {
+      weight *= 1 + (polarization * 1.5);  // 1x to 2.5x at full polarization
+    }
+  }
   
   return Math.max(0, weight);
 }
@@ -190,6 +210,7 @@ export function computeEventWeight(event, context) {
 // - Reject_Pressure: boosts REJECT/STALL only  
 // - Unrest: boosts EXTERNALITY only
 // - Legitimacy: affects unrest consequences (see applyUnrestExternalities)
+// ENACTED phase: all four meters (reject_pressure, legitimacy, polarization, unrest) drive enactment events
 
 /**
  * Pick events using seeded weighted random selection
