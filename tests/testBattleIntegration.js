@@ -421,9 +421,9 @@ function testDamageDistributionAfterBattle() {
   return true;
 }
 
-// Test 6b: Permanent losses reduce MP max/manpower on original armies
+// Test 6b: Army maximums are preserved regardless of Scourge battle outcome
 function testPermanentLossReducesCapacity() {
-  console.log('\n=== Test 6b: Scourge defeat preserves army max, coalition loss reduces capacity ===');
+  console.log('\n=== Test 6b: Scourge battles preserve army maximums ===');
 
   const state = createFullTestState();
   state.scourgeFervor = 60;
@@ -481,28 +481,19 @@ function testPermanentLossReducesCapacity() {
     return false;
   }
 
-  const coalitionPermanentLosses = front.permanentLosses?.left || 0;
-
-  if (coalitionWon) {
-    // On coalition victory (Scourge defeated): army maximums must be preserved
-    if (anyReduced) {
-      console.log('✗ Army capacity was reduced despite coalition winning (Scourge defeated)');
-      return false;
-    }
-    if (coalitionHadCurrentDamage && !anyCurrentBelowMax) {
-      console.log('✗ Battle dealt current MP damage but all armies returned at full strength');
-      return false;
-    }
-    console.log(`✓ Coalition won: army max preserved, current MP reflects battle casualties (permanent losses=${coalitionPermanentLosses.toFixed(1)})`);
-  } else {
-    // On coalition defeat: permanent losses should still reduce capacity
-    if (coalitionPermanentLosses > 0 && !anyReduced) {
-      console.log('✗ Permanent losses recorded but no army capacity was reduced on defeat');
-      return false;
-    }
-    console.log(`✓ Coalition lost: permanent losses=${coalitionPermanentLosses.toFixed(1)} reflected in army capacity`);
+  // Army maximums must be preserved regardless of outcome
+  if (anyReduced) {
+    console.log('✗ Army capacity was reduced by Scourge battle');
+    return false;
   }
 
+  if (coalitionHadCurrentDamage && !anyCurrentBelowMax) {
+    console.log('✗ Battle dealt current MP damage but all armies returned at full strength');
+    return false;
+  }
+
+  const outcome = coalitionWon ? 'victory' : 'defeat';
+  console.log(`✓ Coalition ${outcome}: army max preserved, current MP reflects battle casualties`);
   return true;
 }
 
