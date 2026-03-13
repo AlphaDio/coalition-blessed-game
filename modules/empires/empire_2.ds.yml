@@ -61,17 +61,17 @@ declares:
           threshold: 120
           effect:
             type: army_fervor_bonus
-            amount: 30
+            amount: 20
         super_alloys:
           threshold: 1200
           effect:
             type: army_protection_bonus
-            amount: 0.45
+            amount: 0.30
         psycho_implants:
           threshold: 120
           effect:
             type: army_resolve_bonus
-            amount: 0.3
+            amount: 0.20
         anti_grav_modules:
           threshold: 120
           effect:
@@ -86,7 +86,7 @@ declares:
           threshold: 60
           effect:
             type: army_kill_rate_bonus
-            amount: 0.16
+            amount: 0.12
         plasma_fuel:
           threshold: 700
           effect:

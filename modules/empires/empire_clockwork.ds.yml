@@ -62,7 +62,7 @@ declares:
           threshold: 48
           effect:
             type: army_kill_rate_bonus
-            amount: 0.2
+            amount: 0.15
         plasma_fuel:
           threshold: 700
           effect:
@@ -84,7 +84,7 @@ declares:
           threshold: 1200
           effect:
             type: army_protection_bonus
-            amount: 0.75
+            amount: 0.50
         anti_grav_modules:
           threshold: 100
           effect:
