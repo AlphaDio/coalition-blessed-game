@@ -1,0 +1,63 @@
+module:
+  id: "ability_propaganda_blitz"
+  name: "Propaganda Blitz"
+  description: "Flood the media with heroic narratives, boosting popularity and cooling heat."
+  version: "1.0.0"
+  type: "hero_ability"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "ability", "political", "popularity"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_ability_data:
+    id: "ABILITY_PROPAGANDA_BLITZ"
+    description: "Massive popularity surge and heat reduction, but costs grievance from manipulation."
+    chargeRequired: 100
+    cooldown: 8
+
+hooks:
+  on_trigger:
+    description: "Boost popularity and reduce heat, at the cost of some grievance."
+    logic:
+      - set_variable:
+          varName: "popularity_surge"
+          value: "round(12 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.popularity_surge > 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'popularity'"
+                  amount: "vars.popularity_surge"
+                  log_message: "'Hero Ability: {hero} launched a propaganda blitz (+{amount} popularity).'"
+      - set_variable:
+          varName: "heat_reduction"
+          value: "-8"
+      - if:
+          condition: "vars.heat_reduction < 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'heat'"
+                  amount: "vars.heat_reduction"
+                  log_message: "'Hero Ability: {hero} controlled the narrative ({amount} heat).'"
+      - set_variable:
+          varName: "grievance_cost"
+          value: "3.0"
+      - if:
+          condition: "vars.grievance_cost > 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'grievance'"
+                  amount: "vars.grievance_cost"
+                  log_message: "'Hero Ability: {hero} earned resentment for manipulation (+{amount} grievance).'"

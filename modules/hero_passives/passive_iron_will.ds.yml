@@ -1,0 +1,51 @@
+module:
+  id: "passive_iron_will"
+  name: "Iron Will"
+  description: "When a law is enacted, this hero's resolve hardens – reducing grievance and boosting popularity."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "law", "resilience"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_IRON_WILL"
+    description: "When a law is enacted, reduce grievance and gain popularity."
+    trigger:
+      type: "LAW_ENACTED"
+
+hooks:
+  on_trigger:
+    description: "Reduce grievance and boost popularity when any law is enacted."
+    logic:
+      - set_variable:
+          varName: "grievance_relief"
+          value: "-4.0 * scope.popularity_scalar"
+      - if:
+          condition: "vars.grievance_relief < 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'grievance'"
+                  amount: "vars.grievance_relief"
+                  log_message: "'Hero Passive triggered: {hero} finds renewed purpose as law passes ({amount} grievance).'"
+      - set_variable:
+          varName: "popularity_gain"
+          value: "3.0 * scope.popularity_scalar"
+      - if:
+          condition: "vars.popularity_gain > 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'popularity'"
+                  amount: "vars.popularity_gain"
+                  log_message: "'Hero Passive triggered: {hero} celebrates legislative victory (+{amount} popularity).'"

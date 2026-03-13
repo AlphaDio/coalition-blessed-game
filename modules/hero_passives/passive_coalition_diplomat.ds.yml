@@ -1,0 +1,39 @@
+module:
+  id: "passive_coalition_diplomat"
+  name: "Coalition Diplomat"
+  description: "When debate opens on a law, this hero smooths tensions and strengthens the coalition."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "law", "diplomacy"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_COALITION_DIPLOMAT"
+    description: "Boost coalition cohesion when debate starts."
+    trigger:
+      type: "LAW_PHASE_STARTED"
+      phase: "DEBATE"
+
+hooks:
+  on_trigger:
+    description: "Boost coalition cohesion at the start of debate."
+    logic:
+      - set_variable:
+          varName: "cohesion_boost"
+          value: "round(1.5 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.cohesion_boost > 0"
+          then:
+            - game_action:
+                action: "adjust_coalition_cohesion"
+                args:
+                  amount: "vars.cohesion_boost"
+                  log_message: "'Hero Passive triggered: {hero} brokered coalition goodwill (+{value} cohesion).'"

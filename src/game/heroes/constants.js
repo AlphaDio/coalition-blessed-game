@@ -15,10 +15,12 @@ export const HERO_CONSTANTS = {
   GRIEVANCE_BAKE_THRESHOLD: 60,
   GRIEVANCE_BAKE_RATE: 0.015,
   GRIEVANCE_BAKE_RELEASE: 0.35,
-  // Keep popularity responsive but avoid hitting 0/100 too quickly from passive drift.
-  POPULARITY_RISE_GOOD: 0.05,
-  POPULARITY_FALL_BAD: 0.08,
+  // Keep popularity responsive – wider swings make hero management more impactful.
+  POPULARITY_RISE_GOOD: 0.10,
+  POPULARITY_FALL_BAD: 0.15,
   POPULARITY_CAP_FACTOR: 0.5,
+  // Popular heroes shed heat faster (bonus decay per tick, scaled by popularity/100).
+  POPULARITY_HEAT_DECAY_BONUS: 0.20,
   CHARGE_PER_CREDIT: 0.2, // 0.02 -> 0.2
   ABILITY_DEFAULT_CHARGE: 100,
   STATUS_CHARGE_MULTIPLIER: {

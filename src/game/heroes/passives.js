@@ -340,6 +340,74 @@ function applyHeroPassiveAction(action, context) {
       }
       return;
     }
+    case 'adjust_coalition_cohesion': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      state.coalitionCohesion = clamp((state.coalitionCohesion || 0) + amount, 0, 100);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'adjust_army_organization': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      const orgArmies = (state.armies || []).filter(a => a.empireId === empire?.id);
+      orgArmies.forEach(army => {
+        army.organization = clamp((army.organization || 0) + amount, 0, 100);
+      });
+      const message = formatMessage(args.log_message, { ...logValues, count: orgArmies.length });
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'adjust_scourge_cohesion': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      state.scourgeCohesion = clamp((state.scourgeCohesion || 0) + amount, 0, 100);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'grant_requisition': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      state.coalitionEconomy = state.coalitionEconomy || {};
+      state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + Math.round(amount);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'grant_intel': {
+      if (!state || !Number.isFinite(amount) || amount === 0) return;
+      state.coalitionIntel = (state.coalitionIntel || 0) + amount;
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
+    case 'adjust_hero_meter': {
+      if (!hero?.meters) return;
+      const meter = args.meter;
+      if (!meter || !Number.isFinite(amount) || amount === 0) return;
+      if (!['heat', 'grievance', 'popularity'].includes(meter)) return;
+      const current = Number(hero.meters[meter] || 0);
+      hero.meters[meter] = clamp(current + amount, 0, 100);
+      const message = formatMessage(args.log_message, logValues);
+      if (message) {
+        log.push(message);
+        logger.info(message);
+      }
+      return;
+    }
     default:
       return;
   }
