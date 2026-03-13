@@ -52,5 +52,5 @@ export function getPopularityScalar(hero) {
   ensureHeroMeters(hero);
   const cap = getPopularityCap(hero);
   const effectivePopularity = Math.min(hero.meters.popularity, cap);
-  return clamp(0.3 + (effectivePopularity / 100) * 0.7, 0.3, 1.0);
+  return clamp(0.2 + (effectivePopularity / 100) * 1.0, 0.2, 1.2);
 }

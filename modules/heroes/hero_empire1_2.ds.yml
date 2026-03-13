@@ -32,6 +32,6 @@ declares:
     ability_id: "ABILITY_LEGISLATIVE_SURGE"
     passive:
       phase: "DEBATE"
-      cadence: "OnTick"
-      passive_id: "PASSIVE_DEBATE_TICK_ORATOR"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_COALITION_DIPLOMAT"
 

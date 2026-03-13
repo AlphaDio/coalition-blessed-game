@@ -1,0 +1,78 @@
+module:
+  id: "ability_iron_decree"
+  name: "Iron Decree"
+  description: "Force a law forward by suppressing dissent, at the cost of rising polarization."
+  version: "1.0.0"
+  type: "hero_ability"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "ability", "law", "authoritarian"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_ability_data:
+    id: "ABILITY_IRON_DECREE"
+    description: "Slash reject pressure and unrest on a law, but increase polarization and hero heat."
+    chargeRequired: 120
+    cooldown: 12
+
+hooks:
+  on_trigger:
+    description: "Suppress law dissent at the cost of polarization and hero heat."
+    logic:
+      - if:
+          condition: "scope.law_process != null"
+          then:
+            - set_variable:
+                varName: "reject_reduction"
+                value: "-0.12 * scope.popularity_scalar"
+            - if:
+                condition: "vars.reject_reduction < 0"
+                then:
+                  - game_action:
+                      action: "add_law_meter"
+                      args:
+                        meter: "'reject_pressure'"
+                        amount: "vars.reject_reduction"
+                        log_message: "'Hero Ability: {hero} issued an Iron Decree, crushing opposition ({meter} {before}->{after}).'"
+            - set_variable:
+                varName: "unrest_reduction"
+                value: "-0.08 * scope.popularity_scalar"
+            - if:
+                condition: "vars.unrest_reduction < 0"
+                then:
+                  - game_action:
+                      action: "add_law_meter"
+                      args:
+                        meter: "'unrest'"
+                        amount: "vars.unrest_reduction"
+                        log_message: "'Hero Ability: {hero} quelled unrest ({meter} {before}->{after}).'"
+            - set_variable:
+                varName: "polarization_cost"
+                value: "0.06 * scope.popularity_scalar"
+            - if:
+                condition: "vars.polarization_cost > 0"
+                then:
+                  - game_action:
+                      action: "add_law_meter"
+                      args:
+                        meter: "'polarization'"
+                        amount: "vars.polarization_cost"
+                        log_message: "'Hero Ability: {hero} decree polarized debate ({meter} {before}->{after}).'"
+      - set_variable:
+          varName: "heat_cost"
+          value: "5.0"
+      - if:
+          condition: "vars.heat_cost > 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'heat'"
+                  amount: "vars.heat_cost"
+                  log_message: "'Hero Ability: {hero} drew backlash for heavy-handed tactics (+{amount} heat).'"

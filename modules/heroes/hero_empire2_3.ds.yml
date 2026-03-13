@@ -31,7 +31,7 @@ declares:
     budget_share: 0.0009
     ability_id: "ABILITY_EMERGENCY_FUNDS"
     passive:
-      phase: "FALLOUT"
+      phase: "BATTLE"
       cadence: "OnStart"
-      passive_id: "PASSIVE_FALLOUT_START_CREDIT_GRANT"
+      passive_id: "PASSIVE_WAR_ECONOMIST"
 

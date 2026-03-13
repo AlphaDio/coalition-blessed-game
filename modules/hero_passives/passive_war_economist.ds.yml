@@ -1,0 +1,39 @@
+module:
+  id: "passive_war_economist"
+  name: "War Economist"
+  description: "When a Scourge battle begins, this hero secures emergency war funding for the coalition."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "battle", "economy"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_WAR_ECONOMIST"
+    description: "Grant requisition to the Coalition when a Scourge battle begins."
+    trigger:
+      type: "BATTLE_STARTED"
+      battle_type: "SCOURGE"
+
+hooks:
+  on_trigger:
+    description: "Grant requisition on scourge battle start."
+    logic:
+      - set_variable:
+          varName: "grant"
+          value: "round(40 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.grant > 0"
+          then:
+            - game_action:
+                action: "grant_requisition"
+                args:
+                  amount: "vars.grant"
+                  log_message: "'Hero Passive triggered: {hero} requisitioned emergency war funds (+{value} requisition).'"

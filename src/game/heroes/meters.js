@@ -12,9 +12,10 @@ export function tickHeroMeters(state, log) {
     if (hero.status === HERO_STATUS.EXILED) return;
     ensureHeroMeters(hero);
 
-    // Heat decay
+    // Heat decay – popular heroes shed heat faster
     const heatDecay = goodContext ? HERO_CONSTANTS.HEAT_DECAY_GOOD : HERO_CONSTANTS.HEAT_DECAY_BAD;
-    hero.meters.heat = Math.max(0, hero.meters.heat - heatDecay);
+    const popularityHeatBonus = (hero.meters.popularity / 100) * HERO_CONSTANTS.POPULARITY_HEAT_DECAY_BONUS;
+    hero.meters.heat = Math.max(0, hero.meters.heat - heatDecay - popularityHeatBonus);
 
     // Grievance decay (slow)
     hero.meters.grievance = Math.max(0, hero.meters.grievance - HERO_CONSTANTS.GRIEVANCE_DECAY);

@@ -1,0 +1,50 @@
+module:
+  id: "passive_insurgent_network"
+  name: "Insurgent Network"
+  description: "When the hero's empire unlocks a technology, covert agents weaken the Scourge."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "tech", "scourge"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_INSURGENT_NETWORK"
+    description: "Reduce scourge cohesion when a tech is unlocked by this hero's empire."
+    trigger:
+      type: "TECH_UNLOCKED"
+      require_empire_match: true
+
+hooks:
+  on_trigger:
+    description: "Damage scourge cohesion on tech unlock."
+    logic:
+      - set_variable:
+          varName: "scourge_damage"
+          value: "round(-1.5 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.scourge_damage < 0"
+          then:
+            - game_action:
+                action: "adjust_scourge_cohesion"
+                args:
+                  amount: "vars.scourge_damage"
+                  log_message: "'Hero Passive triggered: {hero} leveraged new tech to sabotage the Scourge ({value} scourge cohesion).'"
+      - set_variable:
+          varName: "intel_bonus"
+          value: "round(1 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.intel_bonus > 0"
+          then:
+            - game_action:
+                action: "grant_intel"
+                args:
+                  amount: "vars.intel_bonus"
+                  log_message: "'Hero Passive triggered: {hero} extracted intel from research (+{value} intel).'"

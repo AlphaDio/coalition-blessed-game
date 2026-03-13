@@ -1,0 +1,39 @@
+module:
+  id: "passive_tactical_genius"
+  name: "Tactical Genius"
+  description: "When a battle begins, this hero drills participating armies into sharper formations."
+  version: "1.0.0"
+  type: "hero_passive"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "passive", "battle", "military"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_passive_data:
+    id: "PASSIVE_TACTICAL_GENIUS"
+    description: "Boost army organization when a Scourge battle begins."
+    trigger:
+      type: "BATTLE_STARTED"
+      battle_type: "SCOURGE"
+
+hooks:
+  on_trigger:
+    description: "Boost army organization at battle start."
+    logic:
+      - set_variable:
+          varName: "org_boost"
+          value: "round(4 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.org_boost > 0"
+          then:
+            - game_action:
+                action: "adjust_army_organization"
+                args:
+                  amount: "vars.org_boost"
+                  log_message: "'Hero Passive triggered: {hero} sharpened {empire} battle formations (+{value} organization).'"

@@ -1,0 +1,61 @@
+module:
+  id: "ability_scorched_earth"
+  name: "Scorched Earth"
+  description: "Launch an all-out strike against the Scourge, at a personal cost."
+  version: "1.0.0"
+  type: "hero_ability"
+  category: "hero"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["hero", "ability", "military", "scourge"]
+  created_at: "2026-03-13T00:00:00Z"
+
+schema_version: "0.1"
+
+declares:
+  hero_ability_data:
+    id: "ABILITY_SCORCHED_EARTH"
+    description: "Deal heavy damage to the Scourge's strategic cohesion, but earn grievance from collateral."
+    chargeRequired: 180
+    cooldown: 16
+
+hooks:
+  on_trigger:
+    description: "Damage scourge cohesion at the cost of hero grievance."
+    logic:
+      - set_variable:
+          varName: "scourge_damage"
+          value: "round(-4 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.scourge_damage < 0"
+          then:
+            - game_action:
+                action: "adjust_scourge_cohesion"
+                args:
+                  amount: "vars.scourge_damage"
+                  log_message: "'Hero Ability: {hero} launched a scorched earth campaign ({value} scourge cohesion).'"
+      - set_variable:
+          varName: "requisition_bonus"
+          value: "round(60 * scope.popularity_scalar)"
+      - if:
+          condition: "vars.requisition_bonus > 0"
+          then:
+            - game_action:
+                action: "grant_requisition"
+                args:
+                  amount: "vars.requisition_bonus"
+                  log_message: "'Hero Ability: {hero} seized Scourge spoils (+{value} requisition).'"
+      - set_variable:
+          varName: "grievance_cost"
+          value: "6.0"
+      - if:
+          condition: "vars.grievance_cost > 0"
+          then:
+            - game_action:
+                action: "adjust_hero_meter"
+                args:
+                  meter: "'grievance'"
+                  amount: "vars.grievance_cost"
+                  log_message: "'Hero Ability: {hero} earned resentment for collateral damage (+{amount} grievance).'"

@@ -33,5 +33,5 @@ declares:
     passive:
       phase: "VOTING"
       cadence: "OnStart"
-      passive_id: "PASSIVE_VOTING_START_WHIP"
+      passive_id: "PASSIVE_IRON_WILL"
 
