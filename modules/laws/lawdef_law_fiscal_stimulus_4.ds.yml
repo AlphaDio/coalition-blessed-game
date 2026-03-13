@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_fiscal_stimulus_4"
   name: "Grand Reconstruction Bond"
-  description: "Grand Reconstruction Bond"
+  description: "Issues bonds backed by the entire coalition's future. Unprecedented economic power now, but military efficiency and supply lines are squeezed to breaking."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -49,6 +49,9 @@ declares:
       population_growth: 0.0008
       requisition_uptick: 0.8
       requisition_gain_multiplier: 1.12
+      supply_efficiency: -0.04
+      army_organization: -2
+      cohesionModifier: 0.97
     immediate_effects:
       coalition_credits: 8000
       requisition: 900

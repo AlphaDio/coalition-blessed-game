@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_delegation_3"
   name: "Federated Authority Treaty"
-  description: "Federated Authority Treaty"
+  description: "Creates a federated governance structure with powerful local authorities. Economic benefits are enormous but the coalition's core unity is tested."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       trade_income: 140
       empire_approval: 0.9
       requisition_gain_multiplier: 1.12
+      cohesionModifier: 0.95
+      supply_efficiency: -0.02
     immediate_effects:
       coalition_credits: 3200
       cohesion: 4

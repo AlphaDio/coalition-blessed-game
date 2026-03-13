@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_conscription_3"
   name: "War Levy Mandate"
-  description: "War Levy Mandate"
+  description: "Levies all able-bodied citizens for war service. Military strength peaks but the economy bleeds and population growth stalls."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       army_organization: 12
       empire_approval: -2
       requisition_uptick: 0.55
+      population_growth: -0.0003
+      trade_income: -40
     immediate_effects:
       requisition: 1100
       cohesion: 3

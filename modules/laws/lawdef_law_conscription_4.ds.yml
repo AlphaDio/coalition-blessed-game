@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_conscription_4"
   name: "Total War Reserve Act"
-  description: "Total War Reserve Act"
+  description: "Mobilizes the entire coalition for total war. Devastating military power, but civilian life grinds to a halt and population growth reverses."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -48,6 +48,8 @@ declares:
       empire_approval: -2.8
       requisition_uptick: 1.0
       requisition_gain_multiplier: 1.18
+      population_growth: -0.0005
+      trade_income: -60
     immediate_effects:
       requisition: 1600
       cohesion: 2

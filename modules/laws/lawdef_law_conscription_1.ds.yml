@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_conscription_1"
   name: "Selective Service Act"
-  description: "Selective Service Act"
+  description: "Activates selective conscription to fill army ranks. Boosts military capacity but strains population growth and public morale."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,7 @@ declares:
       army_organization: 4
       empire_approval: -0.6
       requisition_uptick: 0.12
+      population_growth: -0.0001
     immediate_effects:
       requisition: 350
       cohesion: 1

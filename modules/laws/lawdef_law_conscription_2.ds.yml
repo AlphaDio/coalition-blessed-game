@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_conscription_2"
   name: "Emergency Draft Order"
-  description: "Emergency Draft Order"
+  description: "Imposes emergency conscription with reduced exemptions. Armies swell but trade suffers and citizens grow resentful."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       army_organization: 8
       empire_approval: -1.2
       requisition_uptick: 0.28
+      population_growth: -0.0002
+      trade_income: -20
     immediate_effects:
       requisition: 700
       cohesion: 2

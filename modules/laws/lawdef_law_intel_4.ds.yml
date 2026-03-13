@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_intel_4"
   name: "Omniscient Command Lattice"
-  description: "Omniscient Command Lattice"
+  description: "An AI-driven omniscient surveillance lattice that knows everything. Peerless intelligence and coordination at the cost of freedom, trust, and social cohesion."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -50,6 +50,9 @@ declares:
       law_progress_speed: 0.14
       requisition_gain_multiplier: 1.18
       supply_efficiency: 0.08
+      empire_approval: -0.8
+      population_growth: -0.0003
+      cohesionModifier: 0.97
     immediate_effects:
       cohesion: 5
       coalition_credits: 5000

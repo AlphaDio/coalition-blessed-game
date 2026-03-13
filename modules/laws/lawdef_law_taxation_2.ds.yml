@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_taxation_2"
   name: "Coalition Revenue Act"
-  description: "Coalition Revenue Act"
+  description: "Implements comprehensive revenue collection. Requisition surges but trade income drops and citizens flee the tax burden."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -48,6 +48,8 @@ declares:
       requisition_uptick: 0.45
       requisition_gain_multiplier: 1.1
       empire_approval: -0.8
+      trade_income: -25
+      population_growth: -0.0002
     immediate_effects:
       requisition: 450
       cohesion: 2

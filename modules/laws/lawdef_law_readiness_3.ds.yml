@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_readiness_3"
   name: "Total Mobilization Protocol"
-  description: "Total Mobilization Protocol"
+  description: "Puts the entire coalition on perpetual war footing. Military power reaches its zenith, but the economic toll is severe."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       cohesionModifier: 1.08
       supply_efficiency: 0.08
       requisition_gain_multiplier: 1.2
+      trade_income: -50
+      empire_approval: -0.4
     immediate_effects:
       requisition: 920
       cohesion: 4

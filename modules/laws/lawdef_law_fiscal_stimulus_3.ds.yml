@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_fiscal_stimulus_3"
   name: "Unified Treasury Mandate"
-  description: "Unified Treasury Mandate"
+  description: "Centralizes all coalition finances under a unified treasury. Massive economic output, but the treasury's grip weakens military autonomy and supply chains."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,8 @@ declares:
       empire_approval: 1.2
       population_growth: 0.0005
       requisition_uptick: 0.45
+      supply_efficiency: -0.03
+      army_organization: -2
     immediate_effects:
       coalition_credits: 5200
       requisition: 500

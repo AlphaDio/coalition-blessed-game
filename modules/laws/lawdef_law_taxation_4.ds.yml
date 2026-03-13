@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_taxation_4"
   name: "Supreme War Revenue Code"
-  description: "Supreme War Revenue Code"
+  description: "Extracts maximum revenue from every corner of the coalition. Ultimate war funding at devastating economic and social cost."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -50,6 +50,8 @@ declares:
       requisition_uptick: 1.2
       requisition_gain_multiplier: 1.35
       empire_approval: -2.4
+      trade_income: -80
+      population_growth: -0.0005
     immediate_effects:
       requisition: 1500
       cohesion: 2

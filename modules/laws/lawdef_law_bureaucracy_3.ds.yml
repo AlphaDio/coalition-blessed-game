@@ -1,7 +1,7 @@
 module:
   id: "lawdef_law_bureaucracy_3"
   name: "Unified Administrative Grid"
-  description: "Unified Administrative Grid"
+  description: "Creates a unified administrative grid spanning all member worlds. Unmatched efficiency comes at the cost of local autonomy and military flexibility."
   version: "1.0.0"
   type: "law_definition"
   category: "policy"
@@ -44,6 +44,9 @@ declares:
       supply_efficiency: 0.1
       law_progress_speed: 0.1
       requisition_uptick: 0.18
+      army_organization: -2
+      empire_approval: -0.3
+      population_growth: -0.0002
     immediate_effects:
       influence: 65
       cohesion: 4
