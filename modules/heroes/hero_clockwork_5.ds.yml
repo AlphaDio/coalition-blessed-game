@@ -29,9 +29,9 @@ declares:
       stoicist_hedonistic: -0.1
       essentialist_constructivist: 0.7
     budget_share: 0.001
-    ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    ability_id: "ABILITY_WAR_CRY"
     passive:
-      phase: "DEBATE"
-      cadence: "OnTick"
-      passive_id: "PASSIVE_SCOURGE_BATTLE_OPENING_SALVO"
+      phase: "BATTLE"
+      cadence: "OnStart"
+      passive_id: "PASSIVE_WAR_ECONOMIST"
 
