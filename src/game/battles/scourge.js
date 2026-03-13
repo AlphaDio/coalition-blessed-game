@@ -351,6 +351,8 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
   );
 
   // Distribute results to original armies
+  // On coalition victory (Scourge defeated), preserve army maximums — only current MP is reduced.
+  const effectivePermanentLossRatio = coalitionWon ? 0 : coalitionMPLossRatio;
   originalArmyData.forEach(armyData => {
     const army = state.armies.find(a => a.id === armyData.id);
     if (!army) return;
@@ -359,7 +361,7 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     applyCompositeBattleResultToArmy(
       army,
       armyData,
-      coalitionMPLossRatio,
+      effectivePermanentLossRatio,
       coalitionCurrentRetentionRatio
     );
     const maxLoss = Math.max(0, prevMax - Number(army.mp?.max || 0));

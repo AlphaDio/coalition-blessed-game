@@ -423,7 +423,7 @@ function testDamageDistributionAfterBattle() {
 
 // Test 6b: Permanent losses reduce MP max/manpower on original armies
 function testPermanentLossReducesCapacity() {
-  console.log('\n=== Test 6b: Permanent losses reduce army MP max/manpower ===');
+  console.log('\n=== Test 6b: Scourge defeat preserves army max, defeat reduces capacity ===');
 
   const state = createFullTestState();
   state.scourgeFervor = 60;
@@ -482,17 +482,27 @@ function testPermanentLossReducesCapacity() {
   }
 
   const coalitionPermanentLosses = front.permanentLosses?.left || 0;
-  if (coalitionPermanentLosses > 0 && !anyReduced) {
-    console.log('✗ Permanent losses recorded but no army capacity was reduced');
-    return false;
+
+  if (coalitionWon) {
+    // On coalition victory (Scourge defeated): army maximums must be preserved
+    if (anyReduced) {
+      console.log('✗ Army capacity was reduced despite coalition winning (Scourge defeated)');
+      return false;
+    }
+    if (coalitionHadCurrentDamage && !anyCurrentBelowMax) {
+      console.log('✗ Battle dealt current MP damage but all armies returned at full strength');
+      return false;
+    }
+    console.log(`✓ Coalition won: army max preserved, current MP reflects battle casualties (permanent losses=${coalitionPermanentLosses.toFixed(1)})`);
+  } else {
+    // On coalition defeat: permanent losses should still reduce capacity
+    if (coalitionPermanentLosses > 0 && !anyReduced) {
+      console.log('✗ Permanent losses recorded but no army capacity was reduced on defeat');
+      return false;
+    }
+    console.log(`✓ Coalition lost: permanent losses=${coalitionPermanentLosses.toFixed(1)} reflected in army capacity`);
   }
 
-  if (coalitionHadCurrentDamage && !anyCurrentBelowMax) {
-    console.log('✗ Battle dealt current MP damage but all armies returned at full strength');
-    return false;
-  }
-
-  console.log(`✓ Permanent losses=${coalitionPermanentLosses.toFixed(1)} reflected in army capacity`);
   return true;
 }
 
@@ -683,16 +693,14 @@ function testPartialSupportCommitments() {
   const updatedTargetArmy = state.armies.find(army => army.id === 'army1');
   const updatedAllyArmy = state.armies.find(army => army.id === 'army2');
 
-  const expectedTargetMax = initialTargetMax * 0.8;
-  const expectedAllyMax = (initialAllyMax * 0.6) + (initialAllyMax * 0.4 * 0.8);
-
-  if (Math.abs(updatedTargetArmy.mp.max - expectedTargetMax) > 0.01) {
-    console.log('X Target army cap was not reduced from its committed losses');
+  // On coalition victory (Scourge defeated), army maximums are preserved
+  if (Math.abs(updatedTargetArmy.mp.max - initialTargetMax) > 0.01) {
+    console.log('X Target army max was reduced despite Scourge defeat');
     return false;
   }
 
-  if (Math.abs(updatedAllyArmy.mp.max - expectedAllyMax) > 0.01) {
-    console.log('X Allied reserve was damaged beyond its deployed share');
+  if (Math.abs(updatedAllyArmy.mp.max - initialAllyMax) > 0.01) {
+    console.log('X Allied army max was reduced despite Scourge defeat');
     return false;
   }
 
@@ -701,7 +709,7 @@ function testPartialSupportCommitments() {
     return false;
   }
 
-  console.log('PASS Partial support only damaged the committed allied detachment');
+  console.log('PASS Scourge defeat preserves army max; partial support current MP correctly applied');
   return true;
 }
 
