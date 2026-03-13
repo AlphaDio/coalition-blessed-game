@@ -144,8 +144,11 @@ export function handleBattlePhase(state, rng, log, logger) {
   battlesEndedThisTick.forEach(front => {
     const leftArmy = state.armies.find(a => a.id === front.leftArmyId);
     const rightArmy = state.armies.find(a => a.id === front.rightArmyId);
-    let winnerSide = getBattleWinner(leftArmy, rightArmy);
-    // Fallback: derive winner from remaining MP so we always apply results (e.g. after endBattle(winner=null))
+    // Use the winner stored by endBattle first (wounded recovery can restore MP
+    // after a shattered army is defeated, making MP-based checks unreliable).
+    let winnerSide = front.winnerSide || getBattleWinner(leftArmy, rightArmy);
+    // Last-resort fallback: if neither the stored winner nor getBattleWinner
+    // could determine a side, try raw MP comparison.
     if (!winnerSide && leftArmy && rightArmy) {
       if ((leftArmy.mp?.current ?? 0) <= 0) winnerSide = 'right';
       else if ((rightArmy.mp?.current ?? 0) <= 0) winnerSide = 'left';

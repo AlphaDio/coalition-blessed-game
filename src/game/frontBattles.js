@@ -563,6 +563,7 @@ function endBattle(front, worldState, winnerSide) {
 
   front.state = 'ENDED';
   front.endedAtTick = worldState.turn;
+  front.winnerSide = winnerSide;
 
   const leftArmy = worldState.armies.find(a => a.id === front.leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === front.rightArmyId);

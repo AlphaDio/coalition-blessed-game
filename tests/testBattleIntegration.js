@@ -939,6 +939,57 @@ function testInsurrectionAntiSpamGuards() {
   return true;
 }
 
+// Test 14: XP is awarded after full Scourge battle lifecycle (start → tick → end)
+function testScourgeEndToEndExperienceAward() {
+  console.log('\n=== Test 14: Scourge end-to-end XP award ===');
+
+  const state = createFullTestState();
+  state.scourgeTargetEmpireId = 'empire1';
+  const army1 = state.armies.find(a => a.id === 'army1');
+  const participatingArmies = [army1];
+
+  // Confirm starting XP is zero
+  if (army1.experience !== 0 || army1.experienceLevel !== 0) {
+    console.log('X Army started with non-zero experience');
+    return false;
+  }
+
+  // Start battle → simulate → let it end
+  const { front } = startScourgeBattle(state, participatingArmies, () => 0.5);
+  let ticks = 0;
+  while (front.state === 'ACTIVE' && ticks < 100) {
+    simulateBattleTick(front, state);
+    ticks++;
+  }
+  if (front.state !== 'ENDED') {
+    console.log('X Battle did not end within 100 ticks');
+    return false;
+  }
+
+  // The front must store the winner after endBattle
+  if (!front.winnerSide) {
+    console.log('X front.winnerSide not set after battle end');
+    return false;
+  }
+
+  // Handle battle end (awards XP to original armies)
+  const result = handleScourgeBattleEnd(state, front, front.winnerSide);
+
+  const army1After = state.armies.find(a => a.id === 'army1');
+  if (!army1After) {
+    console.log('X army1 missing from state after battle end');
+    return false;
+  }
+
+  if (army1After.experience <= 0 && army1After.experienceLevel <= 0) {
+    console.log(`X army1 did not gain experience (xp=${army1After.experience}, level=${army1After.experienceLevel})`);
+    return false;
+  }
+
+  console.log(`PASS Army gained experience after Scourge battle (xp=${army1After.experience}/${army1After.experienceThreshold}, level=${army1After.experienceLevel})`);
+  return true;
+}
+
 // Run all tests
 console.log('='.repeat(60));
 console.log('Battle Integration Test Suite');
@@ -960,7 +1011,8 @@ const results = {
   'Direct manpower mechanics': testDirectManpowerMechanics(),
   'Battle experience outcome bias': testBattleExperienceOutcomeBias(),
   'Experience surge next tick': testExperienceSurgeNextTick(),
-  'Insurrection anti-spam guards': testInsurrectionAntiSpamGuards()
+  'Insurrection anti-spam guards': testInsurrectionAntiSpamGuards(),
+  'Scourge end-to-end XP award': testScourgeEndToEndExperienceAward()
 };
 
 console.log('\n' + '='.repeat(60));
