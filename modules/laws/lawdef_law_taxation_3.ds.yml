@@ -48,8 +48,8 @@ declares:
       requisition_uptick: 0.8
       requisition_gain_multiplier: 1.2
       empire_approval: -1.5
-      trade_income: -100
-      population_growth: -0.0005
+      trade_income: -50
+      population_growth: -0.0003
     immediate_effects:
       requisition: 900
       cohesion: 3

@@ -43,7 +43,7 @@ declares:
       relations_strength_modifier: 1.06
       trade_income: 40
       empire_approval: 0.3
-      cohesionModifier: 0.97
+      cohesionModifier: 0.98
     immediate_effects:
       coalition_credits: 900
       cohesion: 2

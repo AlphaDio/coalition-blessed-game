@@ -43,8 +43,8 @@ declares:
       trade_income: 260
       supply_efficiency: 0.08
       consumptionShareBonus: 0.03
-      army_organization: -3
-      empire_approval: -0.2
+      army_organization: -1
+      empire_approval: -0.1
     immediate_effects:
       coalition_credits: 2600
       requisition: 320

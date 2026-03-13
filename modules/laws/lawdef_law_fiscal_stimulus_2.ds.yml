@@ -44,8 +44,8 @@ declares:
       empire_approval: 0.8
       population_growth: 0.0003
       requisition_uptick: 0.25
-      supply_efficiency: -0.04
-      army_organization: -2
+      supply_efficiency: -0.02
+      army_organization: -1
     immediate_effects:
       coalition_credits: 2800
       requisition: 260

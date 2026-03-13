@@ -47,9 +47,9 @@ declares:
       consumptionShareBonus: 0.08
       requisition_gain_multiplier: 1.22
       requisition_uptick: 0.2
-      army_organization: -7
-      empire_approval: -0.8
-      cohesionModifier: 0.95
+      army_organization: -3
+      empire_approval: -0.4
+      cohesionModifier: 0.97
     immediate_effects:
       coalition_credits: 8200
       requisition: 950

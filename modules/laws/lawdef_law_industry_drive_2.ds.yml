@@ -44,8 +44,8 @@ declares:
       industrial_output: 0.18
       empire_production_multiplier: 0.08
       consumptionShareMultiplier: 1.1
-      empire_approval: -0.5
-      population_growth: -0.0002
+      empire_approval: -0.3
+      population_growth: -0.0001
     immediate_effects:
       coalition_credits: 2200
       requisition: 420

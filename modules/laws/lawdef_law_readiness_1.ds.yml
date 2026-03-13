@@ -43,8 +43,8 @@ declares:
       army_maintenance_cost_modifier: 0.9
       cohesionModifier: 1.02
       requisition_gain_multiplier: 1.06
-      trade_income: -30
-      empire_approval: -0.2
+      trade_income: -15
+      empire_approval: -0.1
     immediate_effects:
       requisition: 280
       cohesion: 2

@@ -50,9 +50,9 @@ declares:
       population_growth: 0.001
       requisition_uptick: 0.24
       law_progress_speed: 0.08
-      research_speed: -0.12
-      industrial_output: -0.08
-      army_organization: -4
+      research_speed: -0.06
+      industrial_output: -0.05
+      army_organization: -2
     immediate_effects:
       cohesion: 9
       empire_approval: 5

@@ -44,8 +44,8 @@ declares:
       supply_efficiency: 0.12
       consumptionShareBonus: 0.05
       requisition_gain_multiplier: 1.15
-      army_organization: -5
-      empire_approval: -0.5
+      army_organization: -2
+      empire_approval: -0.3
     immediate_effects:
       coalition_credits: 4800
       requisition: 700

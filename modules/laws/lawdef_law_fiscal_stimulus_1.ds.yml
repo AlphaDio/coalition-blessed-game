@@ -43,7 +43,7 @@ declares:
       trade_income: 90
       empire_approval: 0.4
       requisition_uptick: 0.12
-      supply_efficiency: -0.02
+      supply_efficiency: -0.01
     immediate_effects:
       coalition_credits: 1400
       requisition: 120

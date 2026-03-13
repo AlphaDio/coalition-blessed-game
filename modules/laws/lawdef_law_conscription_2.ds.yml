@@ -44,8 +44,8 @@ declares:
       army_organization: 8
       empire_approval: -1.2
       requisition_uptick: 0.28
-      population_growth: -0.0003
-      trade_income: -40
+      population_growth: -0.0002
+      trade_income: -20
     immediate_effects:
       requisition: 700
       cohesion: 2

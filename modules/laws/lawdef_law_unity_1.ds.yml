@@ -43,7 +43,7 @@ declares:
       cohesionModifier: 1.08
       empire_approval: 0.6
       population_growth: 0.0002
-      supply_efficiency: -0.02
+      supply_efficiency: -0.01
     immediate_effects:
       cohesion: 3
       empire_approval: 1

@@ -45,7 +45,7 @@ declares:
       research_speed: 0.09
       law_progress_speed: 0.06
       requisition_gain_multiplier: 1.05
-      empire_approval: -0.6
+      empire_approval: -0.3
       population_growth: -0.0001
     immediate_effects:
       cohesion: 3

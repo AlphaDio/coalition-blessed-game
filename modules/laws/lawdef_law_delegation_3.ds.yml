@@ -44,8 +44,8 @@ declares:
       trade_income: 140
       empire_approval: 0.9
       requisition_gain_multiplier: 1.12
-      cohesionModifier: 0.92
-      supply_efficiency: -0.04
+      cohesionModifier: 0.95
+      supply_efficiency: -0.02
     immediate_effects:
       coalition_credits: 3200
       cohesion: 4

@@ -51,8 +51,8 @@ declares:
       empire_approval: 1.2
       requisition_gain_multiplier: 1.16
       requisition_uptick: 0.2
-      cohesionModifier: 0.88
-      army_organization: -3
+      cohesionModifier: 0.93
+      army_organization: -2
     immediate_effects:
       coalition_credits: 4500
       cohesion: 5
