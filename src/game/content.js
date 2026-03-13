@@ -186,10 +186,13 @@ export function createSampleContent(seed = 0) {
         }
       }
 
-      return {
+      const choiceResult = {
         text: choice.text,
         effects: scaleEventEffects(processedEffects)
       };
+      if (choice.effects_summary) choiceResult.effects_summary = choice.effects_summary;
+      if (choice.description) choiceResult.description = choice.description;
+      return choiceResult;
     });
     
     return createEvent(

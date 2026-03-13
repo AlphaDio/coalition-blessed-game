@@ -25,7 +25,9 @@ declares:
         count: 1
         as: negotiator
     choices:
-      - text: "Ratify comprehensive trade agreement (timed economic boost)"
+      - text: "Ratify comprehensive trade agreement"
+        description: "Sign the full trade deal. Boosts relations, provides immediate requisition, and increases trade income over time."
+        effects_summary: "Gain: +100 requisition | ${negotiator.name}: significant relations boost with all | Temporary trade income bonus"
         effects:
           empireRelations:
             "$negotiator":
@@ -36,7 +38,9 @@ declares:
               duration: 15
           coalitionEconomy:
             requisition: 100
-      - text: "Implement bilateral agreements (selective benefits)"
+      - text: "Implement bilateral agreements"
+        description: "Negotiate smaller deals between specific partners. Moderate relations improvement and a temporary production boost."
+        effects_summary: "Cost: Free | ${negotiator.name}: significant relations boost with all | Temporary production bonus"
         effects:
           empireRelations:
             "$negotiator":
@@ -45,7 +49,9 @@ declares:
             empire_production_multiplier:
               value: 0.2
               duration: 8
-      - text: "Reject trade agreement (preserve requisition)"
+      - text: "Reject trade agreement"
+        description: "Decline the deal. Damages ${negotiator.name}'s standing but keeps a small reserve of requisition."
+        effects_summary: "Gain: +50 requisition | ${negotiator.name}: significant relations damage with all"
         effects:
           empireRelations:
             "$negotiator":

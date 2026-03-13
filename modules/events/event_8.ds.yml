@@ -25,7 +25,9 @@ declares:
         count: 1
         as: proposer
     choices:
-      - text: "Implement full resource sharing (boost relations, distribute requisition)"
+      - text: "Implement full resource sharing"
+        description: "Distribute coalition stockpiles equitably. Very expensive but greatly improves relations and approval across the board."
+        effects_summary: "Cost: 200 requisition | ${proposer.name}: major relations boost with all | All empires: major approval boost"
         effects:
           empireRelations:
             "$proposer":
@@ -34,12 +36,16 @@ declares:
             requisition: -200
           empireApproval:
             "@all": 10
-      - text: "Selective sharing with close allies only (moderate relations boost)"
+      - text: "Selective sharing with close allies"
+        description: "Share resources with select partners. No cost and moderately improves ${proposer.name}'s standing."
+        effects_summary: "Cost: Free | ${proposer.name}: significant relations boost with all"
         effects:
           empireRelations:
             "$proposer":
               "@all": 7
-      - text: "Reject the initiative (damage relations, keep requisition)"
+      - text: "Reject the initiative"
+        description: "Decline ${proposer.name}'s proposal and keep reserves centralized. Damages their reputation but saves resources."
+        effects_summary: "Gain: +100 requisition | ${proposer.name}: major relations damage with all"
         effects:
           empireRelations:
             "$proposer":

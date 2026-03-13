@@ -30,7 +30,9 @@ declares:
         exclude: ["$sanctioner"]
         as: target
     choices:
-      - text: "Support ${sanctioner.name}'s sanctions (damage relations, economic impact)"
+      - text: "Support ${sanctioner.name}'s sanctions"
+        description: "Back the sanctions against ${target.name}. Boosts ${sanctioner.name}'s standing but isolates ${target.name} and hurts the economy."
+        effects_summary: "${sanctioner.name}: moderate relations boost with all | ${target.name}: major relations damage with all | Temporary production penalty | Coalition cohesion: -3"
         effects:
           empireRelations:
             "$sanctioner":
@@ -42,14 +44,18 @@ declares:
               value: -0.15
               duration: 6
           coalitionCohesion: -3
-      - text: "Mediate the dispute (moderate relations adjustment)"
+      - text: "Mediate the dispute"
+        description: "Bring both sides to the table. A diplomatic solution that cools tensions between the two parties."
+        effects_summary: "${sanctioner.name} ↔ ${target.name}: moderate bilateral relations damage"
         effects:
           empireRelations:
             "$sanctioner":
               "$target": -4
             "$target":
               "$sanctioner": -4
-      - text: "Side with ${target.name} (reverse sanctions)"
+      - text: "Side with ${target.name}"
+        description: "Reject the sanctions and support ${target.name}. Angers ${sanctioner.name} and causes some military disruption."
+        effects_summary: "${target.name}: significant relations boost with all | ${sanctioner.name}: significant relations damage with all | Temporary army organization penalty"
         effects:
           empireRelations:
             "$target":

@@ -22,7 +22,7 @@ declares:
     choices:
       - text: "Coalition-Wide Briefing - Share with all member empires"
         description: "Organize a formal intelligence briefing for all Coalition members. Expensive to coordinate but maximizes the benefit and improves relations across the board."
-        effects_summary: "Cost: 80 requisition | Prediction confidence + intel reserve: major boost | All empires: +2 approval"
+        effects_summary: "Cost: 80 requisition | Prediction confidence + intel reserve: major boost | All empires: slight approval boost"
         effects:
           coalitionEconomy:
             requisition: -80
@@ -31,14 +31,14 @@ declares:
             "@all": 2
       - text: "Priority Partners - Brief our strongest allies first"
         description: "Share intelligence with the wealthiest empires who can best leverage it. Strengthens key partnerships while still improving our predictions."
-        effects_summary: "Cost: Free | Prediction confidence + intel reserve: medium boost | Richest empires: +5 approval"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: medium boost | Richest empires: moderate approval boost"
         effects:
           empireApproval:
             "@richest": 5
           scourgePredictionConfidence: 0.2
       - text: "Classified Intel - Restrict to Coalition command"
         description: "Keep this breakthrough secret. Provides good predictive power but member empires will resent being left out of the loop."
-        effects_summary: "Cost: Free | Prediction confidence + intel reserve: medium boost | All empires: -2 approval"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: medium boost | All empires: slight approval drop"
         effects:
           empireApproval:
             "@all": -2
