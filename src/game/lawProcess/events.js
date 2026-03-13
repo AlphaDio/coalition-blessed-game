@@ -1,5 +1,6 @@
 import { getLogger } from '../../modules/logger.js';
 import { checkBurialRule, clampMeter } from '../lawEngine.js';
+import { clamp, applyScaledCoalitionCohesionDelta } from '../cohesion.js';
 import { filterLawLogs } from './logs.js';
 
 /**
@@ -140,6 +141,20 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
     lawProcess.phaseProgress = newProgress;
     const deltaLabel = effects.progress >= 0 ? `+${effects.progress.toFixed(2)}` : `${effects.progress.toFixed(2)}`;
     log.push(`  Phase progress: ${oldProgress.toFixed(2)} â†’ ${newProgress.toFixed(2)} (${deltaLabel})`);
+  }
+
+
+  // Apply game-state effects (used by enactment events)
+  if (effects.coalitionCohesion && state) {
+    const delta = applyScaledCoalitionCohesionDelta(state, effects.coalitionCohesion);
+    log.push(`  Coalition cohesion: ${delta >= 0 ? "+" : ""}${delta}`);
+  }
+
+  if (effects.approval && state && Array.isArray(state.empires)) {
+    state.empires.forEach(empire => {
+      empire.approval = clamp(empire.approval + effects.approval, -100, 100);
+    });
+    log.push(`  All empire approval: ${effects.approval >= 0 ? "+" : ""}${effects.approval}`);
   }
 
   return log;

@@ -1136,6 +1136,296 @@ export const HERO_CHOICE_EVENTS = [
 ];
 
 /**
+ * ENACTMENT EVENTS - Fire after a law is enacted based on final meter values.
+ * These events make the meters at enactment matter by producing game-state
+ * consequences (coalition cohesion, empire approval) weighted by
+ * reject_pressure, legitimacy, polarization, and unrest.
+ *
+ * Natures map to meter drivers during ENACTED phase:
+ *   APPROVE  → boosted by high legitimacy
+ *   REJECT   → boosted by high reject_pressure
+ *   NEUTRAL  → boosted by high polarization
+ *   EXTERNALITY → boosted by high unrest
+ */
+const ENACTMENT_EVENTS = [
+  // High legitimacy: the law passed with broad validation
+  createLawEvent(
+    'enactment_popular_mandate',
+    'Popular Mandate',
+    'LAW',
+    ['ENACTED'],
+    'APPROVE',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'legitimacy', threshold: 0.5 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. How do you capitalize on this goodwill?',
+    [
+      {
+        text: 'Celebrate publicly (boost approval across empires)',
+        effects_summary: 'Approval boost to all empires',
+        effects: {
+          approval: 3
+        }
+      },
+      {
+        text: 'Reinforce institutions (strengthen coalition cohesion)',
+        effects_summary: 'Coalition cohesion boost',
+        effects: {
+          coalitionCohesion: 3
+        }
+      }
+    ]
+  ),
+
+  // Very high legitimacy: a resounding mandate
+  createLawEvent(
+    'enactment_resounding_mandate',
+    'Resounding Mandate',
+    'LAW',
+    ['ENACTED'],
+    'APPROVE',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'legitimacy', threshold: 0.8 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law was enacted through an exemplary process that even skeptics respect. The coalition radiates confidence. How do you channel this energy?',
+    [
+      {
+        text: 'Rally the people (major approval surge)',
+        effects_summary: 'Major approval boost to all empires',
+        effects: {
+          approval: 5
+        }
+      },
+      {
+        text: 'Shore up the coalition (major cohesion boost)',
+        effects_summary: 'Major coalition cohesion boost',
+        effects: {
+          coalitionCohesion: 5
+        }
+      }
+    ]
+  ),
+
+  // High reject pressure: the opposition is vocal but the law won
+  createLawEvent(
+    'enactment_bitter_passage',
+    'Bitter Passage',
+    'LAW',
+    ['ENACTED'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law scraped through despite fierce opposition, but the victory itself has energised your base. The opposition is vocal — do you co-opt their energy or ride the momentum?',
+    [
+      {
+        text: 'Invite critics into the implementation process (build unity)',
+        effects_summary: 'Cohesion boost | Slight approval cost',
+        effects: {
+          coalitionCohesion: 2,
+          approval: -1
+        }
+      },
+      {
+        text: 'Rally your supporters around the victory (energise the base)',
+        effects_summary: 'Approval boost | Slight cohesion cost',
+        effects: {
+          approval: 2,
+          coalitionCohesion: -1
+        }
+      }
+    ]
+  ),
+
+  // Very high reject pressure: deep opposition but the law is now reality
+  createLawEvent(
+    'enactment_opposition_backlash',
+    'Opposition Backlash',
+    'LAW',
+    ['ENACTED'],
+    'REJECT',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'reject_pressure', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law was forced through over massive resistance, but the coalition proved it can act decisively. Opposition factions demand a seat at the table. How do you capitalise on this moment?',
+    [
+      {
+        text: 'Offer the opposition a role in implementation (forge broader unity)',
+        effects_summary: 'Major cohesion boost | Approval cost',
+        effects: {
+          coalitionCohesion: 3,
+          approval: -2
+        }
+      },
+      {
+        text: 'Double down on the law\'s benefits in public messaging (rally citizens)',
+        effects_summary: 'Major approval boost | Cohesion cost',
+        effects: {
+          approval: 3,
+          coalitionCohesion: -2
+        }
+      }
+    ]
+  ),
+
+  // High polarization: the coalition is divided but engaged
+  createLawEvent(
+    'enactment_ideological_fault_lines',
+    'Ideological Fault Lines',
+    'LAW',
+    ['ENACTED'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'polarization', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'The law exposed deep ideological rifts, but the passionate debate has also engaged citizens like never before. Both sides claim the law as proof their vision works. How do you steer the narrative?',
+    [
+      {
+        text: 'Host public forums to air differences openly (citizens love the transparency)',
+        effects_summary: 'Approval boost | Slight cohesion cost',
+        effects: {
+          approval: 2,
+          coalitionCohesion: -1
+        }
+      },
+      {
+        text: 'Forge a compromise narrative both sides can claim (unite the factions)',
+        effects_summary: 'Cohesion boost | Slight approval cost',
+        effects: {
+          coalitionCohesion: 2,
+          approval: -1
+        }
+      }
+    ]
+  ),
+
+  // Very high polarization: coalition under tension but resilient
+  createLawEvent(
+    'enactment_coalition_schism',
+    'Coalition Schism',
+    'LAW',
+    ['ENACTED'],
+    'NEUTRAL',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'polarization', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'The law\'s passage has hardened factional lines, but it has also demonstrated that the coalition can weather serious disagreement and still govern. Key figures on both sides are looking for a path forward.',
+    [
+      {
+        text: 'Turn the debate into a showcase of democratic strength (engage citizens)',
+        effects_summary: 'Major approval boost | Cohesion cost',
+        effects: {
+          approval: 3,
+          coalitionCohesion: -2
+        }
+      },
+      {
+        text: 'Broker a power-sharing agreement between the camps (unite the coalition)',
+        effects_summary: 'Major cohesion boost | Approval cost',
+        effects: {
+          coalitionCohesion: 3,
+          approval: -2
+        }
+      }
+    ]
+  ),
+
+  // High unrest: turbulent but transformative implementation
+  createLawEvent(
+    'enactment_turbulent_implementation',
+    'Turbulent Implementation',
+    'LAW',
+    ['ENACTED'],
+    'EXTERNALITY',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.35 }
+    ],
+    1.0,
+    null,
+    [],
+    'Civil unrest complicates the law\'s rollout, but the energy in the streets also shows citizens care deeply about governance. Organisers on both sides are looking for direction.',
+    [
+      {
+        text: 'Channel protests into structured feedback programs (harness civic energy)',
+        effects_summary: 'Approval boost | Slight cohesion cost',
+        effects: {
+          approval: 2,
+          coalitionCohesion: -1
+        }
+      },
+      {
+        text: 'Redirect resources to smooth implementation in key systems (stabilise)',
+        effects_summary: 'Cohesion boost | Slight approval cost',
+        effects: {
+          coalitionCohesion: 2,
+          approval: -1
+        }
+      }
+    ]
+  ),
+
+  // Very high unrest: public disorder but opportunity for renewal
+  createLawEvent(
+    'enactment_public_disorder',
+    'Public Disorder',
+    'LAW',
+    ['ENACTED'],
+    'EXTERNALITY',
+    'MAJOR',
+    [
+      { type: 'meter_above', meter: 'unrest', threshold: 0.6 }
+    ],
+    0.8,
+    null,
+    [],
+    'Widespread unrest erupts as the new law takes effect, but amid the chaos, grassroots movements are forming to shape the law\'s implementation. The coalition can either embrace or direct this energy.',
+    [
+      {
+        text: 'Transform protest movements into civic councils (empower the people)',
+        effects_summary: 'Major approval boost | Cohesion cost',
+        effects: {
+          approval: 3,
+          coalitionCohesion: -2
+        }
+      },
+      {
+        text: 'Deploy peacekeepers with community outreach programs (restore order)',
+        effects_summary: 'Major cohesion boost | Approval cost',
+        effects: {
+          coalitionCohesion: 3,
+          approval: -2
+        }
+      }
+    ]
+  )
+];
+
+/**
  * Get all law events
  */
 export function getAllLawEvents() {
@@ -1147,6 +1437,7 @@ export function getAllLawEvents() {
     ...DEBATE_CHOICE_EVENTS,
     ...FALLOUT_CHOICE_EVENTS,
     ...VOTING_CHOICE_EVENTS,
-    ...HERO_CHOICE_EVENTS
+    ...HERO_CHOICE_EVENTS,
+    ...ENACTMENT_EVENTS
   ];
 }
