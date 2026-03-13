@@ -29,7 +29,7 @@ declares:
           scourgePredictionConfidence: -0.12
       - text: "Request Allied Volunteers"
         description: "Call upon member empires to temporarily assign their own scouts to Coalition service. Maintains capability but some empires resent the imposition."
-        effects_summary: "Cost: Free | Prediction confidence + intel reserve: moderate loss | All empires: -1 approval"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: moderate loss | All empires: slight approval drop"
         effects:
           empireApproval:
             "@all": -1

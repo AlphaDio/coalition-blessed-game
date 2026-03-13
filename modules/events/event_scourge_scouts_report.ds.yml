@@ -22,7 +22,7 @@ declares:
     choices:
       - text: "Full Analysis - Dedicate resources to comprehensive intelligence processing"
         description: "Deploy additional analysts and cross-reference all available data sources. Costly but provides the most accurate predictions and inspires our forces."
-        effects_summary: "Cost: 75 requisition | Prediction confidence + intel reserve: major boost | All armies: +5 fervor"
+        effects_summary: "Cost: 75 requisition | Prediction confidence + intel reserve: major boost | All armies: moderate fervor boost"
         effects:
           coalitionEconomy:
             requisition: -75
@@ -31,7 +31,7 @@ declares:
             "@all": 5
       - text: "Share with Struggling Allies - Prioritize empires most in need"
         description: "Send detailed reports to our weakest member empires first. Builds goodwill with those who need help most while still improving our predictive capabilities."
-        effects_summary: "Cost: Free | Prediction confidence + intel reserve: modest boost | Poorest empires: +5 approval"
+        effects_summary: "Cost: Free | Prediction confidence + intel reserve: modest boost | Poorest empires: moderate approval boost"
         effects:
           empireApproval:
             "@poorest": 5

@@ -31,7 +31,7 @@ declares:
     choices:
       - text: "Grant ${favored.name} priority funds"
         description: "Redirect coalition resources to ${favored.name}'s war effort. Boosts their relations with everyone and increases total output."
-        effects_summary: "Gain: +50 requisition | ${favored.name} relations: +8 with all"
+        effects_summary: "Gain: +50 requisition | ${favored.name}: significant relations boost with all"
         effects:
           empireRelations:
             "$favored":
@@ -40,7 +40,7 @@ declares:
             requisition: 50
       - text: "Maintain equal distribution"
         description: "Keep the current allocation balanced. Everyone is moderately satisfied."
-        effects_summary: "All empires: +5 approval | ${favored.name} relations: +4 with all"
+        effects_summary: "All empires: moderate approval boost | ${favored.name}: moderate relations boost with all"
         effects:
           empireApproval:
             "@all": 5
@@ -49,7 +49,7 @@ declares:
               "@all": 4
       - text: "Centralize all funds"
         description: "Override individual allocations and pool everything centrally. Angers empires but consolidates resources."
-        effects_summary: "Gain: +75 requisition | All empires: -10 approval | ${favored.name} relations: -8 with all"
+        effects_summary: "Gain: +75 requisition | All empires: major approval drop | ${favored.name}: significant relations damage with all"
         effects:
           empireApproval:
             "@all": -10

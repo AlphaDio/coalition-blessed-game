@@ -22,7 +22,7 @@ declares:
     choices:
       - text: "Send reinforcements and analyze tactics"
         description: "Protect the convoy and analyze the Scourge attack patterns. Costly but builds confidence and goodwill."
-        effects_summary: "Cost: 100 requisition | All empires: +5 approval | Intel confidence: moderate boost"
+        effects_summary: "Cost: 100 requisition | All empires: moderate approval boost | Intel confidence: moderate boost"
         effects:
           coalitionEconomy:
             requisition: -100
@@ -31,7 +31,7 @@ declares:
           scourgePredictionConfidence: 0.15
       - text: "Abandon convoy but help struggling allies"
         description: "Write off the supplies and redirect aid to empires most in need. No cost but angers wealthy partners."
-        effects_summary: "Cost: Free | Poorest empires: +8 approval | Richest empires: -8 approval"
+        effects_summary: "Cost: Free | Poorest empires: major approval boost | Richest empires: major approval drop"
         effects:
           empireApproval:
             "@poorest": 8

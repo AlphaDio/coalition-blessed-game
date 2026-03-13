@@ -28,7 +28,6 @@ declares:
     base_weight: 1.0
     choices:
       - text: "Accept support from wealthy factions (gain momentum, lose legitimacy, empower rich)"
-        effects_summary: "Progress: +0.25 | Momentum: +0.15 | Legitimacy: -0.1 | Reject pressure: -0.05 | Richest empires: +3 approval"
         effects:
           progress: 0.25
           meters:
@@ -38,7 +37,6 @@ declares:
           empireApproval:
             "@richest": 3
       - text: "Seek grassroots support (lose momentum, gain legitimacy, empower weak)"
-        effects_summary: "Progress: +0.1 | Momentum: -0.1 | Legitimacy: +0.15 | Polarization: +0.05 | Poorest empires: +3 approval"
         effects:
           progress: 0.1
           meters:

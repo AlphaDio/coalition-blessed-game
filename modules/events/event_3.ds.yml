@@ -31,14 +31,14 @@ declares:
     choices:
       - text: "Favor ${favored.name}"
         description: "Grant preferential resource allocation to ${favored.name}. Pleases them greatly but angers everyone else."
-        effects_summary: "${favored.name}: +15 approval | Others: -8 approval"
+        effects_summary: "${favored.name}: major approval boost | Others: major approval drop"
         effects:
           empireApproval:
             "$favored": 15
             "$others": -8
       - text: "Maintain equal treatment"
         description: "Insist on fair distribution. Slightly frustrates everyone but preserves coalition unity."
-        effects_summary: "All empires: -2 approval | Coalition cohesion: +3"
+        effects_summary: "All empires: slight approval drop | Coalition cohesion: +3"
         effects:
           empireApproval:
             "@all": -2

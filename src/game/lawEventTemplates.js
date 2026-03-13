@@ -579,6 +579,7 @@ export const DEBATE_CHOICE_EVENTS = [
     [
       {
         text: 'Accept their support (gain momentum, lose legitimacy)',
+        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Reject pressure drop',
         effects: {
           progress: 0.25,
           meters: {
@@ -590,6 +591,7 @@ export const DEBATE_CHOICE_EVENTS = [
       },
       {
         text: 'Reject their influence (lose momentum, gain legitimacy)',
+        effects_summary: 'Slight progress boost | Momentum drop | Legitimacy boost | Slight polarization increase',
         effects: {
           progress: 0.1,
           meters: {
@@ -617,6 +619,7 @@ export const DEBATE_CHOICE_EVENTS = [
     [
       {
         text: 'Hold an open forum (slow progress, gain legitimacy)',
+        effects_summary: 'Slight progress boost | Momentum drop | Major legitimacy boost | Unrest drop | Polarization drop',
         effects: {
           progress: 0.05,
           meters: {
@@ -629,6 +632,7 @@ export const DEBATE_CHOICE_EVENTS = [
       },
       {
         text: 'Decline and expedite voting (fast progress, lose legitimacy)',
+        effects_summary: 'Major progress boost | Momentum boost | Legitimacy drop | Unrest increase | Reject pressure increase',
         effects: {
           progress: 0.35,
           meters: {
@@ -659,6 +663,7 @@ export const DEBATE_CHOICE_EVENTS = [
     [
       {
         text: 'Accept all recommendations (high legitimacy, slow progress)',
+        effects_summary: 'Slight progress boost | Major legitimacy boost | Momentum boost | Polarization drop',
         effects: {
           progress: 0.1,
           meters: {
@@ -670,6 +675,7 @@ export const DEBATE_CHOICE_EVENTS = [
       },
       {
         text: 'Dismiss the panel (maintain momentum, risk legitimacy)',
+        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Polarization increase',
         effects: {
           progress: 0.25,
           meters: {
@@ -706,6 +712,7 @@ export const FALLOUT_CHOICE_EVENTS = [
     [
       {
         text: 'Engage with protesters (reduce unrest, slow progress)',
+        effects_summary: 'Progress drop | Unrest drop | Legitimacy boost | Reject pressure increase | Momentum drop',
         effects: {
           progress: -0.1,
           meters: {
@@ -718,6 +725,7 @@ export const FALLOUT_CHOICE_EVENTS = [
       },
       {
         text: 'Suppress the rally (reduce momentum, increase unrest)',
+        effects_summary: 'Slight progress drop | Major unrest increase | Momentum drop | Reject pressure increase | Legitimacy drop',
         effects: {
           progress: -0.05,
           meters: {
@@ -746,6 +754,7 @@ export const FALLOUT_CHOICE_EVENTS = [
     [
       {
         text: 'Fund mitigation programs (slow progress, high legitimacy)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Momentum drop | Unrest drop',
         effects: {
           progress: 0.05,
           meters: {
@@ -757,6 +766,7 @@ export const FALLOUT_CHOICE_EVENTS = [
       },
       {
         text: 'Dismiss concerns as overblown (fast progress, risk backlash)',
+        effects_summary: 'Progress boost | Momentum boost | Reject pressure increase | Legitimacy drop',
         effects: {
           progress: 0.25,
           meters: {
@@ -784,6 +794,7 @@ export const FALLOUT_CHOICE_EVENTS = [
     [
       {
         text: 'Grant concessions (gain support, lose some momentum)',
+        effects_summary: 'Progress boost | Momentum boost | Slight legitimacy drop | Reject pressure drop | Polarization drop',
         effects: {
           progress: 0.15,
           meters: {
@@ -796,6 +807,7 @@ export const FALLOUT_CHOICE_EVENTS = [
       },
       {
         text: 'Refuse and risk their opposition (maintain vision, risk rejection)',
+        effects_summary: 'Slight progress boost | Slight momentum boost | Legitimacy boost | Major reject pressure increase | Polarization increase',
         effects: {
           progress: 0.1,
           meters: {
@@ -829,6 +841,7 @@ export const VOTING_CHOICE_EVENTS = [
     [
       {
         text: 'Accept amendment (high chance of passing, changes law intent)',
+        effects_summary: 'Major progress boost | Momentum boost | Slight legitimacy boost | Reject pressure drop | Polarization drop',
         effects: {
           progress: 0.4,
           meters: {
@@ -841,6 +854,7 @@ export const VOTING_CHOICE_EVENTS = [
       },
       {
         text: 'Reject amendment (maintain original vision, risk failure)',
+        effects_summary: 'Slight progress boost | Momentum drop | Legitimacy boost | Reject pressure increase | Polarization increase',
         effects: {
           progress: 0.1,
           meters: {
@@ -871,6 +885,7 @@ export const VOTING_CHOICE_EVENTS = [
     [
       {
         text: 'Offer incentives (gain votes, lose legitimacy)',
+        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Reject pressure drop | Slight polarization drop',
         effects: {
           progress: 0.3,
           meters: {
@@ -883,6 +898,7 @@ export const VOTING_CHOICE_EVENTS = [
       },
       {
         text: 'Delay vote to build consensus (slow but safer)',
+        effects_summary: 'Progress drop | Momentum drop | Slight legitimacy boost | Reject pressure drop | Polarization drop | Unrest drop',
         effects: {
           progress: -0.1,
           meters: {
@@ -912,6 +928,7 @@ export const VOTING_CHOICE_EVENTS = [
     [
       {
         text: 'Launch investigation (delay vote, preserve legitimacy)',
+        effects_summary: 'Progress drop | Legitimacy boost | Momentum drop | Reject pressure drop | Unrest drop',
         effects: {
           progress: -0.15,
           meters: {
@@ -924,6 +941,7 @@ export const VOTING_CHOICE_EVENTS = [
       },
       {
         text: 'Proceed with vote anyway (risk legitimacy for speed)',
+        effects_summary: 'Progress boost | Momentum boost | Major legitimacy drop | Reject pressure increase | Unrest increase | Polarization increase',
         effects: {
           progress: 0.25,
           meters: {

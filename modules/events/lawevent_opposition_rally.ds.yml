@@ -31,7 +31,6 @@ declares:
     base_weight: 1.0
     choices:
       - text: "Engage with protesters (reduce unrest, slow progress)"
-        effects_summary: "Progress: -0.1 | Unrest: -0.15 | Legitimacy: +0.1 | Reject pressure: +0.05 | Momentum: -0.1"
         effects:
           progress: -0.1
           meters:
@@ -40,7 +39,6 @@ declares:
             reject_pressure: 0.05
             momentum: -0.1
       - text: "Suppress the rally (reduce momentum, increase unrest)"
-        effects_summary: "Progress: -0.05 | Unrest: +0.2 | Momentum: -0.15 | Reject pressure: +0.15 | Legitimacy: -0.15"
         effects:
           progress: -0.05
           meters:

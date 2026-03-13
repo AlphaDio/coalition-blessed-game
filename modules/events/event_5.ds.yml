@@ -28,7 +28,7 @@ declares:
             requisition: 200
       - text: "Distribute to struggling allies"
         description: "Share the discovery with empires most in need. Less requisition but builds strong goodwill."
-        effects_summary: "Gain: +50 requisition | Poorest empires: +12 approval"
+        effects_summary: "Gain: +50 requisition | Poorest empires: major approval boost"
         effects:
           coalitionEconomy:
             requisition: 50
@@ -36,7 +36,7 @@ declares:
             "@poorest": 12
       - text: "Reward strong partners"
         description: "Allocate bonus resources to wealthy allies. Moderate requisition gain and strengthens key relationships."
-        effects_summary: "Gain: +75 requisition | Richest empires: +10 approval"
+        effects_summary: "Gain: +75 requisition | Richest empires: major approval boost"
         effects:
           coalitionEconomy:
             requisition: 75
