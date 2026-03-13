@@ -49,56 +49,56 @@ declares:
       consumption:
         # Synaptic Swarm has a strong bonus to biomass consumption
         biomass:
-          threshold: 300
-          effect:
-            type: population_percent
-            amount: 2.5
-        ancient_relics:
-          threshold: 60
-          effect:
-            type: army_fervor_bonus
-            amount: 15
-        super_alloys:
           threshold: 600
           effect:
-            type: army_protection_bonus
-            amount: 0.15
-        psycho_implants:
-          threshold: 60
-          effect:
-            type: army_resolve_bonus
-            amount: 0.15
-        sentient_cores:
-          threshold: 16
-          effect:
-            type: coalition_intel_bonus
-            amount: 1.5
-        wormhole_reactors:
-          threshold: 30
-          effect:
-            type: army_kill_rate_bonus
-            amount: 0.08
-        plasma_fuel:
-          threshold: 350
-          effect:
-            type: industrial_output_bonus
-            amount: 0.08
-        rare_gases:
+            type: population_percent
+            amount: 5
+        ancient_relics:
           threshold: 120
           effect:
-            type: empire_approval_bonus
-            amount: 1.5
-        # unique bonus to research speed through genomes consumption
-        genomes:
-          threshold: 250
+            type: army_fervor_bonus
+            amount: 30
+        super_alloys:
+          threshold: 1200
           effect:
-            type: research_speed_bonus
-            amount: 0.08
-        anti_grav_modules:
+            type: army_protection_bonus
+            amount: 0.45
+        psycho_implants:
+          threshold: 120
+          effect:
+            type: army_resolve_bonus
+            amount: 0.3
+        sentient_cores:
+          threshold: 32
+          effect:
+            type: coalition_intel_bonus
+            amount: 3
+        wormhole_reactors:
           threshold: 60
           effect:
+            type: army_kill_rate_bonus
+            amount: 0.16
+        plasma_fuel:
+          threshold: 700
+          effect:
+            type: industrial_output_bonus
+            amount: 0.16
+        rare_gases:
+          threshold: 240
+          effect:
+            type: empire_approval_bonus
+            amount: 3
+        # unique bonus to research speed through genomes consumption
+        genomes:
+          threshold: 500
+          effect:
+            type: research_speed_bonus
+            amount: 0.16
+        anti_grav_modules:
+          threshold: 120
+          effect:
             type: coalition_construction_bonus
-            amount: 1.5
+            amount: 3
     tags: ["Hive-Mind", "Biologic"]
     modifiers:
       intensity: 1.15

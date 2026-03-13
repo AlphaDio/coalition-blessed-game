@@ -47,55 +47,55 @@ declares:
           sentient_cores: 0.0003
       consumption:
         biomass:
-          threshold: 600
+          threshold: 1200
           effect:
             type: population_percent
-            amount: 2
+            amount: 4
         ancient_relics:
-          threshold: 60
-          effect:
-            type: army_fervor_bonus
-            amount: 15
-        super_alloys:
-          threshold: 600
-          effect:
-            type: army_protection_bonus
-            amount: 0.15
-        psycho_implants:
-          threshold: 60
-          effect:
-            type: army_resolve_bonus
-            amount: 0.15
-        sentient_cores:
-          threshold: 16
-          effect:
-            type: coalition_intel_bonus
-            amount: 1.5
-        wormhole_reactors:
-          threshold: 30
-          effect:
-            type: army_kill_rate_bonus
-            amount: 0.08
-        plasma_fuel:
-          threshold: 350
-          effect:
-            type: industrial_output_bonus
-            amount: 0.08
-        rare_gases:
           threshold: 120
           effect:
-            type: empire_approval_bonus
-            amount: 1.5
-        quantum_circuits:
+            type: army_fervor_bonus
+            amount: 30
+        super_alloys:
+          threshold: 1200
+          effect:
+            type: army_protection_bonus
+            amount: 0.45
+        psycho_implants:
+          threshold: 120
+          effect:
+            type: army_resolve_bonus
+            amount: 0.3
+        sentient_cores:
+          threshold: 32
+          effect:
+            type: coalition_intel_bonus
+            amount: 3
+        wormhole_reactors:
           threshold: 60
+          effect:
+            type: army_kill_rate_bonus
+            amount: 0.16
+        plasma_fuel:
+          threshold: 700
+          effect:
+            type: industrial_output_bonus
+            amount: 0.16
+        rare_gases:
+          threshold: 240
+          effect:
+            type: empire_approval_bonus
+            amount: 3
+        quantum_circuits:
+          threshold: 120
           effect:
             type: research_speed_bonus
-            amount: 0.15
+            amount: 0.3
         anti_grav_modules:
-          threshold: 60
+          threshold: 120
           effect:
             type: coalition_construction_bonus
-            amount: 1.5
+            amount: 3
     tags: ["Maritime", "Republic", "Militaristic"]
     modifiers:
       intensity: 0.95
