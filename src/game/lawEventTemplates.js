@@ -1162,7 +1162,7 @@ const ENACTMENT_EVENTS = [
     1.0,
     null,
     [],
-    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. How do you capitalise on this goodwill?',
+    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. How do you capitalize on this goodwill?',
     [
       {
         text: 'Celebrate publicly (boost approval across empires)',
@@ -1195,7 +1195,7 @@ const ENACTMENT_EVENTS = [
     0.8,
     null,
     [],
-    'The law was enacted through an exemplary process that even sceptics respect. The coalition radiates confidence. How do you channel this energy?',
+    'The law was enacted through an exemplary process that even skeptics respect. The coalition radiates confidence. How do you channel this energy?',
     [
       {
         text: 'Rally the people (major approval surge)',

@@ -162,28 +162,10 @@ export function computeEventWeight(event, context) {
   const momentum = context.meters.momentum || 0.5;
   const rejectPressure = context.meters.reject_pressure || 0.3;
   const unrest = context.meters.unrest || 0.2;
-  
-  // MOMENTUM: Primary effect - boosts positive progress events
-  // Higher momentum = more likely to get APPROVE/ADVANCE events
-  if (nature === 'APPROVE' || nature === 'ADVANCE') {
-    weight *= 1 + (momentum * 1.0);  // 1x to 2x at full momentum
-  }
-  
-  // REJECT_PRESSURE: Primary effect - boosts negative progress events
-  // Higher pressure = more likely to get REJECT/STALL events and hard rejects
-  if (nature === 'REJECT' || nature === 'STALL') {
-    weight *= 1 + (rejectPressure * 1.5);  // 1x to 2.5x at full pressure
-  }
-  
-  // UNREST: Primary effect - boosts externality events
-  // High unrest causes negative spillover effects
-  if (nature === 'EXTERNALITY') {
-    weight *= 1 + (unrest * 2.0);  // 1x to 3x at full unrest
-  }
 
-  // ENACTED phase: meters influence enactment event selection
-  // Makes the final meter values at enactment matter for post-enactment consequences
   if (context.phase === 'ENACTED') {
+    // ENACTED phase: all four key meters drive enactment event selection
+    // instead of the momentum/reject/unrest weights used during law processing
     const legitimacy = context.meters.legitimacy || 0.5;
     const polarization = context.meters.polarization || 0.25;
 
@@ -194,10 +176,29 @@ export function computeEventWeight(event, context) {
       weight *= 1 + (rejectPressure * 2.0);  // 1x to 3x at full reject pressure
     }
     if (nature === 'EXTERNALITY') {
-      weight *= 1 + (unrest * 2.5);  // stacks with above: high unrest = very likely turmoil
+      weight *= 1 + (unrest * 2.5);  // 1x to 3.5x at full unrest
     }
     if (nature === 'NEUTRAL') {
       weight *= 1 + (polarization * 1.5);  // 1x to 2.5x at full polarization
+    }
+  } else {
+    // Law process phases (DEBATE, FALLOUT, VOTING)
+    // MOMENTUM: Primary effect - boosts positive progress events
+    // Higher momentum = more likely to get APPROVE/ADVANCE events
+    if (nature === 'APPROVE' || nature === 'ADVANCE') {
+      weight *= 1 + (momentum * 1.0);  // 1x to 2x at full momentum
+    }
+    
+    // REJECT_PRESSURE: Primary effect - boosts negative progress events
+    // Higher pressure = more likely to get REJECT/STALL events and hard rejects
+    if (nature === 'REJECT' || nature === 'STALL') {
+      weight *= 1 + (rejectPressure * 1.5);  // 1x to 2.5x at full pressure
+    }
+    
+    // UNREST: Primary effect - boosts externality events
+    // High unrest causes negative spillover effects
+    if (nature === 'EXTERNALITY') {
+      weight *= 1 + (unrest * 2.0);  // 1x to 3x at full unrest
     }
   }
   
@@ -206,11 +207,16 @@ export function computeEventWeight(event, context) {
 
 // applyContextBias removed - cross-coupling eliminated
 // Each meter now has ONE primary effect in computeEventWeight:
-// - Momentum: boosts APPROVE/ADVANCE only
-// - Reject_Pressure: boosts REJECT/STALL only  
-// - Unrest: boosts EXTERNALITY only
-// - Legitimacy: affects unrest consequences (see applyUnrestExternalities)
-// ENACTED phase: all four meters (reject_pressure, legitimacy, polarization, unrest) drive enactment events
+// Law process phases (DEBATE/FALLOUT/VOTING):
+//   - Momentum: boosts APPROVE/ADVANCE only
+//   - Reject_Pressure: boosts REJECT/STALL only  
+//   - Unrest: boosts EXTERNALITY only
+//   - Legitimacy: affects unrest consequences (see applyUnrestExternalities)
+// ENACTED phase: all four meters drive enactment event selection
+//   - Legitimacy: boosts APPROVE/ADVANCE
+//   - Reject_Pressure: boosts REJECT
+//   - Unrest: boosts EXTERNALITY
+//   - Polarization: boosts NEUTRAL
 
 /**
  * Pick events using seeded weighted random selection

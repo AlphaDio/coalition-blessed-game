@@ -217,7 +217,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
   const log = [];
 
   // Skip if waiting for player choice on a law event (checked first so
-  // pending enactment events are waited on before the ENACTED early-return)
+  // pending enactment events are awaited before the ENACTED early-return)
   if (lawProcess.pendingEvent) {
     return log;
   }
