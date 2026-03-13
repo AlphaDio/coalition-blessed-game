@@ -3,6 +3,26 @@ import { getThreatScalar } from './scourgeThreat.js';
 
 const POWER_DEFINITIONS = [
   {
+    id: 'EP_REQUISITION_CACHE',
+    name: 'Requisition Cache Release',
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
+    duration_ticks: 0,
+    consumes_active_slot: false,
+    effects: [
+      { target: 'coalition.requisition', op: 'add', value: SCOURGE_MISSION_CONSTANTS.EP_REQUISITION_CACHE_AMOUNT }
+    ]
+  },
+  {
+    id: 'EP_CREDIT_LINE',
+    name: 'Imperial Credit Line',
+    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM_HIGH,
+    duration_ticks: 0,
+    consumes_active_slot: false,
+    effects: [
+      { target: 'empire.budget_credits', op: 'add', value: SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT }
+    ]
+  },
+  {
     id: 'EP_MOBILIZATION',
     name: 'Mobilization Surge',
     cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
@@ -64,12 +84,81 @@ function getPowerIntelCost(def) {
   return Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
 }
 
+function usesActiveSlot(def) {
+  if (!def) return false;
+  if (def.consumes_active_slot === false) return false;
+  const duration = Number(def.duration_ticks);
+  return Number.isFinite(duration) && duration > 0;
+}
+
+function ensureCoalitionEconomy(state) {
+  if (!state.coalitionEconomy || typeof state.coalitionEconomy !== 'object') {
+    state.coalitionEconomy = {
+      requisition: 0,
+      treasury_credits: 0,
+      allowance_credits: 0,
+      consumption_requisition_pool: 0,
+      consumption_requisition_pool_turns: 0
+    };
+  }
+  if (!Number.isFinite(state.coalitionEconomy.requisition)) {
+    state.coalitionEconomy.requisition = 0;
+  }
+}
+
+function applyImmediateEmergencyEffects(state, effects = []) {
+  const appliedEffects = [];
+
+  effects.forEach((effect) => {
+    if (effect?.op !== 'add') {
+      return;
+    }
+
+    const scaledValue = Number(effect.value);
+    if (!Number.isFinite(scaledValue) || scaledValue === 0) {
+      return;
+    }
+
+    const roundedValue = Math.round(scaledValue);
+    if (roundedValue === 0) {
+      return;
+    }
+
+    if (effect.target === 'coalition.requisition') {
+      ensureCoalitionEconomy(state);
+      state.coalitionEconomy.requisition += roundedValue;
+      appliedEffects.push({
+        target: effect.target,
+        value: roundedValue
+      });
+      return;
+    }
+
+    if (effect.target === 'empire.budget_credits') {
+      const empires = Array.isArray(state.empires) ? state.empires : [];
+      empires.forEach((empire) => {
+        const currentBudget = Number.isFinite(Number(empire?.budget_credits))
+          ? Number(empire.budget_credits)
+          : 0;
+        empire.budget_credits = currentBudget + roundedValue;
+      });
+      appliedEffects.push({
+        target: effect.target,
+        value: roundedValue,
+        empireCount: empires.length
+      });
+    }
+  });
+
+  return appliedEffects;
+}
+
 export function canActivateEmergencyPower(state, powerId) {
   const def = POWER_DEFINITIONS.find(p => p.id === powerId);
   if (!def) return { canActivate: false, reason: 'Unknown emergency power' };
 
   const activeCount = (state.activeEmergencyPowers || []).length;
-  if (activeCount >= SCOURGE_MISSION_CONSTANTS.EP_MAX_ACTIVE) {
+  if (usesActiveSlot(def) && activeCount >= SCOURGE_MISSION_CONSTANTS.EP_MAX_ACTIVE) {
     return { canActivate: false, reason: 'Max active emergency powers reached' };
   }
 
@@ -93,7 +182,6 @@ export function activateEmergencyPower(state, powerId) {
     return { success: false, error: check.reason };
   }
 
-  const scaledDuration = Math.round(scaleByThreat(def.duration_ticks, state));
   const scaledEffects = (def.effects || []).map(effect => ({
     ...effect,
     value: scaleByThreat(effect.value, state)
@@ -101,6 +189,13 @@ export function activateEmergencyPower(state, powerId) {
 
   const intelCost = getPowerIntelCost(def);
   state.coalitionIntel = Math.max(0, (state.coalitionIntel || 0) - intelCost);
+
+  if (!usesActiveSlot(def)) {
+    const appliedEffects = applyImmediateEmergencyEffects(state, scaledEffects);
+    return { success: true, activePower: def, appliedEffects };
+  }
+
+  const scaledDuration = Math.round(scaleByThreat(def.duration_ticks, state));
 
   if (!Array.isArray(state.activeEmergencyPowers)) {
     state.activeEmergencyPowers = [];

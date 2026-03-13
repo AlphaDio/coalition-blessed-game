@@ -327,6 +327,24 @@ systems:
           - target: "coalition.requisition_gen"
             op: "mul"
             value: "tunable.ep_requisition_boost"
+      - id: "EP_REQUISITION_CACHE"
+        name: "Requisition Cache Release"
+        cost_glory: "tunable.ep_cost_medium"
+        duration_ticks: 0
+        consumes_active_slot: false
+        effects:
+          - target: "coalition.requisition"
+            op: "add"
+            value: "tunable.ep_requisition_cache_amount"
+      - id: "EP_CREDIT_LINE"
+        name: "Imperial Credit Line"
+        cost_glory: "tunable.ep_cost_medium_high"
+        duration_ticks: 0
+        consumes_active_slot: false
+        effects:
+          - target: "empire.budget_credits"
+            op: "add"
+            value: "tunable.ep_empire_credit_grant"
       - id: "EP_WAR_INDUSTRY"
         name: "War Industry Overdrive"
         cost_glory: "tunable.ep_cost_medium_high"
@@ -690,7 +708,7 @@ help:
       - "When Mission Meter fills, a Deep Mission event appears (secondary Glory source)."
   emergency_powers:
     text:
-      - "Emergency Powers cost Glory per-use and apply timed buff states."
+      - "Emergency Powers cost Intel per-use and can apply timed buffs or immediate economic injections."
       - "Higher Threat increases both duration and effect."
 
 # =============================================================================

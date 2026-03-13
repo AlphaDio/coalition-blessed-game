@@ -742,6 +742,8 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} EP_COST_EXTREME - Intel cost for apex emergency powers
  * @property {number} EP_BASE_DURATION - Base duration for emergency powers
  * @property {number} EP_MAX_ACTIVE - Maximum concurrent active emergency powers
+ * @property {number} EP_REQUISITION_CACHE_AMOUNT - Base requisition granted by the instant requisition power
+ * @property {number} EP_EMPIRE_CREDIT_GRANT - Base credits granted to each empire by the instant credit power
  * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.10)
  * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase per tick while using emergency budget mode
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration (ticks) of the emergency glory penalty after last use
@@ -779,6 +781,8 @@ export const SCOURGE_MISSION_CONSTANTS = {
   EP_COST_EXTREME: 22,
   EP_BASE_DURATION: 140,
   EP_MAX_ACTIVE: 2,
+  EP_REQUISITION_CACHE_AMOUNT: 120,
+  EP_EMPIRE_CREDIT_GRANT: 900,
   MISSION_METER_PER_REQUISITION: 0.06,
   MISSION_NEGATIVE_THREAT_INCREASE: 0.45,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 90,

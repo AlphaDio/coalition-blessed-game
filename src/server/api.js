@@ -921,6 +921,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
         cost_intel: power.cost_intel ?? power.cost_glory ?? 0,
         cost_glory: power.cost_glory ?? 0,
         duration_ticks: power.duration_ticks,
+        consumes_active_slot: power.consumes_active_slot ?? (Number(power.duration_ticks) > 0),
         effects: power.effects
       }));
       res.sendSuccess({ emergencyPowers });

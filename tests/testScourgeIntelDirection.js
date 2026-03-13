@@ -2,6 +2,11 @@
 
 import { createArmy, createEmpire, createGameState } from '../src/game/types.js';
 import {
+  activateEmergencyPower,
+  canActivateEmergencyPower,
+  getEmergencyPowerDefinitions
+} from '../src/game/emergencyPowers.js';
+import {
   applyMissionSliderEffects,
   buildDeepMissionEvent,
   buildPreAttackMissionEvent,
@@ -156,6 +161,75 @@ function testDirectTargetUsesIntel() {
   assert(manager.state.scourgePrediction.targetEmpireId === 'empire_2', 'Prediction should immediately point at directed target');
   assert(manager.state.scourgePrediction.targetingMode === 'directed', 'Prediction should mark directed targeting mode');
   assert(manager.state.scourgePrediction.confidenceLevel === 'high', 'Directed target should show high confidence');
+}
+
+function testInstantEmergencyPowersGrantResources() {
+  const state = createBasicState();
+  state.coalitionIntel = 50;
+  state.empires[0].budget_credits = 1200;
+  state.empires[1].budget_credits = 800;
+
+  const requisitionDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_REQUISITION_CACHE');
+  const creditsDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_CREDIT_LINE');
+  const requisitionBefore = state.coalitionEconomy.requisition || 0;
+  const creditBudgetsBefore = state.empires.map((empire) => empire.budget_credits || 0);
+
+  const requisitionResult = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(requisitionResult.success, 'Instant requisition power should activate successfully');
+  assert(
+    approxEqual(
+      state.coalitionEconomy.requisition,
+      requisitionBefore + SCOURGE_MISSION_CONSTANTS.EP_REQUISITION_CACHE_AMOUNT
+    ),
+    'Instant requisition power should add coalition requisition immediately'
+  );
+  assert(
+    approxEqual(state.coalitionIntel, 50 - (requisitionDef?.cost_intel || 0)),
+    'Instant requisition power should spend intel'
+  );
+  assert(
+    (state.activeEmergencyPowers || []).length === 0,
+    'Instant requisition power should not consume an active emergency power slot'
+  );
+
+  const creditResult = activateEmergencyPower(state, 'EP_CREDIT_LINE');
+  assert(creditResult.success, 'Instant credit power should activate successfully');
+  state.empires.forEach((empire, index) => {
+    assert(
+      approxEqual(empire.budget_credits, creditBudgetsBefore[index] + SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT),
+      `Expected ${empire.name} to receive ${SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT} credits`
+    );
+  });
+  assert(
+    approxEqual(
+      state.coalitionIntel,
+      50 - (requisitionDef?.cost_intel || 0) - (creditsDef?.cost_intel || 0)
+    ),
+    'Instant credit power should also spend intel'
+  );
+  assert(
+    (state.activeEmergencyPowers || []).length === 0,
+    'Instant credit power should not create an active timed buff'
+  );
+}
+
+function testInstantEmergencyPowersIgnoreActiveSlotCap() {
+  const state = createBasicState();
+  state.coalitionIntel = 50;
+  state.activeEmergencyPowers = [
+    { id: 'EP_MOBILIZATION', remainingDuration: 20, totalDuration: 20, effects: [] },
+    { id: 'EP_WAR_INDUSTRY', remainingDuration: 20, totalDuration: 20, effects: [] }
+  ];
+
+  const check = canActivateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(check.canActivate, `Instant emergency powers should bypass active slot cap, got: ${check.reason}`);
+
+  const result = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(result.success, 'Instant requisition power should still activate at active-slot cap');
+  assert(
+    state.activeEmergencyPowers.length === 2,
+    'Instant emergency power should leave active timed powers unchanged'
+  );
 }
 
 function testRegularEventSyncsIntelAndConfidence() {
@@ -341,6 +415,12 @@ function run() {
 
   testDirectTargetUsesIntel();
   console.log('PASS Direct target spends intel and updates prediction');
+
+  testInstantEmergencyPowersGrantResources();
+  console.log('PASS Instant emergency powers inject credits and requisition without occupying slots');
+
+  testInstantEmergencyPowersIgnoreActiveSlotCap();
+  console.log('PASS Instant emergency powers remain usable while timed power slots are full');
 
   testRegularEventSyncsIntelAndConfidence();
   console.log('PASS Regular events keep intel and confidence synchronized');
