@@ -5,6 +5,11 @@ import { FRONT_BATTLE_MODIFIERS } from './constants.js';
 import { syncUnitsFromArmy } from './armyComposition.js';
 import { getEmpireMilitaryModifierSet } from './empireModifiers.js';
 import { consumeArmyExperienceSurgeForRound } from './armyExperience.js';
+import {
+  getEffectiveArmyFervor,
+  getEffectiveArmyProtection,
+  getEffectiveArmyResolve
+} from './armyBattlePrep.js';
 
 /**
  * Calculate MP participation rate based on organization
@@ -54,7 +59,7 @@ function calculateEngagedUnits(army, battlefieldSize, isBroken) {
  */
 function getEffectiveKillRate(army) {
   const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
-  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervor = getEffectiveArmyFervor(army);
   const fervorBonus = (fervor / 100) * 0.10; // Up to +10% at max fervor
   const bonus = army.killRateBonus || 0;
   return Math.min(1, killRate + fervorBonus + bonus);
@@ -70,7 +75,7 @@ function calculateMoraleRegen(army) {
   const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
   const orgFactor = org / 100;
   // Fervor contributes to morale resilience: up to +0.5 per tick at max fervor
-  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervor = getEffectiveArmyFervor(army);
   const fervorFactor = fervor / 100;
   return 0.5 + (orgFactor * 1.5) + (fervorFactor * 0.5);
 }
@@ -200,7 +205,7 @@ function applyModifiers(baseDamage, army) {
     return 0;
   }
   
-   const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+   const fervor = getEffectiveArmyFervor(army);
    const organization = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
   
   // Fervor modifier: FERVOR_MIN to (FERVOR_MIN + FERVOR_RANGE)
@@ -382,11 +387,8 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
   // Apply protection (damage reduction)
-  const baseProtection = typeof defendingArmy.protection === 'number' && !isNaN(defendingArmy.protection)
-    ? defendingArmy.protection
-    : 0;
   const surgeProtectionBonus = Math.max(0, Number(defendingSurge?.protectionBonus) || 0);
-  const effectiveProtection = Math.min(1, baseProtection + (defendingArmy.protectionBonus || 0) + surgeProtectionBonus);
+  const effectiveProtection = getEffectiveArmyProtection(defendingArmy, surgeProtectionBonus);
   const finalMPDmg = modifiedMPDmg * (1 - effectiveProtection) * FRONT_BATTLE_MODIFIERS.MP_DAMAGE_MULT;
   
   // Split into permanent and temporary: attacker's kill rate determines how much of the defender's
@@ -451,11 +453,8 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const modifiedMODmg = applyModifiers(rawMODmg, attackingArmy);
   
   // Apply resolve (morale resistance)
-  const baseResolve = typeof defendingArmy.resolve === 'number' && !isNaN(defendingArmy.resolve)
-    ? defendingArmy.resolve
-    : 0;
   const surgeResolveBonus = Math.max(0, Number(defendingSurge?.resolveBonus) || 0);
-  const effectiveResolve = Math.min(1, baseResolve + (defendingArmy.resolveBonus || 0) + surgeResolveBonus);
+  const effectiveResolve = getEffectiveArmyResolve(defendingArmy, surgeResolveBonus);
   const finalMODmg = modifiedMODmg * (1 - effectiveResolve);
   
   // Apply morale damage

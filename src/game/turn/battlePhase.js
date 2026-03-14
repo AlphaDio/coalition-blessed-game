@@ -15,6 +15,7 @@ import {
 } from '../battles.js';
 import { buildPreAttackMissionEvent } from '../scourgeMissions.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
+import { clearArmyBattlePrep } from '../armyBattlePrep.js';
 import {
   collectRebelliousArmyIds,
   getBattleChance,
@@ -23,6 +24,20 @@ import {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function clearBattlePrepForArmies(armies = []) {
+  armies.forEach((army) => {
+    if (!army) return;
+    clearArmyBattlePrep(army);
+    army.killRateBonus = 0;
+  });
+}
+
+function clearBattlePrepByIds(state, armyIds = []) {
+  const idSet = new Set((armyIds || []).map(id => String(id)));
+  if (idSet.size === 0) return;
+  clearBattlePrepForArmies((state.armies || []).filter(army => idSet.has(String(army.id))));
 }
 
 export function getMutualSupportRelation(state, sourceEmpireId, targetEmpireId) {
@@ -159,10 +174,15 @@ export function handleBattlePhase(state, rng, log, logger) {
         const result = handleScourgeBattleEnd(state, front, winnerSide);
         log.push(`Scourge battle ended: ${winnerSide === 'left' ? 'Coalition Victory' : 'Scourge Victory'}`);
         if (result.log) log.push(...result.log);
+        clearBattlePrepByIds(state, front.participatingArmyIds || []);
       } else if (front.isInsurrectionBattle) {
         const result = handleInsurrectionBattleEnd(state, front, winnerSide);
         log.push(`Insurrection battle ended: ${winnerSide === 'left' ? 'Loyal Victory' : 'Rebellion Victory'}`);
         if (result.log) log.push(...result.log);
+        clearBattlePrepByIds(state, [
+          ...(front.loyalArmyIds || []),
+          ...(front.rebelliousArmyIds || [])
+        ]);
       }
     }
   });
@@ -237,14 +257,6 @@ export function triggerScourgeBattle(state, rng, battleChance, activeBattles, lo
         const battleParticipants = resolveScourgeParticipantPlans(state, participantPlans);
         const battleResult = startScourgeBattle(state, battleParticipants, rng);
         log.push(...battleResult.log);
-        // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
-        for (const army of state.armies) {
-          army.fervorBonus = 0;
-          army.protectionBonus = 0;
-          army.resolveBonus = 0;
-          army.killRateBonus = 0;
-          army.timedFervorBonuses = []; // Clear event-based fervor bonuses
-        }
         for (const empire of state.empires) {
           empire.stats.approvalBonus = 0;
         }
@@ -267,14 +279,6 @@ export function triggerScourgeBattle(state, rng, battleChance, activeBattles, lo
 
   log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
   logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
-  // Reset fervor, protection, resolve, and kill rate bonuses after scourge battle
-  for (const army of state.armies) {
-    army.fervorBonus = 0;
-    army.protectionBonus = 0;
-    army.resolveBonus = 0;
-    army.killRateBonus = 0;
-    army.timedFervorBonuses = []; // Clear event-based fervor bonuses
-  }
   for (const empire of state.empires) {
     empire.stats.approvalBonus = 0;
   }

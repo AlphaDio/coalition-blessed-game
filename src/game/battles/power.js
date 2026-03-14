@@ -1,11 +1,12 @@
 import { BATTLE_CONSTANTS } from '../constants.js';
+import { getEffectiveArmyFervor } from '../armyBattlePrep.js';
 
 export function calculateArmyPower(army) {
   if (!army) {
     return 0;
   }
   const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
-  const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+  const fervor = getEffectiveArmyFervor(army);
   const power = (
     BATTLE_CONSTANTS.ARMY_POWER_ORG_WEIGHT * org +
     BATTLE_CONSTANTS.ARMY_POWER_FERVOR_WEIGHT * fervor

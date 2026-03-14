@@ -100,11 +100,11 @@ function testUnityMartialCelebrationTargetsEmpireArmy() {
   assert(celebrationEvent, 'Expected second unity celebration event');
 
   const army = state.armies[0];
-  const bonusesBefore = (army.timedFervorBonuses || []).length;
+  const fervorBefore = army.fervor || 0;
   state.activeEvent = celebrationEvent;
   const choiceResult = handleEventChoice(state, celebrationEvent.id, 2);
   assert(choiceResult.success, 'Expected martial celebration choice to resolve successfully');
-  assert((army.timedFervorBonuses || []).length > bonusesBefore, 'Expected martial celebration to grant army fervor bonus');
+  assert((army.fervor || 0) > fervorBefore, 'Expected martial celebration to raise army baseline fervor');
 }
 
 function testUnityThresholdCurve() {

@@ -7,6 +7,7 @@ import { getLogger } from '../../modules/logger.js';
 import { MODIFIER_ARMY_ORG_SCALE } from '../improvements/types.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { getArmyPopulationDemandMultiplier } from '../consumptionScaling.js';
+import { addArmyBattlePrep } from '../armyBattlePrep.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -125,8 +126,8 @@ function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logg
   }
 
   if (effect.type === 'fervor_bonus') {
-    army.fervor = clampStat((army.fervor || 0) + scaledAmount, 0, 100);
-    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} fervor (${hits} hits)`;
+    const totalPrep = addArmyBattlePrep(army, 'fervor', scaledAmount);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle fervor (${hits} hits, prep ${totalPrep.toFixed(3)})`;
     log.push(msg);
     logger.info(msg);
     return;
@@ -230,7 +231,7 @@ export function applyArmyPassiveStatModifiers(state) {
       army.organization = clampStat((army.organization || 0) + passiveOrganizationGain, 0, 100);
     }
     if (passiveFervorGain > 0) {
-      army.fervor = clampStat((army.fervor || 0) + passiveFervorGain, 0, 100);
+      addArmyBattlePrep(army, 'fervor', passiveFervorGain);
     }
   });
 }
@@ -319,7 +320,7 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       ? ECONOMY_CONSTANTS.ARMY_WANTS_FERVOR_DECAY_BASE_PER_TICK * supplySignals.wantsDeficit
       : 0;
     if (wantsFervorLoss > 0) {
-      army.fervor = clampStat((army.fervor || 0) - wantsFervorLoss, 0, 100);
+      addArmyBattlePrep(army, 'fervor', -wantsFervorLoss);
     }
 
     const wantsOrgDecay = supplySignals.wantsActive
@@ -329,13 +330,6 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
       army.organization = clampStat((army.organization || 0) - wantsOrgDecay, 0, 100);
     }
     const baseRate = army.reinforcementRate || 100;
-
-    let totalFervorBonus = (army.fervorBonus || 0);
-    if (army.timedFervorBonuses && Array.isArray(army.timedFervorBonuses)) {
-      totalFervorBonus += army.timedFervorBonuses.reduce((sum, bonus) => sum + bonus.amount, 0);
-    }
-    const effectiveFervor = Math.min(100, (army.fervor || 0) + totalFervorBonus);
-    const fervorModifier = 0.5 + (effectiveFervor / 100) * 1.0;
 
     const population = clampPopulation(empire.stats?.population || 1000, 1000);
     const logPopulation = Math.log10(population);
@@ -352,7 +346,6 @@ export function replenishArmyManpower(state, activeBattles, log = []) {
 
     let effectiveRate =
       baseRate *
-      fervorModifier *
       populationModifier *
       replenishmentMultiplier *
       supplySignals.replenishmentMultiplier;

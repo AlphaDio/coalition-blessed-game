@@ -6,6 +6,7 @@ import {
   SCOURGE_PREDICTION_CONSTANTS,
   ARMY_EXPERIENCE_CONSTANTS
 } from './constants.js';
+import { createArmyBattlePrep, ensureArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 
 function parseConsumptionRules(consumption) {
@@ -88,11 +89,8 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     empireId,
     name,
     fervor: initialFervor,
-    fervorBonus: 0,
-    protectionBonus: 0,
-    resolveBonus: 0,
+    battlePrep: createArmyBattlePrep(),
     killRateBonus: 0,
-    timedFervorBonuses: [], // Array of {amount, expiresAt, source} for event-based fervor
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -601,30 +599,6 @@ export function createGameState(seed = 0) {
 }
 
 /**
- * Clean up expired timed fervor bonuses for an army
- * Removes bonuses where expiresAt <= currentTurn
- * @param {Object} army - Army object
- * @param {number} currentTurn - Current game turn
- * @returns {Array} Array of expired bonuses that were removed
- */
-export function cleanupExpiredFervorBonuses(army, currentTurn) {
-  if (!army.timedFervorBonuses || !Array.isArray(army.timedFervorBonuses)) {
-    return [];
-  }
-  
-  const expired = [];
-  army.timedFervorBonuses = army.timedFervorBonuses.filter(bonus => {
-    if (bonus.expiresAt <= currentTurn) {
-      expired.push(bonus);
-      return false; // Remove expired bonus
-    }
-    return true; // Keep active bonus
-  });
-  
-  return expired;
-}
-
-/**
  * Clean up expired timed modifiers for the entire state
  * Reverts modifier changes and removes expired entries
  * @param {Object} state - Game state
@@ -658,25 +632,16 @@ export function cleanupExpiredTimedModifiers(state) {
  * Clean up all expired bonuses and modifiers for the entire state
  * Call this once per turn to maintain system integrity
  * @param {Object} state - Game state
- * @returns {Object} Summary of cleanup {fervorBonuses: [], timedModifiers: []}
+ * @returns {Object} Summary of cleanup {timedModifiers: []}
  */
 export function cleanupAllExpiredBonuses(state) {
   const summary = {
-    fervorBonuses: [],
     timedModifiers: []
   };
-  
-  // Clean fervor bonuses for all armies
-  if (state.armies && Array.isArray(state.armies)) {
-    state.armies.forEach(army => {
-      const expired = cleanupExpiredFervorBonuses(army, state.turn);
-      summary.fervorBonuses.push(...expired);
-    });
-  }
-  
+
   // Clean timed modifiers
   summary.timedModifiers = cleanupExpiredTimedModifiers(state);
-  
+
   return summary;
 }
 
@@ -785,10 +750,11 @@ export function migrateGameState(state) {
         army.lastInsurrectionTurn = Math.floor(army.lastInsurrectionTurn);
       }
       
-      // Ensure timed fervor bonuses array exists
-      if (!Array.isArray(army.timedFervorBonuses)) {
-        army.timedFervorBonuses = [];
-      }
+      ensureArmyBattlePrep(army);
+      delete army.fervorBonus;
+      delete army.protectionBonus;
+      delete army.resolveBonus;
+      delete army.timedFervorBonuses;
 
       if (!army.supply_state || typeof army.supply_state !== 'object') {
         army.supply_state = {
@@ -1071,11 +1037,15 @@ export function migrateGameState(state) {
     if (!state.market.buy_backlog_by_commodity_and_owner || typeof state.market.buy_backlog_by_commodity_and_owner !== 'object') {
       state.market.buy_backlog_by_commodity_and_owner = {};
     }
+    if (!state.market.price_multiplier_by_commodity || typeof state.market.price_multiplier_by_commodity !== 'object') {
+      state.market.price_multiplier_by_commodity = {};
+    }
 
     Object.entries(state.market).forEach(([marketKey, marketState]) => {
       if (!marketState || typeof marketState !== 'object') return;
       if (marketKey === 'price_by_commodity' || marketKey === 'last_price_by_commodity' ||
-          marketKey === 'floor_price_by_commodity' || marketKey === 'price_range_by_commodity' ||
+          marketKey === 'floor_price_by_commodity' || marketKey === 'price_multiplier_by_commodity' ||
+          marketKey === 'price_range_by_commodity' ||
           marketKey === 'remaining_sell_offers_post_clear' || marketKey === 'remaining_buy_offers_post_clear' ||
           marketKey === 'buy_backlog_by_commodity' || marketKey === 'buy_backlog_by_commodity_and_owner') {
         return;
@@ -1090,6 +1060,17 @@ export function migrateGameState(state) {
       if (!Number.isFinite(marketState.buy_backlog_total)) {
         marketState.buy_backlog_total = 0;
       }
+      if (!Number.isFinite(marketState.run_price_multiplier) || marketState.run_price_multiplier <= 0) {
+        marketState.run_price_multiplier = Number.isFinite(state.market.price_multiplier_by_commodity?.[marketKey])
+          ? state.market.price_multiplier_by_commodity[marketKey]
+          : 1;
+      }
+      if (!Number.isFinite(marketState.base_floor_price) || marketState.base_floor_price <= 0) {
+        marketState.base_floor_price = Number.isFinite(marketState.floor_price) && marketState.run_price_multiplier > 0
+          ? marketState.floor_price / marketState.run_price_multiplier
+          : marketState.floor_price;
+      }
+      state.market.price_multiplier_by_commodity[marketKey] = marketState.run_price_multiplier;
       if (!Number.isFinite(marketState.flow_demand_qty_turn)) {
         marketState.flow_demand_qty_turn = 0;
       }

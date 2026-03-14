@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 
 // Economy system configuration
 let ECONOMY_CONFIG = null;
+const RUN_PRICE_MULTIPLIERS = [0.5, 1, 1.5, 2, 3];
 
 /**
  * Load economy system configuration
@@ -65,14 +66,27 @@ function getDefaultEconomyConfig() {
 /**
  * Create market state for a commodity
  */
-export function createMarketState(commodityKey, initialPrice = 1.0, floorPrice = null, priceRange = null) {
+export function createMarketState(
+  commodityKey,
+  initialPrice = 1.0,
+  floorPrice = null,
+  priceRange = null,
+  options = {}
+) {
   const resolvedFloorPrice = floorPrice || initialPrice;
+  const baseFloorPrice = Number.isFinite(options.baseFloorPrice)
+    ? options.baseFloorPrice
+    : resolvedFloorPrice;
+  const runPriceMultiplier = Number.isFinite(options.runPriceMultiplier)
+    ? options.runPriceMultiplier
+    : 1;
   return {
     commodity: commodityKey,
     price: initialPrice,
     last_price: initialPrice,
     floor_price: resolvedFloorPrice,
-    base_floor_price: resolvedFloorPrice,
+    base_floor_price: baseFloorPrice,
+    run_price_multiplier: runPriceMultiplier,
     price_range: priceRange || { min: initialPrice, max: initialPrice },
     demand_qty: 0,
     supply_qty: 0,
@@ -126,13 +140,15 @@ export function createSellOffer(id, ownerType, ownerId, commodity, qty, askPrice
 
 /**
  * Initialize market for all commodities
- * Prices start at floor_price with variance between 50% and 150% of floor
+ * Prices start at floor_price with variance between 50% and 150% of floor,
+ * after a seeded run multiplier has been applied.
  */
 export function initializeMarket(commodities, rng = Math.random) {
   const market = {
     price_by_commodity: {},
     last_price_by_commodity: {},
     floor_price_by_commodity: {},
+    price_multiplier_by_commodity: {},
     price_range_by_commodity: {},
     remaining_sell_offers_post_clear: [],
     remaining_buy_offers_post_clear: [],
@@ -142,21 +158,27 @@ export function initializeMarket(commodities, rng = Math.random) {
 
   commodities.forEach(commodity => {
     const baseFloorPrice = commodity.floor_price || 1.0;
+    const runPriceMultiplier = RUN_PRICE_MULTIPLIERS[Math.floor(rng() * RUN_PRICE_MULTIPLIERS.length)] || 1;
     // Randomize floor price by seed (85% to 115%)
     const floorVariance = 0.85 + rng() * 0.3;
-    const floorPrice = baseFloorPrice * floorVariance;
+    const randomizedBaseFloor = baseFloorPrice * floorVariance;
+    const floorPrice = randomizedBaseFloor * runPriceMultiplier;
     // Random initial price between 50% and 150% of floor for reasonable starting range
     const varianceFactor = 0.5 + rng() * 1.0; // 0.5 to 1.5
     const initialPrice = floorPrice * varianceFactor;
     const priceRange = { min: floorPrice * 0.5, max: floorPrice * 1.5 };
 
-    const marketState = createMarketState(commodity.key, initialPrice, floorPrice, priceRange);
+    const marketState = createMarketState(commodity.key, initialPrice, floorPrice, priceRange, {
+      baseFloorPrice: randomizedBaseFloor,
+      runPriceMultiplier
+    });
     market[commodity.key] = marketState;
 
     // Populate aggregate maps
     market.price_by_commodity[commodity.key] = initialPrice;
     market.last_price_by_commodity[commodity.key] = initialPrice;
     market.floor_price_by_commodity[commodity.key] = floorPrice;
+    market.price_multiplier_by_commodity[commodity.key] = runPriceMultiplier;
     market.price_range_by_commodity[commodity.key] = priceRange;
   });
 
@@ -304,7 +326,8 @@ export function executeMarketClearing(state, buyOrders, sellOffers) {
   // Clear market for each commodity
   for (const commodityKey of Object.keys(market)) {
     if (commodityKey === 'price_by_commodity' || commodityKey === 'last_price_by_commodity' ||
-        commodityKey === 'floor_price_by_commodity' || commodityKey === 'price_range_by_commodity' ||
+        commodityKey === 'floor_price_by_commodity' || commodityKey === 'price_multiplier_by_commodity' ||
+        commodityKey === 'price_range_by_commodity' ||
         commodityKey === 'remaining_sell_offers_post_clear' ||
         commodityKey === 'remaining_buy_offers_post_clear' ||
         commodityKey === 'buy_backlog_by_commodity' ||
