@@ -14,16 +14,6 @@ function getPrepClampRange(stat) {
   return { min: -Number.MAX_SAFE_INTEGER, max: Number.MAX_SAFE_INTEGER };
 }
 
-function getEffectiveClampRange(stat) {
-  if (stat === 'fervor') {
-    return { min: 0, max: 100 };
-  }
-  if (stat === 'protection' || stat === 'resolve') {
-    return { min: 0, max: 1 };
-  }
-  return { min: -Number.MAX_SAFE_INTEGER, max: Number.MAX_SAFE_INTEGER };
-}
-
 export function createArmyBattlePrep() {
   return {
     fervor: 0,
