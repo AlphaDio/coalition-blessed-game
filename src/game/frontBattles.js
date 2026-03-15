@@ -387,6 +387,8 @@ function processSideAttack(front, attackingArmy, defendingArmy, attackingSide, d
   const modifiedMPDmg = applyModifiers(rawMPDmg, attackingArmy);
   
   // Apply protection (damage reduction)
+  // Empire protection follows the same pattern as damageAdd/damageMult above:
+  // pre-aggregated on combined armies via _empireProtection, computed from mods for single armies.
   const surgeProtectionBonus = Math.max(0, Number(defendingSurge?.protectionBonus) || 0);
   const defendingMilitaryMods = getEmpireMilitaryModifierSet(worldState, defendingArmy.empireId);
   const empireProtection = Number.isFinite(defendingArmy._empireProtection)

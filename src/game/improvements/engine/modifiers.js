@@ -135,12 +135,8 @@ export function applyImprovementModifiers(state) {
         // Multiplicative damage bonus for this empire's armies (e.g. 0.1 = +10%); applied in frontBattles.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'army_replenishment_mult' || stat === 'army_consumption_mp_gain_mult') {
-        // Persistent military scaling modifiers applied in armyPhase.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'army_protection') {
-        // Empire-level army protection bonus (0-1 scale); applied in frontBattles as damage reduction.
+      } else if (stat === 'army_replenishment_mult' || stat === 'army_consumption_mp_gain_mult' || stat === 'army_protection') {
+        // Persistent military scaling modifiers applied in armyPhase / frontBattles.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'unity_gain_add') {
