@@ -16,7 +16,7 @@
    - **Process:** Adds 1 new suggestion per empire per trigger
 
 3. **Cleanup** (turn.js:740)
-   - Removes suggestions older than 45 ticks
+   - Removes suggestions older than 90 ticks
    - Only removes expired ones, not to limit total count
 
 ### Current Constraints
@@ -27,10 +27,10 @@
 | Max suggestions per empire (during gameplay) | 3 | turn.js:767 |
 | Generation chance (with active improvement) | 60% | turn.js:764 |
 | Generation chance (without active improvement) | 20% | turn.js:764 |
-| Suggestion expiry | 45 ticks | improvements/index.js |
-| T1 weight | 10x | definitions.js:738 |
-| T2 weight | 3x | definitions.js:739 |
-| T3 weight | 1x | definitions.js:740 |
+| Suggestion expiry | 90 ticks | improvements/engine/state.js |
+| T1 weight | 5x | definitions.js |
+| T2 weight | 5x | definitions.js |
+| T3 weight | 3x | definitions.js |
 
 ## Problem Analysis
 
