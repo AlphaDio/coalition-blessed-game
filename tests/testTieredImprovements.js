@@ -104,7 +104,7 @@ console.log();
 console.log('=== Test 2: Tier Requirements Configuration ===');
 {
   assert(IMPROVEMENT_TIER_REQUIREMENTS[2] === 2, 'T2 requires 2 T1 improvements');
-  assert(IMPROVEMENT_TIER_REQUIREMENTS[3] === 2, 'T3 requires 2 T2 improvements');
+  assert(IMPROVEMENT_TIER_REQUIREMENTS[3] === 3, 'T3 requires 3 T2 improvements');
 }
 console.log();
 

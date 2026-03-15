@@ -1,7 +1,7 @@
 import { IMPROVEMENTS_CONSTANTS } from '../../constants.js';
 import { getTieredImprovementRequests, generateImprovementSuggestions } from '../definitions.js';
 
-export const SUGGESTION_MAX_DURATION = 45; // ticks before a suggestion expires
+export const SUGGESTION_MAX_DURATION = 90; // ticks before a suggestion expires
 
 /**
  * Initialize improvements system in game state

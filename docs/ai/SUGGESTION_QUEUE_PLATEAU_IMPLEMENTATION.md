@@ -103,5 +103,5 @@ const suggestionChance = hasActiveImprovement ? 0.3 : 0.1;  // Line 769
 
 - Suggestion `requestedAt` timestamp is already being tracked (set at line 791)
 - This enables queue cycling to work correctly
-- Cleanup of expired suggestions (45 ticks) still works independently
+- Cleanup of expired suggestions (90 ticks) still works independently
 - Both mechanisms work together for balanced suggestion flow
