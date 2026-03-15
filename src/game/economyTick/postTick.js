@@ -119,9 +119,14 @@ export function applyPostMarketUpdates(state, config) {
 
   // Apply coalition modifiers from enacted laws
   if (state.coalitionModifiers && state.empires) {
-    const tradeIncomeRate = Number.isFinite(state.coalitionModifiers.trade_income)
+    const baseTradeIncomeRate = Number.isFinite(state.coalitionModifiers.trade_income)
       ? state.coalitionModifiers.trade_income / TRADE_INCOME_EFFECT_DIVISOR
       : 0;
+    // market_efficiency boosts trade income (e.g. 0.08 = +8% trade income)
+    const marketEfficiency = Number.isFinite(state.coalitionModifiers.market_efficiency)
+      ? state.coalitionModifiers.market_efficiency
+      : 0;
+    const tradeIncomeRate = baseTradeIncomeRate * (1 + marketEfficiency);
 
     state.empires.forEach(empire => {
       // Trade income

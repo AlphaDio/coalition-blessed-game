@@ -159,6 +159,24 @@ const INDUSTRIAL_BRANCH = [
       }
     ),
 
+    createTieredImprovementRequest(
+      'wormhole_forge',
+      'Wormhole Forge Complex',
+      'A stabilised wormhole throat ringed with nano-forge crucibles, bending space-time to mass-produce exotic reactor cores.',
+      2,
+      'industrial',
+      {
+        suppliesCost: 540,
+        build: 500,
+        capacity: 3,
+        sustainmentCost: { nano_machines: 4, super_alloys: 5, rare_gases: 3 },
+        productionOutputs: { wormhole_reactors: 0.045, nano_machines: 0.04 },
+        modifiers: { industrial_output: 0.06, coalition_construction_mult: 0.15 },
+        tags: ['mega_structure', 'industrial', 'fabrication', 'wormhole', 'exotic'],
+        requisitionUpkeep: 8
+      }
+    ),
+
     // T3: Transcendent industry
     createTieredImprovementRequest(
       'dyson_harvester',
@@ -427,6 +445,25 @@ const CULTURAL_BRANCH = [
       }
     ),
 
+    createTieredImprovementRequest(
+      'heritage_vault',
+      'Heritage Memory Vault',
+      'A sealed archive of psycho-imprinted cultural records that broadcast ancestral identity into colonial populations.',
+      1,
+      'cultural',
+      {
+        suppliesCost: 160,
+        build: 200,
+        capacity: 2,
+        sustainmentCost: { biomass: 3, psycho_implants: 1.5 },
+        productionOutputs: { ancient_relics: 0.022, psycho_implants: 0.012 },
+        unityOutput: 0.4,
+        modifiers: { empire_approval: 5, population_growth: 0.04 },
+        tags: ['mega_structure', 'cultural', 'heritage', 'psychology', 'archive'],
+        requisitionUpkeep: 2
+      }
+    ),
+
    // T2: Advanced culture
    createTieredImprovementRequest(
      'festival_grounds',
@@ -491,6 +528,24 @@ const ECONOMIC_BRANCH = [
     }
   ),
 
+  createTieredImprovementRequest(
+    'commodity_exchange',
+    'Commodity Exchange Spire',
+    'A spiralling bourse-station where psycho-implant traders and genome brokers settle futures on strategic biology.',
+    1,
+    'economic',
+    {
+      suppliesCost: 200,
+      build: 220,
+      capacity: 2,
+      sustainmentCost: { biomass: 2, rare_gases: 2 },
+      productionOutputs: { psycho_implants: 0.018, genomes: 0.015 },
+      modifiers: { trade_income: 110, market_efficiency: 0.04 },
+      tags: ['mega_structure', 'economic', 'trade', 'biology', 'exchange'],
+      requisitionUpkeep: 2
+    }
+  ),
+
   // T2: Advanced economy
     createTieredImprovementRequest(
       'convergence_nexus',
@@ -506,6 +561,24 @@ const ECONOMIC_BRANCH = [
       productionOutputs: { rare_gases: 0.056, quantum_circuits: 0.019 },
       modifiers: { trade_income: 360, market_efficiency: 0.08 },
       tags: ['mega_structure', 'economic', 'trade', 'marketplace'],
+      requisitionUpkeep: 7
+    }
+  ),
+
+  createTieredImprovementRequest(
+    'nano_logistics_hub',
+    'Nano-Logistics Corridor',
+    'An automated logistics corridor using nano-machine couriers to clear supply bottlenecks and accelerate market turnover.',
+    2,
+    'economic',
+    {
+      suppliesCost: 490,
+      build: 440,
+      capacity: 3,
+      sustainmentCost: { nano_machines: 4, rare_gases: 3, super_alloys: 3 },
+      productionOutputs: { nano_machines: 0.038, rare_gases: 0.032 },
+      modifiers: { market_efficiency: 0.10, supply_efficiency: 0.06, trade_income: 200 },
+      tags: ['mega_structure', 'economic', 'logistics', 'nano'],
       requisitionUpkeep: 7
     }
   ),
@@ -552,6 +625,25 @@ const SPIRITUAL_BRANCH = [
        unityOutput: 1.2,
        modifiers: { army_fervor: 4 },
        tags: ['mega_structure', 'spiritual', 'morale', 'relics'],
+       requisitionUpkeep: 2
+     }
+   ),
+
+   createTieredImprovementRequest(
+     'implant_sanctum',
+     'Psycho-Implant Sanctum',
+     'A devotional sanctum fusing psycho-implant resonance with ancient relic harmonics to deepen collective resolve.',
+     1,
+     'spiritual',
+     {
+       suppliesCost: 170,
+       build: 190,
+       capacity: 2,
+       sustainmentCost: { biomass: 2, psycho_implants: 2 },
+       productionOutputs: { psycho_implants: 0.028, ancient_relics: 0.015 },
+       unityOutput: 0.9,
+       modifiers: { army_fervor: 3, empire_approval: 3 },
+       tags: ['mega_structure', 'spiritual', 'morale', 'psychology', 'implants'],
        requisitionUpkeep: 2
      }
    ),
@@ -804,6 +896,43 @@ const RESOURCE_BRANCH = [
        modifiers: { industrial_output: 0.05 },
        tags: ['mega_structure', 'resource', 'passive', 'exotic', 'advanced_commodity'],
        requisitionUpkeep: 7
+     }
+   ),
+
+   createTieredImprovementRequest(
+     'anti_grav_assembly',
+     'Anti-Grav Assembly Platform',
+     'A zero-point assembly platform suspending nano-machine swarms in wormhole-distorted fields to forge anti-gravitational modules.',
+     2,
+     'resource',
+     {
+       suppliesCost: 580,
+       build: 540,
+       capacity: 3,
+       sustainmentCost: { nano_machines: 4, wormhole_reactors: 3, super_alloys: 4 },
+       productionOutputs: { anti_grav_modules: 0.006, nano_machines: 0.035 },
+       modifiers: { industrial_output: 0.04 },
+       tags: ['mega_structure', 'resource', 'passive', 'exotic', 'anti_grav'],
+       requisitionUpkeep: 8
+     }
+   ),
+
+   // T3: Transcendent resource extraction
+   createTieredImprovementRequest(
+     'singularity_well',
+     'Singularity Harvest Well',
+     'A transcendent harvest well siphoning dark matter streams and anti-gravitational flux from stabilised micro-singularities.',
+     3,
+     'resource',
+     {
+       suppliesCost: 1400,
+       build: 1100,
+       capacity: 6,
+       sustainmentCost: { wormhole_reactors: 6, quantum_circuits: 5, nano_machines: 4 },
+       productionOutputs: { dark_matter: 0.014, anti_grav_modules: 0.009, wormhole_reactors: 0.06 },
+       modifiers: { industrial_output: 0.08, supply_efficiency: 0.06 },
+       tags: ['mega_structure', 'resource', 'passive', 'transcendent', 'singularity'],
+       requisitionUpkeep: 11
      }
    )
  ];
