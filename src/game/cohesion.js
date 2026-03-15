@@ -42,7 +42,12 @@ export function scaleCohesionDelta(rawDelta) {
 }
 
 export function applyScaledCoalitionCohesionDelta(state, rawDelta) {
-  const delta = scaleCohesionDelta(rawDelta);
+  let delta = scaleCohesionDelta(rawDelta);
+  // Apply cohesionModifier: multiplies positive cohesion gains (values > 1.0 = faster recovery)
+  const cohesionMod = state.coalitionModifiers?.cohesionModifier;
+  if (Number.isFinite(cohesionMod) && cohesionMod > 0 && delta > 0) {
+    delta *= cohesionMod;
+  }
   state.coalitionCohesion = clampCohesion((state.coalitionCohesion || 0) + delta);
   return delta;
 }
