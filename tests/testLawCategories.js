@@ -221,6 +221,94 @@ console.log('=== Test 6: Trade Income Uses Scaled Credit Rate ===');
 }
 console.log();
 
+console.log('=== Test 7: Market Efficiency Boosts Trade Income ===');
+{
+  const state = createTestState();
+  state.coalitionModifiers.trade_income = 200;
+  state.coalitionModifiers.market_efficiency = 0.10; // +10%
+  state.empires.forEach((empire) => {
+    empire.budget_credits = 0;
+  });
+
+  applyPostMarketUpdates(state, {
+    fulfillment_and_performance: {
+      needs: { threshold: 0.75, max_penalty: 0.3 },
+      wants: { max_bonus: 0.2 }
+    }
+  });
+
+  const tradeIncome = state.coalitionModifiers.trade_income;
+  const baseIncome = tradeIncome / TRADE_INCOME_EFFECT_DIVISOR;
+  const boostedIncome = baseIncome * (1 + 0.10);
+  assert(
+    state.empires.every((empire) => Math.abs(empire.budget_credits - boostedIncome) < 0.001),
+    'Market efficiency multiplies trade income rate (+10% efficiency = +10% credits)'
+  );
+
+  // Without market_efficiency, income should be base
+  const stateNoEff = createTestState();
+  stateNoEff.coalitionModifiers.trade_income = 200;
+  stateNoEff.coalitionModifiers.market_efficiency = 0;
+  stateNoEff.empires.forEach((empire) => {
+    empire.budget_credits = 0;
+  });
+
+  applyPostMarketUpdates(stateNoEff, {
+    fulfillment_and_performance: {
+      needs: { threshold: 0.75, max_penalty: 0.3 },
+      wants: { max_bonus: 0.2 }
+    }
+  });
+
+  assert(
+    stateNoEff.empires.every((empire) => Math.abs(empire.budget_credits - baseIncome) < 0.001),
+    'Zero market efficiency produces base trade income without boost'
+  );
+}
+console.log();
+
+console.log('=== Test 8: Cohesion Modifier Multiplies Positive Cohesion Gains ===');
+{
+  const { applyScaledCoalitionCohesionDelta } = await import('../src/game/cohesion.js');
+
+  // Test with cohesionModifier > 1 (boost)
+  const state1 = createTestState();
+  state1.coalitionCohesion = 50;
+  state1.coalitionModifiers.cohesionModifier = 1.10; // +10% cohesion recovery
+  const delta1 = applyScaledCoalitionCohesionDelta(state1, 10);
+
+  const stateBase = createTestState();
+  stateBase.coalitionCohesion = 50;
+  stateBase.coalitionModifiers.cohesionModifier = 1.0; // no modifier
+  const deltaBase = applyScaledCoalitionCohesionDelta(stateBase, 10);
+
+  assert(
+    delta1 > deltaBase,
+    'Positive cohesion gains are amplified by cohesionModifier > 1.0'
+  );
+  assert(
+    Math.abs(delta1 - deltaBase * 1.10) < 0.001,
+    'cohesionModifier 1.10 produces exactly 10% more cohesion gain'
+  );
+
+  // Test that negative deltas are NOT affected by cohesionModifier
+  const state2 = createTestState();
+  state2.coalitionCohesion = 50;
+  state2.coalitionModifiers.cohesionModifier = 1.10;
+  const deltaNeg = applyScaledCoalitionCohesionDelta(state2, -10);
+
+  const state3 = createTestState();
+  state3.coalitionCohesion = 50;
+  state3.coalitionModifiers.cohesionModifier = 1.0;
+  const deltaNegBase = applyScaledCoalitionCohesionDelta(state3, -10);
+
+  assert(
+    Math.abs(deltaNeg - deltaNegBase) < 0.001,
+    'Negative cohesion deltas are NOT affected by cohesionModifier (only gains are boosted)'
+  );
+}
+console.log();
+
 console.log('============================================================');
 console.log('Test Results Summary');
 console.log('============================================================');
