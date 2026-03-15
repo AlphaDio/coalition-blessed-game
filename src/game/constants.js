@@ -736,10 +736,11 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} THREAT_THRESHOLD_2 - Second threat tier boundary (60)
  * @property {number} THREAT_THRESHOLD_3 - Third/highest threat tier boundary (80)
  * @property {number} GLORY_BASE_PER_SCOURGE_WIN - Base glory earned for defeating Scourge (100)
- * @property {number} EP_COST_MEDIUM - Intel cost for medium emergency powers
- * @property {number} EP_COST_MEDIUM_HIGH - Intel cost for medium-high emergency powers
- * @property {number} EP_COST_HIGH - Intel cost for high-impact emergency powers
- * @property {number} EP_COST_EXTREME - Intel cost for apex emergency powers
+ * @property {number} EP_CREDIT_COST_LOW - Credit cost for basic emergency powers
+ * @property {number} EP_CREDIT_COST_MEDIUM - Credit cost for mid-tier emergency powers
+ * @property {number} EP_CREDIT_COST_HIGH - Credit cost for high-impact emergency powers
+ * @property {number} EP_CREDIT_COST_EXTREME - Credit cost for apex emergency powers
+ * @property {number} EP_COST_ESCALATION_RATE - Cost multiplier increase per use (0.5 = +50% per use)
  * @property {number} EP_BASE_DURATION - Base duration for emergency powers
  * @property {number} EP_MAX_ACTIVE - Maximum concurrent active emergency powers
  * @property {number} EP_REQUISITION_CACHE_AMOUNT - Base requisition granted by the instant requisition power
@@ -775,10 +776,11 @@ export const SCOURGE_MISSION_CONSTANTS = {
   THREAT_THRESHOLD_2: 60,
   THREAT_THRESHOLD_3: 80,
   GLORY_BASE_PER_SCOURGE_WIN: 100,
-  EP_COST_MEDIUM: 8,
-  EP_COST_MEDIUM_HIGH: 12,
-  EP_COST_HIGH: 16,
-  EP_COST_EXTREME: 22,
+  EP_CREDIT_COST_LOW: 1500,
+  EP_CREDIT_COST_MEDIUM: 2500,
+  EP_CREDIT_COST_HIGH: 4000,
+  EP_CREDIT_COST_EXTREME: 6000,
+  EP_COST_ESCALATION_RATE: 0.5,
   EP_BASE_DURATION: 140,
   EP_MAX_ACTIVE: 2,
   EP_REQUISITION_CACHE_AMOUNT: 120,

@@ -1,11 +1,13 @@
 import { SCOURGE_MISSION_CONSTANTS } from './constants.js';
 import { getThreatScalar } from './scourgeThreat.js';
+import { getCommodityReserveQty, consumeCommodityReserve } from './marketOrderReserves.js';
 
 const POWER_DEFINITIONS = [
   {
     id: 'EP_REQUISITION_CACHE',
     name: 'Requisition Cache Release',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_LOW,
+    resource_costs: { wormhole_reactors: 5 },
     duration_ticks: 0,
     consumes_active_slot: false,
     effects: [
@@ -15,7 +17,8 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_CREDIT_LINE',
     name: 'Imperial Credit Line',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM_HIGH,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_MEDIUM,
+    resource_costs: { wormhole_reactors: 3, dark_matter: 1 },
     duration_ticks: 0,
     consumes_active_slot: false,
     effects: [
@@ -25,7 +28,8 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_MOBILIZATION',
     name: 'Mobilization Surge',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_MEDIUM,
+    resource_costs: { wormhole_reactors: 8, dark_matter: 2 },
     duration_ticks: SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION,
     effects: [
       { target: 'coalition.requisition_gen', op: 'mul', value: 0.55 },
@@ -35,7 +39,8 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_WAR_INDUSTRY',
     name: 'War Industry Overdrive',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_MEDIUM_HIGH,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_HIGH,
+    resource_costs: { wormhole_reactors: 10, dark_matter: 3 },
     duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 1.1),
     effects: [
       { target: 'coalition.improvement_build_speed', op: 'mul', value: 0.7 },
@@ -45,7 +50,8 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_MANDATE',
     name: 'Emergency Mandate',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_HIGH,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_HIGH,
+    resource_costs: { dark_matter: 4, wormhole_reactors: 12 },
     duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 0.9),
     effects: [
       { target: 'coalition.law_enact_speed', op: 'mul', value: 0.5 },
@@ -55,7 +61,8 @@ const POWER_DEFINITIONS = [
   {
     id: 'EP_SIGNAL_NET',
     name: 'Signal Supremacy Net',
-    cost_intel: SCOURGE_MISSION_CONSTANTS.EP_COST_EXTREME,
+    cost_credits: SCOURGE_MISSION_CONSTANTS.EP_CREDIT_COST_EXTREME,
+    resource_costs: { dark_matter: 5, wormhole_reactors: 15 },
     duration_ticks: Math.round(SCOURGE_MISSION_CONSTANTS.EP_BASE_DURATION * 0.8),
     effects: [
       { target: 'coalition.intel_gain_per_turn', op: 'add', value: 1.5 },
@@ -78,10 +85,13 @@ function scaleByThreat(value, state) {
   return value * multiplier;
 }
 
-function getPowerIntelCost(def) {
+function getPowerCreditCost(def, state) {
   if (!def) return 0;
-  const normalized = Number(def.cost_intel ?? def.cost_glory ?? 0);
-  return Number.isFinite(normalized) ? Math.max(0, normalized) : 0;
+  const baseCost = Number(def.cost_credits ?? 0);
+  if (!Number.isFinite(baseCost) || baseCost <= 0) return 0;
+  const useCount = (state?.emergencyPowerUseCount || {})[def.id] || 0;
+  const escalation = SCOURGE_MISSION_CONSTANTS.EP_COST_ESCALATION_RATE;
+  return Math.round(baseCost * Math.pow(1 + escalation, useCount));
 }
 
 function usesActiveSlot(def) {
@@ -162,10 +172,18 @@ export function canActivateEmergencyPower(state, powerId) {
     return { canActivate: false, reason: 'Max active emergency powers reached' };
   }
 
-  const availableIntel = Number(state.coalitionIntel || 0);
-  const intelCost = getPowerIntelCost(def);
-  if (availableIntel < intelCost) {
-    return { canActivate: false, reason: `Insufficient Intel (need ${intelCost.toFixed(1)})` };
+  const creditCost = getPowerCreditCost(def, state);
+  const availableCredits = Number(state.coalitionEconomy?.treasury_credits || 0);
+  if (availableCredits < creditCost) {
+    return { canActivate: false, reason: `Insufficient credits (need ${creditCost}, have ${Math.floor(availableCredits)})` };
+  }
+
+  const resourceCosts = def.resource_costs || {};
+  for (const [commodity, qty] of Object.entries(resourceCosts)) {
+    const available = getCommodityReserveQty(state, commodity);
+    if (available < qty) {
+      return { canActivate: false, reason: `Insufficient ${commodity} reserves (need ${qty}, have ${available.toFixed(1)})` };
+    }
   }
 
   return { canActivate: true, reason: '' };
@@ -187,12 +205,23 @@ export function activateEmergencyPower(state, powerId) {
     value: scaleByThreat(effect.value, state)
   }));
 
-  const intelCost = getPowerIntelCost(def);
-  state.coalitionIntel = Math.max(0, (state.coalitionIntel || 0) - intelCost);
+  const creditCost = getPowerCreditCost(def, state);
+  ensureCoalitionEconomy(state);
+  state.coalitionEconomy.treasury_credits = Math.max(0, (state.coalitionEconomy.treasury_credits || 0) - creditCost);
+
+  const resourceCosts = def.resource_costs || {};
+  for (const [commodity, qty] of Object.entries(resourceCosts)) {
+    consumeCommodityReserve(state, commodity, qty);
+  }
+
+  if (!state.emergencyPowerUseCount) {
+    state.emergencyPowerUseCount = {};
+  }
+  state.emergencyPowerUseCount[def.id] = (state.emergencyPowerUseCount[def.id] || 0) + 1;
 
   if (!usesActiveSlot(def)) {
     const appliedEffects = applyImmediateEmergencyEffects(state, scaledEffects);
-    return { success: true, activePower: def, appliedEffects };
+    return { success: true, activePower: def, appliedEffects, creditCost };
   }
 
   const scaledDuration = Math.round(scaleByThreat(def.duration_ticks, state));
@@ -204,13 +233,13 @@ export function activateEmergencyPower(state, powerId) {
   state.activeEmergencyPowers.push({
     id: def.id,
     name: def.name,
-    costIntel: intelCost,
+    costCredits: creditCost,
     remainingDuration: scaledDuration,
     totalDuration: scaledDuration,
     effects: scaledEffects
   });
 
-  return { success: true, activePower: def };
+  return { success: true, activePower: def, creditCost };
 }
 
 export function tickEmergencyPowers(state) {

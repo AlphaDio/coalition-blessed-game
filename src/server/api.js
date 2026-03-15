@@ -918,8 +918,8 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       const emergencyPowers = getEmergencyPowerDefinitions().map((power) => ({
         id: power.id,
         name: power.name,
-        cost_intel: power.cost_intel ?? power.cost_glory ?? 0,
-        cost_glory: power.cost_glory ?? 0,
+        cost_credits: power.cost_credits ?? 0,
+        resource_costs: power.resource_costs ?? {},
         duration_ticks: power.duration_ticks,
         consumes_active_slot: power.consumes_active_slot ?? (Number(power.duration_ticks) > 0),
         effects: power.effects
