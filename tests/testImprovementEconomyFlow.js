@@ -15,7 +15,7 @@ import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../src/game/improvements/types.js';
-import { clearMarket } from '../src/game/marketEconomy.js';
+import { clearMarket, initializeMarket } from '../src/game/marketEconomy.js';
 import { initializeTurnConsumptionTracking, recordConsumption } from '../src/game/consumptionToRequisition.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
@@ -877,6 +877,19 @@ console.log('=== Test 17: Damaged Needs Drive Aggravation And Wants Deficits Red
   assert(damagedArmy.fervor < damagedFervorBefore, 'Damaged army loses fervor when wants are unmet');
   assert(fullArmy.aggravation === fullAggravationBefore, 'Full army does not gain aggravation from needs while undamaged');
   assert(fullArmy.fervor < fullFervorBefore, 'Full army still loses fervor from unmet persistent wants');
+}
+console.log();
+
+console.log('=== Test 18: Run Price Multipliers Seed Initial Market Prices ===');
+{
+  const market = initializeMarket([{ key: 'biomass', floor_price: 10 }], () => 0);
+  const biomassMarket = market.biomass;
+
+  assert(biomassMarket.run_price_multiplier === 0.5, 'Seeded market assigns a discrete run multiplier');
+  assert(Math.abs(biomassMarket.base_floor_price - 8.5) < 1e-9, 'Base floor price keeps the seeded floor variance before multiplier');
+  assert(Math.abs(biomassMarket.floor_price - 4.25) < 1e-9, 'Run multiplier scales the actual floor price');
+  assert(Math.abs(biomassMarket.price - 2.125) < 1e-9, 'Run multiplier scales the initial market price');
+  assert(market.price_multiplier_by_commodity.biomass === 0.5, 'Market metadata stores the run multiplier by commodity');
 }
 console.log();
 

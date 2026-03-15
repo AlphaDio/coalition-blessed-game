@@ -13,6 +13,7 @@ import { handleTechEventChoice } from './technology.js';
 import { boostScourgePredictionConfidence } from './scourgePrediction.js';
 import { buildHeroRecruitmentEvent, handleHeroRecruitmentChoice } from './heroes.js';
 import { handleMissionEventChoice } from './scourgeMissions.js';
+import { addArmyBattlePrep } from './armyBattlePrep.js';
 
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
@@ -310,20 +311,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       Object.entries(expandedEffects.armyFervor).forEach(([armyId, change]) => {
         const army = state.armies.find(a => a.id === armyId);
         if (army) {
-          // Add as a timed fervor bonus instead of direct fervor change
-          if (!army.timedFervorBonuses) {
-            army.timedFervorBonuses = [];
-          }
-          
-          // Fervor bonuses from events expire at the next scourge battle
-          // Use a very high expiresAt value to ensure they last until scourge battle
-          army.timedFervorBonuses.push({
-            amount: change,
-            expiresAt: Number.MAX_SAFE_INTEGER, // Expires at next scourge battle
-            source: `Event: ${event.title || event.id}`
-          });
-          
-          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${(change).toFixed(2)} (until next scourge battle)`);
+          addArmyBattlePrep(army, 'fervor', change);
+          log.push(`${army.name} fervor prep ${change >= 0 ? '+' : ''}${(change).toFixed(2)}`);
         }
       });
     }

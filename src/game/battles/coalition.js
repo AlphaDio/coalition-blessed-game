@@ -1,5 +1,10 @@
 import { calculateArmyPower } from './power.js';
 import { getEmpireMilitaryModifierSet } from '../empireModifiers.js';
+import {
+  getEffectiveArmyFervor,
+  getEffectiveArmyProtection,
+  getEffectiveArmyResolve
+} from '../armyBattlePrep.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -76,11 +81,11 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     const { army, committedCurrentMP, committedMaxMP, combatWeight } = participant;
     const power = calculateArmyPower(army) * combatWeight;
     const org = typeof army.organization === 'number' && !isNaN(army.organization) ? army.organization : 0;
-    const fervor = Math.min(100, (army.fervor || 0) + (army.fervorBonus || 0));
+    const fervor = getEffectiveArmyFervor(army);
     const dmgPerUnitMP = typeof army.dmgPerUnitMP === 'number' && !isNaN(army.dmgPerUnitMP) ? army.dmgPerUnitMP : 1.0;
     const dmgPerTickMO = typeof army.dmgPerTickMO === 'number' && !isNaN(army.dmgPerTickMO) ? army.dmgPerTickMO : 2.5;
-    const protection = typeof army.protection === 'number' && !isNaN(army.protection) ? army.protection : 0;
-    const resolve = typeof army.resolve === 'number' && !isNaN(army.resolve) ? army.resolve : 0;
+    const protection = getEffectiveArmyProtection(army);
+    const resolve = getEffectiveArmyResolve(army);
     const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
     const command = typeof army.command === 'number' && !isNaN(army.command) ? army.command : 50;
     const recovery = typeof army.recovery === 'number' && !isNaN(army.recovery) ? army.recovery : 50;

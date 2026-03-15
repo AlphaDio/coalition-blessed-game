@@ -5,6 +5,7 @@ import { UNITY_CONSTANTS } from '../src/game/constants.js';
 import { processUnityAccrual, popNextUnityCelebrationEvent, calculateUnityThreshold, getEmpireUnityGainPerTurn } from '../src/game/unity.js';
 import { getUnityEffectForEmpire } from '../src/game/unityDefinitions.js';
 import { handleEventChoice } from '../src/game/events.js';
+import { getEffectiveArmyFervor } from '../src/game/armyBattlePrep.js';
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 initializeLogger({
@@ -100,11 +101,11 @@ function testUnityMartialCelebrationTargetsEmpireArmy() {
   assert(celebrationEvent, 'Expected second unity celebration event');
 
   const army = state.armies[0];
-  const bonusesBefore = (army.timedFervorBonuses || []).length;
+  const effectiveFervorBefore = getEffectiveArmyFervor(army);
   state.activeEvent = celebrationEvent;
   const choiceResult = handleEventChoice(state, celebrationEvent.id, 2);
   assert(choiceResult.success, 'Expected martial celebration choice to resolve successfully');
-  assert((army.timedFervorBonuses || []).length > bonusesBefore, 'Expected martial celebration to grant army fervor bonus');
+  assert(getEffectiveArmyFervor(army) > effectiveFervorBefore, 'Expected martial celebration to raise army effective fervor via battle prep');
 }
 
 function testUnityThresholdCurve() {

@@ -16,6 +16,7 @@ import { createCombinedCoalitionArmy } from './coalition.js';
 import { getThreatScalar } from '../scourgeThreat.js';
 import { ensureHeroMeters } from '../heroes/utils.js';
 import { HERO_STATUS } from '../heroes/constants.js';
+import { getEffectiveArmyFervor } from '../armyBattlePrep.js';
 
 function projectBattleResult(originalMP, originalMaxMP, permanentLossRatio, currentRetentionRatio = 1) {
   const clampedLossRatio = Math.max(0, Math.min(1, Number(permanentLossRatio) || 0));
@@ -270,7 +271,7 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
       const army = participant.army;
       const committedMP = (army.mp?.current || 0) * participant.commitRatio;
       const supportTag = participant.isSupport ? `, Assist ${(participant.commitRatio * 100).toFixed(0)}%` : '';
-      return `${army.name} (Power: ${calculateArmyPower(army).toFixed(2)}, Org: ${army.organization.toFixed(1)}, Fervor: ${army.fervor.toFixed(1)}, Commit: ${committedMP.toFixed(0)} MP${supportTag})`;
+      return `${army.name} (Power: ${calculateArmyPower(army).toFixed(2)}, Org: ${army.organization.toFixed(1)}, Next Battle Fervor: ${getEffectiveArmyFervor(army).toFixed(1)}, Commit: ${committedMP.toFixed(0)} MP${supportTag})`;
     }).join(', ')}`
   );
 

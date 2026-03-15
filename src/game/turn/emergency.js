@@ -9,6 +9,7 @@ import { resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
 import { getActiveEmergencyPowerModifiers } from '../emergencyPowers.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { scalePositiveApprovalGain } from '../approvalUtils.js';
+import { addArmyBattlePrep } from '../armyBattlePrep.js';
 
 /**
  * Apply emergency law modifiers to game state
@@ -67,12 +68,9 @@ export function applyEmergencyModifiers(state, modifiers, log) {
           );
         }
 
-        // Fervor bonus
+        // Fervor prep for the next battle
         if (modifiers.army_fervor_bonus) {
-          army.fervor = clampStat(
-            army.fervor + modifiers.army_fervor_bonus * 0.1, // Apply as gradual bonus
-            0, 100
-          );
+          addArmyBattlePrep(army, 'fervor', modifiers.army_fervor_bonus * 0.1);
         }
       }
     });

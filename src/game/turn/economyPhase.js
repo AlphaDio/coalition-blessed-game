@@ -7,6 +7,7 @@ import { applyPopulationDelta } from '../populationUtils.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { scalePositiveApprovalGain } from '../approvalUtils.js';
 import { getLogger } from '../../modules/logger.js';
+import { addEmpireBattlePrep } from '../armyBattlePrep.js';
 
 export function handleEconomyTick(state, log, logger) {
   try {
@@ -46,11 +47,7 @@ function normalizeConsumptionThreshold(rawThreshold) {
 }
 
 function applyArmyBonus(state, empireId, bonusKey, amount) {
-  const armies = state.armies.filter(a => a.empireId === empireId);
-  armies.forEach(army => {
-    army[bonusKey] = (army[bonusKey] || 0) + amount;
-  });
-  return armies.length;
+  return addEmpireBattlePrep(state, empireId, bonusKey, amount);
 }
 
 function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger) {
@@ -72,31 +69,31 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
   }
 
   if (effect.type === 'army_fervor_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'fervorBonus', scaledAmount);
+    const armyCount = applyArmyBonus(state, empire.id, 'fervor', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} fervor bonus to ${armyCount} armies (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle fervor to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_protection_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'protectionBonus', scaledAmount);
+    const armyCount = applyArmyBonus(state, empire.id, 'protection', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} protection bonus to ${armyCount} armies (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle protection to ${armyCount} armies (${hits} hits)`
     );
     return;
   }
 
   if (effect.type === 'army_resolve_bonus') {
-    const armyCount = applyArmyBonus(state, empire.id, 'resolveBonus', scaledAmount);
+    const armyCount = applyArmyBonus(state, empire.id, 'resolve', scaledAmount);
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} resolve bonus to ${armyCount} armies (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle resolve to ${armyCount} armies (${hits} hits)`
     );
     return;
   }

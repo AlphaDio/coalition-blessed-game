@@ -10,6 +10,12 @@ import { getLogger, LogLevel, LogLevelNames } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
 import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
 import { getEmergencyPowerDefinitions } from '../game/emergencyPowers.js';
+import {
+  getArmyBattlePrep,
+  getEffectiveArmyFervor,
+  getEffectiveArmyProtection,
+  getEffectiveArmyResolve
+} from '../game/armyBattlePrep.js';
 import { 
   apiResponseMiddleware,
   ErrorCodes
@@ -1082,6 +1088,7 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
           stats: {
             organization: Math.round(army.organization ?? 0),
             fervor: Math.round(army.fervor ?? 0),
+            nextBattleFervor: Math.round(getEffectiveArmyFervor(army)),
             aggravation: Math.round(army.aggravation ?? 0),
             command: Math.round(army.command ?? 50)
           },
@@ -1097,7 +1104,14 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
             dmgPerTickMO: army.dmgPerTickMO ?? 2.5,
             protection: army.protection ?? 0.2,
             resolve: army.resolve ?? 0.3,
-            killRate: army.killRate ?? 0.1
+            killRate: army.killRate ?? 0.1,
+            nextBattleProtection: getEffectiveArmyProtection(army),
+            nextBattleResolve: getEffectiveArmyResolve(army)
+          },
+          battlePrep: {
+            fervor: getArmyBattlePrep(army, 'fervor'),
+            protection: getArmyBattlePrep(army, 'protection'),
+            resolve: getArmyBattlePrep(army, 'resolve')
           },
           supply: {
             needsDemand: army.supply_state?.needs_demand ?? {},
