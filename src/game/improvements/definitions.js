@@ -97,7 +97,7 @@ const INDUSTRIAL_BRANCH = [
        capacity: 2,
         sustainmentCost: { plasma_fuel: 2.5 },
         productionOutputs: { rare_gases: 0.04, plasma_fuel: 0.023 },
-        modifiers: {},
+        modifiers: { supply_efficiency: 0.02 },
        tags: ['mega_structure', 'industrial', 'mining', 'automated', 'array'],
        requisitionUpkeep: 2
      }
@@ -322,6 +322,24 @@ const MILITARY_BRANCH = [
     }
   ),
 
+  createTieredImprovementRequest(
+    'shield_bastion',
+    'Aegis Shield Bastion',
+    'A layered defense matrix of hardened bunkers, reactive armor forges, and point-defense grids that toughens expeditionary forces.',
+    1,
+    'military',
+    {
+      suppliesCost: 170,
+      build: 170,
+      capacity: 2,
+      sustainmentCost: { super_alloys: 3.5, plasma_fuel: 2 },
+      productionOutputs: { super_alloys: 0.03 },
+      modifiers: { army_protection: 0.02, army_organization: 0.5, supply_efficiency: 0.02 },
+      tags: ['mega_structure', 'military', 'defense', 'armor', 'shield'],
+      requisitionUpkeep: 2
+    }
+  ),
+
   // T2: Advanced military
   createTieredImprovementRequest(
     'grand_symposium',
@@ -337,6 +355,7 @@ const MILITARY_BRANCH = [
       productionOutputs: { super_alloys: 0.038, quantum_circuits: 0.018 },
       modifiers: {
         army_organization: 1.4,
+        army_protection: 0.02,
         supply_efficiency: 0.08,
         army_damage_mult: 0.06,
         army_replenishment_mult: 0.12,
@@ -382,6 +401,7 @@ const MILITARY_BRANCH = [
       modifiers: {
         army_organization: 2.4,
         army_fervor: 1.4,
+        army_protection: 0.04,
         supply_efficiency: 0.12,
         army_damage_add: 0.16,
         army_damage_mult: 0.09,
@@ -407,6 +427,7 @@ const MILITARY_BRANCH = [
       productionOutputs: { super_alloys: 0.074, nano_machines: 0.052, wormhole_reactors: 0.011 },
       modifiers: {
         army_organization: 2.5,
+        army_protection: 0.03,
         army_damage_add: 0.22,
         army_damage_mult: 0.10,
         army_replenishment_mult: 0.24,
@@ -715,6 +736,25 @@ const GOVERNANCE_BRANCH = [
      }
    ),
 
+   createTieredImprovementRequest(
+     'intelligence_bureau',
+     'Signal Intelligence Bureau',
+     'A sealed intercept-analysis station parsing encrypted transmissions, trade anomalies, and frontier threat signals.',
+     1,
+     'governance',
+     {
+       suppliesCost: 150,
+       build: 170,
+       capacity: 2,
+       sustainmentCost: { rare_gases: 2, plasma_fuel: 2 },
+       productionOutputs: { sentient_cores: 0.008, rare_gases: 0.018 },
+       unityOutput: 0.15,
+       modifiers: { research_speed: 0.06, market_efficiency: 0.03, law_progress_speed: 0.08 },
+       tags: ['mega_structure', 'governance', 'intelligence', 'signals', 'analysis'],
+       requisitionUpkeep: 3
+     }
+   ),
+
    // T2: Advanced governance
    createTieredImprovementRequest(
      'council_spire',
@@ -796,7 +836,7 @@ const RESOURCE_BRANCH = [
        capacity: 1,
        sustainmentCost: { biomass: 1.5 },
        productionOutputs: { plasma_fuel: 0.185 },
-       modifiers: {},
+       modifiers: { industrial_output: 0.01 },
        tags: ['mega_structure', 'resource', 'passive', 'extraction'],
        requisitionUpkeep: 2
      }
@@ -814,7 +854,7 @@ const RESOURCE_BRANCH = [
        capacity: 2,
         sustainmentCost: { plasma_fuel: 1.5 },
         productionOutputs: { super_alloys: 0.064 },
-       modifiers: {},
+       modifiers: { industrial_output: 0.01 },
        tags: ['mega_structure', 'resource', 'passive', 'production'],
        requisitionUpkeep: 2
      }
@@ -850,7 +890,7 @@ const RESOURCE_BRANCH = [
        capacity: 1,
        sustainmentCost: { plasma_fuel: 1.5, rare_gases: 1 },
        productionOutputs: { biomass: 0.08, genomes: 0.023 },
-       modifiers: {},
+       modifiers: { population_growth: 0.02 },
        tags: ['mega_structure', 'resource', 'passive', 'biologic', 'organic'],
        requisitionUpkeep: 2
      }
@@ -868,7 +908,7 @@ const RESOURCE_BRANCH = [
        capacity: 1,
        sustainmentCost: { plasma_fuel: 2, super_alloys: 1 },
        productionOutputs: { rare_gases: 0.185, plasma_fuel: 0.035 },
-       modifiers: {},
+       modifiers: { research_speed: 0.04 },
        tags: ['mega_structure', 'resource', 'passive', 'mining'],
        requisitionUpkeep: 2
      }

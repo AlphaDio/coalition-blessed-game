@@ -32,11 +32,11 @@ export const GENERAL_TECHS = [
     1,
     'power_armor',
     'Power Armor',
-    'Enhanced armor technology boosts army effectiveness.',
+    'Enhanced armor technology boosts army protection and effectiveness.',
     'general',
     {},
     { credits: 80 },
-    { army_organization: 2.2, army_damage_add: 0.025, army_replenishment_mult: 0.04, supply_efficiency: 0.02 }
+    { army_organization: 2.2, army_protection: 0.03, army_damage_add: 0.025, army_replenishment_mult: 0.04, supply_efficiency: 0.02 }
   ),
 
   createTieredTechnology(
@@ -155,7 +155,7 @@ export const ALIGNED_TECHS = [
     'aligned',
     { axis: { axis: 'pacifist_militaristic', direction: 1, threshold: 0.3 } },
     { approval: 3 },
-    { army_organization: 5.5, supply_efficiency: 0.06, army_damage_mult: 0.08, army_replenishment_mult: 0.1 }
+    { army_organization: 5.5, army_protection: 0.02, supply_efficiency: 0.06, army_damage_mult: 0.08, army_replenishment_mult: 0.1 }
   ),
 
   createTieredTechnology(
@@ -332,7 +332,7 @@ export const APEX_TECHS = [
       techs: ['elite_training', 'orbital_weapons']
     },
     { approval: -4, cohesion: -2 },
-    { army_organization: 8, army_damage_add: 0.2, army_damage_mult: 0.2, army_replenishment_mult: 0.25 }
+    { army_organization: 8, army_protection: 0.04, army_damage_add: 0.2, army_damage_mult: 0.2, army_replenishment_mult: 0.25 }
   ),
 
   createTieredTechnology(

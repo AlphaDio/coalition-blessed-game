@@ -139,6 +139,10 @@ export function applyImprovementModifiers(state) {
         // Persistent military scaling modifiers applied in armyPhase.
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
+      } else if (stat === 'army_protection') {
+        // Empire-level army protection bonus (0-1 scale); applied in frontBattles as damage reduction.
+        improvements.empireModifiers[empire.id][stat] =
+          (improvements.empireModifiers[empire.id][stat] || 0) + value;
       } else if (stat === 'unity_gain_add') {
         // Additive per-turn unity gain modifier for this empire.
         improvements.empireModifiers[empire.id][stat] =

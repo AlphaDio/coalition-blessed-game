@@ -130,6 +130,8 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
   let coalitionDamageAdd = 0;
   let coalitionDamageMultSum = 0;
   let coalitionDamageMultCount = 0;
+  let coalitionProtectionSum = 0;
+  let coalitionProtectionCount = 0;
   participatingEmpireIds.forEach(empireId => {
     const mods = getEmpireMilitaryModifierSet(state, empireId);
     if (Number.isFinite(mods.army_damage_add)) {
@@ -139,8 +141,13 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
       coalitionDamageMultSum += mods.army_damage_mult;
       coalitionDamageMultCount += 1;
     }
+    if (Number.isFinite(mods.army_protection) && mods.army_protection > 0) {
+      coalitionProtectionSum += mods.army_protection;
+      coalitionProtectionCount += 1;
+    }
   });
   const coalitionDamageMult = coalitionDamageMultCount > 0 ? coalitionDamageMultSum / coalitionDamageMultCount : 0;
+  const coalitionProtection = coalitionProtectionCount > 0 ? coalitionProtectionSum / coalitionProtectionCount : 0;
 
   // Ensure totalMaxMP is at least 1 to avoid division issues
   const safeTotalMaxMP = Math.max(1, totalMaxMP || 0);
@@ -187,6 +194,7 @@ export function createCombinedCoalitionArmy(state, participatingArmies, idSuffix
     // Empire damage modifiers (aggregated from participating empires; applied in frontBattles)
     _empireDamageAdd: coalitionDamageAdd,
     _empireDamageMult: coalitionDamageMult,
+    _empireProtection: coalitionProtection,
     _consumptionDamageAdd: useRawAverages
       ? (rawConsumptionDamageAdd / Math.max(1, normalizedParticipants.length))
       : (totalConsumptionDamageAdd / powerDivisor),

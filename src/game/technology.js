@@ -328,6 +328,7 @@ function formatModifier(key, value) {
     'research_speed', 'industrial_output', 'supply_efficiency', 
     'market_efficiency', 'population_growth', 'energy_production',
     'army_damage_mult', 'army_replenishment_mult', 'army_consumption_mp_gain_mult',
+    'army_protection',
     'law_progress_speed',
     'consumptionShareBonus'
   ];
@@ -376,6 +377,12 @@ function generateTechChoice(tech) {
     hints.push('Fast reinforcement');
   } else if (modifiers.army_replenishment_mult && modifiers.army_replenishment_mult > 0.03) {
     hints.push('Reinforcement support');
+  }
+
+  if (modifiers.army_protection && modifiers.army_protection > 0.04) {
+    hints.push('Heavy armor plating');
+  } else if (modifiers.army_protection && modifiers.army_protection > 0.01) {
+    hints.push('Armor reinforcement');
   }
 
   if (modifiers.industrial_output && modifiers.industrial_output > 0.12) {
