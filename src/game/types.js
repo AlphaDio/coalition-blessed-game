@@ -6,7 +6,7 @@ import {
   SCOURGE_PREDICTION_CONSTANTS,
   ARMY_EXPERIENCE_CONSTANTS
 } from './constants.js';
-import { createArmyBattlePrep, ensureArmyBattlePrep } from './armyBattlePrep.js';
+import { createArmyBattlePrep, ensureArmyBattlePrep, addArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 
 function parseConsumptionRules(consumption) {
@@ -751,6 +751,24 @@ export function migrateGameState(state) {
       }
       
       ensureArmyBattlePrep(army);
+      // Transfer old bonus fields into battlePrep before deleting them
+      if (Number.isFinite(Number(army.fervorBonus)) && Number(army.fervorBonus) !== 0) {
+        addArmyBattlePrep(army, 'fervor', Number(army.fervorBonus));
+      }
+      if (Number.isFinite(Number(army.protectionBonus)) && Number(army.protectionBonus) !== 0) {
+        addArmyBattlePrep(army, 'protection', Number(army.protectionBonus));
+      }
+      if (Number.isFinite(Number(army.resolveBonus)) && Number(army.resolveBonus) !== 0) {
+        addArmyBattlePrep(army, 'resolve', Number(army.resolveBonus));
+      }
+      if (Array.isArray(army.timedFervorBonuses)) {
+        army.timedFervorBonuses.forEach(entry => {
+          const amount = Number(entry?.amount || entry?.value || 0);
+          if (Number.isFinite(amount) && amount !== 0) {
+            addArmyBattlePrep(army, 'fervor', amount);
+          }
+        });
+      }
       delete army.fervorBonus;
       delete army.protectionBonus;
       delete army.resolveBonus;

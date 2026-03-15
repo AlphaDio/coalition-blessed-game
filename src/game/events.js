@@ -13,6 +13,7 @@ import { handleTechEventChoice } from './technology.js';
 import { boostScourgePredictionConfidence } from './scourgePrediction.js';
 import { buildHeroRecruitmentEvent, handleHeroRecruitmentChoice } from './heroes.js';
 import { handleMissionEventChoice } from './scourgeMissions.js';
+import { addArmyBattlePrep } from './armyBattlePrep.js';
 
 export function checkEvent(state, rng = Math.random) {
   const logger = getLogger();
@@ -310,8 +311,8 @@ export function handleEventChoice(state, eventId, choiceIndex) {
       Object.entries(expandedEffects.armyFervor).forEach(([armyId, change]) => {
         const army = state.armies.find(a => a.id === armyId);
         if (army) {
-          army.fervor = clampStat((army.fervor || 0) + change, 0, 100);
-          log.push(`${army.name} fervor ${change >= 0 ? '+' : ''}${(change).toFixed(2)}`);
+          addArmyBattlePrep(army, 'fervor', change);
+          log.push(`${army.name} fervor prep ${change >= 0 ? '+' : ''}${(change).toFixed(2)}`);
         }
       });
     }
