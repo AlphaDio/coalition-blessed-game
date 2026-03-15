@@ -233,6 +233,16 @@ export function applyArmyPassiveStatModifiers(state) {
     if (passiveFervorGain > 0) {
       addArmyBattlePrep(army, 'fervor', passiveFervorGain);
     }
+
+    // Raise army base protection (the value it resets to after battlePrep is cleared).
+    // Snapshot the original module-defined value on first encounter.
+    const protectionMod = empireMilitaryMods.army_protection;
+    if (protectionMod > 0) {
+      if (army._baseProtection === undefined) {
+        army._baseProtection = Number(army.protection) || 0.2;
+      }
+      army.protection = clampStat(army._baseProtection + protectionMod, 0, 1);
+    }
   });
 }
 
