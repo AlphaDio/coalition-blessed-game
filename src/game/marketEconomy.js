@@ -292,7 +292,8 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
     let buyRemaining = buy.qty - (buy.filled_qty || 0);
     if (buyRemaining <= 0) continue;
 
-    // Compute bulk discount once per buy order based on its total remaining qty
+    // Compute bulk discount once per buy order based on its total committed qty.
+    // This mirrors wholesale contracts where the rate is locked at order placement.
     const bulkDiscount = getBulkDiscount(buyRemaining);
 
     // Find matching sells (where sell.ask_price <= buy.max_price)
@@ -310,7 +311,9 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
         sellRemaining.set(sell.id, sellQty - tradeQty);
         buyRemaining -= tradeQty;
 
-        // Apply bulk/gross discount to trade price (seller absorbs the reduction)
+        // Apply bulk/gross discount to trade price.
+        // The discount incentivizes bulk purchasing and is absorbed by the
+        // market spread, similar to wholesale vs. retail economics.
         const tradePrice = sell.ask_price * (1 - bulkDiscount);
 
         // Record trade at discounted price

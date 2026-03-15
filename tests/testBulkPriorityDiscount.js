@@ -29,7 +29,9 @@ function assert(condition, message) {
   }
 }
 
-function approxEqual(a, b, epsilon = 0.001) {
+const APPROX_EPSILON = 0.001;
+
+function approxEqual(a, b, epsilon = APPROX_EPSILON) {
   return Math.abs(a - b) < epsilon;
 }
 
