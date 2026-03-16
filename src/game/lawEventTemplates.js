@@ -536,11 +536,29 @@ export const EXTERNALITY_EVENTS = [
       { type: 'meter_above', meter: 'unrest', threshold: 0.5 }
     ],
     0.8,
-    {
-      // Externality effects are applied via applyUnrestExternalities()
-      // This event just signals the consequence
-      meters: { unrest: -0.05 }  // Slight pressure release
-    }
+    null,
+    [],
+    'Rising unrest is straining coalition bonds. You can spend credits on public outreach to calm tensions, or quietly gather intelligence on the dissatisfied factions.',
+    [
+      {
+        text: 'Fund public outreach (spend credits, reduce unrest, gain approval)',
+        effects_summary: 'Unrest drop | Approval boost | Credits spent',
+        effects: {
+          meters: { unrest: -0.1 },
+          approval: 1,
+          credits: -300
+        }
+      },
+      {
+        text: 'Monitor the situation and gather intel (gain intel, slight unrest relief)',
+        effects_summary: 'Slight unrest drop | Intel gained | Influence gained',
+        effects: {
+          meters: { unrest: -0.05 },
+          coalitionIntel: 2,
+          influence: 5
+        }
+      }
+    ]
   ),
   
   createLawEvent(
@@ -554,9 +572,29 @@ export const EXTERNALITY_EVENTS = [
       { type: 'meter_above', meter: 'unrest', threshold: 0.7 }
     ],
     0.6,
-    {
-      meters: { legitimacy: -0.1 }  // High unrest damages legitimacy
-    }
+    null,
+    [],
+    'Public opinion is cratering as unrest spills over. An emergency PR campaign could stem the bleeding but costs credits; alternatively, diverting requisitions to visible infrastructure projects restores faith in governance.',
+    [
+      {
+        text: 'Launch emergency PR campaign (spend credits, protect legitimacy)',
+        effects_summary: 'Approval boost | Legitimacy preserved | Credits spent',
+        effects: {
+          meters: { legitimacy: -0.03 },
+          approval: 2,
+          credits: -500
+        }
+      },
+      {
+        text: 'Fast-track visible infrastructure projects (spend requisitions, gain cohesion)',
+        effects_summary: 'Cohesion boost | Requisitions spent | Slight legitimacy cost',
+        effects: {
+          meters: { legitimacy: -0.06 },
+          coalitionCohesion: 2,
+          requisition: -35
+        }
+      }
+    ]
   )
 ];
 
@@ -573,32 +611,34 @@ export const DEBATE_CHOICE_EVENTS = [
     'MAJOR',
     [],
     1.0,
-    null, // No default effects, determined by choice
+    null,
     [],
-    'Powerful lobbyists from various factions are pressuring the council. How should you respond?',
+    'Powerful lobbyists from various factions are pressuring the council. They bring generous funding and insider intelligence — but at a cost to your credibility.',
     [
       {
-        text: 'Accept their support (gain momentum, lose legitimacy)',
-        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Reject pressure drop',
+        text: 'Accept their support (gain credits and momentum, lose legitimacy)',
+        effects_summary: 'Progress boost | Momentum boost | Credits gained | Legitimacy drop',
         effects: {
-          progress: 0.25,
+          progress: 0.2,
           meters: {
             momentum: 0.15,
             legitimacy: -0.1,
             reject_pressure: -0.05
-          }
+          },
+          credits: 500
         }
       },
       {
-        text: 'Reject their influence (lose momentum, gain legitimacy)',
-        effects_summary: 'Slight progress boost | Momentum drop | Legitimacy boost | Slight polarization increase',
+        text: 'Reject their influence and publicize it (gain legitimacy and intel)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Intel gained | Momentum drop',
         effects: {
           progress: 0.1,
           meters: {
             momentum: -0.1,
             legitimacy: 0.15,
             polarization: 0.05
-          }
+          },
+          coalitionIntel: 2
         }
       }
     ]
@@ -615,11 +655,11 @@ export const DEBATE_CHOICE_EVENTS = [
     0.9,
     null,
     [],
-    'Citizens are demanding a public forum to discuss the law. How do you proceed?',
+    'Citizens are demanding a public forum to discuss the law. Engaging them builds trust and influence, but delays your timeline. Refusing saves resources but stirs resentment.',
     [
       {
-        text: 'Hold an open forum (slow progress, gain legitimacy)',
-        effects_summary: 'Slight progress boost | Momentum drop | Major legitimacy boost | Unrest drop | Polarization drop',
+        text: 'Hold an open forum (build legitimacy and influence, slow progress)',
+        effects_summary: 'Slight progress boost | Major legitimacy boost | Influence gained | Unrest drop | Momentum drop',
         effects: {
           progress: 0.05,
           meters: {
@@ -627,20 +667,22 @@ export const DEBATE_CHOICE_EVENTS = [
             legitimacy: 0.2,
             unrest: -0.1,
             polarization: -0.05
-          }
+          },
+          influence: 10
         }
       },
       {
-        text: 'Decline and expedite voting (fast progress, lose legitimacy)',
-        effects_summary: 'Major progress boost | Momentum boost | Legitimacy drop | Unrest increase | Reject pressure increase',
+        text: 'Decline and redirect resources (fast progress, gain requisitions)',
+        effects_summary: 'Major progress boost | Momentum boost | Requisitions gained | Legitimacy drop | Unrest increase',
         effects: {
-          progress: 0.35,
+          progress: 0.3,
           meters: {
             momentum: 0.15,
             legitimacy: -0.15,
             unrest: 0.15,
             reject_pressure: 0.1
-          }
+          },
+          requisition: 50
         }
       }
     ]
@@ -659,30 +701,33 @@ export const DEBATE_CHOICE_EVENTS = [
     0.8,
     null,
     [],
-    'A panel of experts offers to analyze the law. Should you incorporate their recommendations?',
+    'A panel of experts offers to analyze the law. Their insights could yield valuable intelligence, but their fee is steep. Dismissing them saves credits but wastes an opportunity.',
     [
       {
-        text: 'Accept all recommendations (high legitimacy, slow progress)',
-        effects_summary: 'Slight progress boost | Major legitimacy boost | Momentum boost | Polarization drop',
+        text: 'Commission the full analysis (gain legitimacy and intel, spend credits)',
+        effects_summary: 'Slight progress boost | Major legitimacy boost | Intel gained | Credits spent | Polarization drop',
         effects: {
           progress: 0.1,
           meters: {
             legitimacy: 0.2,
             momentum: 0.05,
             polarization: -0.1
-          }
+          },
+          coalitionIntel: 3,
+          credits: -300
         }
       },
       {
-        text: 'Dismiss the panel (maintain momentum, risk legitimacy)',
-        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Polarization increase',
+        text: 'Dismiss the panel and save the budget (fast progress, keep credits)',
+        effects_summary: 'Progress boost | Momentum boost | Credits saved | Legitimacy drop',
         effects: {
           progress: 0.25,
           meters: {
             momentum: 0.15,
             legitimacy: -0.1,
             polarization: 0.1
-          }
+          },
+          credits: 200
         }
       }
     ]
@@ -708,11 +753,11 @@ export const FALLOUT_CHOICE_EVENTS = [
     [
       { type: 'polarization_boost', multiplier: 0.8 }
     ],
-    'A large opposition rally is taking place. How should you respond?',
+    'A large opposition rally is threatening to derail the law. You can engage the protesters diplomatically or deploy security — each costs different resources.',
     [
       {
-        text: 'Engage with protesters (reduce unrest, slow progress)',
-        effects_summary: 'Progress drop | Unrest drop | Legitimacy boost | Reject pressure increase | Momentum drop',
+        text: 'Engage with protesters (spend credits on outreach, gain legitimacy and approval)',
+        effects_summary: 'Progress drop | Unrest drop | Legitimacy boost | Approval boost | Credits spent',
         effects: {
           progress: -0.1,
           meters: {
@@ -720,20 +765,24 @@ export const FALLOUT_CHOICE_EVENTS = [
             legitimacy: 0.1,
             reject_pressure: 0.05,
             momentum: -0.1
-          }
+          },
+          approval: 1,
+          credits: -400
         }
       },
       {
-        text: 'Suppress the rally (reduce momentum, increase unrest)',
-        effects_summary: 'Slight progress drop | Major unrest increase | Momentum drop | Reject pressure increase | Legitimacy drop',
+        text: 'Deploy security forces (spend requisitions, gain intel from surveillance)',
+        effects_summary: 'Slight progress drop | Unrest increase | Intel gained | Requisition spent | Legitimacy drop',
         effects: {
           progress: -0.05,
           meters: {
-            unrest: 0.2,
-            momentum: -0.15,
-            reject_pressure: 0.15,
-            legitimacy: -0.15
-          }
+            unrest: 0.1,
+            momentum: -0.08,
+            reject_pressure: 0.1,
+            legitimacy: -0.1
+          },
+          coalitionIntel: 3,
+          requisition: -30
         }
       }
     ]
@@ -750,30 +799,34 @@ export const FALLOUT_CHOICE_EVENTS = [
     0.9,
     null,
     [],
-    'An economic analysis reveals potential costs. How do you address these concerns?',
+    'An economic analysis reveals the law will require significant investment. You can fund the transition now or gamble that the costs are overstated.',
     [
       {
-        text: 'Fund mitigation programs (slow progress, high legitimacy)',
-        effects_summary: 'Slight progress boost | Legitimacy boost | Momentum drop | Unrest drop',
+        text: 'Fund mitigation programs (spend credits and requisitions, gain legitimacy)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Approval boost | Credits and requisitions spent | Unrest drop',
         effects: {
           progress: 0.05,
           meters: {
             legitimacy: 0.15,
             momentum: -0.05,
             unrest: -0.1
-          }
+          },
+          credits: -600,
+          requisition: -25,
+          approval: 1
         }
       },
       {
-        text: 'Dismiss concerns as overblown (fast progress, risk backlash)',
-        effects_summary: 'Progress boost | Momentum boost | Reject pressure increase | Legitimacy drop',
+        text: 'Dismiss concerns and pocket the savings (fast progress, gain credits)',
+        effects_summary: 'Progress boost | Momentum boost | Credits gained | Reject pressure increase | Legitimacy drop',
         effects: {
           progress: 0.25,
           meters: {
             momentum: 0.15,
             reject_pressure: 0.15,
             legitimacy: -0.1
-          }
+          },
+          credits: 400
         }
       }
     ]
@@ -790,11 +843,11 @@ export const FALLOUT_CHOICE_EVENTS = [
     0.85,
     null,
     [],
-    'A major empire demands concessions before supporting the law. What is your response?',
+    'A major empire demands concessions before supporting the law — specifically, coalition resources and trade privileges. Refusing preserves your vision but risks their active opposition.',
     [
       {
-        text: 'Grant concessions (gain support, lose some momentum)',
-        effects_summary: 'Progress boost | Momentum boost | Slight legitimacy drop | Reject pressure drop | Polarization drop',
+        text: 'Grant concessions (spend requisitions, gain approval and reduce opposition)',
+        effects_summary: 'Progress boost | Requisitions spent | Approval boost | Reject pressure drop | Polarization drop',
         effects: {
           progress: 0.15,
           meters: {
@@ -802,12 +855,14 @@ export const FALLOUT_CHOICE_EVENTS = [
             legitimacy: -0.05,
             reject_pressure: -0.15,
             polarization: -0.05
-          }
+          },
+          requisition: -40,
+          approval: 2
         }
       },
       {
-        text: 'Refuse and risk their opposition (maintain vision, risk rejection)',
-        effects_summary: 'Slight progress boost | Slight momentum boost | Legitimacy boost | Major reject pressure increase | Polarization increase',
+        text: 'Refuse and rally your base (gain influence and legitimacy, risk rejection)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Influence gained | Reject pressure increase | Polarization increase',
         effects: {
           progress: 0.1,
           meters: {
@@ -815,7 +870,8 @@ export const FALLOUT_CHOICE_EVENTS = [
             legitimacy: 0.1,
             reject_pressure: 0.2,
             polarization: 0.15
-          }
+          },
+          influence: 15
         }
       }
     ]
@@ -837,24 +893,26 @@ export const VOTING_CHOICE_EVENTS = [
     1.0,
     null,
     [],
-    'A coalition proposes a last-minute amendment. Do you accept it?',
+    'A coalition partner proposes a last-minute amendment that would streamline the law but require additional treasury allocation. Accepting buys broad support; rejecting preserves your budget and builds influence.',
     [
       {
-        text: 'Accept amendment (high chance of passing, changes law intent)',
-        effects_summary: 'Major progress boost | Momentum boost | Slight legitimacy boost | Reject pressure drop | Polarization drop',
+        text: 'Accept amendment (spend credits, gain broad support and approval)',
+        effects_summary: 'Major progress boost | Momentum boost | Approval boost | Credits spent | Reject pressure drop',
         effects: {
-          progress: 0.4,
+          progress: 0.35,
           meters: {
             momentum: 0.2,
             legitimacy: 0.05,
             reject_pressure: -0.2,
             polarization: -0.1
-          }
+          },
+          credits: -500,
+          approval: 1
         }
       },
       {
-        text: 'Reject amendment (maintain original vision, risk failure)',
-        effects_summary: 'Slight progress boost | Momentum drop | Legitimacy boost | Reject pressure increase | Polarization increase',
+        text: 'Reject amendment (save budget, gain legitimacy and influence)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Influence gained | Momentum drop | Polarization increase',
         effects: {
           progress: 0.1,
           meters: {
@@ -862,7 +920,8 @@ export const VOTING_CHOICE_EVENTS = [
             legitimacy: 0.1,
             reject_pressure: 0.15,
             polarization: 0.15
-          }
+          },
+          influence: 12
         }
       }
     ]
@@ -881,11 +940,11 @@ export const VOTING_CHOICE_EVENTS = [
     0.9,
     null,
     [],
-    'Several empires threaten to abstain, risking quorum. How do you respond?',
+    'Several empires threaten to abstain, risking quorum. You can buy their votes with coalition resources, or step back and use the delay to gather strategic intel.',
     [
       {
-        text: 'Offer incentives (gain votes, lose legitimacy)',
-        effects_summary: 'Progress boost | Momentum boost | Legitimacy drop | Reject pressure drop | Slight polarization drop',
+        text: 'Offer incentives (spend credits and requisitions, gain votes)',
+        effects_summary: 'Progress boost | Momentum boost | Credits and requisitions spent | Legitimacy drop',
         effects: {
           progress: 0.3,
           meters: {
@@ -893,12 +952,14 @@ export const VOTING_CHOICE_EVENTS = [
             legitimacy: -0.15,
             reject_pressure: -0.15,
             polarization: -0.05
-          }
+          },
+          credits: -400,
+          requisition: -30
         }
       },
       {
-        text: 'Delay vote to build consensus (slow but safer)',
-        effects_summary: 'Progress drop | Momentum drop | Slight legitimacy boost | Reject pressure drop | Polarization drop | Unrest drop',
+        text: 'Delay vote and gather intelligence (gain intel and influence, slow progress)',
+        effects_summary: 'Progress drop | Intel gained | Influence gained | Momentum drop | Unrest drop',
         effects: {
           progress: -0.1,
           meters: {
@@ -907,7 +968,9 @@ export const VOTING_CHOICE_EVENTS = [
             reject_pressure: -0.1,
             polarization: -0.1,
             unrest: -0.05
-          }
+          },
+          coalitionIntel: 4,
+          influence: 8
         }
       }
     ]
@@ -924,11 +987,11 @@ export const VOTING_CHOICE_EVENTS = [
     0.7,
     null,
     [],
-    'A scandal related to the law surfaces just before the vote. How do you handle it?',
+    'A scandal related to the law surfaces just before the vote. You can launch a proper investigation — expensive but thorough — or rush the vote through before the story spreads.',
     [
       {
-        text: 'Launch investigation (delay vote, preserve legitimacy)',
-        effects_summary: 'Progress drop | Legitimacy boost | Momentum drop | Reject pressure drop | Unrest drop',
+        text: 'Launch investigation (spend credits, gain legitimacy and intel)',
+        effects_summary: 'Progress drop | Legitimacy boost | Intel gained | Credits spent | Unrest drop',
         effects: {
           progress: -0.15,
           meters: {
@@ -936,12 +999,14 @@ export const VOTING_CHOICE_EVENTS = [
             momentum: -0.2,
             reject_pressure: -0.1,
             unrest: -0.1
-          }
+          },
+          credits: -500,
+          coalitionIntel: 3
         }
       },
       {
         text: 'Proceed with vote anyway (risk legitimacy for speed)',
-        effects_summary: 'Progress boost | Momentum boost | Major legitimacy drop | Reject pressure increase | Unrest increase | Polarization increase',
+        effects_summary: 'Progress boost | Momentum boost | Major legitimacy drop | Approval drop | Unrest increase',
         effects: {
           progress: 0.25,
           meters: {
@@ -950,7 +1015,8 @@ export const VOTING_CHOICE_EVENTS = [
             reject_pressure: 0.2,
             unrest: 0.15,
             polarization: 0.15
-          }
+          },
+          approval: -2
         }
       }
     ]
@@ -975,30 +1041,32 @@ export const HERO_CHOICE_EVENTS = [
     0.85,
     null,
     [],
-    'The law\'s sponsor has made a fiery public declaration, rallying passionate supporters but also inflaming opposition. Do you back their aggressive stance?',
+    'The law\'s sponsor has made a fiery public declaration, rallying passionate supporters but also inflaming opposition. Backing them brings glory and momentum; tempering the message builds quiet influence and legitimacy.',
     [
       {
-        text: 'Back the sponsor\'s gambit (fast progress, but stoke unrest)',
-        effects_summary: 'Major progress boost | Momentum boost | Unrest increase | Polarization increase',
+        text: 'Back the sponsor\'s gambit (fast progress, gain cohesion, stoke unrest)',
+        effects_summary: 'Major progress boost | Momentum boost | Cohesion boost | Unrest increase | Polarization increase',
         effects: {
           progress: 0.3,
           meters: {
             momentum: 0.2,
             unrest: 0.12,
             polarization: 0.1
-          }
+          },
+          coalitionCohesion: 2
         }
       },
       {
-        text: 'Temper their message (slower but steadier)',
-        effects_summary: 'Slight progress boost | Legitimacy boost | Polarization drop',
+        text: 'Temper their message (build legitimacy and influence)',
+        effects_summary: 'Slight progress boost | Legitimacy boost | Influence gained | Polarization drop',
         effects: {
           progress: 0.08,
           meters: {
             legitimacy: 0.15,
             momentum: 0.05,
             polarization: -0.05
-          }
+          },
+          influence: 10
         }
       }
     ]
@@ -1018,23 +1086,24 @@ export const HERO_CHOICE_EVENTS = [
     0.8,
     null,
     [],
-    'The law has exposed a deep ideological divide between coalition heroes. One faction demands the law go further; another insists it is already too radical. How do you navigate this?',
+    'The law has exposed a deep ideological divide between coalition factions. One side demands the law go further; the other insists it is already too radical. Leaning in gains credits from passionate donors; seeking middle ground yields valuable intelligence about factional dynamics.',
     [
       {
-        text: 'Lean into the controversy (energize supporters, alienate moderates)',
-        effects_summary: 'Progress boost | Momentum boost | Polarization increase | Unrest increase',
+        text: 'Lean into the controversy (energize supporters, collect donations)',
+        effects_summary: 'Progress boost | Momentum boost | Credits gained | Polarization increase | Unrest increase',
         effects: {
           progress: 0.2,
           meters: {
             momentum: 0.15,
             polarization: 0.15,
             unrest: 0.1
-          }
+          },
+          credits: 600
         }
       },
       {
-        text: 'Seek middle ground (calm tensions, but lose momentum)',
-        effects_summary: 'Legitimacy boost | Polarization drop | Unrest drop | Momentum drop',
+        text: 'Seek middle ground (calm tensions, gather intel on factions)',
+        effects_summary: 'Legitimacy boost | Intel gained | Polarization drop | Unrest drop | Momentum drop',
         effects: {
           progress: 0.05,
           meters: {
@@ -1042,7 +1111,8 @@ export const HERO_CHOICE_EVENTS = [
             polarization: -0.1,
             unrest: -0.08,
             momentum: -0.05
-          }
+          },
+          coalitionIntel: 3
         }
       }
     ]
@@ -1062,23 +1132,24 @@ export const HERO_CHOICE_EVENTS = [
     0.9,
     null,
     [],
-    'Intelligence reports that the law\'s consequences are straining coalition bonds. Several heroes have privately expressed alarm. Do you press forward or amend the law to address their concerns?',
+    'Intelligence reports indicate the law is straining coalition bonds. Several factions have privately expressed alarm. Pressing forward may require emergency spending to hold things together; amending the law preserves resources and builds trust.',
     [
       {
-        text: 'Press forward regardless (maintain vision at risk of fracture)',
-        effects_summary: 'Progress boost | Momentum boost | Polarization increase | Unrest increase',
+        text: 'Press forward and spend credits on damage control (maintain vision)',
+        effects_summary: 'Progress boost | Momentum boost | Credits spent | Polarization increase | Unrest increase',
         effects: {
           progress: 0.18,
           meters: {
             momentum: 0.15,
-            polarization: 0.2,
-            unrest: 0.15
-          }
+            polarization: 0.15,
+            unrest: 0.1
+          },
+          credits: -500
         }
       },
       {
-        text: 'Amend to address concerns (sacrifice progress for stability)',
-        effects_summary: 'Legitimacy boost | Unrest drop | Polarization drop | Progress drop | Momentum drop',
+        text: 'Amend to address concerns (gain requisitions from freed-up plans, build legitimacy)',
+        effects_summary: 'Legitimacy boost | Requisitions gained | Cohesion boost | Unrest drop | Progress drop',
         effects: {
           progress: -0.08,
           meters: {
@@ -1086,7 +1157,9 @@ export const HERO_CHOICE_EVENTS = [
             unrest: -0.15,
             polarization: -0.12,
             momentum: -0.1
-          }
+          },
+          requisition: 40,
+          coalitionCohesion: 2
         }
       }
     ]
@@ -1104,23 +1177,26 @@ export const HERO_CHOICE_EVENTS = [
     0.75,
     null,
     [],
-    'Military and economic factions within the coalition have reached an impasse over the law\'s impact. Each side has hero champions threatening to derail the vote unless their concerns are prioritized.',
+    'Military and economic factions have reached an impasse over the law. The military offers intelligence cooperation if prioritized; the economic faction promises increased treasury contributions.',
     [
       {
-        text: 'Side with the military faction (security allies rally, economic allies waver)',
-        effects_summary: 'Progress boost | Momentum boost | Reject pressure increase | Polarization increase',
+        text: 'Side with the military faction (gain intel and requisitions, lose economic support)',
+        effects_summary: 'Progress boost | Momentum boost | Intel gained | Requisitions gained | Approval drop',
         effects: {
           progress: 0.2,
           meters: {
             momentum: 0.15,
             reject_pressure: 0.1,
             polarization: 0.12
-          }
+          },
+          coalitionIntel: 4,
+          requisition: 30,
+          approval: -1
         }
       },
       {
-        text: 'Side with the economic faction (broad legitimacy, but military faction withdraws support)',
-        effects_summary: 'Legitimacy boost | Reject pressure drop | Momentum drop | Unrest slight increase',
+        text: 'Side with the economic faction (gain credits and approval, lose military backing)',
+        effects_summary: 'Legitimacy boost | Credits gained | Approval boost | Momentum drop',
         effects: {
           progress: 0.1,
           meters: {
@@ -1128,7 +1204,9 @@ export const HERO_CHOICE_EVENTS = [
             reject_pressure: -0.1,
             momentum: -0.1,
             unrest: 0.05
-          }
+          },
+          credits: 600,
+          approval: 1
         }
       }
     ]
@@ -1162,20 +1240,22 @@ const ENACTMENT_EVENTS = [
     1.0,
     null,
     [],
-    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. How do you capitalize on this goodwill?',
+    'The law passed with strong perceived legitimacy. The coalition\'s citizens feel their voices were heard, and public confidence surges. You can channel this goodwill into popular approval or invest it in coalition infrastructure.',
     [
       {
-        text: 'Celebrate publicly (boost approval across empires)',
-        effects_summary: 'Approval boost to all empires',
+        text: 'Celebrate publicly (boost approval, gain influence from public trust)',
+        effects_summary: 'Approval boost to all empires | Influence gained',
         effects: {
-          approval: 3
+          approval: 3,
+          influence: 10
         }
       },
       {
-        text: 'Reinforce institutions (strengthen coalition cohesion)',
-        effects_summary: 'Coalition cohesion boost',
+        text: 'Reinforce institutions (strengthen cohesion, gain requisitions)',
+        effects_summary: 'Coalition cohesion boost | Requisitions gained',
         effects: {
-          coalitionCohesion: 3
+          coalitionCohesion: 3,
+          requisition: 40
         }
       }
     ]
@@ -1195,20 +1275,24 @@ const ENACTMENT_EVENTS = [
     0.8,
     null,
     [],
-    'The law was enacted through an exemplary process that even skeptics respect. The coalition radiates confidence. How do you channel this energy?',
+    'The law was enacted through an exemplary process that even skeptics respect. The coalition radiates confidence. Donations pour in from supporters; analysts offer their services pro bono.',
     [
       {
-        text: 'Rally the people (major approval surge)',
-        effects_summary: 'Major approval boost to all empires',
+        text: 'Rally the people (major approval surge, treasury donations)',
+        effects_summary: 'Major approval boost | Credits gained | Influence gained',
         effects: {
-          approval: 5
+          approval: 5,
+          credits: 800,
+          influence: 8
         }
       },
       {
-        text: 'Shore up the coalition (major cohesion boost)',
-        effects_summary: 'Major coalition cohesion boost',
+        text: 'Shore up the coalition (major cohesion boost, intelligence windfall)',
+        effects_summary: 'Major coalition cohesion boost | Intel gained | Requisitions gained',
         effects: {
-          coalitionCohesion: 5
+          coalitionCohesion: 5,
+          coalitionIntel: 4,
+          requisition: 50
         }
       }
     ]
@@ -1228,21 +1312,23 @@ const ENACTMENT_EVENTS = [
     1.0,
     null,
     [],
-    'The law scraped through despite fierce opposition, but the victory itself has energised your base. The opposition is vocal — do you co-opt their energy or ride the momentum?',
+    'The law scraped through despite fierce opposition, but the victory itself has energised your base. Inviting critics in builds trust and yields intel; rallying supporters builds influence and approval.',
     [
       {
-        text: 'Invite critics into the implementation process (build unity)',
-        effects_summary: 'Cohesion boost | Slight approval cost',
+        text: 'Invite critics into the implementation process (build unity, gain intel)',
+        effects_summary: 'Cohesion boost | Intel gained | Slight approval cost',
         effects: {
           coalitionCohesion: 2,
+          coalitionIntel: 2,
           approval: -1
         }
       },
       {
         text: 'Rally your supporters around the victory (energise the base)',
-        effects_summary: 'Approval boost | Slight cohesion cost',
+        effects_summary: 'Approval boost | Influence gained | Slight cohesion cost',
         effects: {
           approval: 2,
+          influence: 12,
           coalitionCohesion: -1
         }
       }
@@ -1263,21 +1349,23 @@ const ENACTMENT_EVENTS = [
     0.8,
     null,
     [],
-    'The law was forced through over massive resistance, but the coalition proved it can act decisively. Opposition factions demand a seat at the table. How do you capitalise on this moment?',
+    'The law was forced through over massive resistance, but the coalition proved it can act decisively. Opposition factions demand a seat at the table — and they bring resources to bargain with.',
     [
       {
-        text: 'Offer the opposition a role in implementation (forge broader unity)',
-        effects_summary: 'Major cohesion boost | Approval cost',
+        text: 'Offer the opposition a role in implementation (gain credits and cohesion)',
+        effects_summary: 'Major cohesion boost | Credits gained | Approval cost',
         effects: {
           coalitionCohesion: 3,
+          credits: 500,
           approval: -2
         }
       },
       {
-        text: 'Double down on the law\'s benefits in public messaging (rally citizens)',
-        effects_summary: 'Major approval boost | Cohesion cost',
+        text: 'Double down on the law\'s benefits in public messaging (rally citizens, build influence)',
+        effects_summary: 'Major approval boost | Influence gained | Cohesion cost',
         effects: {
           approval: 3,
+          influence: 15,
           coalitionCohesion: -2
         }
       }
@@ -1298,21 +1386,23 @@ const ENACTMENT_EVENTS = [
     1.0,
     null,
     [],
-    'The law exposed deep ideological rifts, but the passionate debate has also engaged citizens like never before. Both sides claim the law as proof their vision works. How do you steer the narrative?',
+    'The law exposed deep ideological rifts, but the passionate debate has also engaged citizens like never before. Public forums could generate both approval and intelligence about factional dynamics; quiet deal-making brings cohesion and influence.',
     [
       {
-        text: 'Host public forums to air differences openly (citizens love the transparency)',
-        effects_summary: 'Approval boost | Slight cohesion cost',
+        text: 'Host public forums to air differences openly (engage citizens, gather intel)',
+        effects_summary: 'Approval boost | Intel gained | Slight cohesion cost',
         effects: {
           approval: 2,
+          coalitionIntel: 3,
           coalitionCohesion: -1
         }
       },
       {
-        text: 'Forge a compromise narrative both sides can claim (unite the factions)',
-        effects_summary: 'Cohesion boost | Slight approval cost',
+        text: 'Forge a compromise narrative both sides can claim (unite factions, gain influence)',
+        effects_summary: 'Cohesion boost | Influence gained | Slight approval cost',
         effects: {
           coalitionCohesion: 2,
+          influence: 10,
           approval: -1
         }
       }
@@ -1333,21 +1423,23 @@ const ENACTMENT_EVENTS = [
     0.8,
     null,
     [],
-    'The law\'s passage has hardened factional lines, but it has also demonstrated that the coalition can weather serious disagreement and still govern. Key figures on both sides are looking for a path forward.',
+    'The law\'s passage has hardened factional lines, but it has also demonstrated that the coalition can weather serious disagreement and still govern. Both sides have resources to offer — the question is how to channel them.',
     [
       {
-        text: 'Turn the debate into a showcase of democratic strength (engage citizens)',
-        effects_summary: 'Major approval boost | Cohesion cost',
+        text: 'Turn the debate into a showcase of democratic strength (public goodwill, credits from supporters)',
+        effects_summary: 'Major approval boost | Credits gained | Cohesion cost',
         effects: {
           approval: 3,
+          credits: 600,
           coalitionCohesion: -2
         }
       },
       {
-        text: 'Broker a power-sharing agreement between the camps (unite the coalition)',
-        effects_summary: 'Major cohesion boost | Approval cost',
+        text: 'Broker a power-sharing agreement (unite the coalition, gain requisitions)',
+        effects_summary: 'Major cohesion boost | Requisitions gained | Approval cost',
         effects: {
           coalitionCohesion: 3,
+          requisition: 50,
           approval: -2
         }
       }
@@ -1368,21 +1460,24 @@ const ENACTMENT_EVENTS = [
     1.0,
     null,
     [],
-    'Civil unrest complicates the law\'s rollout, but the energy in the streets also shows citizens care deeply about governance. Organisers on both sides are looking for direction.',
+    'Civil unrest complicates the law\'s rollout, but the energy in the streets also shows citizens care deeply about governance. You can harness this civic energy for influence, or spend resources to smooth the transition.',
     [
       {
-        text: 'Channel protests into structured feedback programs (harness civic energy)',
-        effects_summary: 'Approval boost | Slight cohesion cost',
+        text: 'Channel protests into structured feedback (gain influence and approval)',
+        effects_summary: 'Approval boost | Influence gained | Slight cohesion cost',
         effects: {
           approval: 2,
+          influence: 12,
           coalitionCohesion: -1
         }
       },
       {
-        text: 'Redirect resources to smooth implementation in key systems (stabilise)',
-        effects_summary: 'Cohesion boost | Slight approval cost',
+        text: 'Redirect resources to smooth implementation (spend credits, gain cohesion and intel)',
+        effects_summary: 'Cohesion boost | Intel gained | Credits spent | Slight approval cost',
         effects: {
           coalitionCohesion: 2,
+          coalitionIntel: 2,
+          credits: -400,
           approval: -1
         }
       }
@@ -1403,21 +1498,25 @@ const ENACTMENT_EVENTS = [
     0.8,
     null,
     [],
-    'Widespread unrest erupts as the new law takes effect, but amid the chaos, grassroots movements are forming to shape the law\'s implementation. The coalition can either embrace or direct this energy.',
+    'Widespread unrest erupts as the new law takes effect, but amid the chaos, grassroots movements are forming. You can empower these movements to build lasting influence, or invest heavily in peacekeeping to restore economic stability.',
     [
       {
-        text: 'Transform protest movements into civic councils (empower the people)',
-        effects_summary: 'Major approval boost | Cohesion cost',
+        text: 'Transform protest movements into civic councils (build influence and intel)',
+        effects_summary: 'Major approval boost | Influence gained | Intel gained | Cohesion cost',
         effects: {
           approval: 3,
+          influence: 15,
+          coalitionIntel: 3,
           coalitionCohesion: -2
         }
       },
       {
-        text: 'Deploy peacekeepers with community outreach programs (restore order)',
-        effects_summary: 'Major cohesion boost | Approval cost',
+        text: 'Deploy peacekeepers with community outreach (spend credits, restore order)',
+        effects_summary: 'Major cohesion boost | Requisitions gained | Credits spent | Approval cost',
         effects: {
           coalitionCohesion: 3,
+          requisition: 40,
+          credits: -600,
           approval: -2
         }
       }

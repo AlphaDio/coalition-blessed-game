@@ -144,7 +144,7 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
   }
 
 
-  // Apply game-state effects (used by enactment events)
+  // Apply game-state effects (used by enactment events and choice events)
   if (effects.coalitionCohesion && state) {
     const delta = applyScaledCoalitionCohesionDelta(state, effects.coalitionCohesion);
     log.push(`  Coalition cohesion: ${delta >= 0 ? "+" : ""}${delta}`);
@@ -155,6 +155,32 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
       empire.approval = clamp(empire.approval + effects.approval, -100, 100);
     });
     log.push(`  All empire approval: ${effects.approval >= 0 ? "+" : ""}${effects.approval}`);
+  }
+
+  if (effects.requisition && state) {
+    if (!state.coalitionEconomy) {
+      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
+    }
+    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;
+    log.push(`  Requisition: ${effects.requisition >= 0 ? "+" : ""}${effects.requisition}`);
+  }
+
+  if (effects.credits && state) {
+    if (!state.coalitionEconomy) {
+      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
+    }
+    state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + effects.credits;
+    log.push(`  Treasury credits: ${effects.credits >= 0 ? "+" : ""}${effects.credits}`);
+  }
+
+  if (effects.coalitionIntel && state) {
+    state.coalitionIntel = (state.coalitionIntel || 0) + effects.coalitionIntel;
+    log.push(`  Coalition intel: ${effects.coalitionIntel >= 0 ? "+" : ""}${effects.coalitionIntel}`);
+  }
+
+  if (effects.influence && state) {
+    state.playerInfluence = (state.playerInfluence || 0) + effects.influence;
+    log.push(`  Influence: ${effects.influence >= 0 ? "+" : ""}${effects.influence}`);
   }
 
   return log;
