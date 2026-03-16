@@ -361,58 +361,28 @@ function generateTechChoice(tech) {
   const hints = [];
   const modifiers = tech.modifiers || {};
 
-  if (modifiers.army_organization && modifiers.army_organization > 8) {
-    hints.push('Strong military boost');
-  } else if (modifiers.army_organization && modifiers.army_organization > 3) {
-    hints.push('Military enhancement');
+  // Single-key threshold hints: [key, highThreshold, highHint, lowThreshold, lowHint]
+  const HINT_RULES = [
+    ['army_organization',      8,      'Strong military boost',   3,      'Military enhancement'],
+    ['army_replenishment_mult', 0.08,  'Fast reinforcement',      0.03,   'Reinforcement support'],
+    ['army_protection',        0.04,   'Heavy armor plating',     0.01,   'Armor reinforcement'],
+    ['industrial_output',      0.12,   'Major production increase', 0.04, 'Production boost'],
+    ['research_speed',         0.12,   'Accelerated research',    0.04,   'Research enhancement'],
+    ['population_growth',      0.0007, 'Rapid population growth', 0.00025,'Population increase'],
+    ['trade_income',           60,     'Major trade benefits',    20,     'Trade income'],
+    ['empire_approval',        5,      'High approval boost',     2,      'Approval increase'],
+  ];
+
+  for (const [key, hiThresh, hiHint, loThresh, loHint] of HINT_RULES) {
+    if (modifiers[key] > hiThresh) hints.push(hiHint);
+    else if (modifiers[key] > loThresh) hints.push(loHint);
   }
 
-  if ((modifiers.army_damage_add && modifiers.army_damage_add > 0.1) || (modifiers.army_damage_mult && modifiers.army_damage_mult > 0.08)) {
+  // Combat damage uses a combined check across two modifiers
+  if ((modifiers.army_damage_add > 0.1) || (modifiers.army_damage_mult > 0.08)) {
     hints.push('Heavy combat doctrine');
-  } else if ((modifiers.army_damage_add && modifiers.army_damage_add > 0.03) || (modifiers.army_damage_mult && modifiers.army_damage_mult > 0.03)) {
+  } else if ((modifiers.army_damage_add > 0.03) || (modifiers.army_damage_mult > 0.03)) {
     hints.push('Combat damage boost');
-  }
-
-  if (modifiers.army_replenishment_mult && modifiers.army_replenishment_mult > 0.08) {
-    hints.push('Fast reinforcement');
-  } else if (modifiers.army_replenishment_mult && modifiers.army_replenishment_mult > 0.03) {
-    hints.push('Reinforcement support');
-  }
-
-  if (modifiers.army_protection && modifiers.army_protection > 0.04) {
-    hints.push('Heavy armor plating');
-  } else if (modifiers.army_protection && modifiers.army_protection > 0.01) {
-    hints.push('Armor reinforcement');
-  }
-
-  if (modifiers.industrial_output && modifiers.industrial_output > 0.12) {
-    hints.push('Major production increase');
-  } else if (modifiers.industrial_output && modifiers.industrial_output > 0.04) {
-    hints.push('Production boost');
-  }
-
-  if (modifiers.research_speed && modifiers.research_speed > 0.12) {
-    hints.push('Accelerated research');
-  } else if (modifiers.research_speed && modifiers.research_speed > 0.04) {
-    hints.push('Research enhancement');
-  }
-
-  if (modifiers.population_growth && modifiers.population_growth > 0.0007) {
-    hints.push('Rapid population growth');
-  } else if (modifiers.population_growth && modifiers.population_growth > 0.00025) {
-    hints.push('Population increase');
-  }
-
-  if (modifiers.trade_income && modifiers.trade_income > 60) {
-    hints.push('Major trade benefits');
-  } else if (modifiers.trade_income && modifiers.trade_income > 20) {
-    hints.push('Trade income');
-  }
-
-  if (modifiers.empire_approval && modifiers.empire_approval > 5) {
-    hints.push('High approval boost');
-  } else if (modifiers.empire_approval && modifiers.empire_approval > 2) {
-    hints.push('Approval increase');
   }
 
   // Build effect description from modifiers
