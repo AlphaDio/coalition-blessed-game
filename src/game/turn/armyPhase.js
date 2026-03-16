@@ -9,6 +9,8 @@ import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { getArmyPopulationDemandMultiplier } from '../consumptionScaling.js';
 import { addArmyBattlePrep } from '../armyBattlePrep.js';
 
+const DEFAULT_ARMY_PROTECTION = 0.2;
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -232,6 +234,16 @@ export function applyArmyPassiveStatModifiers(state) {
     }
     if (passiveFervorGain > 0) {
       addArmyBattlePrep(army, 'fervor', passiveFervorGain);
+    }
+
+    // Raise army base protection (the value it resets to after battlePrep is cleared).
+    // Snapshot the original module-defined value on first encounter.
+    if (army._baseProtection === undefined) {
+      army._baseProtection = Number(army.protection) || DEFAULT_ARMY_PROTECTION;
+    }
+    const protectionMod = empireMilitaryMods.army_protection;
+    if (protectionMod > 0) {
+      army.protection = clampStat(army._baseProtection + protectionMod, 0, 1);
     }
   });
 }

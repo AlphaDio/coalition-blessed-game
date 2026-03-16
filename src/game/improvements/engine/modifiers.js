@@ -10,6 +10,23 @@ import {
 } from '../types.js';
 import { scalePositiveApprovalGain } from '../../approvalUtils.js';
 
+/** Per-empire modifiers that are simply accumulated (added) from active improvements. */
+const ADDITIVE_EMPIRE_MODIFIERS = new Set([
+  'army_organization',
+  'army_fervor',
+  'army_protection',
+  'army_damage_add',
+  'army_damage_mult',
+  'army_replenishment_mult',
+  'army_consumption_mp_gain_mult',
+  'research_speed',
+  'supply_efficiency',
+  'hero_siphon_efficiency_mult',
+  'hero_siphon_efficiency_add',
+  'unity_gain_add',
+  'unity_gain_mult',
+]);
+
 /**
  * Apply improvement modifiers to game state
  */
@@ -20,11 +37,7 @@ export function applyImprovementModifiers(state) {
   }
 
   // Reset per-empire improvement modifiers each tick
-  if (!improvements.empireModifiers) {
-    improvements.empireModifiers = {};
-  } else {
-    improvements.empireModifiers = {};
-  }
+  improvements.empireModifiers = {};
 
   // Reset coalition-wide improvement-derived values so we recompute from active improvements only (avoid per-tick accumulation)
   if (!state.coalitionModifiers) state.coalitionModifiers = {};
@@ -76,11 +89,7 @@ export function applyImprovementModifiers(state) {
 
     // Apply stat modifiers
     for (const [stat, value] of Object.entries(improvement.modifiers)) {
-      if (stat === 'army_organization') {
-        // Stored as a per-empire drill modifier; applied in armyPhase with tech modifiers.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'empire_approval') {
+      if (stat === 'empire_approval') {
         // Very small boost per tick with positive-gain pacing.
         const rawApprovalDelta = value / MODIFIER_EMPIRE_APPROVAL_SCALE;
         const approvalDelta = rawApprovalDelta > 0
@@ -88,25 +97,17 @@ export function applyImprovementModifiers(state) {
           : rawApprovalDelta;
         empire.approval = Math.min(100, Math.max(0, empire.approval + approvalDelta));
       } else if (stat === 'trade_income') {
-        // Generate credits
         empire.budget_credits = (empire.budget_credits || 0) + (value / TRADE_INCOME_EFFECT_DIVISOR);
       } else if (stat === 'population_growth') {
         const baseGrowth = value / POPULATION_GROWTH_SCALE;
         const biologicBoost = improvementHasTag(improvement, BIOLOGIC_TAG) && empireHasTag(empire, BIOLOGIC_TAG)
           ? BIOLOGIC_GROWTH_BONUS_MULTIPLIER
           : 1;
-        const growthRate = baseGrowth * biologicBoost;
         improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + growthRate;
-      } else if (stat === 'army_fervor') {
-        // Stored as a per-empire drill modifier; applied in armyPhase with tech modifiers.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
+          (improvements.empireModifiers[empire.id][stat] || 0) + baseGrowth * biologicBoost;
       } else if (stat === 'law_progress_speed') {
-        // Sum from active improvements (reset each tick above); used in lawProcess/progress.js
         state.coalitionModifiers.law_progress_speed += value;
       } else if (stat === 'improvement_queue_capacity') {
-        // Add to base capacity (reset each tick above); used in lifecycle for queue limit
         state.improvements.maxTotalCapacity += value;
       } else if (stat === 'industrial_output') {
         newCache.industrial_output += value;
@@ -116,39 +117,10 @@ export function applyImprovementModifiers(state) {
         newCache.cohesionModifier *= value;
       } else if (stat === 'tick_delay_multiplier') {
         newCache.tick_delay_multiplier *= value;
-      } else if (stat === 'research_speed') {
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'hero_siphon_efficiency_mult' || stat === 'hero_siphon_efficiency_add') {
-        // Store per-empire modifiers for hero siphon efficiency (applied in hero budget siphon)
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'supply_efficiency') {
-        // Reduces this empire's (and its armies') consumption; applied in ordersPhase via getEmpireSupplyEfficiency.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'army_damage_add') {
-        // Additive damage bonus for this empire's armies (added to dmgPerUnitMP / dmgPerTickMO); applied in frontBattles.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'army_damage_mult') {
-        // Multiplicative damage bonus for this empire's armies (e.g. 0.1 = +10%); applied in frontBattles.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'army_replenishment_mult' || stat === 'army_consumption_mp_gain_mult') {
-        // Persistent military scaling modifiers applied in armyPhase.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'unity_gain_add') {
-        // Additive per-turn unity gain modifier for this empire.
-        improvements.empireModifiers[empire.id][stat] =
-          (improvements.empireModifiers[empire.id][stat] || 0) + value;
-      } else if (stat === 'unity_gain_mult') {
-        // Multiplicative per-turn unity gain modifier (stored as additive ratio, e.g. 0.15 => +15%).
+      } else if (ADDITIVE_EMPIRE_MODIFIERS.has(stat)) {
         improvements.empireModifiers[empire.id][stat] =
           (improvements.empireModifiers[empire.id][stat] || 0) + value;
       }
-      // Other modifiers can be stored and applied elsewhere as needed
     }
   });
 

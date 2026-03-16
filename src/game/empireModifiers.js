@@ -33,6 +33,7 @@ export function getEmpireMilitaryModifierSet(state, empireOrId) {
     army_damage_mult: getEmpireModifierValue(state, empireOrId, 'army_damage_mult'),
     army_organization: getEmpireModifierValue(state, empireOrId, 'army_organization'),
     army_fervor: getEmpireModifierValue(state, empireOrId, 'army_fervor'),
+    army_protection: getEmpireModifierValue(state, empireOrId, 'army_protection'),
     army_consumption_mp_gain_mult: Math.max(0, 1 + rawConsumptionMpGainMult),
     army_replenishment_mult: Math.max(0, 1 + rawReplenishmentMult)
   };
