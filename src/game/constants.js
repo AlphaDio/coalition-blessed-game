@@ -76,7 +76,9 @@ export const MARKET_CONSTANTS = {
   SURPLUS_RATIO_THRESHOLD: 0.35,  // When stockpiles exceed this ratio, sell surplus
   SURPLUS_TARGET_RATIO: 0.7,      // Target stockpile ratio after selling
   SURPLUS_KEEP_RATIO: 0.5,        // Keep at least this much when selling
-  POPULATION_GROWTH_BANK_THRESHOLD: 10 // Population growth accumulates to this threshold before applying
+  POPULATION_GROWTH_BANK_THRESHOLD: 10, // Population growth accumulates to this threshold before applying
+  BULK_QTY_THRESHOLD: 20,         // Orders above this qty qualify for bulk/gross pricing
+  BULK_DISCOUNT_MAX: 0.15         // Maximum gross discount (15%) for large bulk orders
 };
 
 /**
@@ -382,12 +384,12 @@ export const RATIONING_CONSTANTS = {
  */
 export const ECONOMY_BALANCE_CONSTANTS = {
   DEMAND_MULTIPLIERS_BY_COMMODITY: {
-    plasma_fuel: 0.88,
-    biomass: 0.90
+    plasma_fuel: 1.00,
+    biomass: 1.00
   },
   SUPPLY_MULTIPLIERS_BY_COMMODITY: {
-    plasma_fuel: 1.35,
-    biomass: 1.30
+    plasma_fuel: 1.10,
+    biomass: 1.05
   },
   IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT: 10
 };

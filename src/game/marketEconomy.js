@@ -4,6 +4,7 @@
  */
 
 import { getLogger } from '../modules/logger.js';
+import { MARKET_CONSTANTS } from './constants.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -186,9 +187,33 @@ export function initializeMarket(commodities, rng = Math.random) {
 }
 
 /**
+ * Compute bulk discount rate for an order based on its remaining quantity.
+ * Orders above BULK_QTY_THRESHOLD get a linearly scaling discount up to BULK_DISCOUNT_MAX.
+ * Mimics gross vs. retail pricing: larger purchases get better per-unit prices.
+ * @param {number} remainingQty - Remaining unfilled quantity of the order
+ * @returns {number} Discount rate (0 to BULK_DISCOUNT_MAX)
+ */
+export function getBulkDiscount(remainingQty) {
+  const threshold = MARKET_CONSTANTS.BULK_QTY_THRESHOLD;
+  const maxDiscount = MARKET_CONSTANTS.BULK_DISCOUNT_MAX;
+  if (remainingQty <= threshold) return 0;
+  // Linear scale: at 2x threshold the discount is maxed
+  const scale = Math.min(1, (remainingQty - threshold) / threshold);
+  return maxDiscount * scale;
+}
+
+/**
  * Clear market: match buy orders with sell offers
  * Uses order-level price matching: trades clear when buy.max_price >= sell.ask_price
  * Trades clear at the seller's ask_price (the lower price)
+ *
+ * Priority system:
+ *  1. Explicit priority tier (higher first)
+ *  2. Remaining order quantity (larger orders first – bulk prioritization)
+ *  3. Max price willingness (higher first)
+ *
+ * Bulk discount: orders above BULK_QTY_THRESHOLD receive a gross price
+ * reduction on the trade price, scaling up to BULK_DISCOUNT_MAX.
  */
 export function clearMarket(buyOrders, sellOffers, marketState) {
   const commodity = marketState.commodity;
@@ -205,11 +230,15 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
     sellOffers.filter(o => o.commodity === commodity && (o.filled_qty || 0) < o.qty)
   );
   
-  // Sort by priority (higher first), then by price
-  // Buys: highest max_price first (most willing to pay)
-  // Sells: lowest ask_price first (cheapest first)
+  // Sort by priority (higher first), then by remaining qty (larger first for bulk
+  // prioritization), then by price.
+  // Buys: highest priority → largest qty → highest max_price
+  // Sells: highest priority → lowest ask_price (cheapest first)
   relevantBuys.sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
+    const aRemaining = (a.qty - (a.filled_qty || 0));
+    const bRemaining = (b.qty - (b.filled_qty || 0));
+    if (bRemaining !== aRemaining) return bRemaining - aRemaining;
     return b.max_price - a.max_price;
   });
   
@@ -263,6 +292,10 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
     let buyRemaining = buy.qty - (buy.filled_qty || 0);
     if (buyRemaining <= 0) continue;
 
+    // Compute bulk discount once per buy order based on its total committed qty.
+    // This mirrors wholesale contracts where the rate is locked at order placement.
+    const bulkDiscount = getBulkDiscount(buyRemaining);
+
     // Find matching sells (where sell.ask_price <= buy.max_price)
     for (const sell of relevantSells) {
       if (buyRemaining <= 0) break;
@@ -278,13 +311,18 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
         sellRemaining.set(sell.id, sellQty - tradeQty);
         buyRemaining -= tradeQty;
 
-        // Record trade at seller's ask_price (the lower price)
+        // Apply bulk/gross discount to trade price.
+        // The discount incentivizes bulk purchasing and is absorbed by the
+        // market spread, similar to wholesale vs. retail economics.
+        const tradePrice = sell.ask_price * (1 - bulkDiscount);
+
+        // Record trade at discounted price
         trades.push({
           buy_order_id: buy.id,
           sell_offer_id: sell.id,
           commodity,
           qty: tradeQty,
-          price: sell.ask_price
+          price: tradePrice
         });
 
         // Update buy's filled_qty
