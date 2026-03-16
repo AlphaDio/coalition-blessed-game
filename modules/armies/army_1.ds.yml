@@ -42,7 +42,7 @@ declares:
         threshold: 15
         effect:
           type: mp_bonus
-          amount: 3
+          amount: 5
       plasma_fuel:
         threshold: 60
         effect:

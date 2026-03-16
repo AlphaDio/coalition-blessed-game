@@ -42,7 +42,7 @@ declares:
         threshold: 21
         effect:
           type: mp_bonus
-          amount: 4
+          amount: 6
       genomes:
         threshold: 70
         effect:
