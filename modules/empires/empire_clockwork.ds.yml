@@ -46,13 +46,12 @@ declares:
           nano_machines: 0.00005
       needs:
         per_pop:
-          rare_gases: 0.375
-          super_alloys: 0.4
+          rare_gases: 0.075
+          super_alloys: 0.08
       wants:
         per_pop:
-          sentient_cores: 0.01
-          wormhole_reactors: 0.0005
-          quantum_circuits: 0.003
+          sentient_cores: 0.002
+          wormhole_reactors: 0.0001
       consumption:
         sentient_cores:
           threshold: 24

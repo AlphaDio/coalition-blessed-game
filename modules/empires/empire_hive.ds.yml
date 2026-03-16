@@ -40,13 +40,12 @@ declares:
           ancient_relics: 0.0005
       needs:
         per_pop:
-          biomass: 0.125
-          plasma_fuel: 0.10
+          biomass: 0.025
+          plasma_fuel: 0.02
       wants:
         per_pop:
-          psycho_implants: 0.005
-          nano_machines: 0.0025
-          genomes: 0.002
+          psycho_implants: 0.001
+          nano_machines: 0.0005
       consumption:
         # Synaptic Swarm has a strong bonus to biomass consumption
         biomass:

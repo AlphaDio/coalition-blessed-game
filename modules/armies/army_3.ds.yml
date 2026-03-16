@@ -33,11 +33,10 @@ declares:
     killRate: 0.10
     demands:
       needs:
-        biomass: 0.0105
-        genomes: 0.0045
+        biomass: 0.0021
+        genomes: 0.0009
       wants:
-        rare_gases: 0.00275
-        psycho_implants: 0.0005
+        rare_gases: 0.00055
     consumption:
       biomass:
         threshold: 21

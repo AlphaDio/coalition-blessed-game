@@ -33,11 +33,9 @@ declares:
     killRate: 0.15
     demands:
       needs:
-        psycho_implants: 0.006
-        biomass: 0.003
+        psycho_implants: 0.0012
       wants:
-        genomes: 0.00175
-        nano_machines: 0.0005
+        genomes: 0.00035
     consumption:
       psycho_implants:
         threshold: 18

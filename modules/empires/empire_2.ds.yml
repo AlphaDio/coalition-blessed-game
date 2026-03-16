@@ -39,14 +39,13 @@ declares:
           genomes: 0.00125
       needs:
         per_pop:
-          super_alloys: 0.025
-          plasma_fuel: 0.04
-          biomass: 0.06
+          super_alloys: 0.005
+          plasma_fuel: 0.008
       wants:
         per_pop:
-          psycho_implants: 0.005
-          ancient_relics: 0.001
-          genomes: 0.0025
+          psycho_implants: 0.001
+          ancient_relics: 0.0002
+          genomes: 0.0005
       consumption:
         biomass:
           threshold: 1200
