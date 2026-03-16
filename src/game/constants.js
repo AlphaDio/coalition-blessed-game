@@ -310,9 +310,9 @@ export const INSURRECTION_CONSTANTS = {
 /**
  * Random event occurrence frequencies by cohesion tier.
  * Lower cohesion = higher chance of random events occurring.
- * @property {number} TIER_1_FREQUENCY - Event chance when Stable (5%)
- * @property {number} TIER_2_FREQUENCY - Event chance when Strained (10%)
- * @property {number} TIER_3_FREQUENCY - Event chance when Desperate (15%)
+ * @property {number} TIER_1_FREQUENCY - Event chance when Stable (2.5%)
+ * @property {number} TIER_2_FREQUENCY - Event chance when Strained (5%)
+ * @property {number} TIER_3_FREQUENCY - Event chance when Desperate (7.5%)
  * @property {number} RELATION_EFFECT_SCALAR - Global scalar for event-driven relation deltas
  * @property {number} RELATION_EFFECT_ABS_CAP - Absolute max relation delta an event can apply per edge
  * @property {number} RELATION_DIMINISHING_FLOOR - Minimum remaining impact when near relation caps
@@ -321,9 +321,9 @@ export const INSURRECTION_CONSTANTS = {
  * @property {number} RELATION_MIN_STEP - Minimum absolute non-zero relation delta after scaling
  */
 export const EVENT_CONSTANTS = {
-  TIER_1_FREQUENCY: 0.05,  // 5% chance (was 10%)
-  TIER_2_FREQUENCY: 0.10,  // 10% chance (was 20%)
-  TIER_3_FREQUENCY: 0.15,  // 15% chance (was 30%)
+  TIER_1_FREQUENCY: 0.025,  // 2.5% chance (was 5%)
+  TIER_2_FREQUENCY: 0.05,   // 5% chance (was 10%)
+  TIER_3_FREQUENCY: 0.075,  // 7.5% chance (was 15%)
   RELATION_EFFECT_SCALAR: 0.7,
   RELATION_EFFECT_ABS_CAP: 9,
   RELATION_DIMINISHING_FLOOR: 0.2,
