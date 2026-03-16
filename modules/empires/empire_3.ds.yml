@@ -39,12 +39,13 @@ declares:
           psycho_implants: 0.0005
       needs:
         per_pop:
-          biomass: 0.012
-          super_alloys: 0.03
+          biomass: 0.06
+          super_alloys: 0.15
       wants:
         per_pop:
-          rare_gases: 0.002
-          sentient_cores: 0.0003
+          rare_gases: 0.01
+          sentient_cores: 0.0015
+          plasma_fuel: 0.005
       consumption:
         biomass:
           threshold: 1200
