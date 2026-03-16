@@ -39,13 +39,14 @@ declares:
           rare_gases: 0.01
       needs:
         per_pop:
-          biomass: 0.05
-          plasma_fuel: 0.03
+          biomass: 0.25
+          plasma_fuel: 0.15
+          super_alloys: 0.02
       wants:
         per_pop:
-          nano_machines: 0.0005
-          quantum_circuits: 0.0003
-          genomes: 0.001
+          nano_machines: 0.0025
+          quantum_circuits: 0.0015
+          genomes: 0.005
       consumption:
         biomass:
           threshold: 1200

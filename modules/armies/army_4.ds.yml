@@ -33,10 +33,11 @@ declares:
     killRate: 0.12
     demands:
       needs:
-        super_alloys: 0.0014
-        rare_gases: 0.0010
+        super_alloys: 0.007
+        rare_gases: 0.005
       wants:
-        quantum_circuits: 0.00025
+        quantum_circuits: 0.00125
+        plasma_fuel: 0.001
     consumption:
       super_alloys:
         threshold: 15

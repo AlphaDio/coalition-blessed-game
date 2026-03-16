@@ -33,10 +33,11 @@ declares:
     killRate: 0.27 # Highest kill rate in the game
     demands:
       needs:
-        quantum_circuits: 0.0012
-        nano_machines: 0.0009
+        quantum_circuits: 0.006
+        nano_machines: 0.0045
       wants:
-        sentient_cores: 0.00025
+        sentient_cores: 0.00125
+        rare_gases: 0.001
     consumption:
       quantum_circuits:
         threshold: 70
