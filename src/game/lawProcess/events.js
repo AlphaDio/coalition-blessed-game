@@ -157,20 +157,18 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
     log.push(`  All empire approval: ${effects.approval >= 0 ? "+" : ""}${effects.approval}`);
   }
 
-  if (effects.requisition && state) {
+  if ((effects.requisition || effects.credits) && state) {
     if (!state.coalitionEconomy) {
       state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
     }
-    state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;
-    log.push(`  Requisition: ${effects.requisition >= 0 ? "+" : ""}${effects.requisition}`);
-  }
-
-  if (effects.credits && state) {
-    if (!state.coalitionEconomy) {
-      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
+    if (effects.requisition) {
+      state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;
+      log.push(`  Requisition: ${effects.requisition >= 0 ? "+" : ""}${effects.requisition}`);
     }
-    state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + effects.credits;
-    log.push(`  Treasury credits: ${effects.credits >= 0 ? "+" : ""}${effects.credits}`);
+    if (effects.credits) {
+      state.coalitionEconomy.treasury_credits = (state.coalitionEconomy.treasury_credits || 0) + effects.credits;
+      log.push(`  Treasury credits: ${effects.credits >= 0 ? "+" : ""}${effects.credits}`);
+    }
   }
 
   if (effects.coalitionIntel && state) {
