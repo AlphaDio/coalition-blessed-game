@@ -194,6 +194,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER - Flat pacing multiplier for army MP growth from consumption (80% of prior defensive-recon baseline)
  * @property {number} ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER - Global multiplier applied to army consumption effect thresholds at content load
  * @property {number} EMPIRE_DEMAND_POPULATION_EXPONENT - Population exponent for empire needs/wants demand
+ * @property {number} EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER - Global multiplier applied to empire needs/wants demand after population scaling
  * @property {number} ARMY_POPULATION_DEMAND_BASE - Base multiplier for army demand pressure
  * @property {number} ARMY_POPULATION_DEMAND_LOG_SCALE - Extra multiplier from log10(population) for army demand pressure
  */
@@ -219,6 +220,7 @@ export const ECONOMY_CONSTANTS = {
   ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8,
   ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER: 20,
   EMPIRE_DEMAND_POPULATION_EXPONENT: 1.0,
+  EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER: 10,
   ARMY_POPULATION_DEMAND_BASE: 1.0,
   ARMY_POPULATION_DEMAND_LOG_SCALE: 2.5
 };
@@ -611,8 +613,10 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
   APPROVAL_SCALE_MAX: 2.0,                          // At 100 approval, contribute 200% requisition
   REQUISITION_POOL_TURNS: 15,                       // Pool consumption requisition for 15 turns before payout
   SOURCE_MULTIPLIERS: {
-    empire_needs: 1.0,
-    empire_wants: 1.0,
+    // Empire civilian demand is emitted at a higher market scale than the
+    // underlying content data, so normalize its coalition payout.
+    empire_needs: 1 / Math.max(1, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1),
+    empire_wants: 1 / Math.max(1, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1),
     army_needs: 1.0,
     army_wants: 1.0,
     improvement_sustainment: 1.0,

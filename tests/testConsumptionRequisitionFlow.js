@@ -14,6 +14,7 @@ import {
   initializeTurnConsumptionTracking,
   recordConsumption,
   processConsumptionToRequisition,
+  CONSUMPTION_SOURCE_MULTIPLIERS,
   CONSUMPTION_SOURCES
 } from '../src/game/consumptionToRequisition.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
@@ -21,7 +22,9 @@ import { processImprovementsTick, processImprovementSustainmentPostMarket } from
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
 import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { applyBasePopulationGrowth } from '../src/game/turn/population.js';
-import { SCOURGE_MISSION_CONSTANTS } from '../src/game/constants.js';
+import { ECONOMY_CONSTANTS, SCOURGE_MISSION_CONSTANTS } from '../src/game/constants.js';
+import { scalePositiveApprovalGain } from '../src/game/approvalUtils.js';
+import { getArmyPopulationDemandMultiplier } from '../src/game/consumptionScaling.js';
 import { createSampleContent } from '../src/game/content.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
@@ -137,6 +140,14 @@ console.log('=== Test 1: Empire Needs Fill Generates Coalition Requisition ===')
 
   assert(approxEqual(result.totalConsumed, 10), 'Tracks exact filled quantity as consumption');
   assert((result.sourceBreakdown[CONSUMPTION_SOURCES.EMPIRE_NEEDS]?.quantity || 0) === 10, 'Classifies fill as empire needs consumption');
+  assert(
+    approxEqual(
+      result.sourceBreakdown[CONSUMPTION_SOURCES.EMPIRE_NEEDS]?.weightedValue || 0,
+      (result.sourceBreakdown[CONSUMPTION_SOURCES.EMPIRE_NEEDS]?.rawValue || 0) *
+        CONSUMPTION_SOURCE_MULTIPLIERS[CONSUMPTION_SOURCES.EMPIRE_NEEDS]
+    ),
+    'Empire needs payout uses the configured source multiplier'
+  );
   assert(result.requisitionGenerated > 0, 'Empire needs consumption generates requisition value');
   assert(result.requisitionGained === 0, 'No requisition is paid before payout cadence');
   assert(coalitionEconomy.requisition === 0, 'Coalition requisition stays unchanged before payout turn');
@@ -305,7 +316,7 @@ console.log('=== Test 3: Improvement Sustainment Consumption Grants Requisition 
 }
 console.log();
 
-console.log('=== Test 4: Effect Pool Aggregates Consumption Sources Before Trigger ===');
+console.log('=== Test 4: Effect Pool Aggregates Empire And Sustainment Sources Before Trigger ===');
 {
   initializeTurnConsumptionTracking();
 
@@ -326,14 +337,14 @@ console.log('=== Test 4: Effect Pool Aggregates Consumption Sources Before Trigg
     armies: []
   };
 
-  recordConsumption('biomass', 5, 'empire_1', CONSUMPTION_SOURCES.EMPIRE_NEEDS);
-  recordConsumption('biomass', 5, 'empire_1', CONSUMPTION_SOURCES.ARMY_WANTS);
+  recordConsumption('biomass', 10, 'empire_1', CONSUMPTION_SOURCES.EMPIRE_NEEDS);
   recordConsumption('biomass', 12, 'empire_1', CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT);
+  recordConsumption('biomass', 5, 'empire_1', CONSUMPTION_SOURCES.ARMY_WANTS);
 
   const log = [];
   processEmpireStockpileConsumption(state, log);
 
-  assert(state.coalitionConstruction === 1, 'Pooled effect triggers once after combined sources reach threshold');
+  assert(state.coalitionConstruction === 1, 'Pooled effect triggers once after combined empire and sustainment sources reach threshold');
   assert((state.consumptionEffectPools?.empire_1?.biomass || 0) === 2, 'Pool keeps commodity carryover after threshold hit');
 }
 console.log();
@@ -400,9 +411,19 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   const log = [];
   replenishArmyManpower(state, [], log);
 
+  const baselineExpectedMpGain =
+    2 *
+    1.25 *
+    getArmyPopulationDemandMultiplier(state.empires[0].stats.population) *
+    ECONOMY_CONSTANTS.ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER;
+
   assert(approxEqual(army.consumptionMpGainMultiplier, 1.25), 'Army resource thresholds can increase future MP growth from consumption');
   assert(approxEqual(army.consumptionDamageAdd, 0.05), 'Army resource thresholds can add persistent army damage');
-  assert(approxEqual(army.mp.current, 1100) && approxEqual(army.mp.max, 1100), 'Direct MP gain uses the fixed 80% baseline pacing multiplier');
+  assert(
+    approxEqual(army.mp.current, 1000 + baselineExpectedMpGain) &&
+      approxEqual(army.mp.max, 1000 + baselineExpectedMpGain),
+    'Direct MP gain uses the fixed baseline pacing multiplier with current population scaling'
+  );
   assert((army.consumptionEffectPools?.rare_gases || 0) === 0, 'Army consumption pool spends exact threshold hits without phantom carryover');
 
   const populousArmy = createArmy('army_populous', 'empire_2', 'Population Army', 50, 60, 0, 50, 50, 1000);
@@ -421,7 +442,14 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   populousState.empires[0].stats.population = 100000;
 
   replenishArmyManpower(populousState, [], []);
-  assert(populousArmy.mp.current > 1100, 'Higher population increases army MP gains from consumption');
+  const populousExpectedMpGain =
+    2 *
+    getArmyPopulationDemandMultiplier(populousState.empires[0].stats.population) *
+    ECONOMY_CONSTANTS.ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER;
+  assert(
+    approxEqual(populousArmy.mp.current, 1000 + populousExpectedMpGain),
+    'Higher population increases army MP gains from consumption'
+  );
 
   const highThreatArmy = createArmy('army_high_threat', 'empire_3', 'High Threat Army', 50, 60, 0, 50, 50, 1000);
   highThreatArmy.consumptionRules = [{
@@ -439,8 +467,13 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
   };
 
   replenishArmyManpower(highThreatState, [], []);
+  const highThreatExpectedMpGain =
+    2 *
+    getArmyPopulationDemandMultiplier(highThreatState.empires[0].stats.population) *
+    ECONOMY_CONSTANTS.ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER;
   assert(
-    approxEqual(highThreatArmy.mp.current, 1080) && approxEqual(highThreatArmy.mp.max, 1080),
+    approxEqual(highThreatArmy.mp.current, 1000 + highThreatExpectedMpGain) &&
+      approxEqual(highThreatArmy.mp.max, 1000 + highThreatExpectedMpGain),
     'Army MP growth no longer changes with Coalition Threat and stays on the fixed baseline pace'
   );
 }
@@ -529,11 +562,38 @@ console.log('=== Test 9: Approval Consumption Effects Apply Immediately ===');
   recordConsumption('rare_gases', 24, 'empire_approval', CONSUMPTION_SOURCES.EMPIRE_WANTS);
   processEmpireStockpileConsumption(state, []);
 
-  assert(approxEqual(empire.approval, 53), 'Approval consumption effects directly raise approval when the threshold is hit');
+  assert(
+    approxEqual(empire.approval, 50 + scalePositiveApprovalGain(50, 3)),
+    'Approval consumption effects use the scaled positive-approval pipeline when the threshold is hit'
+  );
 }
 console.log();
 
-console.log('=== Test 10: Population Growth Uses A Unified Capped Pipeline ===');
+console.log('=== Test 10: Army Consumption Does Not Trigger Empire Stockpile Effects ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const empire = createEmpireShell('empire_army_filter', 50, 1000);
+  empire.consumptionRules = [{
+    commodity: 'rare_gases',
+    threshold: 12,
+    effect: { type: 'empire_approval_bonus', amount: 1.5 }
+  }];
+
+  const state = {
+    consumptionEffectPools: {},
+    empires: [empire],
+    armies: []
+  };
+
+  recordConsumption('rare_gases', 24, 'empire_army_filter', CONSUMPTION_SOURCES.ARMY_WANTS);
+  processEmpireStockpileConsumption(state, []);
+
+  assert(approxEqual(empire.approval, 50), 'Army-tagged consumption does not raise empire approval bonuses');
+}
+console.log();
+
+console.log('=== Test 11: Population Growth Uses A Unified Capped Pipeline ===');
 {
   const state = {
     coalitionModifiers: { population_growth: 0.003 },

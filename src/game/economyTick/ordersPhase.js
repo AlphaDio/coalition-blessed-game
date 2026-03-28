@@ -42,6 +42,7 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
   state.empires.forEach(empire => {
     if (!empire.needs || !empire.needs.per_pop) return;
     const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
+    const demandMultiplier = Math.max(0, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1);
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
@@ -57,7 +58,7 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
     empire.supply_state.received = {};
 
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const rawNeeded = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawNeeded = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       if (totalNeeded > 0) {
         empire.supply_state.needs_demand[commodity] = totalNeeded;
@@ -74,6 +75,7 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
   state.empires.forEach(empire => {
     if (!empire.wants || !empire.wants.per_pop) return;
     const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
+    const demandMultiplier = Math.max(0, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1);
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
@@ -85,7 +87,7 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
     empire.supply_state.received = {};
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const rawWanted = qtyPerPop * population * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawWanted = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       if (totalWanted > 0) {
         empire.supply_state.wants_demand[commodity] = totalWanted;

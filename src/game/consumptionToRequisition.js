@@ -81,6 +81,19 @@ function normalizeSource(source) {
   return normalized;
 }
 
+function normalizeSourceFilter(sources) {
+  if (sources === null || sources === undefined) {
+    return null;
+  }
+
+  const sourceList = Array.isArray(sources) ? sources : [sources];
+  const normalized = sourceList
+    .map(source => normalizeSource(source))
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : null;
+}
+
 function ensureEmpireConsumptionLedger(empireId) {
   const key = String(empireId);
   if (!turnConsumptionTracker[key]) {
@@ -170,16 +183,31 @@ export function getRecordedConsumption(commodityId, empireId, source = null) {
 
 /**
  * Get this-turn consumption totals by commodity for a single empire.
- * Aggregates across all recorded consumption sources.
+ * Aggregates across all recorded consumption sources unless filtered.
  * @param {string} empireId - Empire identifier
+ * @param {string|string[]|null} sources - Optional source filter
  * @returns {Object} commodity -> quantity consumed this turn
  */
-export function getEmpireTurnConsumptionByCommodity(empireId) {
+export function getEmpireTurnConsumptionByCommodity(empireId, sources = null) {
   const ledger = turnConsumptionTracker[String(empireId)];
   if (!ledger?.byCommodity || typeof ledger.byCommodity !== 'object') {
     return {};
   }
-  return { ...ledger.byCommodity };
+
+  const normalizedSources = normalizeSourceFilter(sources);
+  if (!normalizedSources) {
+    return { ...ledger.byCommodity };
+  }
+
+  const totals = {};
+  normalizedSources.forEach(source => {
+    Object.entries(ledger.bySource?.[source] || {}).forEach(([commodityId, quantity]) => {
+      if (!Number.isFinite(quantity) || quantity <= 0) return;
+      totals[commodityId] = (totals[commodityId] || 0) + quantity;
+    });
+  });
+
+  return totals;
 }
 
 /**

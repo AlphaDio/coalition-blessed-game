@@ -15,6 +15,7 @@ import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../src/game/improvements/types.js';
+import { getEffectiveArmyFervor } from '../src/game/armyBattlePrep.js';
 import { clearMarket, initializeMarket } from '../src/game/marketEconomy.js';
 import { initializeTurnConsumptionTracking, recordConsumption } from '../src/game/consumptionToRequisition.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
@@ -262,7 +263,7 @@ console.log('=== Test 6: Army Growth Uses Needs/Wants Fulfillment ===');
   const lowGain = lowSupplyArmy.mp.current - 5000;
 
   assert(highGain > lowGain, 'Higher fulfillment yields faster manpower replenishment');
-  assert(highSupplyArmy.mp.max > 10000, 'High fulfillment grows army MP capacity over time');
+  assert(highSupplyArmy.mp.max === 10000, 'Fulfillment alone does not grow army MP capacity without consumed supply thresholds');
   assert(lowSupplyArmy.mp.max === 10000, 'Low fulfillment does not grow army MP capacity');
 }
 console.log();
@@ -867,16 +868,16 @@ console.log('=== Test 17: Damaged Needs Drive Aggravation And Wants Deficits Red
   state.armies.push(damagedArmy, fullArmy);
 
   const damagedAggravationBefore = damagedArmy.aggravation;
-  const damagedFervorBefore = damagedArmy.fervor;
+  const damagedFervorBefore = getEffectiveArmyFervor(damagedArmy);
   const fullAggravationBefore = fullArmy.aggravation;
-  const fullFervorBefore = fullArmy.fervor;
+  const fullFervorBefore = getEffectiveArmyFervor(fullArmy);
 
   replenishArmyManpower(state, []);
 
   assert(damagedArmy.aggravation > damagedAggravationBefore, 'Damaged army gains aggravation when needs are unmet');
-  assert(damagedArmy.fervor < damagedFervorBefore, 'Damaged army loses fervor when wants are unmet');
-  assert(fullArmy.aggravation === fullAggravationBefore, 'Full army does not gain aggravation from needs while undamaged');
-  assert(fullArmy.fervor < fullFervorBefore, 'Full army still loses fervor from unmet persistent wants');
+  assert(getEffectiveArmyFervor(damagedArmy) < damagedFervorBefore, 'Damaged army loses effective fervor when wants are unmet');
+  assert(fullArmy.aggravation < fullAggravationBefore, 'Full army still sheds aggravation when needs are met despite unmet wants');
+  assert(getEffectiveArmyFervor(fullArmy) < fullFervorBefore, 'Full army still loses effective fervor from unmet persistent wants');
 }
 console.log();
 

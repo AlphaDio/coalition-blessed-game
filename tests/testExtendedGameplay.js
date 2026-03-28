@@ -171,12 +171,18 @@ function testVictoryScenario() {
   
   // Boost army organization to improve battle performance
   state.armies.forEach(army => {
-    army.organization = 90;
-    army.fervor = 70;
+    army.organization = 100;
+    army.fervor = 100;
+    army.mp.max *= 2;
+    army.mp.current = army.mp.max;
   });
   
-  // Lower initial Scourge cohesion for faster test
-  state.scourgeCohesion = 60;
+  // Make the setup decisively favorable so a stalled victory path fails loudly.
+  state.turn = 2000;
+  state.coalitionCohesion = 20;
+  state.scourgeCohesion = 1;
+  state.scourgeFervor = 0;
+  state.scourgeManpower = 5;
   
   console.log('Initial state:', {
     coalitionCohesion: state.coalitionCohesion,
@@ -195,6 +201,10 @@ function testVictoryScenario() {
   console.log('  Final Scourge Cohesion:', state.scourgeCohesion.toFixed(1));
   console.log('  Game Over:', state.gameOver);
   console.log('  Game Over Reason:', state.gameOverReason || 'N/A');
+
+  if (!state.gameOver) {
+    return false;
+  }
   
   // Victory is when Scourge cohesion reaches 0
   if (state.gameOver && state.scourgeCohesion <= 0) {
@@ -205,8 +215,7 @@ function testVictoryScenario() {
     return false;
   } else {
     console.log('ℹ Game did not end within test period (expected for balanced gameplay)');
-    // Not a failure - game may be balanced enough to go longer
-    return true;
+    return false;
   }
 }
 
@@ -222,12 +231,14 @@ function testDefeatScenario() {
   
   // Weaken armies to make defeat more likely
   state.armies.forEach(army => {
-    army.organization = 20;
-    army.fervor = 20;
+    army.organization = 0;
+    army.fervor = 0;
+    army.mp.current = 0;
   });
   
-  // Start with lower coalition cohesion
-  state.coalitionCohesion = 50;
+  // Make the setup decisively doomed so a stalled defeat path fails loudly.
+  state.turn = 2000;
+  state.coalitionCohesion = 8;
   
   console.log('Initial state:', {
     coalitionCohesion: state.coalitionCohesion,
@@ -246,6 +257,10 @@ function testDefeatScenario() {
   console.log('  Final Scourge Cohesion:', state.scourgeCohesion.toFixed(1));
   console.log('  Game Over:', state.gameOver);
   console.log('  Game Over Reason:', state.gameOverReason || 'N/A');
+
+  if (!state.gameOver) {
+    return false;
+  }
   
   // Check if defeat scenario occurred or cohesion significantly dropped
   if (state.gameOver && state.coalitionCohesion <= 0) {

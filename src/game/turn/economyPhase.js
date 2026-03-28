@@ -1,6 +1,6 @@
 import { consumeRequisition } from '../economy.js';
 import { processEconomyTick } from '../economyTick.js';
-import { getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
+import { CONSUMPTION_SOURCES, getEmpireTurnConsumptionByCommodity } from '../consumptionToRequisition.js';
 import { SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
 import { clampApproval } from '../cohesion.js';
 import { applyPopulationDelta } from '../populationUtils.js';
@@ -197,7 +197,11 @@ export function processEmpireStockpileConsumption(state, log) {
       state.consumptionEffectPools[empireId] = {};
     }
     const empirePool = state.consumptionEffectPools[empireId];
-    const consumedByCommodity = getEmpireTurnConsumptionByCommodity(empire.id);
+    const consumedByCommodity = getEmpireTurnConsumptionByCommodity(empire.id, [
+      CONSUMPTION_SOURCES.EMPIRE_NEEDS,
+      CONSUMPTION_SOURCES.EMPIRE_WANTS,
+      CONSUMPTION_SOURCES.IMPROVEMENT_SUSTAINMENT
+    ]);
 
     for (const rule of empire.consumptionRules) {
       const { commodity, threshold } = rule;
