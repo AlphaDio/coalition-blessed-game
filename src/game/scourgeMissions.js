@@ -160,7 +160,7 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
         id: 'safe',
         text: 'Defensive Recon',
         description: 'Deploy scouts to gather intelligence while maintaining safe distance. A cautious approach that yields actionable intel without provoking the enemy.',
-        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel | Modifier: no increase this attack`
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA} | Modifier: no increase this attack`
       },
       {
         id: 'escalate',
