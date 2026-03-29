@@ -12,7 +12,7 @@ const PRE_ATTACK_EFFECTS = {
   },  // 0 = do not increase (sabotage never reduces except Deep "Sabotage Infrastructure")
   safe: {
     threatDelta: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA,
-    severityDelta: 1,
+    severityDelta: 0,
     cost: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_COST,
     intelGain: SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL
   },
@@ -159,8 +159,8 @@ export function buildPreAttackMissionEvent(state, rng = Math.random) {
       {
         id: 'safe',
         text: 'Defensive Recon',
-        description: 'Deploy scouts to gather intelligence while maintaining safe distance. Slightly strengthens the enemy adaptation, but yields actionable intel for the Coalition.',
-        effects: `Cost: ${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_COST} requisition | Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA} | Modifier severity: +1`
+        description: 'Deploy scouts to gather intelligence while maintaining safe distance. A cautious approach that yields actionable intel without provoking the enemy.',
+        effects: `Gain: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_INTEL} intel | Threat: +${SCOURGE_MISSION_CONSTANTS.PRE_ATTACK_SAFE_THREAT_DELTA} | Modifier: no increase this attack`
       },
       {
         id: 'escalate',
@@ -270,8 +270,10 @@ export function handleMissionEventChoice(state, event, choiceIndex, rng = Math.r
       if (gainedIntel > 0) {
         log.push(`Coalition intel gained: +${gainedIntel.toFixed(2)}`);
       }
-      log.push(`"${modifier.name}" severity increased by 1 due to delayed action`);
-      log.push(`Coalition threat increased by ${effect.threatDelta} (now ${Math.round(state.coalitionThreat)})`);
+      log.push(`"${modifier.name}" held steady - no severity increase this attack`);
+      if (effect.threatDelta !== 0) {
+        log.push(`Coalition threat changed by ${effect.threatDelta} (now ${Math.round(state.coalitionThreat)})`);
+      }
     } else if (choice.id === 'escalate') {
       const requisitionGain = Number(effect.requisitionGain) || 0;
       const gloryGain = Number(effect.gloryGain) || 0;
