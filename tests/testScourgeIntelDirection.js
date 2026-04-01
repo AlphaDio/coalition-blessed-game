@@ -163,16 +163,34 @@ function testDirectTargetUsesIntel() {
   assert(manager.state.scourgePrediction.confidenceLevel === 'high', 'Directed target should show high confidence');
 }
 
+function setupMarketReserves(state, commodityQtys) {
+  if (!state.marketOrders) {
+    state.marketOrders = { buyOrders: [], sellOffers: [] };
+  }
+  for (const [commodity, qty] of Object.entries(commodityQtys)) {
+    state.marketOrders.sellOffers.push({
+      owner_type: 'empire',
+      owner_id: 'empire_1',
+      commodity,
+      qty,
+      filled_qty: 0,
+      ask_price: 1
+    });
+  }
+}
+
 function testInstantEmergencyPowersGrantResources() {
   const state = createBasicState();
-  state.coalitionIntel = 50;
+  state.coalitionEconomy.treasury_credits = 50000;
   state.empires[0].budget_credits = 1200;
   state.empires[1].budget_credits = 800;
+  setupMarketReserves(state, { wormhole_reactors: 50, dark_matter: 20 });
 
   const requisitionDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_REQUISITION_CACHE');
   const creditsDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_CREDIT_LINE');
   const requisitionBefore = state.coalitionEconomy.requisition || 0;
   const creditBudgetsBefore = state.empires.map((empire) => empire.budget_credits || 0);
+  const treasuryBefore = state.coalitionEconomy.treasury_credits;
 
   const requisitionResult = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
   assert(requisitionResult.success, 'Instant requisition power should activate successfully');
@@ -184,14 +202,20 @@ function testInstantEmergencyPowersGrantResources() {
     'Instant requisition power should add coalition requisition immediately'
   );
   assert(
-    approxEqual(state.coalitionIntel, 50 - (requisitionDef?.cost_intel || 0)),
-    'Instant requisition power should spend intel'
+    state.coalitionEconomy.treasury_credits < treasuryBefore,
+    'Instant requisition power should spend credits from treasury'
+  );
+  const expectedCreditCost1 = requisitionDef?.cost_credits || 0;
+  assert(
+    approxEqual(state.coalitionEconomy.treasury_credits, treasuryBefore - expectedCreditCost1),
+    `Instant requisition power should spend ${expectedCreditCost1} credits`
   );
   assert(
     (state.activeEmergencyPowers || []).length === 0,
     'Instant requisition power should not consume an active emergency power slot'
   );
 
+  const treasuryAfterRequisition = state.coalitionEconomy.treasury_credits;
   const creditResult = activateEmergencyPower(state, 'EP_CREDIT_LINE');
   assert(creditResult.success, 'Instant credit power should activate successfully');
   state.empires.forEach((empire, index) => {
@@ -200,12 +224,10 @@ function testInstantEmergencyPowersGrantResources() {
       `Expected ${empire.name} to receive ${SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT} credits`
     );
   });
+  const expectedCreditCost2 = creditsDef?.cost_credits || 0;
   assert(
-    approxEqual(
-      state.coalitionIntel,
-      50 - (requisitionDef?.cost_intel || 0) - (creditsDef?.cost_intel || 0)
-    ),
-    'Instant credit power should also spend intel'
+    approxEqual(state.coalitionEconomy.treasury_credits, treasuryAfterRequisition - expectedCreditCost2),
+    'Instant credit power should also spend credits'
   );
   assert(
     (state.activeEmergencyPowers || []).length === 0,
@@ -215,7 +237,8 @@ function testInstantEmergencyPowersGrantResources() {
 
 function testInstantEmergencyPowersIgnoreActiveSlotCap() {
   const state = createBasicState();
-  state.coalitionIntel = 50;
+  state.coalitionEconomy.treasury_credits = 50000;
+  setupMarketReserves(state, { wormhole_reactors: 50, dark_matter: 20 });
   state.activeEmergencyPowers = [
     { id: 'EP_MOBILIZATION', remainingDuration: 20, totalDuration: 20, effects: [] },
     { id: 'EP_WAR_INDUSTRY', remainingDuration: 20, totalDuration: 20, effects: [] }
@@ -230,6 +253,54 @@ function testInstantEmergencyPowersIgnoreActiveSlotCap() {
     state.activeEmergencyPowers.length === 2,
     'Instant emergency power should leave active timed powers unchanged'
   );
+}
+
+function testEmergencyPowerEscalatingCosts() {
+  const state = createBasicState();
+  state.coalitionEconomy.treasury_credits = 200000;
+  setupMarketReserves(state, { wormhole_reactors: 200, dark_matter: 50 });
+
+  const def = getEmergencyPowerDefinitions().find(p => p.id === 'EP_REQUISITION_CACHE');
+  const baseCost = def.cost_credits;
+
+  // First activation: base cost
+  const result1 = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(result1.success, 'First activation should succeed');
+  assert(result1.creditCost === baseCost, `First use should cost ${baseCost}, got ${result1.creditCost}`);
+  assert(state.emergencyPowerUseCount.EP_REQUISITION_CACHE === 1, 'Use count should be 1');
+
+  // Second activation: cost * 1.5
+  const expectedCost2 = Math.round(baseCost * 1.5);
+  const result2 = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(result2.success, 'Second activation should succeed');
+  assert(result2.creditCost === expectedCost2, `Second use should cost ${expectedCost2}, got ${result2.creditCost}`);
+  assert(state.emergencyPowerUseCount.EP_REQUISITION_CACHE === 2, 'Use count should be 2');
+
+  // Third activation: cost * 1.5^2
+  const expectedCost3 = Math.round(baseCost * Math.pow(1.5, 2));
+  const result3 = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(result3.success, 'Third activation should succeed');
+  assert(result3.creditCost === expectedCost3, `Third use should cost ${expectedCost3}, got ${result3.creditCost}`);
+  assert(state.emergencyPowerUseCount.EP_REQUISITION_CACHE === 3, 'Use count should be 3');
+}
+
+function testEmergencyPowerInsufficientResources() {
+  const state = createBasicState();
+  state.coalitionEconomy.treasury_credits = 50000;
+  // No market reserves at all
+  state.marketOrders = { buyOrders: [], sellOffers: [] };
+
+  const check = canActivateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(!check.canActivate, 'Should not activate without market reserves');
+  assert(check.reason.includes('wormhole_reactors'), `Reason should mention insufficient wormhole_reactors, got: ${check.reason}`);
+
+  // Add enough wormhole_reactors but not enough credits
+  setupMarketReserves(state, { wormhole_reactors: 50 });
+  state.coalitionEconomy.treasury_credits = 10;
+
+  const check2 = canActivateEmergencyPower(state, 'EP_REQUISITION_CACHE');
+  assert(!check2.canActivate, 'Should not activate without enough credits');
+  assert(check2.reason.includes('credits'), `Reason should mention insufficient credits, got: ${check2.reason}`);
 }
 
 function testRegularEventSyncsIntelAndConfidence() {
@@ -417,10 +488,16 @@ function run() {
   console.log('PASS Direct target spends intel and updates prediction');
 
   testInstantEmergencyPowersGrantResources();
-  console.log('PASS Instant emergency powers inject credits and requisition without occupying slots');
+  console.log('PASS Instant emergency powers spend credits and consume market resources');
 
   testInstantEmergencyPowersIgnoreActiveSlotCap();
   console.log('PASS Instant emergency powers remain usable while timed power slots are full');
+
+  testEmergencyPowerEscalatingCosts();
+  console.log('PASS Emergency power costs escalate with each use');
+
+  testEmergencyPowerInsufficientResources();
+  console.log('PASS Emergency powers blocked when credits or market reserves are insufficient');
 
   testRegularEventSyncsIntelAndConfidence();
   console.log('PASS Regular events keep intel and confidence synchronized');

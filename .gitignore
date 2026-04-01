@@ -126,3 +126,4 @@ verifyActionsPanelFix.js
 saves/
 autosave.json
 yarn.lock
+node_modules/

@@ -568,6 +568,7 @@ export function createGameState(seed = 0) {
     activeEmergencyLaws: [],     // Active emergency law instances
     emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
     activeEmergencyPowers: [],   // Active emergency power instances
+    emergencyPowerUseCount: {},  // Map of powerId -> use count (for escalating costs)
 
     // Coalition economy system (requisition generation from empire consumption)
     coalitionEconomy: {
@@ -955,6 +956,9 @@ export function migrateGameState(state) {
   }
   if (!Array.isArray(state.activeEmergencyPowers)) {
     state.activeEmergencyPowers = [];
+  }
+  if (!state.emergencyPowerUseCount || typeof state.emergencyPowerUseCount !== 'object') {
+    state.emergencyPowerUseCount = {};
   }
   if (!state.coalitionModifiers) {
     state.coalitionModifiers = {};
