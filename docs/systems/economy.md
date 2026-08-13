@@ -1,205 +1,204 @@
 # Economy System
 
 ## Overview
-The economy system simulates a market-based supply/demand loop with coalition procurement layered on top. It clears buy and sell orders per commodity, updates prices based on demand pressure, and applies performance modifiers to armies based on fulfillment of needs and wants.
+The current economy is a fixed-price order market. Commodity prices are seeded at game start and then remain stable for the run. This is intentional for now: prices act as valuation anchors for order limits, trade valuation, and consumption-to-requisition conversion, while scarcity is expressed through unfilled orders, stockpiles, fulfillment, and budgets.
+
+The economy does not currently use coalition procurement, commodity bank rollover, or emergency laws. Requisition comes from starting resources, direct improvement outputs, consumption conversion, normal law modifiers, and mission/effect hooks.
 
 ## Design Goals
-- Model scarcity and surplus with visible price feedback.
-- Keep coalition procurement deterministic and budget-bound.
-- Connect supply fulfillment to combat performance without hard gating.
+- Keep commodity values deterministic within a run.
+- Surface scarcity through fulfillment, backlog, and reserves rather than price volatility.
+- Connect empire, army, and improvement consumption to coalition requisition income.
+- Let normal laws, improvements, missions, and content effects tune economic pacing.
+- Keep emergency laws out of the economy model.
 
-## Primary Flow
-- Configuration loads from `docs/input/economy_system.yaml` (fallback defaults in `src/game/marketEconomy.js`).
-- The market initializes from `docs/input/resources.yaml` commodity definitions.
-- Each tick, the system updates supply/demand quantities, computes target prices, and smooths prices.
-- Buy and sell orders are cleared per commodity, producing trades or unfilled orders.
-- Coalition procurement buys from remaining sell offers using tier-based thresholds and budget caps.
-- Army fulfillment converts received supplies into needs/wants fulfillment and applies performance modifiers.
+## Runtime Data
+- Economy config loads from `docs/input/economy_system.yaml`; the active runtime mainly uses fulfillment/performance settings from it.
+- Commodity definitions load from `modules/resources.yaml`.
+- New games created by `GameManager` start with:
+  - `requisition`: 1000
+  - `treasury_credits`: 10000
+- Market state stores `price`, `last_price`, `floor_price`, `demand_qty`, `supply_qty`, `traded_qty`, remaining orders, and backlog diagnostics.
 
-## Pricing Model
-- Target price scales with the demand/supply ratio and is capped by `shortage_panic_cap` (default 4.0).
-- Smoothed price updates prevent sudden swings using `smoothing_k` (default 0.25).
-- Price is clamped to 0–3x the floor price after smoothing.
-- Commodity tier elasticity scales how aggressively prices move (t1 0.6 → t4 2.4).
+### Currency Boundaries
+- `empire.budget_credits` is the hard, non-negative purchasing balance for an empire's market orders, including army orders owned by that empire.
+- Posting fees are reserved before trade commitments. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
+- `treasury_credits` is a coalition-level reserve used by laws and event effects. It is not an automatic fallback for empire market purchases.
+- `requisition` is the coalition construction and improvement currency. It does not pay ordinary commodity buy orders.
+- Budget-blocked orders are exposed in `economyBudgetBlockedLastTick` for diagnostics and UI reporting.
+
+## Fixed Price Model
+Prices are initialized once in `src/game/marketEconomy.js`:
+
+1. Read each commodity floor price from `modules/resources.yaml`.
+2. Apply a seeded floor variance of 85% to 115%.
+3. Apply a seeded run multiplier from `0.5`, `1`, `1.5`, `2`, or `3`.
+4. Pick the initial price between 50% and 150% of that adjusted floor.
+5. Store the value in both `price` and `last_price`.
+
+After initialization, prices do not move. Demand and supply quantities are still tracked each tick, but they are diagnostics and clearing inputs, not price-update inputs.
+
+Inactive for now:
+- Demand/supply target price updates.
+- Smoothing with `smoothing_k`.
+- Shortage panic caps.
+- Tier elasticity.
+- Dynamic volatility.
+
+## Turn Flow
+The relevant economy sequence inside a turn is:
+
+1. Reset dynamic coalition modifiers and initialize turn consumption tracking.
+2. Resolve normal law processes.
+3. Process improvements before the market:
+   - Advance construction.
+   - Charge active requisition upkeep.
+   - Queue sustainment demand.
+   - Release eligible production-bank output.
+   - Add direct requisition production immediately.
+4. Run the economy tick:
+   - Emit empire production sell offers.
+   - Emit empire needs and wants buy orders.
+   - Emit army needs and wants buy orders.
+   - Apply order durations and posting fees.
+   - Clear markets by commodity.
+   - Age valid demand backlog after allocation; expire it into pressure or cancel invalid conditional sources.
+   - Convert crossed cumulative pressure thresholds into queued Pressure Gameplay Events; pressure remains accumulated.
+   - Save remaining backlog and reserve orders.
+   - Update fulfillment effects.
+5. Resolve improvement sustainment after market clearing.
+6. Apply consumption-triggered empire effects.
+7. Convert recorded consumption into pooled coalition requisition.
+8. Replenish armies and apply army consumption effects for armies not currently in active battles.
+9. Apply passive requisition upticks from enacted normal laws.
 
 ## Order Clearing
-- Orders are filtered per commodity and sorted by priority, then price.
-- In surplus (supply >= demand), all buys fill and remaining supply stays with sellers.
-- In shortage (supply < demand), each buyer receives `needed * (supply / demand)`.
-- `traded_qty` records total executed volume for the tick.
+Markets clear independently per commodity.
 
-## Coalition Procurement System
-The coalition maintains a separate procurement system for acquiring commodities that are converted into **requisition** for building improvements.
+Buy orders are sorted by:
+1. Higher priority.
+2. Larger remaining quantity.
+3. Higher max price.
 
-### Procurement Mechanics
-- Coalition procurement scans sell offers (excluding coalition sellers) sorted by ask price.
-- Each commodity uses a priority threshold (`theta`) derived from tier defaults or coalition overrides.
-- Purchases stop when budget is exhausted; spent amount is deducted from `treasury_credits` and `allowance_credits`.
-- Allowance credits refill at 1000 credits per tick, capped at 4 ticks worth (4000 credits).
-- Reserve floor prevents spending below 1500 treasury credits.
+Sell offers are sorted by:
+1. Higher priority.
+2. Lower ask price.
 
-### Procurement Configuration
-- **Spend Throttle**: 0.8 (80% of available spending capacity)
-- **Theta Presets**: Per-commodity price thresholds (Balanced, Aggressive, Conservative)
-- **Priority**: Coalition buys use commodity-specific theta multipliers
+A trade executes when `buy.max_price >= sell.ask_price`. The trade price is the seller's ask price, reduced by the bulk discount when the buy order quantity is above the bulk threshold. The current constants are:
 
-### Requisition System
-Requisition is the coalition's construction currency, produced by converting purchased commodities.
+- Bulk threshold: 20 units.
+- Maximum bulk discount: 15%.
+- Empire sell ask: usually 95% of static market price.
+- Empire needs buy cap: usually 110% of static market price.
+- Empire wants buy cap: usually 105% of static market price.
+- Army needs buy cap: usually 120% of static market price.
+- Army wants buy cap: usually 115% of static market price.
 
-#### Bank Mechanics
-- **Stockpile Bank**: Accumulates purchased commodities
-- **Stockpile Ready**: Commodities moved here when bank reaches threshold (1000 units)
-- **Bank**: Final conversion destination using milli-unit precision
+Unfilled buy orders and sell offers persist as backlog/reserves. Buy-side demand backlog is policy-aware:
 
-#### Conversion Process
-1. Commodities accumulate in `stockpile_bank`
-2. When bank reaches 1000+ units, commodities move to `stockpile_ready`
-3. Ready commodities convert to bank units in batches of 1000 units
-4. Conversion rates: T1 commodities = 1000 milli-units, T2 = 100, T3 = 10 per unit
+- Perishable resources normally survive one unmet turn.
+- Deferred resources survive their configured maximum age, normally several turns.
+- Persistent resources do not expire through age alone.
 
-#### Bank Rollover
-- When bank reaches 25,000 milli-units, it converts to **requisition**
-- Each rollover produces 24 requisition units
-- Bank resets to 0 after rollover
-- Batch conversion bonus: additional milli-units per conversion batch
+Each demand backlog item records its resource, remaining quantity, age, source, policy, maximum age where relevant, and source validity. Supply is allocated before backlog age advances. When perishable or deferred demand expires, its unresolved quantity is added to `state.economyPressure.by_resource` and the configured pressure key in `state.economyPressure.by_type`; it is then removed from the backlog. Invalid conditional demand is cancelled without pressure. This keeps expected-to-be-fulfilled backlog distinct from shortages whose consequences have already been absorbed.
 
-### Starting Resources
-- **Initial Requisition**: 500 units for basic improvement construction
-- **Treasury Credits**: 0 (refills through allowance system)
-- **Allowance Credits**: 0 (refills at 1000 per tick)
+Pressure itself has no mechanical effects. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
 
-## Army Fulfillment
-- Needs penalties kick in below the fulfillment threshold (default 0.80).
-- Needs penalties cap at `max_penalty` (default 0.35).
-- Wants bonuses use diminishing returns: `sqrt(fulfillment) * max_bonus` (default 0.20).
-- Fulfillment ratios are stored in `army.supply_state`.
+## Production and Stockpiles
+Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank and is released once the bank reaches its threshold. Before release to the market, same-empire local production can satisfy pending improvement sustainment.
 
-## Data Flow
-- **Market Phase**: commodity definitions, economy config, buy/sell orders → update market state → compute target prices → smooth/clamp → clear orders
-- **Procurement Phase**: coalition procurement from post-clear surplus → add to stockpile_bank
-- **Conversion Phase**: stockpile_bank → stockpile_ready → bank → requisition (via rollover)
-- **Fulfillment Phase**: compute army fulfillment → update `army.performance.current`
+Direct `requisition` production from an improvement bypasses the production bank and is added to the coalition economy immediately. Other commodities are banked and released as sell offers.
 
-## Key Data
-- **Market state**: `price`, `last_price`, `floor_price`, `demand_qty`, `supply_qty`, `traded_qty`, `volatility_index`
-- **Orders**: buy orders (`max_price`, `priority`, `filled_qty`) and sell offers (`ask_price`, `priority`, `filled_qty`)
-- **Procurement**: per-commodity theta presets, spend throttle, allowance credits, treasury credits
-- **Requisition System**: stockpile_bank, stockpile_ready, bank (milli-units), requisition, rollover mechanics
+## Fulfillment Effects
+Empire and army demand is split into needs and wants.
 
-## Integration Points
-- `src/game/marketEconomy.js` handles pricing, market clearing, and fulfillment
-- `src/game/coalitionProcurement.js` manages coalition procurement and requisition conversion
-- `src/game/constants.js` defines coalition budget defaults
-- `docs/input/economy_system.yaml` configures pricing parameters and procurement behavior
-- `docs/input/resources.yaml` supplies commodity metadata and tiers
-- `src/game/improvements/engine.js` consumes requisition for building improvements
+- Army fulfillment updates `army.supply_state` and performance.
+- Empire fulfillment updates `empire.supply_state`, approval pressure, and population growth modifiers.
+- Needs are harsher than wants.
+- Wants use gentler positive/negative pressure.
+- The fulfillment thresholds and caps live in `docs/input/economy_system.yaml` and `src/game/constants.js`.
 
-## Consumption-to-Requisition System
+## Army Advanced-Resource Scaling
+Armies can define commodity demands and threshold-based consumption effects in `modules/armies/*.ds.yml`.
 
-The Consumption-to-Requisition system converts empire commodity consumption directly into coalition requisition and credits.
+- Army needs are gated by damage; healthy armies do not continuously request repair needs.
+- Army wants persist while the army exists, so wants are the correct channel for long-horizon upgrades and advanced-resource scaling.
+- Army consumption thresholds are multiplied by `ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER` at content load. The current multiplier is 20.
+- Army consumption effects are processed after battles for armies not currently in active battles. Received commodities accumulate in per-army effect pools until a threshold is reached.
 
-### How It Works
+Quantum Legion is the advanced-resource scaling reference:
 
-1. **Tracking**: When empires consume commodities from their stockpiles, the system records the consumption
-2. **Valuation**: Consumption is valued based on current market prices
-3. **Conversion**: Coalition receives requisition based on consumption value and a base share rate
-4. **Credits**: Additional credits are generated through the allowance system
+- `quantum_circuits` are both a repair need and an upgrade want. Runtime threshold 160 adds persistent army damage.
+- `nano_machines` are repair/growth input. Runtime threshold 240 adds MP capacity/current MP.
+- `sentient_cores` are an army want. Runtime threshold 240 grants coalition intel.
+- `wormhole_reactors` are an army want. Runtime threshold 80 adds +0.04 next-battle kill rate.
 
-### Conversion Formula
+Empire-level `wormhole_reactors` consumption for Quantum Collective also adds +0.06 next-battle kill rate to its armies at threshold 8. These kill-rate effects are stored in battle prep, apply to permanent-loss ratio during the next battle, and clear with other battle prep after combat.
 
-```
-requisition_gained = (consumption_value * COALITION_SHARE) / CREDITS_PER_REQUISITION
+## Consumption-to-Requisition
+Consumption is the main passive requisition path. The system records commodity consumption from:
+
+- Empire needs.
+- Empire wants.
+- Army needs.
+- Army wants.
+- Improvement sustainment.
+
+At the end of the turn, recorded consumption is valued at the current static market price.
+
+```text
+raw_value = consumed_qty * static_market_price
+weighted_value = raw_value * source_multiplier
+coalition_value = weighted_value * effective_share_rate
+scaled_value = coalition_value * CONVERSION_REQUISITION_MULTIPLIER * approval_scale
+requisition_generated = scaled_value / CREDITS_PER_REQUISITION * requisition_multiplier
 ```
 
-Where:
-- `consumption_value` = market price × quantity consumed
-- `COALITION_SHARE` = base share (10%) with modifier scaling
-- `CREDITS_PER_REQUISITION` = 1000 (conversion rate)
+Current constants:
 
-### Coalition Share
+- `CREDITS_PER_REQUISITION`: 1000
+- `COALITION_CONSUMPTION_SHARE_BASE`: 10%
+- `CONVERSION_REQUISITION_MULTIPLIER`: 100
+- `REQUISITION_POOL_TURNS`: 15
+- Approval scale: 50% at 0 approval to 200% at 100 approval
+- Empire needs/wants source multiplier: normalized by the empire demand multiplier
+- Army and improvement sustainment source multiplier: 1.0
 
-Base: 10% of consumption value
+Generated requisition goes into `consumption_requisition_pool` and pays out every 15 turns by default. This keeps the economy from spamming tiny requisition gains every tick.
 
-Modified by:
-- `conversion_requisition_multiplier`: Multiplicative modifier (e.g., 10x multiplier makes consumption 10x more valuable)
-- Coalition modifiers from enacted laws
+## Improvements Economy
+Improvements are the main requisition sink.
 
-### Allowance System
+- Construction cost is paid upfront in requisition.
+- BUILDING improvements consume build capacity.
+- Every BUILDING improvement receives the full coalition construction value each tick.
+- Starting build capacity is 4.
+- Active improvements pay `requisitionUpkeep / 10` per tick.
+- Active improvements can demand sustainment commodities from the market.
+- Failed sustainment degrades an improvement until sustainment resumes.
 
-The coalition maintains an allowance pool for credit spending:
+See `docs/elements/improvements-economy.md` for the current catalog and tier cost summary.
 
-- **Refill Rate**: 1000 credits per tick
-- **Maximum**: 4000 credits (4 ticks worth)
-- **Usage**: Spent during coalition procurement
-- **Reset**: Treasury can refill allowance when depleted
+## Removed or Inactive Systems
+The following older docs/concepts are no longer part of the active economy:
 
-### Implementation
+- `src/game/coalitionProcurement.js`
+- Coalition procurement thresholds/theta presets.
+- `stockpile_bank`
+- `stockpile_ready`
+- Milli-unit bank rollover into requisition.
+- Dynamic market price updates.
+- Emergency law economic modifiers.
 
-- **Initialization**: `initializeTurnConsumptionTracking()` at turn start
-- **Recording**: `recordConsumption(commodityId, quantity, empireId)` during consumption
-- **Calculation**: `calculateConsumptionValue(market, empireId)` to compute value
-- **Application**: `applyConsumptionRequisition(state, rng)` applies requisition at end of economy tick
-- **Refill**: `refillCoalitionAllowance(state)` restores allowance
-
-## Economy Tick Pipeline
-
-The `economyTick.js` module orchestrates the complete economy processing:
-
-### Execution Order
-
-1. **Initialization**: Initialize market, load config, reset order books
-2. **Buy Orders**: Create buy orders from armies for needed supplies
-3. **Sell Offers**: Create sell offers from empires' stockpiles
-4. **Market Update**: Update prices based on supply/demand
-5. **Market Clearing**: Match buyers and sellers, apply prices
-6. **Coalition Procurement**: Coalition buys from remaining offers
-7. **Consumption Processing**: Record and apply consumption-to-requisition
-8. **Fulfillment**: Calculate army fulfillment and apply modifiers
-9. **Aggregation**: Prepare orders for next tick
-
-### Order Aggregation
-
-Orders are aggregated across ticks to prevent spam:
-
-- **Existing Orders**: Carries forward unfilled orders from previous tick
-- **New Orders**: Created based on current needs
-- **Merging**: Combines existing and new orders for same owner/commodity
-- **Price Averaging**: Uses weighted average price for aggregated orders
-
-### Key Processes
-
-#### Buy Order Creation
-```javascript
-// Armies create buy orders for needed supplies
-// Priority based on urgency
-// Price cap prevents overspending
-```
-
-#### Sell Offer Creation
-```javascript
-// Empires create sell offers from surplus stockpiles
-// Market prices determine asking price
-// Priority affects matching order
-```
-
-#### Price Updates
-```javascript
-// Target price calculated from demand/supply ratio
-// Smoothed over time to prevent volatility
-// Clamped to prevent extreme swings
-```
-
-#### Market Clearing
-```javascript
-// Orders matched per commodity
-// Surplus/shortage logic determines fulfillment
-// Prices apply to transactions
-```
-
-## Files
-- `src/game/marketEconomy.js` - Market pricing and clearing
-- `src/game/coalitionProcurement.js` - Coalition procurement and requisition
-- `src/game/economyTick.js` - Economy tick orchestration
-- `src/game/consumptionToRequisition.js` - Consumption tracking and requisition conversion
-- `docs/input/economy_system.yaml` - Economy configuration
-- `docs/input/resources.yaml` - Commodity definitions
+## Key Files
+- `src/game/economyTick/index.js` - Economy tick orchestration.
+- `src/game/marketEconomy.js` - Market state, fixed-price initialization, order creation, clearing, and fulfillment helpers.
+- `src/game/economyTick/orders.js` - Order aggregation.
+- `src/game/economyTick/ordersLifecycle.js` - Order persistence, fees, clearing calls, and saved order state.
+- `src/game/economyTick/ordersPhase.js` - Empire and army demand generation.
+- `src/game/economyTick/production.js` - Empire production sell offers.
+- `src/game/economyTick/postTick.js` - Fulfillment effects and law modifier effects.
+- `src/game/consumptionToRequisition.js` - Consumption tracking and requisition conversion.
+- `src/game/improvements/engine` - Improvement construction, sustainment, and production.
+- `modules/resources.yaml` - Commodity definitions.
+- `docs/input/economy_system.yaml` - Economy configuration/spec notes.

@@ -30,7 +30,7 @@ function clearBattlePrepForArmies(armies = []) {
   armies.forEach((army) => {
     if (!army) return;
     clearArmyBattlePrep(army);
-    army.killRateBonus = 0;
+    delete army.killRateBonus;
   });
 }
 

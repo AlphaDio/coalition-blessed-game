@@ -51,7 +51,7 @@ declares:
       wants:
         per_pop:
           sentient_cores: 0.002
-          wormhole_reactors: 0.0001
+          wormhole_reactors: 0.001
       consumption:
         sentient_cores:
           threshold: 24
@@ -59,10 +59,10 @@ declares:
             type: coalition_intel_bonus
             amount: 4
         wormhole_reactors:
-          threshold: 48
+          threshold: 8
           effect:
             type: army_kill_rate_bonus
-            amount: 0.15
+            amount: 0.06
         plasma_fuel:
           threshold: 700
           effect:

@@ -1,7 +1,7 @@
 # Events System
 
 ## Overview
-Events are narrative choices triggered by coalition cohesion tiers. Each event presents choices that modify coalition cohesion, scourge cohesion, empire approval, army fervor, or stockpiles. Law events are handled separately by the law system and use scope `LAW`.
+Events are narrative choices triggered by coalition cohesion tiers or by pressure escalation. Each event presents choices that modify coalition cohesion, scourge cohesion, empire approval, army fervor, or stockpiles. Law events are handled separately by the law system and use scope `LAW`.
 
 ## Design Goals
 - Provide narrative pressure tied to coalition cohesion tiers.
@@ -17,6 +17,12 @@ Events are narrative choices triggered by coalition cohesion tiers. Each event p
 - The event becomes `state.activeEvent` until a player choice resolves it.
 - Choice effects mutate coalition cohesion, scourge cohesion, empire approval, army fervor, and stockpiles.
 - Events without choices are auto-resolved and logged.
+
+### Pressure Gameplay Events
+
+Expired unmet demand increases `state.economyPressure`; it never applies a gameplay consequence directly. When a cumulative pressure threshold is crossed, the pressure system selects an eligible event from the shared `PRESSURE` pool and appends a materialized event to `state.gameplayEventQueue`. The turn pipeline promotes queued events into `state.activeEvent`, after which the normal choice resolver applies effects.
+
+Pressure escalation is tracked independently per pressure type in `state.economyPressure.escalation_by_type`. Each crossing advances `tier` and `next_threshold` without resetting accumulated pressure. Large increases can cross multiple thresholds in one tick. Pressure event definitions can declare `pressure_eligibility` for `tiers`, `persistence_policies`, `pressure_types`, `resource_types`, and `resources`, allowing future restrictions without changing the trigger algorithm.
 
 ## Dynamic Selectors
 

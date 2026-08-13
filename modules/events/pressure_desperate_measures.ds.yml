@@ -1,0 +1,52 @@
+module:
+  id: "pressure_desperate_measures"
+  name: "Desperate Measures"
+  description: "The crisis forces consideration of an extreme, risky, or damaging solution."
+  version: "1.0.0"
+  type: "event"
+  category: "pressure"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["pressure", "shortage", "extreme"]
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "pressure_desperate_measures"
+    name: "Desperate Measures"
+    scope: "PRESSURE"
+    category: "pressure"
+    pressure_event: true
+    pressure_eligibility:
+      pool: "shared"
+      tiers: "all"
+      persistence_policies: "all"
+      pressure_types: "all"
+      resource_types: "all"
+      resources: "all"
+    ai_narration: "The ${resource_name} shortage has exhausted ordinary remedies. At pressure tier ${tier}, the coalition is being asked what it is willing to risk."
+    description: "${source_label} has pushed the ${pressure_type} crisis beyond routine management: ${expired_quantity} unmet, ${accumulated_pressure} pressure accumulated."
+    choices:
+      - text: "Mobilize at great risk"
+        description: "Put the coalition's military and industrial machinery on an emergency footing."
+        effects_summary: "All armies: fervor preparation +3 | Coalition cohesion -2"
+        effects:
+          armyFervor:
+            "@all": 3
+          coalitionCohesion: -2
+      - text: "Seize private stores"
+        description: "Take resources from private hands and accept the political damage."
+        effects_summary: "All empires: approval -8 | Coalition treasury +100 credits"
+        effects:
+          empireApproval:
+            "@all": -8
+          coalitionEconomy:
+            treasury_credits: 100
+      - text: "Accept contraction"
+        description: "Reduce ambitions and allow the economy to shrink until the crisis passes."
+        effects_summary: "Coalition cohesion -4"
+        effects:
+          coalitionCohesion: -4

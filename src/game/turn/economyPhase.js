@@ -103,7 +103,7 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} kill rate bonus to ${armyCount} armies (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle kill rate to ${armyCount} armies (${hits} hits)`
     );
     return;
   }

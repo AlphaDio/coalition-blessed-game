@@ -32,7 +32,7 @@ All endpoints updated to use the standardized format:
 - ✅ `POST /api/game/actions/enact-law`
 - ✅ `POST /api/game/actions/event-choice`
 - ✅ `POST /api/game/actions/improvement`
-- ✅ `POST /api/game/actions/emergency-law`
+- ✅ `POST /api/game/actions/emergency-power`
 - ✅ `POST /api/game/actions/advance-turn`
 - ✅ `GET /api/game/save`
 - ✅ `POST /api/game/load`

@@ -1,10 +1,12 @@
 economy_system:
-  version: "0.1"
+  version: "0.2"
+
   includes:
-    resources_file: "resources.yaml" # your starting list (tiers + commodities)
+    # Runtime resource loading currently reads modules/resources.yaml directly.
+    resources_file: "modules/resources.yaml"
 
   time:
-    tick_unit: "day"
+    tick_unit: "turn"
     ticks_per_turn: 1
 
   entities:
@@ -13,16 +15,17 @@ economy_system:
         - id
         - name
         - budget_credits
-        - production: { outputs_per_tick: {} } # commodity_key -> qty
-        - needs: { per_pop: {} }              # commodity_key -> qty per population per tick
-        - allocation:
-            # how much of NON-need purchases get routed to armies (0..1), can be derived from politics/laws
-            surplus_to_armies_ratio: 0.35
-            # optional: direct army-focused purchasing bias (0..1)
-            military_procurement_bias: 0.15
-        - stockpiles: {}                       # commodity_key -> qty
+        - production: { outputs_per_tick: {} }
+        - needs: { per_pop: {} }
+        - wants: { per_pop: {} }
+        - stockpiles: {}
         - population: 0
-        - tags: []                             # e.g. hive_mind, warped, biologic
+        - supply_state:
+            needs_demand: {}
+            wants_demand: {}
+            received: {}
+            needs_fulfillment: {}
+            wants_fulfillment: {}
     army:
       fields:
         - id
@@ -33,141 +36,188 @@ economy_system:
             base: 1.0
             current: 1.0
         - supply_state:
-            # computed each tick from fills
-            needs_fulfillment: {}              # commodity_key -> 0..1
-            wants_fulfillment: {}              # commodity_key -> 0..1
-            shortages: {}                      # commodity_key -> unmet qty
+            needs_fulfillment: {}
+            wants_fulfillment: {}
+            shortages: {}
         - demands:
-            needs: {}                          # commodity_key -> qty_per_manpower_per_tick
-            wants: {}                          # commodity_key -> qty_per_manpower_per_tick
+            needs: {}
+            wants: {}
 
   market:
     goods:
-      # market state is per commodity
       state_fields:
         - price
         - last_price
+        - floor_price
         - demand_qty
         - supply_qty
         - traded_qty
-        - volatility_index
+        - flow_demand_qty_turn
+        - flow_supply_qty_turn
+        - flow_traded_qty_turn
+        - remaining_buy_offers_post_clear
+        - remaining_sell_offers_post_clear
+        - buy_backlog_total
+        - buy_backlog_by_commodity
+        - buy_backlog_by_commodity_and_owner
 
     order_book:
       buy_order:
-        fields: [id, owner_type, owner_id, commodity, qty, max_price, priority]
+        fields: [id, owner_type, owner_id, commodity, qty, max_price, priority, filled_qty, duration, max_duration, fee, tags, age, source, source_valid, persistence_policy, max_backlog_age, qty_remaining]
       sell_offer:
-        fields: [id, owner_type, owner_id, commodity, qty, ask_price, priority]
+        fields: [id, owner_type, owner_id, commodity, qty, ask_price, priority, filled_qty, duration, max_duration, fee, tags]
 
     clearing:
       cadence: "every_tick"
-      trade_pricing: "single_clearing_price"   # simpler macro model
+      trade_pricing: "seller_ask_price_with_bulk_discount"
       matching:
-        # when supply < demand, allocate fills to buyers pro-rata by qty unless priority overrides exist
-        shortage_allocation: "pro_rata"
-        surplus_allocation: "fill_all_buys_then_remainder_to_seller_stockpile"
+        # Runtime sorts orders by priority, remaining quantity, and price, then matches when buy.max_price >= sell.ask_price.
+        shortage_allocation: "priority_sorted_order_matching"
+        surplus_allocation: "unfilled_sell_offers_persist"
       priorities:
-        # optional, keep default neutral unless you want policies later
-        buyer_priority_order: [coalition, empire, army]
-        seller_priority_order: [empire]
+        buyer_sort: [priority_desc, remaining_qty_desc, max_price_desc]
+        seller_sort: [priority_desc, ask_price_asc]
 
   pricing:
-    model: "supply_demand_pressure"
-    params:
-      # price reacts to demand/supply ratio, then is smoothed over time
-      # (implementation detail left to code; these are tuning knobs)
+    model: "seeded_static_price"
+    active_runtime_updates: false
+    initialization:
+      floor_variance: "0.85_to_1.15"
+      run_price_multipliers: [0.5, 1.0, 1.5, 2.0, 3.0]
+      initial_price_range_of_adjusted_floor: "0.5_to_1.5"
+    reserved_dynamic_params:
+      # These are retained as design notes for a future dynamic-price pass.
       min_price: 0.01
       max_price: 1000000
-      smoothing_k: 0.5           # lerp(last_price, target_price, k) - higher = faster adjustment
-      shortage_panic_cap: 6.0    # clamps extreme ratios per tick - higher = sharper spikes
-    tier_elasticity:
-      # higher elasticity => price moves more for the same imbalance
-      t1: 1.0
-      t2: 1.2
-      t3: 2.0
-      t4: 3.0
+      smoothing_k: 0.5
+      shortage_panic_cap: 6.0
+      tier_elasticity:
+        t1: 1.0
+        t2: 1.2
+        t3: 2.0
+        t4: 3.0
 
   coalition:
+    starting_economy:
+      requisition: 1000
+      treasury_credits: 10000
+
     procurement:
-      enabled: true
-      budget_credits_per_tick: 100
-      stockpiles: {} # commodity_key -> qty
+      # Legacy procurement/stockpile rollover is inactive. Requisition is generated through consumption conversion,
+      # direct improvement output, normal law effects, and mission/effect hooks.
+      enabled: false
 
-      # Player-set priority per good chooses the threshold factor (theta).
-      # Coalition buys sell offers if ask_price <= market_price * theta.
-      stockpile_priority_levels:
-        "-90%": { theta: 0.10 }
-        "-50%": { theta: 0.50 }
-        "-10%": { theta: 0.90 }
-        "10%":  { theta: 1.10 }
-        "50%":  { theta: 1.50 }
-        "90%":  { theta: 1.90 }
-
-      # default per tier (can be overridden per commodity)
-      default_priority_by_tier:
-        t1: "-10%"
-        t2: "10%"
-        t3: "50%"
-        t4: "90%"
-
-      per_commodity_priority: {} # commodity_key -> one of the keys above
+    consumption_to_requisition:
+      credits_per_requisition: 1000
+      base_consumption_share: 0.10
+      conversion_requisition_multiplier: 100
+      payout_cadence_turns: 15
+      approval_scale:
+        at_0_approval: 0.5
+        at_100_approval: 2.0
+      sources:
+        - empire_needs
+        - empire_wants
+        - army_needs
+        - army_wants
+        - improvement_sustainment
 
   stockpiles:
     rules:
-      # Empires:
       empire_leftovers_to_stockpile: true
-      # Optional controls to prevent hoarding meta:
       storage_cost_enabled: false
       decay_enabled: false
     decay:
-      # commodity_key -> pct lost per tick (only used if decay_enabled)
       rates: {}
 
   demand_generation:
     empire_buys:
-      # Empire emits buy orders for its own needs first; then optional surplus buys to feed armies.
       needs_first: true
-      allow_surplus_buys_for_armies: true
-
+      wants_enabled: true
     army_buys:
-      # Army total demand = manpower * (needs + wants)
-      use_empire_distribution_first: true # empires may satisfy armies from their stockpile before market buys
+      damage_gates_needs: true
+      wants_persist: true
+    improvement_sustainment:
+      pre_market_orders: true
+      post_market_resolution: true
+
+  backlog:
+    description: "Unmet demand remains in the buy-side backlog until fulfilled, cancelled, or expired by its resource policy."
+    fields: [resource, quantity_remaining, age, source, persistence_policy, max_backlog_age, source_valid]
+    policies:
+      perishable:
+        default_max_age: 1
+        expiry: "convert_unmet_quantity_to_pressure"
+      deferred:
+        default_max_age: 3
+        expiry: "convert_unmet_quantity_to_pressure"
+      persistent:
+        max_age: null
+        expiry: "cancel_only_when_source_invalid"
+    invalid_source: "cancel_without_pressure"
+
+  pressure:
+    description: "Expired unmet demand is accumulated by resource and pressure key; it is never silently discarded."
+    fields: [by_resource, by_type, total, last_expired, history]
+
+  army_consumption_effects:
+    threshold_multiplier: 20
+    processing: "after_battle_phase_for_armies_not_in_active_battles"
+    pools_persist: true
+    quantum_legion_reference:
+      wants:
+        quantum_circuits: 0.0006
+        sentient_cores: 0.00025
+        wormhole_reactors: 0.00015
+      runtime_thresholds:
+        quantum_circuits: 160
+        nano_machines: 240
+        sentient_cores: 240
+        wormhole_reactors: 80
+      effects:
+        quantum_circuits: "persistent_army_damage_add"
+        nano_machines: "mp_capacity_and_current_mp"
+        sentient_cores: "coalition_intel"
+        wormhole_reactors: "next_battle_kill_rate_prep"
 
   fulfillment_and_performance:
-    # Convert fulfillment to performance impact (bounded, diminishing returns recommended)
     needs:
-      threshold: 0.80           # below this, penalties kick in
-      penalty_curve: "step_then_scale" # implement: harsh below threshold, mild above
-      max_penalty: 0.35         # e.g. -35% performance
+      threshold: 0.80
+      penalty_curve: "step_then_scale"
+      max_penalty: 0.35
     wants:
       bonus_curve: "diminishing_returns"
-      max_bonus: 0.20           # e.g. +20% performance
+      max_bonus: 0.20
 
   tick_pipeline:
     steps:
+      - id: initialize_market_if_needed
+        description: "Create seeded static prices from commodity floor prices."
+      - id: process_improvements_pre_market
+        description: "Advance construction, charge upkeep, queue sustainment, release production, and add direct requisition output."
       - id: compute_empire_production
-        description: "Empires add production outputs to sell offers (or stockpile, depending on policy)."
-      - id: emit_buy_orders_empire_needs
-        description: "Empires create buy orders for their own needs."
+        description: "Emit empire production as sell offers."
+      - id: emit_buy_orders_empire_needs_wants
+        description: "Empires create buy orders for their own needs and wants."
       - id: emit_buy_orders_army_needs_wants
-        description: "Armies create buy orders from manpower-scaled needs+wants (unless fulfilled by empire distribution)."
-      - id: compute_market_target_price
-        description: "Aggregate demand/supply per good, compute target price, apply smoothing and clamps."
-      - id: coalition_procurement_pass
-        description: "Coalition buys qualifying sell offers under threshold factor, constrained by budget."
+        description: "Armies create buy orders from manpower-scaled needs and wants."
+      - id: apply_order_lifecycle_and_fees
+        description: "Merge persistent orders, age them, filter validity, and apply posting fees."
       - id: market_clear
-        description: "Clear remaining buys vs sells at single clearing price; allocate fills pro-rata on shortages."
-      - id: apply_leftovers_to_stockpiles
-        description: "Unfilled sell quantities go to seller stockpiles; optional decay/storage costs."
-      - id: distribute_empire_surplus_to_armies
-        description: "Empires route a share of surplus goods to armies based on surplus_to_armies_ratio."
-      - id: compute_army_fulfillment_and_performance
-        description: "Compute fulfillment ratios, shortages, and update army performance multipliers."
+        description: "Clear buy orders against sell offers by priority and compatible order prices."
+      - id: save_persistent_orders
+        description: "Carry unfilled buy orders and sell offers into the next tick."
+      - id: post_market_fulfillment
+        description: "Compute army/empire fulfillment and apply fulfillment effects."
+      - id: process_improvement_sustainment_post_market
+        description: "Resolve sustainment receipts and restore or degrade improvements."
+      - id: consumption_to_requisition
+        description: "Convert recorded consumption into pooled coalition requisition."
 
   serialization:
-    # what you need to persist
     persist:
       market_state: true
-      coalition_stockpiles: true
+      coalition_stockpiles: false
       empire_stockpiles: true
-      orders: false # usually ephemeral per tick unless debugging
+      orders: true
       army_supply_state: true

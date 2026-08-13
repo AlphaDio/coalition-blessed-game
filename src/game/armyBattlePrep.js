@@ -2,13 +2,13 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-export const ARMY_BATTLE_PREP_STATS = Object.freeze(['fervor', 'protection', 'resolve']);
+export const ARMY_BATTLE_PREP_STATS = Object.freeze(['fervor', 'protection', 'resolve', 'killRateBonus']);
 
 function getPrepClampRange(stat) {
   if (stat === 'fervor') {
     return { min: -100, max: 100 };
   }
-  if (stat === 'protection' || stat === 'resolve') {
+  if (stat === 'protection' || stat === 'resolve' || stat === 'killRateBonus') {
     return { min: -1, max: 1 };
   }
   return { min: -Number.MAX_SAFE_INTEGER, max: Number.MAX_SAFE_INTEGER };
@@ -18,7 +18,8 @@ export function createArmyBattlePrep() {
   return {
     fervor: 0,
     protection: 0,
-    resolve: 0
+    resolve: 0,
+    killRateBonus: 0
   };
 }
 
@@ -85,5 +86,11 @@ export function getEffectiveArmyResolve(army, surgeBonus = 0) {
   const prep = getArmyBattlePrep(army, 'resolve');
   const surge = Math.max(0, Number(surgeBonus) || 0);
   return clamp(base + prep + surge, 0, 1);
+}
+
+export function getEffectiveArmyKillRateBonus(army) {
+  const legacyBonus = Number(army?.killRateBonus || 0);
+  const prep = getArmyBattlePrep(army, 'killRateBonus');
+  return clamp((Number.isFinite(legacyBonus) ? legacyBonus : 0) + prep, -1, 1);
 }
 

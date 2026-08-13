@@ -26,7 +26,7 @@ A complete React web frontend for the Coalition game has been built with full ba
   - `POST /api/game/actions/enact-law` - Enact law
   - `POST /api/game/actions/event-choice` - Choose event option
   - `POST /api/game/actions/improvement` - Accept/cancel improvement
-  - `POST /api/game/actions/emergency-law` - Activate emergency law
+  - `POST /api/game/actions/emergency-power` - Activate emergency power
   - `POST /api/game/actions/pause` - Pause/unpause
   - `POST /api/game/actions/speed` - Set game speed
   - `POST /api/game/actions/advance-turn` - Manual turn advance

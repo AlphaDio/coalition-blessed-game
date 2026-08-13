@@ -21,7 +21,6 @@ Welcome to the AI Documentation folder. This is where we document system impleme
 - **[CONSUMPTION_REQUISITION_IMPLEMENTATION.md](CONSUMPTION_REQUISITION_IMPLEMENTATION.md)** - Coalition economy from empire consumption
   - Requisition and credit generation
   - Modifiable share rates
-  - Allowance-based credit faucet system
 
 #### Improvements System
 - **[SUGGESTION_QUEUE_PLATEAU_IMPLEMENTATION.md](SUGGESTION_QUEUE_PLATEAU_IMPLEMENTATION.md)** - Improvement suggestion rate control

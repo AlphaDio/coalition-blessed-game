@@ -1,0 +1,53 @@
+module:
+  id: "pressure_institutional_breakdown"
+  name: "Institutional Breakdown"
+  description: "An organization dependent on the missing resource can no longer operate normally."
+  version: "1.0.0"
+  type: "event"
+  category: "pressure"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["pressure", "shortage", "institutions"]
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "pressure_institutional_breakdown"
+    name: "Institutional Breakdown"
+    scope: "PRESSURE"
+    category: "pressure"
+    pressure_event: true
+    pressure_eligibility:
+      pool: "shared"
+      tiers: "all"
+      persistence_policies: "all"
+      pressure_types: "all"
+      resource_types: "all"
+      resources: "all"
+    ai_narration: "A coalition institution can no longer function normally without ${resource_name}. The ${pressure_type} crisis has reached tier ${tier}."
+    description: "The ${source_label} dependency on ${resource_name} has failed. ${expired_quantity} went unmet and accumulated pressure is ${accumulated_pressure}."
+    choices:
+      - text: "Divert coalition reserves"
+        description: "Protect continuity by consuming shared reserves that were meant for other priorities."
+        effects_summary: "Coalition requisition: -100 | Coalition cohesion +1"
+        effects:
+          coalitionEconomy:
+            requisition: -100
+          coalitionCohesion: 1
+      - text: "Preserve core operations"
+        description: "Keep the institution functioning by narrowing access and accepting public resentment."
+        effects_summary: "All empires: approval -2 | Coalition cohesion -1"
+        effects:
+          empireApproval:
+            "@all": -2
+          coalitionCohesion: -1
+      - text: "Decentralize the function"
+        description: "Hand authority to local actors and trade efficiency for resilience."
+        effects_summary: "All empires: approval +2 | Coalition cohesion -2"
+        effects:
+          empireApproval:
+            "@all": 2
+          coalitionCohesion: -2

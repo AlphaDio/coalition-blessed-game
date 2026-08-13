@@ -46,6 +46,8 @@ resources:
       name: "Super Alloys"
       tier: t1
       floor_price: 0.1
+      persistence_policy: persistent
+      pressure: { key: industrial_pressure, weight: 1 }
       tags: [industrial, construction, military]
       notes: "Structural metals, basic parts, hull plating."
 
@@ -53,6 +55,9 @@ resources:
       name: "Biomass"
       tier: t1
       floor_price: 0.08
+      persistence_policy: perishable
+      max_backlog_age: 1
+      pressure: { key: biomass_pressure, weight: 1 }
       tags: [civilian, fuel, sustenance]
       notes: "Organics for foodstock, biofuels, basic bioprocessing."
 
@@ -60,6 +65,9 @@ resources:
       name: "Plasma Fuel"
       tier: t1
       floor_price: 0.05
+      persistence_policy: deferred
+      max_backlog_age: 3
+      pressure: { key: fuel_pressure, weight: 1 }
       tags: [logistics, coolant, life_support]
       notes: "Water ice for life support, cooling, and process water."
 
@@ -67,6 +75,9 @@ resources:
       name: "Rare Gases"
       tier: t2
       floor_price: 0.5
+      persistence_policy: deferred
+      max_backlog_age: 3
+      pressure: { key: industrial_pressure, weight: 1 }
       tags: [industrial, electronics, science]
       notes: "Lasers, lithography, plasma processing."
 
@@ -74,6 +85,8 @@ resources:
       name: "Genomes"
       tier: t2
       floor_price: 0.8
+      persistence_policy: persistent
+      pressure: { key: biotech_pressure, weight: 1 }
       tags: [medical, agriculture, biotech]
       notes: "Engineered genomes, therapies, bio-IP."
 
@@ -81,6 +94,8 @@ resources:
       name: "Ancient Relics"
       tier: t2
       floor_price: 1.2
+      persistence_policy: persistent
+      pressure: { key: strategic_pressure, weight: 1 }
       tags: [science, culture, strategic]
       notes: "Fragments/artifacts leveraged for research, diplomacy, unlocks."
 
@@ -88,6 +103,9 @@ resources:
       name: "Psycho Implants"
       tier: t2
       floor_price: 1.0
+      persistence_policy: deferred
+      max_backlog_age: 3
+      pressure: { key: civilian_pressure, weight: 1 }
       tags: [medical, psychology, military]
       notes: "Psycho-active implants, neural enhancements, mind-control."
 
@@ -95,6 +113,9 @@ resources:
       name: "Nano Machines"
       tier: t3
       floor_price: 5.0
+      persistence_policy: deferred
+      max_backlog_age: 4
+      pressure: { key: military_supply_pressure, weight: 1 }
       tags: [industrial, repair, military]
       notes: "Advanced fabrication and repair swarms; elite sustainment."
 
@@ -102,6 +123,9 @@ resources:
       name: "Quantum Circuits"
       tier: t3
       floor_price: 7.5
+      persistence_policy: deferred
+      max_backlog_age: 4
+      pressure: { key: military_supply_pressure, weight: 1 }
       tags: [electronics, intel, command]
       notes: "Encryption, prediction, high-end comms and targeting."
 
@@ -109,6 +133,8 @@ resources:
       name: "Sentient Cores"
       tier: t3
       floor_price: 10.0
+      persistence_policy: persistent
+      pressure: { key: strategic_pressure, weight: 1 }
       tags: [command, ethics, strategic]
       notes: "Sapient-grade computation; doctrine defining; high political impact."
 
@@ -116,6 +142,8 @@ resources:
       name: "Wormhole Reactors"
       tier: t3
       floor_price: 15.0
+      persistence_policy: persistent
+      pressure: { key: fuel_pressure, weight: 1 }
       tags: [energy, propulsion, strategic]
       notes: "Exotic power cores used for extreme-range logistics and experimental drives."
 
@@ -123,6 +151,8 @@ resources:
       name: "Dark Matter"
       tier: t4
       floor_price: 100.0
+      persistence_policy: persistent
+      pressure: { key: strategic_pressure, weight: 1 }
       tags: [legendary, propulsion, megastructure]
       notes: "Ultra-rare; enables economy-warping tech and projects."
 
@@ -130,5 +160,7 @@ resources:
       name: "Anti-Grav Modules"
       tier: t4
       floor_price: 80.0
+      persistence_policy: persistent
+      pressure: { key: strategic_pressure, weight: 1 }
       tags: [propulsion, megastructure, strategic]
       notes: "Advanced anti-grav systems; enables megastructures and planetary-scale projects."

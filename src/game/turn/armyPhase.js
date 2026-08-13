@@ -111,6 +111,14 @@ function applyArmyConsumptionEffect(state, army, rule, consumed, hits, log, logg
     return;
   }
 
+  if (effect.type === 'army_kill_rate_bonus') {
+    const totalPrep = addArmyBattlePrep(army, 'killRateBonus', scaledAmount);
+    const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} next-battle kill rate (${hits} hits, prep ${totalPrep.toFixed(3)})`;
+    log.push(msg);
+    logger.info(msg);
+    return;
+  }
+
   if (effect.type === 'replenishment_bonus') {
     army.replenishmentBonus = (army.replenishmentBonus || 0) + scaledAmount;
     const msg = `${army.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} replenishment bonus (${hits} hits)`;

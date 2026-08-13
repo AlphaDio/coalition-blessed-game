@@ -1,5 +1,4 @@
 import { TRADE_INCOME_EFFECT_DIVISOR, FULFILLMENT_CONSTANTS } from '../constants.js';
-import { refillCoalitionAllowance } from '../consumptionToRequisition.js';
 import { computeArmyFulfillment, computeEmpireFulfillment } from '../marketEconomy.js';
 import { scalePositiveApprovalGain } from '../approvalUtils.js';
 
@@ -102,10 +101,6 @@ export function applyEmpireFulfillmentEffects(empire) {
 }
 
 export function applyPostMarketUpdates(state, config) {
-  // Refill coalition allowance each tick (from faucet)
-  // This is the primary credit source for the coalition
-  refillCoalitionAllowance(state.coalitionEconomy);
-
   // Compute army fulfillment and performance
   state.armies.forEach(army => {
     computeArmyFulfillment(army, config);

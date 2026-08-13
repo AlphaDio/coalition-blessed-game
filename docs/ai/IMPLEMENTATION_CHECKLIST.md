@@ -193,7 +193,7 @@
 - ✅ Law enactment
 - ✅ Event choices
 - ✅ Improvement management
-- ✅ Emergency laws
+- ✅ Emergency powers
 - ✅ Game pause/resume
 - ✅ Game speed control
 - ✅ Turn advancement

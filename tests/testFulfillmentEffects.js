@@ -212,7 +212,6 @@ console.log('=== Test 8: fulfillment_growth_modifier contributes to population g
 {
   const state = {
     coalitionModifiers: { population_growth: 0 },
-    activeEmergencyLaws: [],
     improvements: { empireModifiers: {} },
     empires: [createEmpire('e8', 'Test', 50, {}, {}, { population: 10000 })]
   };
@@ -231,7 +230,6 @@ console.log('=== Test 8: fulfillment_growth_modifier contributes to population g
   empire2.stats.fulfillment_growth_modifier = -(FULFILLMENT_CONSTANTS.NEEDS_MAX_GROWTH_PENALTY * 5);
   const state2 = {
     coalitionModifiers: { population_growth: 0 },
-    activeEmergencyLaws: [],
     improvements: { empireModifiers: {} },
     empires: [empire2]
   };

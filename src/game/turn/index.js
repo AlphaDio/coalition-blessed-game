@@ -17,7 +17,6 @@ import { getEventTitle, hasValidChoices } from '../../utils/events.js';
 import { refreshArmyAggregates } from '../armyComposition.js';
 import { processTechAccrual, createTechEvent } from '../technology.js';
 import { processUnityAccrual, popNextUnityCelebrationEvent } from '../unity.js';
-import { tickEmergencyLaws, getActiveEmergencyModifiers } from '../emergencyLaws.js';
 import { calculateScourgePrediction } from '../scourgePrediction.js';
 import { initializeTurnConsumptionTracking, processConsumptionToRequisition } from '../consumptionToRequisition.js';
 import { applyHeroBudgetSiphon, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters } from '../heroes.js';
@@ -25,7 +24,7 @@ import { generateHeroLawProposals } from '../lawProposals.js';
 import { applyMissionSliderEffects, maybeSpawnDeepMission } from '../scourgeMissions.js';
 import { applyThreatClimateBonuses, resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
 import { tickEmergencyPowers } from '../emergencyPowers.js';
-import { applyEmergencyModifiers, applyEmergencyPowerDynamicModifiers } from './emergency.js';
+import { applyEmergencyPowerDynamicModifiers } from './emergency.js';
 import { applyDynamicScourgeModifierEffects, tickScourgeRecovery, resolvePendingScourgeAttack } from './scourge.js';
 import { handleLawProcesses } from './lawPhase.js';
 import { handleEconomyTick, processEmpireStockpileConsumption } from './economyPhase.js';
@@ -33,6 +32,7 @@ import { handleBattlePhase } from './battlePhase.js';
 import { applyArmyPassiveStatModifiers, recoverArmyOrganization, replenishArmyManpower } from './armyPhase.js';
 import { applyBasePopulationGrowth } from './population.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
+import { popNextGameplayEvent } from '../pressureEvents.js';
 
 export { collectArmiesInBattle, isRegularArmy };
 
@@ -134,16 +134,6 @@ export function advanceTurn(state, rng = Math.random) {
     });
   }
 
-  // 3.2. Process emergency laws tick (consume resources, apply modifiers, expire if needed)
-  const emergencyResult = tickEmergencyLaws(state);
-  if (emergencyResult.log && emergencyResult.log.length > 0) {
-    log.push(...emergencyResult.log);
-  }
-
-  // Apply emergency law modifiers to game systems
-  const emergencyModifiers = getActiveEmergencyModifiers(state);
-  applyEmergencyModifiers(state, emergencyModifiers, log);
-
   const expiredPowers = tickEmergencyPowers(state);
   if (expiredPowers.length > 0) {
     log.push(`Emergency powers expired: ${expiredPowers.join(', ')}`);
@@ -223,7 +213,7 @@ export function advanceTurn(state, rng = Math.random) {
   // 4. Update law cooldowns
   updateLawCooldowns(state);
 
-  // 5. Check for events
+  // 5. Check for random events
   const event = (!state.pendingScourgeAttack || state.pendingScourgeAttack.ready)
     ? checkEvent(state, rng)
     : null;
@@ -246,6 +236,19 @@ export function advanceTurn(state, rng = Math.random) {
     resolvePendingScourgeAttack(state, rng, log, logger);
   }
   const activeBattles = handleBattlePhase(state, rng, log, logger);
+
+  // Promote queued gameplay events after this tick's battle/event rolls. This
+  // keeps the event in the same active-event pipeline without changing the
+  // deterministic outcome of systems that already ran this turn.
+  if (!state.activeEvent) {
+    const queuedEvent = popNextGameplayEvent(state);
+    if (queuedEvent) {
+      state.activeEvent = queuedEvent;
+      const queuedTitle = getEventTitle(queuedEvent);
+      logger.info(`Queued event triggered: ${queuedTitle}`);
+      log.push(`Event: ${queuedTitle}`);
+    }
+  }
 
   // 6. Replenish army manpower (for armies not in active battles); threshold-based growth logged to log
   replenishArmyManpower(state, activeBattles, log);

@@ -42,8 +42,9 @@ export function checkEvent(state, rng = Math.random) {
   logger.debug(`Event check: tier=${tier.name}, frequency=${frequency}, roll=${roll.toFixed(3)}`);
   
   if (roll < frequency && state.events.length > 0) {
-    // Filter out LAW scope events (they're handled by law system)
-    const regularEvents = state.events.filter(e => e.scope !== 'LAW');
+    // Filter out events owned by specialized pipelines. Pressure events are
+    // queued by the pressure escalation system and must not fire randomly.
+    const regularEvents = state.events.filter(e => e.scope !== 'LAW' && e.scope !== 'PRESSURE');
     if (regularEvents.length === 0) {
       logger.debug('No regular events available (only LAW scope events)');
       return null;

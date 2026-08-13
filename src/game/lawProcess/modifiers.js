@@ -288,7 +288,6 @@ export function applyLawImmediateEffects(lawDef, state, log, context = {}) {
       state.coalitionEconomy = {
         requisition: 0,
         treasury_credits: 0,
-        allowance_credits: 0,
         consumption_requisition_pool: 0,
         consumption_requisition_pool_turns: 0
       };
@@ -303,7 +302,6 @@ export function applyLawImmediateEffects(lawDef, state, log, context = {}) {
       state.coalitionEconomy = {
         requisition: 0,
         treasury_credits: 0,
-        allowance_credits: 0,
         consumption_requisition_pool: 0,
         consumption_requisition_pool_turns: 0
       };

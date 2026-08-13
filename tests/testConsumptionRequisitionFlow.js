@@ -25,6 +25,7 @@ import { applyBasePopulationGrowth } from '../src/game/turn/population.js';
 import { ECONOMY_CONSTANTS, SCOURGE_MISSION_CONSTANTS } from '../src/game/constants.js';
 import { scalePositiveApprovalGain } from '../src/game/approvalUtils.js';
 import { getArmyPopulationDemandMultiplier } from '../src/game/consumptionScaling.js';
+import { getArmyBattlePrep } from '../src/game/armyBattlePrep.js';
 import { createSampleContent } from '../src/game/content.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
 
@@ -132,7 +133,6 @@ console.log('=== Test 1: Empire Needs Fill Generates Coalition Requisition ===')
 
   const coalitionEconomy = {
     requisition: 0,
-    allowance_credits: 1000,
     consumption_requisition_pool: 0,
     consumption_requisition_pool_turns: 0
   };
@@ -199,7 +199,6 @@ console.log('=== Test 2: Army-Tagged Fill Counts As Army Consumption And Payout 
 
   const coalitionEconomy = {
     requisition: 0,
-    allowance_credits: 1000,
     consumption_requisition_pool: 1,
     consumption_requisition_pool_turns: 14
   };
@@ -253,7 +252,6 @@ console.log('=== Test 3: Improvement Sustainment Consumption Grants Requisition 
     coalitionEconomy: {
       requisition: 500,
       treasury_credits: 10000,
-      allowance_credits: 1000,
       consumption_requisition_pool: 0,
       consumption_requisition_pool_turns: 0
     },
@@ -479,7 +477,7 @@ console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And D
 }
 console.log();
 
-console.log('=== Test 7: Army MP Thresholds Stay Reachable While Scaling Thresholds Stay High ===');
+console.log('=== Test 7: Army Advanced-Resource Thresholds Stay Reachable ===');
 {
   const content = createSampleContent(42);
   const rules = (content.armies || [])
@@ -498,11 +496,17 @@ console.log('=== Test 7: Army MP Thresholds Stay Reachable While Scaling Thresho
 
   const minMpThreshold = mpThresholds.length > 0 ? Math.min(...mpThresholds) : 0;
   const maxMpThreshold = mpThresholds.length > 0 ? Math.max(...mpThresholds) : 0;
-  const minScalingThreshold = scalingThresholds.length > 0 ? Math.min(...scalingThresholds) : 0;
   const maxScalingThreshold = scalingThresholds.length > 0 ? Math.max(...scalingThresholds) : 0;
+  const quantumArmy = content.armies.find(army => army.id === 'army_clockwork');
+  const quantumThresholds = Object.fromEntries((quantumArmy?.consumptionRules || []).map(rule => [
+    rule.commodity,
+    Number(rule.threshold)
+  ]));
 
   assert(minMpThreshold >= 200 && maxMpThreshold <= 500, 'Army MP growth thresholds stay in a fast, reachable range');
-  assert(minScalingThreshold >= 800 && maxScalingThreshold <= 4000, 'Army non-MP scaling thresholds stay in a live but slower range');
+  assert(quantumThresholds.quantum_circuits <= 200, 'Quantum Legion damage scaling threshold is reachable');
+  assert(quantumThresholds.wormhole_reactors <= 100, 'Quantum Legion kill-rate scaling threshold is reachable');
+  assert(maxScalingThreshold <= 4000, 'Other army scaling thresholds stay bounded');
 }
 console.log();
 
@@ -597,7 +601,6 @@ console.log('=== Test 11: Population Growth Uses A Unified Capped Pipeline ===')
 {
   const state = {
     coalitionModifiers: { population_growth: 0.003 },
-    activeEmergencyLaws: [],
     improvements: {
       empireModifiers: {
         empire_1: {
@@ -624,6 +627,85 @@ console.log('=== Test 11: Population Growth Uses A Unified Capped Pipeline ===')
 
   assert(state.empires[0].stats.population === 1000000, 'Population growth respects the 1,000,000 ceiling');
   assert((state.empires[0].stats.population_growth_bank || 0) === 0, 'Positive growth bank clears once the population ceiling is reached');
+}
+console.log();
+
+console.log('=== Test 12: Empire Wormhole Consumption Adds Kill-Rate Prep ===');
+{
+  initializeTurnConsumptionTracking();
+
+  const army = createArmy('army_clockwork', 'empire_clockwork', 'Quantum Legion', 40, 80, 0, 70, 40, 8000);
+  const state = {
+    consumptionEffectPools: {},
+    empires: [{
+      id: 'empire_clockwork',
+      name: 'Quantum Collective',
+      stats: { population: 300 },
+      consumptionRules: [{
+        commodity: 'wormhole_reactors',
+        threshold: 8,
+        effect: { type: 'army_kill_rate_bonus', amount: 0.06 }
+      }]
+    }],
+    armies: [army]
+  };
+
+  recordConsumption('wormhole_reactors', 8, 'empire_clockwork', CONSUMPTION_SOURCES.EMPIRE_WANTS);
+  processEmpireStockpileConsumption(state, []);
+
+  assert(
+    approxEqual(getArmyBattlePrep(army, 'killRateBonus'), 0.06),
+    'Empire wormhole consumption adds next-battle kill-rate prep'
+  );
+}
+console.log();
+
+console.log('=== Test 13: Army Wormhole Consumption Adds Kill-Rate Prep ===');
+{
+  const army = createArmy('army_clockwork', 'empire_clockwork', 'Quantum Legion', 40, 80, 0, 70, 40, 8000);
+  army.consumptionRules = [{
+    commodity: 'wormhole_reactors',
+    threshold: 4,
+    effect: { type: 'army_kill_rate_bonus', amount: 0.04 }
+  }];
+  army.supply_state.received = { wormhole_reactors: 4 };
+
+  const state = {
+    coalitionIntel: 0,
+    empires: [createEmpireShell('empire_clockwork', 60, 10000)],
+    armies: [army]
+  };
+
+  replenishArmyManpower(state, [], []);
+
+  assert(
+    approxEqual(getArmyBattlePrep(army, 'killRateBonus'), 0.04),
+    'Army wormhole consumption adds next-battle kill-rate prep'
+  );
+}
+console.log();
+
+console.log('=== Test 14: Hyperspace Marines Scale Through Rare Gases And Quantum Circuits ===');
+{
+  const content = createSampleContent(42);
+  const empire = content.empires.find((entry) => entry.id === 'empire_3');
+  const army = content.armies.find((entry) => entry.id === 'army_4');
+
+  const state = {
+    coalitionIntel: 0,
+    empires: [empire],
+    armies: [army]
+  };
+
+  army.supply_state.received = {
+    rare_gases: 1600,
+    quantum_circuits: 1000
+  };
+
+  replenishArmyManpower(state, [], []);
+
+  assert(approxEqual(army.consumptionDamageAdd, 0.2), 'Hyperspace Marines gain persistent damage from rare gases');
+  assert(approxEqual(army.consumptionMpGainMultiplier, 1.24), 'Hyperspace Marines gain MP growth from quantum circuits');
 }
 console.log();
 

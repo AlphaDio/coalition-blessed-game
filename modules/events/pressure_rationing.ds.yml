@@ -1,0 +1,53 @@
+module:
+  id: "pressure_rationing"
+  name: "Rationing"
+  description: "Authorities must decide how scarce supplies are allocated."
+  version: "1.0.0"
+  type: "event"
+  category: "pressure"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["pressure", "shortage", "allocation"]
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "pressure_rationing"
+    name: "Rationing"
+    scope: "PRESSURE"
+    category: "pressure"
+    pressure_event: true
+    pressure_eligibility:
+      pool: "shared"
+      tiers: "all"
+      persistence_policies: "all"
+      pressure_types: "all"
+      resource_types: "all"
+      resources: "all"
+    ai_narration: "The shortage of ${resource_name} has reached pressure tier ${tier}. Authorities must explain who receives ${resource_name}, how much, and why."
+    description: "${source_label} has left ${resource_name} short by ${expired_quantity}; accumulated ${pressure_type} pressure now stands at ${accumulated_pressure} (tier ${tier})."
+    choices:
+      - text: "Prioritize critical systems"
+        description: "Protect the most essential institutions and accept unequal access elsewhere."
+        effects_summary: "All empires: approval -2 | Coalition cohesion +1"
+        effects:
+          empireApproval:
+            "@all": -2
+          coalitionCohesion: 1
+      - text: "Demand a shared sacrifice"
+        description: "Spread the shortage broadly so no single constituency bears the full burden."
+        effects_summary: "All empires: approval +1 | Coalition cohesion -1"
+        effects:
+          empireApproval:
+            "@all": 1
+          coalitionCohesion: -1
+      - text: "Let markets decide"
+        description: "Leave allocation to bidding and absorb the political consequences of unequal access."
+        effects_summary: "Coalition treasury: -150 credits | Coalition cohesion -2"
+        effects:
+          coalitionEconomy:
+            treasury_credits: -150
+          coalitionCohesion: -2

@@ -14,7 +14,6 @@ import { assignInitialHeroes } from '../game/heroes.js';
 import { generateHeroLawProposals } from '../game/lawProposals.js';
 import { handleLawEventChoice, startLawProcess, startLawProcessFromProposal } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
-import { activateEmergencyLaw } from '../game/emergencyLaws.js';
 import { activateEmergencyPower } from '../game/emergencyPowers.js';
 import { calculateScourgePrediction } from '../game/scourgePrediction.js';
 import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES, SCOURGE_PREDICTION_CONSTANTS } from '../game/constants.js';
@@ -95,12 +94,10 @@ export class GameManager {
 
       const marketRng = new DeterministicRNG(this.state.rngSeed);
       this.state.market = initializeMarket(commodities, marketRng.random.bind(marketRng));
-      // Coalition economy now generates requisition from empire consumption
-      // and credits from the allowance pool
+      // Coalition economy generates requisition from empire consumption.
       this.state.coalitionEconomy = {
         requisition: GAME_INIT_CONSTANTS.INITIAL_REQUISITION,
         treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
-        allowance_credits: GAME_INIT_CONSTANTS.INITIAL_ALLOWANCE_CREDITS,
         consumption_requisition_pool: 0,
         consumption_requisition_pool_turns: 0
       };
@@ -340,21 +337,6 @@ export class GameManager {
   }
 
   /**
-   * Activate emergency law
-   */
-  activateEmergencyLaw(lawId) {
-    try {
-      const result = activateEmergencyLaw(lawId, this.state);
-      if (result.success) {
-        this.notifyStateChange();
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
    * Activate emergency power
    */
   activateEmergencyPower(powerId) {
@@ -515,6 +497,16 @@ export class GameManager {
   loadSaveState(saveData) {
     // Migrate save data to current schema to handle missing fields
     this.state = migrateGameState(saveData);
+    // Older saves may contain the event catalog from before pressure events
+    // existed. Restore only the shared pressure definitions without replacing
+    // any content already stored in the save.
+    const pressureEvents = createSampleContent(this.state.rngSeed ?? 0).events
+      .filter(event => event.scope === 'PRESSURE');
+    const existingEventIds = new Set((this.state.events || []).map(event => event.id));
+    this.state.events = [
+      ...(this.state.events || []),
+      ...pressureEvents.filter(event => !existingEventIds.has(event.id))
+    ];
     this.ensureHeroRoster();
     this.applyLawSystemDefaults();
     if (!this.state.heroRecruitmentState || typeof this.state.heroRecruitmentState !== 'object') {

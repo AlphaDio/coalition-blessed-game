@@ -1,7 +1,7 @@
 /**
  * Consumption-Based Requisition System
  *
- * Converts empire commodity consumption directly into coalition requisition and credits.
+ * Converts empire commodity consumption directly into coalition requisition.
  * Coalition gain is based on per-source consumption value:
  * - Empire needs/wants (market fills)
  * - Army needs/wants (empire-owned tagged market fills)
@@ -28,17 +28,6 @@ export const COALITION_CONSUMPTION_SHARE_BASE = CONSUMPTION_REQUISITION_CONSTANT
  * Multiplier for requisition obtained from conversion (affects the conversion rate)
  */
 export const CONVERSION_REQUISITION_MULTIPLIER = CONSUMPTION_REQUISITION_CONSTANTS.CONVERSION_REQUISITION_MULTIPLIER;
-
-/**
- * Coalition allowance refill per tick
- */
-export const ALLOWANCE_PER_TICK = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_PER_TICK;
-
-/**
- * Maximum allowance (in ticks worth)
- */
-export const ALLOWANCE_CAP_TICKS = CONSUMPTION_REQUISITION_CONSTANTS.ALLOWANCE_CAP_TICKS;
-export const ALLOWANCE_MAX = ALLOWANCE_PER_TICK * ALLOWANCE_CAP_TICKS;
 
 /**
  * Consumption requisition payout cadence.
@@ -285,17 +274,16 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
       requisitionPoolBalance: 0,
       requisitionPoolTurns: 0,
       requisitionPoolPayoutTurns: REQUISITION_POOL_TURNS,
-      creditsGranted: 0,
-      creditsSpent: 0,
       sourceBreakdown: {}
     };
   }
 
+  // Remove the legacy allowance field even for callers that bypass the normal
+  // save-state migration path.
+  delete coalitionEconomy.allowance_credits;
+
   if (!Number.isFinite(coalitionEconomy.requisition)) {
     coalitionEconomy.requisition = 0;
-  }
-  if (!Number.isFinite(coalitionEconomy.allowance_credits)) {
-    coalitionEconomy.allowance_credits = 0;
   }
   if (!Number.isFinite(coalitionEconomy.consumption_requisition_pool)) {
     coalitionEconomy.consumption_requisition_pool = 0;
@@ -319,8 +307,6 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
   const empiresById = new Map((empires || []).map(empire => [String(empire.id), empire]));
 
   let totalRequisitionGenerated = 0;
-  let totalCreditsGranted = 0;
-  let totalCreditsSpent = 0;
   let totalConsumedRawValue = 0;
   let totalConsumedWeightedValue = 0;
   let totalConsumedUnits = 0;
@@ -379,20 +365,14 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
 
     totalRequisitionGenerated += requisitionGenerated;
 
-    const creditsGranted = scaledCoalitionValue;
-    const creditsSpent = Math.min(creditsGranted, coalitionEconomy.allowance_credits);
-    coalitionEconomy.allowance_credits -= creditsSpent;
-    totalCreditsGranted += creditsGranted;
-    totalCreditsSpent += creditsSpent;
-
-    if (requisitionGenerated > 0.001 || creditsSpent > 0.001) {
+    if (requisitionGenerated > 0.001) {
       logger.debug(
         `[${empireName}] Consumption conversion: ${empireRawValue.toFixed(2)} raw value ` +
         `(${empireWeightedValue.toFixed(2)} weighted, ${empireUnits.toFixed(2)} units) ` +
         `@ ${(effectiveShareRate * 100).toFixed(1)}% share ` +
         `-> ${coalitionValue.toFixed(2)} base credits ` +
         `-> ${scaledCoalitionValue.toFixed(2)} credits (${CONVERSION_REQUISITION_MULTIPLIER}x multiplier x ${(approvalScale * 100).toFixed(0)}% approval scale) ` +
-        `-> +${requisitionGenerated.toFixed(3)} requisition pooled, +${creditsSpent.toFixed(0)} credits from allowance`
+        `-> +${requisitionGenerated.toFixed(3)} requisition pooled`
       );
     }
   }
@@ -419,23 +399,8 @@ export function processConsumptionToRequisition(market, coalitionEconomy, modifi
     requisitionPoolBalance: coalitionEconomy.consumption_requisition_pool,
     requisitionPoolTurns: coalitionEconomy.consumption_requisition_pool_turns,
     requisitionPoolPayoutTurns,
-    creditsGranted: totalCreditsGranted,
-    creditsSpent: totalCreditsSpent,
     sourceBreakdown
   };
-}
-
-/**
- * Refill coalition allowance each tick.
- * @param {Object} coalitionEconomy - The coalition economy state object
- */
-export function refillCoalitionAllowance(coalitionEconomy) {
-  if (!coalitionEconomy) return;
-
-  coalitionEconomy.allowance_credits = Math.min(
-    (coalitionEconomy.allowance_credits || 0) + ALLOWANCE_PER_TICK,
-    ALLOWANCE_MAX
-  );
 }
 
 /**

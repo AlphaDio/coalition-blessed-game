@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { getLogger, LogLevel, LogLevelNames } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
-import { EMERGENCY_LAW_DEFINITIONS } from '../game/emergencyLaws.js';
 import { getEmergencyPowerDefinitions } from '../game/emergencyPowers.js';
 import {
   getArmyBattlePrep,
@@ -500,55 +499,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
-  // Activate emergency law
-  app.post('/api/game/actions/emergency-law', (req, res) => {
-    try {
-      const lawId = req.body.lawId;
-      
-      if (!lawId) {
-        return res.sendError(
-          ErrorCodes.MISSING_PARAMETER,
-          'Missing required parameter: lawId'
-        );
-      }
-      
-      const result = gameManager.activateEmergencyLaw(lawId);
-      
-      if (!result.success) {
-        let errorCode = ErrorCodes.INVALID_ACTION;
-        
-        if (result.error?.includes('not found')) {
-          errorCode = ErrorCodes.LAW_NOT_FOUND;
-        } else if (result.error?.includes('insufficient')) {
-          errorCode = ErrorCodes.INSUFFICIENT_RESOURCES;
-        } else if (result.error?.includes('cooldown')) {
-          errorCode = ErrorCodes.LAW_ON_COOLDOWN;
-        }
-        
-        return res.sendError(errorCode, result.error || 'Failed to activate emergency law');
-      }
-      
-      const state = gameManager.getGameState();
-      broadcastGameState(state);
-      broadcastNotification('emergency_law_activated', { lawId, turn: state.turn });
-      
-      res.sendSuccess(state, {
-        notification: {
-          type: 'emergency_law_activated',
-          details: { lawId, turn: state.turn }
-        }
-      });
-    } catch (error) {
-      logger.error(`Error activating emergency law: ${error.message}`);
-      logger.error(error.stack);
-      res.sendError(
-        ErrorCodes.INTERNAL_SERVER_ERROR,
-        'Failed to activate emergency law',
-        { originalError: error.message }
-      );
-    }
-  });
-
   // Activate emergency power
   app.post('/api/game/actions/emergency-power', (req, res) => {
     try {
@@ -889,30 +839,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       res.sendError(
         ErrorCodes.INTERNAL_SERVER_ERROR,
         'Failed to retrieve logs',
-        { originalError: error.message }
-      );
-    }
-  });
-
-  // Get emergency law definitions
-  app.get('/api/game/definitions/emergency-laws', (req, res) => {
-    try {
-      const emergencyLaws = EMERGENCY_LAW_DEFINITIONS.map((law) => ({
-        id: law.id,
-        name: law.name,
-        description: law.description,
-        duration: law.duration,
-        cooldown: law.cooldown,
-        costs_per_tick: law.costs_per_tick,
-        modifiers: law.modifiers,
-        axis_vector: law.axis_vector
-      }));
-      res.sendSuccess({ emergencyLaws });
-    } catch (error) {
-      logger.error('Failed to fetch emergency law definitions:', error);
-      res.sendError(
-        ErrorCodes.INTERNAL_SERVER_ERROR,
-        'Failed to fetch emergency law definitions',
         { originalError: error.message }
       );
     }

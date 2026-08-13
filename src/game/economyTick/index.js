@@ -1,5 +1,6 @@
 import { getLogger } from '../../modules/logger.js';
 import { DeterministicRNG } from '../../modules/rng.js';
+import { GAME_INIT_CONSTANTS } from '../constants.js';
 import {
   loadEconomyConfig,
   initializeMarket
@@ -12,17 +13,21 @@ import {
   emitEmpireWantsOrders,
   emitArmyOrders,
   getEffectiveRationing,
-  getSupplyEfficiencyMultiplier
+  getSupplyEfficiencyMultiplier,
+  initializeStarterNeedsStockpiles
 } from './ordersPhase.js';
 import {
   applyOrderDurations,
   applyExpiredSellOffers,
   applyOrderFees,
+  enforceEmpireBudgetConstraints,
   resetEmpireSpend,
   clearMarkets,
-  saveMarketOrders
+  saveMarketOrders,
+  finalizeDemandBacklog
 } from './ordersLifecycle.js';
 import { applyPostMarketUpdates } from './postTick.js';
+import { triggerPressureGameplayEvents } from '../pressureEvents.js';
 
 /**
  * Economy tick processor - runs the market economy pipeline each turn
@@ -47,11 +52,12 @@ export function processEconomyTick(state) {
   // Initialize coalition economy state if needed
   if (!state.coalitionEconomy) {
     state.coalitionEconomy = {
-      requisition: 500,
-      treasury_credits: 10000,
-      allowance_credits: 1000,
+      requisition: GAME_INIT_CONSTANTS.INITIAL_REQUISITION,
+      treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
       consumption_requisition_pool: 0,
-      consumption_requisition_pool_turns: 0
+      consumption_requisition_pool_turns: 0,
+      starter_stockpiles_initialized: false,
+      starter_stockpiles_turn: null
     };
     logger.info('Coalition economy initialized');
   }
@@ -64,6 +70,9 @@ export function processEconomyTick(state) {
     aggregateBuyOrder,
     aggregateSellOffer
   } = createOrderAggregator(state);
+
+  // Seed and consume a finite first-turn buffer for essential needs only.
+  initializeStarterNeedsStockpiles(state);
 
   // Step 1: Compute empire production
   emitEmpireProduction(state, aggregateSellOffer);
@@ -81,27 +90,51 @@ export function processEconomyTick(state) {
 
   // Apply empire order posting fees
   const {
-    allBuyOrders,
-    allSellOffers,
     validBuyOrders,
     validSellOffers,
     expiredSellOffers
   } = applyOrderDurations(state, buyOrders, sellOffers);
 
   applyExpiredSellOffers(state, expiredSellOffers);
-  applyOrderFees(state, validBuyOrders, allSellOffers);
+  const budgetResult = enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers);
+  applyOrderFees(state, budgetResult.validBuyOrders, budgetResult.validSellOffers);
   resetEmpireSpend(state);
 
   // Step 6: Market clearing
-  const allTrades = clearMarkets(state, commodities, validBuyOrders, validSellOffers);
+  const allTrades = clearMarkets(
+    state,
+    commodities,
+    budgetResult.validBuyOrders,
+    budgetResult.validSellOffers,
+    { budgetsEnforced: true }
+  );
+
+  // Demand ages only after this tick's supply allocation. Expired unmet
+  // quantities become pressure instead of disappearing from the economy.
+  const backlogResult = finalizeDemandBacklog(state, budgetResult.validBuyOrders);
+  const pressureEventResult = triggerPressureGameplayEvents(
+    state,
+    state.economyPressure?.last_expired || []
+  );
 
   // Step 6b: Save remaining valid orders to state.marketOrders
-  saveMarketOrders(state, ordersToSave, validBuyOrders, validSellOffers, buyOrders, sellOffers);
+  saveMarketOrders(
+    state,
+    ordersToSave,
+    backlogResult.activeOrders,
+    budgetResult.validSellOffers,
+    buyOrders,
+    sellOffers
+  );
 
   // Step 7-8: Apply post-market updates
   applyPostMarketUpdates(state, config);
 
   logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
 
-  return { log, trades: allTrades.length };
+  return {
+    log,
+    trades: allTrades.length,
+    pressureEvents: pressureEventResult.createdEvents
+  };
 }

@@ -36,20 +36,27 @@ declares:
         quantum_circuits: 0.0012
         nano_machines: 0.0009
       wants:
+        quantum_circuits: 0.0006
         sentient_cores: 0.00025
+        wormhole_reactors: 0.00015
     consumption:
       quantum_circuits:
-        threshold: 70
+        threshold: 8
         effect:
           type: army_damage_bonus
           amount: 0.16
       nano_machines:
-        threshold: 18
+        threshold: 12
         effect:
           type: mp_bonus
           amount: 6
       sentient_cores:
-        threshold: 60
+        threshold: 12
         effect:
           type: coalition_intel_bonus
           amount: 4
+      wormhole_reactors:
+        threshold: 4
+        effect:
+          type: army_kill_rate_bonus
+          amount: 0.04

@@ -13,6 +13,12 @@ function normalizeQty(value) {
   return rounded > QUANTITY_EPSILON ? rounded : 0;
 }
 
+function normalizeSignedQty(value) {
+  if (!Number.isFinite(value)) return 0;
+  const rounded = Math.round(value * QUANTITY_PRECISION) / QUANTITY_PRECISION;
+  return Math.abs(rounded) > QUANTITY_EPSILON ? rounded : 0;
+}
+
 /**
  * Process production outputs for an improvement
  * Accumulates in production bank, held until threshold is met
@@ -58,10 +64,14 @@ export function processImprovementProduction(state, improvement) {
       if (!state.coalitionEconomy) {
         state.coalitionEconomy = { requisition: 0 };
       }
-      if (!state.coalitionEconomy.requisition) {
+      if (!Number.isFinite(state.coalitionEconomy.requisition)) {
         state.coalitionEconomy.requisition = 0;
       }
-      state.coalitionEconomy.requisition = normalizeQty((state.coalitionEconomy.requisition || 0) + scaledQty);
+      // Requisition is an account balance, so production must repay debt instead
+      // of passing the signed balance through the positive-only quantity helper.
+      state.coalitionEconomy.requisition = normalizeSignedQty(
+        state.coalitionEconomy.requisition + scaledQty
+      );
       log.push(`{blue-fg}Produced:{/blue-fg} ${scaledQty.toFixed(3)} ${commodity} -> coalition economy (direct)`);
       continue;
     }
@@ -126,7 +136,7 @@ export function releaseProductionFromBank(state, improvement) {
       priority: 100,
       fee: 0,
       duration: 0,
-      max_duration: 1000000
+      max_duration: 6
     };
     state.marketOrders.sellOffers.push(sellOffer);
     return sellOffer;

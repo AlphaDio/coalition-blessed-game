@@ -195,6 +195,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER - Global multiplier applied to army consumption effect thresholds at content load
  * @property {number} EMPIRE_DEMAND_POPULATION_EXPONENT - Population exponent for empire needs/wants demand
  * @property {number} EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER - Global multiplier applied to empire needs/wants demand after population scaling
+ * @property {number} STARTER_NEEDS_STOCKPILE_FULFILLMENT - One-time share of first-turn essential demand supplied from starter stockpiles
  * @property {number} ARMY_POPULATION_DEMAND_BASE - Base multiplier for army demand pressure
  * @property {number} ARMY_POPULATION_DEMAND_LOG_SCALE - Extra multiplier from log10(population) for army demand pressure
  */
@@ -221,6 +222,7 @@ export const ECONOMY_CONSTANTS = {
   ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER: 20,
   EMPIRE_DEMAND_POPULATION_EXPONENT: 1.0,
   EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER: 10,
+  STARTER_NEEDS_STOCKPILE_FULFILLMENT: 0.75,
   ARMY_POPULATION_DEMAND_BASE: 1.0,
   ARMY_POPULATION_DEMAND_LOG_SCALE: 2.5
 };
@@ -400,7 +402,6 @@ export const ECONOMY_BALANCE_CONSTANTS = {
  * Initial game setup values for new games.
  * @property {number} INITIAL_REQUISITION - Starting requisition points for coalition operations
  * @property {number} INITIAL_TREASURY_CREDITS - Starting credits in coalition treasury
- * @property {number} INITIAL_ALLOWANCE_CREDITS - Starting allowance credits for spending
  * @property {number} INITIAL_PLAYER_INFLUENCE - Starting influence points for player actions
  * @property {number} DEFAULT_BASE_VOTES_PER_EMPIRE - Base voting power per empire in law votes
  * @property {number} DEFAULT_QUORUM_THRESHOLD - Fraction of votes needed for quorum (50%)
@@ -411,7 +412,6 @@ export const GAME_INIT_CONSTANTS = {
   // Coalition economy starting values
   INITIAL_REQUISITION: 1000, // 500 -> 1000
   INITIAL_TREASURY_CREDITS: 10000,
-  INITIAL_ALLOWANCE_CREDITS: 1000,
   
   // Player starting values
   INITIAL_PLAYER_INFLUENCE: 100,
@@ -592,13 +592,11 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
 };
 
 /**
- * Consumption-to-requisition conversion and allowance system.
+ * Consumption-to-requisition conversion system.
  * Controls how empire consumption generates coalition requisition.
  * @property {number} CREDITS_PER_REQUISITION - Conversion rate (1000 credits = 1 requisition)
  * @property {number} COALITION_CONSUMPTION_SHARE_BASE - Coalition's share of consumption value (10%)
  * @property {number} CONVERSION_REQUISITION_MULTIPLIER - Multiplier for requisition from consumption (100x)
- * @property {number} ALLOWANCE_PER_TICK - Credits granted to coalition per tick (1000)
- * @property {number} ALLOWANCE_CAP_TICKS - Maximum stored allowance in ticks worth (4)
  * @property {number} APPROVAL_SCALE_MIN - Requisition multiplier at 0 approval (50%)
  * @property {number} APPROVAL_SCALE_MAX - Requisition multiplier at 100 approval (200%)
  * @property {number} REQUISITION_POOL_TURNS - Consumption requisition payout cadence in turns (15)
@@ -607,8 +605,6 @@ export const CONSUMPTION_REQUISITION_CONSTANTS = {
   CREDITS_PER_REQUISITION: 1000,                    // Conversion rate: 1000 credits = 1 requisition
   COALITION_CONSUMPTION_SHARE_BASE: 0.10,           // 10% - Base coalition share of consumption value
   CONVERSION_REQUISITION_MULTIPLIER: 100,            // 100x - Multiplier for requisition from consumption
-  ALLOWANCE_PER_TICK: 1000,                         // Credits granted per tick
-  ALLOWANCE_CAP_TICKS: 4,                           // Maximum allowance (in ticks worth)
   APPROVAL_SCALE_MIN: 0.5,                          // At 0 approval, contribute 50% requisition
   APPROVAL_SCALE_MAX: 2.0,                          // At 100 approval, contribute 200% requisition
   REQUISITION_POOL_TURNS: 15,                       // Pool consumption requisition for 15 turns before payout

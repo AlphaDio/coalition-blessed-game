@@ -1,4 +1,8 @@
 import { createBuyOrder } from '../marketEconomy.js';
+import { markDemandBacklogOrder } from './backlog.js';
+
+const DEFAULT_BUY_ORDER_MAX_DURATION = 3;
+const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
 
 export function createOrderAggregator(state) {
   const buyOrders = [];
@@ -8,9 +12,24 @@ export function createOrderAggregator(state) {
   // Track which orders should persist (from aggregation with existing or new creation)
   const ordersToSave = new Set();
 
-  // Load existing orders for aggregation (but don't add to arrays yet)
+  // Load existing orders for aggregation (but don't add them to arrays yet)
   const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
   const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+
+  const existingOrderIds = new Set([
+    ...existingBuyOrders.map(order => order.id),
+    ...existingSellOffers.map(order => order.id)
+  ]);
+
+  function nextOrderId(prefix) {
+    let id;
+    do {
+      id = `${prefix}_${orderIdCounter++}`;
+    } while (existingOrderIds.has(id));
+    existingOrderIds.add(id);
+    return id;
+  }
+
   existingBuyOrders.forEach(order => {
     if (order.turn_added_turn !== state.turn) {
       order.turn_added_qty = 0;
@@ -67,7 +86,7 @@ export function createOrderAggregator(state) {
 
     if (!existing) {
       const offer = {
-        id: `sell_${orderIdCounter++}`,
+        id: nextOrderId('sell'),
         owner_type: ownerType,
         owner_id: ownerId,
         commodity,
@@ -78,8 +97,8 @@ export function createOrderAggregator(state) {
         fee: 0,
         turn_added_qty: newQty,
         turn_added_turn: state.turn,
-        // Sell-side resource accumulation is market-centered and persistent.
-        max_duration: 1000000,
+        // Sell-side resource accumulation can survive short liquidity gaps.
+        max_duration: DEFAULT_SELL_ORDER_MAX_DURATION,
         duration: 0
       };
       sellOffers.push(offer);
@@ -119,21 +138,16 @@ export function createOrderAggregator(state) {
     // First check new orders created this tick
     let existing = buyOrders.find(o => getBuyAggregationKey(o) === targetKey && (o.filled_qty || 0) < o.qty);
 
-    // Then check existing orders from previous ticks
-    if (!existing) {
-      existing = existingBuyOrders.find(o => getBuyAggregationKey(o) === targetKey && (o.filled_qty || 0) < o.qty);
-    }
-
     if (!existing) {
       const order = createBuyOrder(
-        `buy_${orderIdCounter++}`,
+        nextOrderId('buy'),
         ownerType,
         ownerId,
         commodity,
         newQty,
         newPrice,
         priority,
-        1000000
+        DEFAULT_BUY_ORDER_MAX_DURATION
       );
       order.category = category;
       if (tags) order.tags = { ...tags };
@@ -141,7 +155,11 @@ export function createOrderAggregator(state) {
       order.filled_qty = 0;
       order.turn_added_qty = newQty;
       order.turn_added_turn = state.turn;
-      order.max_duration = 1000000;
+      markDemandBacklogOrder(order, {
+        type: tags?.army_id ? 'army_demand' : 'empire_demand',
+        id: tags?.army_id || ownerId,
+        category: category || 'needs'
+      });
       buyOrders.push(order);
       ordersToSave.add(order);
       return order;
@@ -151,8 +169,11 @@ export function createOrderAggregator(state) {
     existing.qty = existing.qty + newQty;
     existing.turn_added_qty = (existing.turn_added_qty || 0) + newQty;
     existing.turn_added_turn = state.turn;
+    existing.age = 0;
+    existing.backlog_age = 0;
     existing.duration = 0;
-    existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
+    existing.qty_remaining = Math.max(0, existing.qty - (existing.filled_qty || 0));
+    existing.quantity_remaining = existing.qty_remaining;
 
     // If from existing orders, move to buyOrders for this tick
     if (!buyOrders.includes(existing)) {

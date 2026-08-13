@@ -151,7 +151,7 @@ See [SCOURGE_EVENTS_AND_CONFIDENCE.md](./SCOURGE_EVENTS_AND_CONFIDENCE.md) for d
 - Laws that provide "scouts" for early warning
 - Technologies that improve predictive capabilities
 - Events that temporarily reduce/increase confidence
-- Emergency laws that grant temporary confidence bonuses
+- Emergency powers that grant temporary confidence bonuses
 
 ## Code Files
 

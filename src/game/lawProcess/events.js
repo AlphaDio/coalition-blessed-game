@@ -159,7 +159,7 @@ function applyLawEventChoiceEffects(effects, lawProcess, state) {
 
   if ((effects.requisition || effects.credits) && state) {
     if (!state.coalitionEconomy) {
-      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, allowance_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
+      state.coalitionEconomy = { requisition: 0, treasury_credits: 0, consumption_requisition_pool: 0, consumption_requisition_pool_turns: 0 };
     }
     if (effects.requisition) {
       state.coalitionEconomy.requisition = (state.coalitionEconomy.requisition || 0) + effects.requisition;

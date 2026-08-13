@@ -7,6 +7,7 @@ import { getEmpireMilitaryModifierSet } from './empireModifiers.js';
 import { consumeArmyExperienceSurgeForRound } from './armyExperience.js';
 import {
   getEffectiveArmyFervor,
+  getEffectiveArmyKillRateBonus,
   getEffectiveArmyProtection,
   getEffectiveArmyResolve
 } from './armyBattlePrep.js';
@@ -61,8 +62,8 @@ function getEffectiveKillRate(army) {
   const killRate = typeof army.killRate === 'number' && !isNaN(army.killRate) ? army.killRate : 0.1;
   const fervor = getEffectiveArmyFervor(army);
   const fervorBonus = (fervor / 100) * 0.10; // Up to +10% at max fervor
-  const bonus = army.killRateBonus || 0;
-  return Math.min(1, killRate + fervorBonus + bonus);
+  const bonus = getEffectiveArmyKillRateBonus(army);
+  return clamp(killRate + fervorBonus + bonus, 0, 1);
 }
 
 /**

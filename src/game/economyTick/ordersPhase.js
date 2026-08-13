@@ -22,6 +22,49 @@ export function getSupplyEfficiencyMultiplier(state) {
 }
 
 /**
+ * Seed a finite, needs-only buffer for a new game. This prevents the first
+ * economy tick from treating an empty market as an immediate humanitarian
+ * crisis while leaving advanced wants to compete for scarce production.
+ */
+export function initializeStarterNeedsStockpiles(state) {
+  const coalitionEconomy = state?.coalitionEconomy;
+  if (!coalitionEconomy || state.turn !== 1 || coalitionEconomy.starter_stockpiles_initialized) {
+    return;
+  }
+
+  const targetFulfillment = Math.max(
+    0,
+    Math.min(1, Number(ECONOMY_CONSTANTS.STARTER_NEEDS_STOCKPILE_FULFILLMENT) || 0)
+  );
+  const effectiveRationing = getEffectiveRationing(state);
+  const supplyEfficiencyMultiplier = getSupplyEfficiencyMultiplier(state);
+  const demandMultiplier = Math.max(0, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1);
+
+  state.empires.forEach(empire => {
+    if (!empire.needs?.per_pop) return;
+
+    const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
+    const empireEff = getEmpireSupplyEfficiency(empire, state);
+    const empireMult = Math.max(0, 1 - empireEff);
+    empire.stockpiles = empire.stockpiles || {};
+
+    Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
+      const rawNeeded = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
+      if (totalNeeded <= 0) return;
+
+      const existingStockpile = Number.isFinite(empire.stockpiles[commodity])
+        ? empire.stockpiles[commodity]
+        : 0;
+      empire.stockpiles[commodity] = Math.max(existingStockpile, totalNeeded * targetFulfillment);
+    });
+  });
+
+  coalitionEconomy.starter_stockpiles_initialized = true;
+  coalitionEconomy.starter_stockpiles_turn = state.turn;
+}
+
+/**
  * Empire-level supply efficiency (from definition + improvements). Combined with coalition
  * in callers: final mult = coalitionMult * (1 - min(1, empireEfficiency)).
  */
@@ -39,7 +82,17 @@ function isArmyDamaged(army) {
 }
 
 export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
+  const starterStockpilesActive = Boolean(state.coalitionEconomy) &&
+    state.coalitionEconomy.starter_stockpiles_turn === state.turn;
+
   state.empires.forEach(empire => {
+    // Reset supply state for this tick
+    if (!empire.supply_state) {
+      empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
+    }
+    empire.supply_state.needs_demand = {};
+    empire.supply_state.received = {};
+
     if (!empire.needs || !empire.needs.per_pop) return;
     const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
     const demandMultiplier = Math.max(0, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1);
@@ -50,25 +103,33 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
       empire.economy_spend = { needs: 0, wants: 0, order_fees: 0 };
     }
 
-    // Reset supply state for this tick
-    if (!empire.supply_state) {
-      empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
-    }
-    empire.supply_state.needs_demand = {};
-    empire.supply_state.received = {};
-
     Object.entries(empire.needs.per_pop).forEach(([commodity, qtyPerPop]) => {
       const rawNeeded = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalNeeded = applyDemandCommodityMultiplier(commodity, rawNeeded);
       if (totalNeeded > 0) {
         empire.supply_state.needs_demand[commodity] = totalNeeded;
+        const starterAvailable = starterStockpilesActive
+          ? Math.max(0, Number(empire.stockpiles?.[commodity]) || 0)
+          : 0;
+        const starterReceived = Math.min(totalNeeded, starterAvailable);
+        if (starterReceived > 0) {
+          empire.stockpiles[commodity] = Math.max(0, starterAvailable - starterReceived);
+          empire.supply_state.received[commodity] = (empire.supply_state.received[commodity] || 0) + starterReceived;
+        }
+
+        const marketNeeded = totalNeeded - starterReceived;
+        if (marketNeeded <= 0) return;
         const marketPrice = state.market[commodity]?.price || 1.0;
         const maxPrice = marketPrice;
 
-        aggregateBuyOrder('empire', empire.id, commodity, totalNeeded, maxPrice, 'needs', 1);
+        aggregateBuyOrder('empire', empire.id, commodity, marketNeeded, maxPrice, 'needs', 1);
       }
     });
   });
+
+  if (starterStockpilesActive) {
+    state.coalitionEconomy.starter_stockpiles_turn = null;
+  }
 }
 
 export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
@@ -84,7 +145,6 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
       empire.supply_state = { needs_demand: {}, wants_demand: {}, received: {}, needs_fulfillment: {}, wants_fulfillment: {} };
     }
     empire.supply_state.wants_demand = {};
-    empire.supply_state.received = {};
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
       const rawWanted = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;

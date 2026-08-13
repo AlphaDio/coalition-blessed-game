@@ -200,7 +200,16 @@ export function createSampleContent(seed = 0) {
       data.name,
       data.description,
       choices,
-      data.variables || null  // Pass through selector definitions
+      data.variables || null,  // Pass through selector definitions
+      {
+        scope: data.scope,
+        category: data.category,
+        ai_narration: data.ai_narration,
+        pressure_event: data.pressure_event,
+        pressure_eligibility: data.pressure_eligibility,
+        pressureEvent: data.pressureEvent,
+        pressureEligibility: data.pressureEligibility
+      }
     );
   });
 

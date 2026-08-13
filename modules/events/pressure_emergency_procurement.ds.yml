@@ -1,0 +1,52 @@
+module:
+  id: "pressure_emergency_procurement"
+  name: "Emergency Procurement"
+  description: "Acquire the missing resource rapidly at significant economic or political cost."
+  version: "1.0.0"
+  type: "event"
+  category: "pressure"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["pressure", "shortage", "procurement"]
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "pressure_emergency_procurement"
+    name: "Emergency Procurement"
+    scope: "PRESSURE"
+    category: "pressure"
+    pressure_event: true
+    pressure_eligibility:
+      pool: "shared"
+      tiers: "all"
+      persistence_policies: "all"
+      pressure_types: "all"
+      resource_types: "all"
+      resources: "all"
+    ai_narration: "The coalition needs ${resource_name} immediately. Procurement officers warn that every rapid solution will spend money, goodwill, or both."
+    description: "${source_label} reports an unresolved ${resource_name} shortage of ${expired_quantity}. ${pressure_type} pressure has reached ${accumulated_pressure} at tier ${tier}."
+    choices:
+      - text: "Pay the premium"
+        description: "Buy whatever is available now, regardless of the inflated price."
+        effects_summary: "Coalition treasury: -250 credits | Coalition cohesion +1"
+        effects:
+          coalitionEconomy:
+            treasury_credits: -250
+          coalitionCohesion: 1
+      - text: "Requisition private reserves"
+        description: "Seize stockpiles from powerful actors and promise compensation later."
+        effects_summary: "All empires: approval -4 | Coalition treasury +100 credits"
+        effects:
+          empireApproval:
+            "@all": -4
+          coalitionEconomy:
+            treasury_credits: 100
+      - text: "Wait for a better offer"
+        description: "Refuse emergency prices and accept the risk that the shortage deepens."
+        effects_summary: "Coalition cohesion -2"
+        effects:
+          coalitionCohesion: -2

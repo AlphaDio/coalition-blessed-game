@@ -5,10 +5,47 @@ import {
   creditSustainmentReceipts
 } from '../improvements/engine/sustainment.js';
 import { CONSUMPTION_SOURCES, recordConsumption } from '../consumptionToRequisition.js';
+import {
+  addPressure,
+  finalizeBacklogOrders,
+  getPressureConfig,
+  isDemandBacklogOrder,
+  normalizeBacklogOrder,
+  refreshMarketBacklogSnapshots,
+  updateBacklogSnapshot
+} from './backlog.js';
 
 function ensureEmpireSpend(empire) {
   empire.economy_spend = empire.economy_spend || { needs: 0, wants: 0, order_fees: 0 };
   return empire.economy_spend;
+}
+
+const BUDGET_EPSILON = 1e-9;
+const QUANTITY_PRECISION = 1e6;
+
+function getOrderFee(order) {
+  const fee = Number(order?.fee);
+  return Number.isFinite(fee) ? Math.max(0, fee) : 1;
+}
+
+function getEmpireBudget(empire) {
+  const budget = Number(empire?.budget_credits);
+  return Number.isFinite(budget) ? Math.max(0, budget) : 0;
+}
+
+function compareBudgetPriority(a, b) {
+  const priorityDelta = (Number(b?.priority) || 0) - (Number(a?.priority) || 0);
+  if (priorityDelta !== 0) return priorityDelta;
+
+  // Preserve essential needs ahead of wants when they share a priority tier.
+  const categoryDelta = (b?.category === 'needs' ? 1 : 0) - (a?.category === 'needs' ? 1 : 0);
+  if (categoryDelta !== 0) return categoryDelta;
+
+  return String(a?.id || '').localeCompare(String(b?.id || ''));
+}
+
+function normalizeOrderQuantity(value) {
+  return Math.floor(Math.max(0, Number(value) || 0) * QUANTITY_PRECISION) / QUANTITY_PRECISION;
 }
 
 function getConsumptionSourceFromBuyOrder(buyOrder) {
@@ -106,6 +143,34 @@ function getRemainingQty(order) {
   return Math.max(0, (order?.qty || 0) - (order?.filled_qty || 0));
 }
 
+const DEFAULT_BUY_ORDER_MAX_DURATION = 3;
+const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
+const LEGACY_PERSISTENT_ORDER_DURATION = 1000000;
+
+function resolveOrderMaxDuration(order, fallback) {
+  const configured = Number.isFinite(order?.max_duration)
+    ? Math.floor(order.max_duration)
+    : fallback;
+
+  // Older saves used 1,000,000 as a persistent-order sentinel. Convert that
+  // sentinel to a real finite lifetime so stale conditional orders can clear.
+  if (configured >= LEGACY_PERSISTENT_ORDER_DURATION) return fallback;
+  return Math.max(1, configured);
+}
+
+function advanceOrder(order, fallbackDuration, expiredOrders) {
+  if (getRemainingQty(order) <= 0) return false;
+
+  order.duration = (order.duration || 0) + 1;
+  order.max_duration = resolveOrderMaxDuration(order, fallbackDuration);
+  if (order.duration > order.max_duration) {
+    expiredOrders.push(order);
+    return false;
+  }
+
+  return true;
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -118,6 +183,130 @@ function getOrderEmpireId(order, armiesById) {
     return army?.empireId || null;
   }
   return null;
+}
+
+/**
+ * Enforce the empire currency boundary before market clearing.
+ *
+ * Empire budgets are a hard, non-negative purchasing limit. Coalition
+ * requisition and treasury credits are intentionally not interchangeable with
+ * empire budgets: normal commodity orders cannot draw from coalition-level
+ * balances. Existing backlog orders are included here so
+ * an order left on the book cannot fill after its owner has exhausted its
+ * budget.
+ */
+export function enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers) {
+  const empiresById = new Map((state.empires || []).map(empire => [empire.id, empire]));
+  const armiesById = new Map((state.armies || []).map(army => [army.id, army]));
+  const budgetRemaining = new Map();
+  const blocked = [];
+
+  empiresById.forEach((empire, empireId) => {
+    const normalizedBudget = getEmpireBudget(empire);
+    // Normalize legacy negative/invalid balances at the economy boundary so
+    // they cannot compound into an unbounded debt state.
+    empire.budget_credits = normalizedBudget;
+    budgetRemaining.set(empireId, normalizedBudget);
+  });
+
+  const feeOrders = [
+    ...(validBuyOrders || []).map(order => ({ order, kind: 'buy' })),
+    ...(validSellOffers || []).map(order => ({ order, kind: 'sell' }))
+  ].filter(({ order }) => order?.owner_type === 'empire' && empiresById.has(order.owner_id));
+
+  feeOrders.sort((a, b) => {
+    const empireDelta = String(a.order.owner_id).localeCompare(String(b.order.owner_id));
+    if (empireDelta !== 0) return empireDelta;
+    const priorityDelta = compareBudgetPriority(a.order, b.order);
+    if (priorityDelta !== 0) return priorityDelta;
+    return a.kind === b.kind ? 0 : (a.kind === 'buy' ? -1 : 1);
+  });
+
+  const feeAllowed = new Set();
+  feeOrders.forEach(({ order }) => {
+    const empireId = order.owner_id;
+    const fee = getOrderFee(order);
+    const available = budgetRemaining.get(empireId) || 0;
+    if (fee <= available + BUDGET_EPSILON) {
+      budgetRemaining.set(empireId, Math.max(0, available - fee));
+      feeAllowed.add(order.id);
+      return;
+    }
+
+    blocked.push({
+      order_id: order.id,
+      empire_id: empireId,
+      commodity: order.commodity,
+      category: order.category || null,
+      quantity: getRemainingQty(order),
+      reason: 'order_fee'
+    });
+  });
+
+  const affordableBuyOrders = (validBuyOrders || []).filter(order => {
+    if (order?.owner_type !== 'empire') return true;
+    return feeAllowed.has(order.id);
+  });
+  const affordableSellOffers = (validSellOffers || []).filter(order => {
+    if (order?.owner_type !== 'empire') return true;
+    return feeAllowed.has(order.id);
+  });
+
+  // Reserve the maximum possible trade cost, not the current ask price. This
+  // is conservative but guarantees that relation adjustments or malformed
+  // seller prices cannot push a buyer below zero during settlement.
+  const buyOrdersByPriority = affordableBuyOrders
+    .filter(order => order?.owner_type === 'empire')
+    .slice()
+    .sort((a, b) => {
+      const empireDelta = String(a.owner_id).localeCompare(String(b.owner_id));
+      return empireDelta !== 0 ? empireDelta : compareBudgetPriority(a, b);
+    });
+
+  buyOrdersByPriority.forEach(order => {
+    const empireId = getOrderEmpireId(order, armiesById);
+    if (!empireId || !empiresById.has(empireId)) return;
+
+    const remainingQty = getRemainingQty(order);
+    if (remainingQty <= BUDGET_EPSILON) return;
+
+    const maxPrice = Number(order.max_price);
+    const available = budgetRemaining.get(empireId) || 0;
+    const affordableQty = !Number.isFinite(maxPrice) || maxPrice < 0
+      ? 0
+      : maxPrice <= BUDGET_EPSILON
+        ? remainingQty
+        : Math.min(remainingQty, available / maxPrice);
+    const allowedQty = normalizeOrderQuantity(affordableQty);
+    const blockedQty = Math.max(0, remainingQty - allowedQty);
+
+    if (blockedQty > BUDGET_EPSILON) {
+      const filledQty = Math.max(0, Number(order.filled_qty) || 0);
+      order.qty = filledQty + allowedQty;
+      order.qty_remaining = allowedQty;
+      order.quantity_remaining = allowedQty;
+      blocked.push({
+        order_id: order.id,
+        empire_id: empireId,
+        commodity: order.commodity,
+        category: order.category || null,
+        quantity: blockedQty,
+        reason: 'budget_commitment'
+      });
+    }
+
+    if (maxPrice > BUDGET_EPSILON && allowedQty > BUDGET_EPSILON) {
+      budgetRemaining.set(empireId, Math.max(0, available - (allowedQty * maxPrice)));
+    }
+  });
+
+  state.economyBudgetBlockedLastTick = blocked;
+
+  return {
+    validBuyOrders: affordableBuyOrders,
+    validSellOffers: affordableSellOffers,
+    budgetRemaining
+  };
 }
 
 function getRelationValue(state, fromEmpireId, toEmpireId) {
@@ -143,26 +332,63 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
   const allBuyOrders = mergeOrdersById(state.marketOrders?.buyOrders || [], buyOrders);
   const allSellOffers = mergeOrdersById(state.marketOrders?.sellOffers || [], sellOffers);
 
-  // Buy orders are persistent backlog by design (no expiry).
+  if (state.economyPressure?.last_expired && Array.isArray(state.economyPressure.last_expired)) {
+    state.economyPressure.last_expired = [];
+  }
+
   const validBuyOrders = [];
   const expiredBuyOrders = [];
+  const cancelledBuyOrders = [];
 
   allBuyOrders.forEach(order => {
-    if (getRemainingQty(order) <= 0) return;
-    order.duration = (order.duration || 0) + 1;
-    order.max_duration = Number.isFinite(order.max_duration) ? order.max_duration : 1000000;
-    validBuyOrders.push(order);
+    if (isDemandBacklogOrder(order)) {
+      normalizeBacklogOrder(order, state);
+      if (!order.source_valid) {
+        cancelledBuyOrders.push(order);
+        return;
+      }
+      // Demand backlog age advances after allocation, not before it. This
+      // keeps a newly-created demand item alive for its configured lifetime.
+      validBuyOrders.push(order);
+      return;
+    }
+    if (advanceOrder(order, DEFAULT_BUY_ORDER_MAX_DURATION, expiredBuyOrders)) {
+      validBuyOrders.push(order);
+    }
   });
 
-  // Increment duration on all sell offers (sell-side accumulation is persistent)
+  state.economyBacklogCancelledLastTick = cancelledBuyOrders.map(order => ({
+    id: order.id,
+    resource: order.commodity,
+    quantity: Math.max(0, (order.qty || 0) - (order.filled_qty || 0)),
+    source: order.source
+  }));
+  state.economyBacklogExpiredLastTick = [];
+  expiredBuyOrders.forEach(order => {
+    const quantity = Math.max(0, (order.qty || 0) - (order.filled_qty || 0));
+    if (quantity <= 0 || !order.commodity || !order.category) return;
+    const pressureAmount = addPressure(state, order.commodity, quantity, order.source || {
+      type: `${order.owner_type || 'unknown'}_demand`,
+      id: order.owner_id || null,
+      category: order.category
+    });
+    state.economyBacklogExpiredLastTick.push({
+      id: order.id,
+      resource: order.commodity,
+      quantity,
+      source: order.source || null,
+      pressure: getPressureConfig(order.commodity).key,
+      amount: pressureAmount
+    });
+  });
+
   const validSellOffers = [];
   const expiredSellOffers = [];
 
   allSellOffers.forEach(order => {
-    if (getRemainingQty(order) <= 0) return;
-    order.duration = (order.duration || 0) + 1;
-    order.max_duration = Number.isFinite(order.max_duration) ? order.max_duration : 1000000;
-    validSellOffers.push(order);
+    if (advanceOrder(order, DEFAULT_SELL_ORDER_MAX_DURATION, expiredSellOffers)) {
+      validSellOffers.push(order);
+    }
   });
 
   return {
@@ -171,12 +397,15 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
     validBuyOrders,
     validSellOffers,
     expiredBuyOrders,
-    expiredSellOffers
+    expiredSellOffers,
+    cancelledBuyOrders
   };
 }
 
 export function applyExpiredSellOffers(state, expiredSellOffers) {
-  // Sell offers are persistent by design; no expiry side-effects.
+  // Expired offers are simply omitted from the next saved order book. Sellers
+  // retain any production already represented by their own stock/production
+  // bank and can repost it on a later tick.
   void state;
   void expiredSellOffers;
 }
@@ -188,8 +417,8 @@ export function applyOrderFees(state, validBuyOrders, allSellOffers) {
     if (order.owner_type !== 'empire') return;
     const empire = empiresById.get(order.owner_id);
     if (!empire) return;
-    const fee = order.fee || 1;
-    empire.budget_credits = (empire.budget_credits || 0) - fee;
+    const fee = getOrderFee(order);
+    empire.budget_credits = Math.max(0, getEmpireBudget(empire) - fee);
     ensureEmpireSpend(empire).order_fees += fee;
   });
 
@@ -197,8 +426,8 @@ export function applyOrderFees(state, validBuyOrders, allSellOffers) {
     if (order.owner_type !== 'empire') return;
     const empire = empiresById.get(order.owner_id);
     if (!empire) return;
-    const fee = order.fee || 1;
-    empire.budget_credits = (empire.budget_credits || 0) - fee;
+    const fee = getOrderFee(order);
+    empire.budget_credits = Math.max(0, getEmpireBudget(empire) - fee);
     ensureEmpireSpend(empire).order_fees += fee;
   });
 }
@@ -212,7 +441,13 @@ export function resetEmpireSpend(state) {
   });
 }
 
-export function clearMarkets(state, commodities, validBuyOrders, validSellOffers) {
+export function clearMarkets(state, commodities, validBuyOrders, validSellOffers, options = {}) {
+  if (!options.budgetsEnforced) {
+    const budgetResult = enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers);
+    validBuyOrders = budgetResult.validBuyOrders;
+    validSellOffers = budgetResult.validSellOffers;
+  }
+
   const allTrades = [];
   const remainingSellOffersPostClear = [];
   const remainingBuyOrdersPostClear = [];
@@ -289,4 +524,16 @@ export function saveMarketOrders(state, ordersToSave, validBuyOrders, validSellO
     buyOrders: uniqueBuyOrders,
     sellOffers: uniqueSellOffers
   };
+
+  updateBacklogSnapshot(state, uniqueBuyOrders);
+  refreshMarketBacklogSnapshots(state, uniqueBuyOrders);
+}
+
+/**
+ * Age demand backlog only after the market has had a chance to allocate supply.
+ * Expired quantities are converted to pressure; cancelled conditional demand is
+ * discarded because its underlying commitment no longer exists.
+ */
+export function finalizeDemandBacklog(state, validBuyOrders) {
+  return finalizeBacklogOrders(state, validBuyOrders);
 }

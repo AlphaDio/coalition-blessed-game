@@ -7,18 +7,23 @@
 
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 import { createOrderAggregator } from '../src/game/economyTick/orders.js';
-import { emitArmyOrders } from '../src/game/economyTick/ordersPhase.js';
+import { emitArmyOrders, emitEmpireNeedsOrders, emitEmpireWantsOrders } from '../src/game/economyTick/ordersPhase.js';
 import { applyOrderDurations, clearMarkets, saveMarketOrders } from '../src/game/economyTick/ordersLifecycle.js';
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
-import { canActivateEmergencyLaw, activateEmergencyLaw, tickEmergencyLaws } from '../src/game/emergencyLaws.js';
 import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
-import { processImprovementsTick, processImprovementSustainmentPostMarket } from '../src/game/improvements/index.js';
+import {
+  initializeImprovementsState,
+  acceptImprovementRequest,
+  processImprovementsTick,
+  processImprovementSustainmentPostMarket
+} from '../src/game/improvements/index.js';
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../src/game/improvements/types.js';
 import { getEffectiveArmyFervor } from '../src/game/armyBattlePrep.js';
 import { clearMarket, initializeMarket } from '../src/game/marketEconomy.js';
 import { initializeTurnConsumptionTracking, recordConsumption } from '../src/game/consumptionToRequisition.js';
 import { createArmy, createEmpire } from '../src/game/types.js';
+import { processImprovementProduction } from '../src/game/improvements/engine/production.js';
 
 initializeLogger({
   level: LogLevel.ERROR,
@@ -181,52 +186,7 @@ console.log('=== Test 4: Consumption Effects Use Persistent Commodity Pools ==='
 }
 console.log();
 
-console.log('=== Test 5: Emergency Laws Consume Market Reserves (No Coalition Stockpiles) ===');
-{
-  const state = {
-    turn: 1,
-    coalitionEconomy: { requisition: 500 },
-    marketOrders: {
-      buyOrders: [],
-      sellOffers: [
-        {
-          id: 'reserve_alloys',
-          owner_type: 'empire',
-          owner_id: 'empire_1',
-          commodity: 'super_alloys',
-          qty: 80,
-          filled_qty: 0,
-          ask_price: 2
-        },
-        {
-          id: 'reserve_biomass',
-          owner_type: 'empire',
-          owner_id: 'empire_1',
-          commodity: 'biomass',
-          qty: 60,
-          filled_qty: 0,
-          ask_price: 1
-        }
-      ]
-    },
-    activeEmergencyLaws: [],
-    emergencyLawCooldowns: {}
-  };
-
-  const canActivate = canActivateEmergencyLaw('emergency_total_mobilization', state);
-  assert(canActivate.canActivate, 'Emergency law checks market reserves for commodity costs');
-
-  activateEmergencyLaw('emergency_total_mobilization', state);
-  tickEmergencyLaws(state);
-
-  const alloysOrder = state.marketOrders.sellOffers.find(order => order.id === 'reserve_alloys');
-  const biomassOrder = state.marketOrders.sellOffers.find(order => order.id === 'reserve_biomass');
-  assert((alloysOrder.qty - alloysOrder.filled_qty) === 30, 'Emergency law drains super_alloys from sell-order reserves');
-  assert((biomassOrder.qty - biomassOrder.filled_qty) === 30, 'Emergency law drains biomass from sell-order reserves');
-}
-console.log();
-
-console.log('=== Test 6: Army Growth Uses Needs/Wants Fulfillment ===');
+console.log('=== Test 5: Army Growth Uses Needs/Wants Fulfillment ===');
 {
   const state = {
     empires: [createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 20000 })],
@@ -268,7 +228,7 @@ console.log('=== Test 6: Army Growth Uses Needs/Wants Fulfillment ===');
 }
 console.log();
 
-console.log('=== Test 7: Same-Turn Market Fill Prevents Sustainment Degradation ===');
+console.log('=== Test 6: Same-Turn Market Fill Prevents Sustainment Degradation ===');
 {
   const state = {
     turn: 25,
@@ -344,7 +304,7 @@ console.log('=== Test 7: Same-Turn Market Fill Prevents Sustainment Degradation 
 }
 console.log();
 
-console.log('=== Test 8: Market Matching Does Not Overfill Buys Across Multiple Sells ===');
+console.log('=== Test 7: Market Matching Does Not Overfill Buys Across Multiple Sells ===');
 {
   const marketState = {
     commodity: 'biomass',
@@ -400,7 +360,7 @@ console.log('=== Test 8: Market Matching Does Not Overfill Buys Across Multiple 
 }
 console.log();
 
-console.log('=== Test 9: Post-Clear Buy Backlog Snapshots Are Stored ===');
+console.log('=== Test 8: Post-Clear Buy Backlog Snapshots Are Stored ===');
 {
   const state = {
     empires: [
@@ -449,7 +409,7 @@ console.log('=== Test 9: Post-Clear Buy Backlog Snapshots Are Stored ===');
 }
 console.log();
 
-console.log('=== Test 10: Buy Backlog Orders Persist Despite max_duration ===');
+console.log('=== Test 9: Stale Buy Backlog Orders Expire ===');
 {
   const persistentBuy = {
     id: 'buy_persistent_1',
@@ -460,7 +420,7 @@ console.log('=== Test 10: Buy Backlog Orders Persist Despite max_duration ===');
     filled_qty: 0,
     max_price: 1.0,
     category: 'needs',
-    duration: 5,
+    duration: 3,
     max_duration: 3
   };
   const state = {
@@ -471,12 +431,12 @@ console.log('=== Test 10: Buy Backlog Orders Persist Despite max_duration ===');
   };
 
   const { validBuyOrders, expiredBuyOrders } = applyOrderDurations(state, [], []);
-  assert(validBuyOrders.some(order => order.id === 'buy_persistent_1'), 'Persistent buy backlog remains valid even when max_duration is exceeded');
-  assert(expiredBuyOrders.length === 0, 'No buy backlog orders are expired by duration');
+  assert(!validBuyOrders.some(order => order.id === 'buy_persistent_1'), 'Stale buy backlog is removed after max_duration');
+  assert(expiredBuyOrders.length === 1, 'Expired buy backlog is reported');
 }
 console.log();
 
-console.log('=== Test 11: Fractional Sustainment Values Create Non-Zero Demand ===');
+console.log('=== Test 10: Fractional Sustainment Values Create Non-Zero Demand ===');
 {
   const state = {
     turn: 10,
@@ -535,7 +495,7 @@ console.log('=== Test 11: Fractional Sustainment Values Create Non-Zero Demand =
 }
 console.log();
 
-console.log('=== Test 12: Fractional Production Outputs Accumulate Without Flooring To Zero ===');
+console.log('=== Test 11: Fractional Production Outputs Accumulate Without Flooring To Zero ===');
 {
   const state = {
     coalitionModifiers: {
@@ -589,7 +549,7 @@ console.log('=== Test 12: Fractional Production Outputs Accumulate Without Floor
 }
 console.log();
 
-console.log('=== Test 13: Positive Relations Discount Bilateral Trade Settlement ===');
+console.log('=== Test 12: Positive Relations Discount Bilateral Trade Settlement ===');
 {
   const state = {
     diplomacy: {
@@ -654,7 +614,7 @@ console.log('=== Test 13: Positive Relations Discount Bilateral Trade Settlement
 }
 console.log();
 
-console.log('=== Test 14: Negative Relations Increase Bilateral Trade Settlement ===');
+console.log('=== Test 13: Negative Relations Increase Bilateral Trade Settlement ===');
 {
   const state = {
     diplomacy: {
@@ -719,7 +679,7 @@ console.log('=== Test 14: Negative Relations Increase Bilateral Trade Settlement
 }
 console.log();
 
-console.log('=== Test 15: Army Needs Are Damage-Gated And Wants Stay Persistent ===');
+console.log('=== Test 14: Army Needs Are Damage-Gated And Wants Stay Persistent ===');
 {
   const state = {
     marketOrders: { buyOrders: [], sellOffers: [] },
@@ -765,7 +725,7 @@ console.log('=== Test 15: Army Needs Are Damage-Gated And Wants Stay Persistent 
 }
 console.log();
 
-console.log('=== Test 16: Empire-Owned Army Orders Credit Army Receipts On Fill ===');
+console.log('=== Test 15: Empire-Owned Army Orders Credit Army Receipts On Fill ===');
 {
   const state = {
     empires: [
@@ -825,7 +785,7 @@ console.log('=== Test 16: Empire-Owned Army Orders Credit Army Receipts On Fill 
 }
 console.log();
 
-console.log('=== Test 17: Damaged Needs Drive Aggravation And Wants Deficits Reduce Fervor ===');
+console.log('=== Test 16: Damaged Needs Drive Aggravation And Wants Deficits Reduce Fervor ===');
 {
   const state = {
     empires: [createEmpire('empire_1', 'Empire One', 50, {}, {}, { population: 10000 })],
@@ -881,7 +841,7 @@ console.log('=== Test 17: Damaged Needs Drive Aggravation And Wants Deficits Red
 }
 console.log();
 
-console.log('=== Test 18: Run Price Multipliers Seed Initial Market Prices ===');
+console.log('=== Test 17: Run Price Multipliers Seed Initial Market Prices ===');
 {
   const market = initializeMarket([{ key: 'biomass', floor_price: 10 }], () => 0);
   const biomassMarket = market.biomass;
@@ -891,6 +851,127 @@ console.log('=== Test 18: Run Price Multipliers Seed Initial Market Prices ===')
   assert(Math.abs(biomassMarket.floor_price - 4.25) < 1e-9, 'Run multiplier scales the actual floor price');
   assert(Math.abs(biomassMarket.price - 2.125) < 1e-9, 'Run multiplier scales the initial market price');
   assert(market.price_multiplier_by_commodity.biomass === 0.5, 'Market metadata stores the run multiplier by commodity');
+}
+console.log();
+
+console.log('=== Test 18: Empire Needs Receipts Survive Wants Order Emission ===');
+{
+  const empire = createEmpire(
+    'empire_receipts',
+    'Receipt Empire',
+    50,
+    {},
+    {},
+    {
+      population: 1000,
+      needs: { per_pop: { biomass: 1 } },
+      wants: { per_pop: { rare_gases: 1 } }
+    }
+  );
+  const state = {
+    empires: [empire],
+    market: {
+      biomass: { price: 1 },
+      rare_gases: { price: 1 }
+    },
+    coalitionModifiers: {},
+    improvements: null
+  };
+  const aggregateBuyOrder = () => {};
+
+  emitEmpireNeedsOrders(state, aggregateBuyOrder, 0.1, 1);
+  empire.supply_state.received.biomass = 4;
+  emitEmpireWantsOrders(state, aggregateBuyOrder, 0.1, 1);
+
+  assert(empire.supply_state.received.biomass === 4, 'Needs receipts remain available after wants orders are emitted');
+}
+console.log();
+
+console.log('=== Test 19: Improvement Acceptance Enforces Requisition Affordability ===');
+{
+  const state = {
+    turn: 1,
+    empires: [createEmpire('empire_afford', 'Affordability Empire', 50, {}, {}, { population: 1000 })],
+    armies: [],
+    coalitionEconomy: { requisition: 10 },
+    improvements: initializeImprovementsState()
+  };
+  state.improvements.requests = [{
+    id: 'expensive_request',
+    empireId: 'empire_afford',
+    name: 'Expensive Request',
+    description: '',
+    suppliesCost: 100,
+    build: 10,
+    capacity: 1,
+    tier: 1,
+    sustainmentCost: {},
+    productionOutputs: {},
+    modifiers: {},
+    tags: []
+  }];
+
+  const result = acceptImprovementRequest(state, 'expensive_request', 'empire_afford');
+
+  assert(!result.success, 'Improvement with insufficient requisition is rejected server-side');
+  assert(state.coalitionEconomy.requisition === 10, 'Rejected improvement does not change requisition');
+  assert(state.improvements.queue.length === 0, 'Rejected improvement is not added to the build queue');
+}
+console.log();
+
+console.log('=== Test 20: Negative Requisition Is Preserved During Sustainment ===');
+{
+  const state = {
+    turn: 1,
+    coalitionModifiers: {},
+    coalitionEconomy: { requisition: -5 },
+    empires: [createEmpire('empire_debt', 'Debt Empire', 50, {}, {}, { population: 1000 })],
+    improvements: {
+      queue: [{
+        id: 'debt_sustainment',
+        empireId: 'empire_debt',
+        name: 'Debt Sustainment',
+        state: 'ACTIVE',
+        capacity: 1,
+        buildProgress: 1,
+        build: 1,
+        requisitionUpkeep: 0,
+        sustainmentCost: { requisition: 2 },
+        productionOutputs: {},
+        modifiers: {},
+        productionBank: {},
+        productionBankThreshold: 10,
+        completedAtTick: null,
+        ticksSinceSustained: 0
+      }],
+      pendingSustainmentDemand: {},
+      pendingSustainmentNeedsByImprovement: {},
+      fulfilledSustainmentReceipts: {}
+    }
+  };
+
+  processImprovementsTick(state);
+
+  assert(state.coalitionEconomy.requisition === -5, 'Unpaid sustainment preserves negative requisition debt');
+}
+console.log();
+
+console.log('=== Test 21: Direct Requisition Production Repays Debt Without Erasing It ===');
+{
+  const state = {
+    coalitionEconomy: { requisition: -5 },
+    coalitionModifiers: {},
+    empires: [createEmpire('empire_producer', 'Producer Empire', 50, {}, {}, { population: 1000 })]
+  };
+  const improvement = {
+    empireId: 'empire_producer',
+    productionOutputs: { requisition: 9 },
+    productionBank: {}
+  };
+
+  processImprovementProduction(state, improvement);
+
+  assert(Math.abs(state.coalitionEconomy.requisition - (-4.1)) < 1e-9, 'Direct requisition production preserves signed debt arithmetic');
 }
 console.log();
 

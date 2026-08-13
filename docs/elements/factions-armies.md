@@ -1,7 +1,7 @@
 # Factions and Armies
 
 ## Overview
-The coalition currently fields five empires and four frontline armies. Each empire contributes unique ideology, production, and economic needs; each army represents an empire's military identity with distinct combat stats.
+The coalition currently fields five empires and five frontline armies. Each empire contributes unique ideology, production, and economic needs; each army represents an empire's military identity with distinct combat stats.
 
 ## Empires in Play
 
@@ -91,21 +91,29 @@ Hyperspace crossroads with strategic military reach and advanced technology.
   - essentialist_constructivist: 0.5
 
 ### Quantum Collective (empire_clockwork)
-Synthetic collective optimized for high-tech output and computational efficiency.
+Synthetic collective optimized for high-tech output, prediction, and lethal autonomous warfare.
 - **Color**: magenta
 - **Approval**: 60
 - **Population**: 300, **Influence**: 80
 - **Traits**: mechanical, synthetic
 - **Tags**: Mechanical, Warped
 - **Production per tick**:
-  - quantum_circuits: 0.005 units
-  - nano_machines: 0.003 units
+  - quantum_circuits: 0.000025 units
+  - nano_machines: 0.00005 units
 - **Needs per population**:
-  - rare_gases: 0.015
-  - super_alloys: 0.008
+  - rare_gases: 0.075
+  - super_alloys: 0.08
 - **Wants per population**:
-  - sentient_cores: 0.0002
-  - wormhole_reactors: 0.000001
+  - sentient_cores: 0.002
+  - wormhole_reactors: 0.001
+- **Consumption Effects** (empire-level thresholds):
+  - sentient_cores (24): +4 coalition intel
+  - wormhole_reactors (8): +0.06 next-battle kill rate to Quantum armies
+  - plasma_fuel (700): +0.16 industrial output bonus
+  - rare_gases (240): +3 empire approval
+  - quantum_circuits (100): +0.6 research speed bonus
+  - super_alloys (1,200): +0.50 next-battle army protection
+  - anti_grav_modules (100): +3 coalition construction
 - **Value Alignment**:
   - authoritarian_liberal: 0.1
   - spiritual_materialistic: 0.9
@@ -143,13 +151,14 @@ Hive-mind collective with massive biological throughput and unified consciousnes
 Army sustain stats:
 - **Recovery (recoveryRate)**: Wounded-return rate; temporary casualties go to the wounded pool and are added back to the army *after* the battle.
 - **Reinforcement (reinforcementRate)**: Reserves joining the line *during* the battle (default 100 if not set in module).
+- **Army consumption thresholds**: Module YAML thresholds are multiplied by `ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER` at content load. The current multiplier is 20, so `threshold: 4` in an army module is a runtime threshold of 80 consumed units.
 
 ### 1st Stellar Battle Fleet (army_1)
 Elite federation fleet.
 - Empire: Stellar Federation
 - Organization: 76
 - Fervor: 52
-- Aggravation (supply need): 60
+- Aggravation (supply need): 42
 - Recovery: 62 (wounded return after battle)
 
 ### Verdant Planetary Guard (army_3)
@@ -157,16 +166,64 @@ Ground defense force for the Verdant Colonies.
 - Empire: Verdant Colonies
 - Organization: 60
 - Fervor: 50
-- Aggravation (supply need): 55
-- Recovery: 48 (wounded return after battle)
+- Aggravation (supply need): 44
+- Recovery: 68 (wounded return after battle)
 
 ### Nexus Hyperspace Marines (army_4)
-Rapid-response strike marines.
+Rapid-response strike marines built for high damage, fast reinforcement, and tempo-based scaling.
 - Empire: Nexus Dominion
 - Organization: 75
 - Fervor: 65
-- Aggravation (supply need): 45
-- Recovery: 58 (wounded return after battle)
+- Aggravation (supply need): 34
+- Recovery: 45 (wounded return after battle)
+- Reinforcement: 68 (reserves joining during battle)
+- Damage per unit MP: 3.8
+- Base kill rate: 0.12
+- Needs:
+  - super_alloys: 0.0014
+  - rare_gases: 0.0010
+- Wants:
+  - quantum_circuits: 0.00025
+- Consumption Effects (runtime thresholds after 20x multiplier):
+  - super_alloys (300): +5 MP capacity/current MP
+  - rare_gases (1,600): +0.2 persistent army damage
+  - quantum_circuits (1,000): +24% MP growth multiplier
+
+### Quantum Legion (army_clockwork)
+Synthetic war machines of the Quantum Collective. This is the coalition's highest base kill-rate army and is designed to become more lethal through advanced-resource consumption.
+- Empire: Quantum Collective
+- Organization: 80
+- Fervor: 40
+- Aggravation (supply need): 28
+- Recovery: 40 (wounded return after battle)
+- Reinforcement: 36 (reserves joining during battle)
+- Manpower: 8,000
+- Damage per unit MP: 1.2
+- Base kill rate: 0.27
+- Needs:
+  - quantum_circuits: 0.0012
+  - nano_machines: 0.0009
+- Wants:
+  - quantum_circuits: 0.0006
+  - sentient_cores: 0.00025
+  - wormhole_reactors: 0.00015
+- Consumption Effects (runtime thresholds after 20x multiplier):
+  - quantum_circuits (160): +0.16 persistent army damage
+  - nano_machines (240): +6 MP capacity/current MP
+  - sentient_cores (240): +4 coalition intel
+  - wormhole_reactors (80): +0.04 next-battle kill rate
+
+### Synaptic Swarm Host (army_hive)
+Large bio-engineered host for the Synaptic Swarm.
+- Empire: Synaptic Swarm
+- Organization: 55
+- Fervor: 75
+- Aggravation (supply need): 50
+- Recovery: 65 (wounded return after battle)
+- Reinforcement: 46 (reserves joining during battle)
+- Manpower: 15,000
+- Damage per unit MP: 0.9
+- Base kill rate: 0.15
 
 ## Content Sources
 - Empires: `modules/empires/*.ds.yml`

@@ -1,0 +1,54 @@
+module:
+  id: "pressure_public_discontent"
+  name: "Public Discontent"
+  description: "Shortages provoke unrest, accusations, and demands for action."
+  version: "1.0.0"
+  type: "event"
+  category: "pressure"
+  dependencies: []
+
+metadata:
+  author: "Coalition Team"
+  tags: ["pressure", "shortage", "unrest"]
+
+schema_version: "0.1"
+
+declares:
+  event_data:
+    id: "pressure_public_discontent"
+    name: "Public Discontent"
+    scope: "PRESSURE"
+    category: "pressure"
+    pressure_event: true
+    pressure_eligibility:
+      pool: "shared"
+      tiers: "all"
+      persistence_policies: "all"
+      pressure_types: "all"
+      resource_types: "all"
+      resources: "all"
+    ai_narration: "Rumors around the ${resource_name} shortage are becoming organized demands. ${source_label} is being blamed as ${pressure_type} pressure reaches tier ${tier}."
+    description: "The public can no longer ignore the missing ${resource_name}. ${expired_quantity} remains unresolved, with accumulated pressure at ${accumulated_pressure}."
+    choices:
+      - text: "Offer relief and concessions"
+        description: "Spend public funds to calm the streets and acknowledge the failure openly."
+        effects_summary: "All empires: approval +3 | Coalition treasury: -100 credits"
+        effects:
+          empireApproval:
+            "@all": 3
+          coalitionEconomy:
+            treasury_credits: -100
+      - text: "Suppress the unrest"
+        description: "Restore order by force and risk turning anger into a lasting grievance."
+        effects_summary: "All empires: approval -5 | Coalition cohesion +1"
+        effects:
+          empireApproval:
+            "@all": -5
+          coalitionCohesion: 1
+      - text: "Publish the accounts"
+        description: "Expose the shortage's causes and ask the coalition to endure the consequences together."
+        effects_summary: "All empires: approval +1 | Coalition cohesion -1"
+        effects:
+          empireApproval:
+            "@all": 1
+          coalitionCohesion: -1

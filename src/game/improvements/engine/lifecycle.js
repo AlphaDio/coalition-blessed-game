@@ -42,7 +42,16 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   if (!state.coalitionEconomy) {
     return { success: false, error: 'Coalition economy not initialized', log: [] };
   }
-  if (!state.coalitionEconomy.requisition) state.coalitionEconomy.requisition = 0;
+  if (!Number.isFinite(state.coalitionEconomy.requisition)) state.coalitionEconomy.requisition = 0;
+
+  const suppliesCost = Math.max(0, Number(request.suppliesCost) || 0);
+  if (state.coalitionEconomy.requisition < suppliesCost) {
+    return {
+      success: false,
+      error: `Insufficient requisition (need ${suppliesCost}, have ${state.coalitionEconomy.requisition})`,
+      log: []
+    };
+  }
 
   // Check capacity limits (BUILDING improvements only)
   const improvements = state.improvements;
@@ -59,8 +68,8 @@ export function acceptImprovementRequest(state, requestId, empireId) {
   }
 
   // Deduct requisition from coalition economy (no refunds on cancellation)
-  if (request.suppliesCost > 0) {
-    state.coalitionEconomy.requisition -= request.suppliesCost;
+  if (suppliesCost > 0) {
+    state.coalitionEconomy.requisition -= suppliesCost;
   }
 
   // Create improvement instance

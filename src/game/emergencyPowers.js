@@ -96,7 +96,6 @@ function ensureCoalitionEconomy(state) {
     state.coalitionEconomy = {
       requisition: 0,
       treasury_credits: 0,
-      allowance_credits: 0,
       consumption_requisition_pool: 0,
       consumption_requisition_pool_turns: 0
     };

@@ -6,6 +6,7 @@ import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '..
 import { nextOrderId } from './orderIds.js';
 import { createBuyOrder } from '../../marketEconomy.js';
 import { CONSUMPTION_SOURCES, recordConsumption } from '../../consumptionToRequisition.js';
+import { markDemandBacklogOrder } from '../../economyTick/backlog.js';
 
 const SUSTAINMENT_ORDER_PRIORITY = 800;
 const SUSTAINMENT_ORDER_MAX_DURATION = 6;
@@ -17,6 +18,12 @@ function normalizeQty(value) {
   if (!Number.isFinite(value)) return 0;
   const rounded = Math.round(value * QUANTITY_PRECISION) / QUANTITY_PRECISION;
   return rounded > QUANTITY_EPSILON ? rounded : 0;
+}
+
+function normalizeSignedQty(value) {
+  if (!Number.isFinite(value)) return 0;
+  const rounded = Math.round(value * QUANTITY_PRECISION) / QUANTITY_PRECISION;
+  return Math.abs(rounded) > QUANTITY_EPSILON ? rounded : 0;
 }
 
 function ensureSustainmentLedgers(state) {
@@ -85,8 +92,12 @@ function consumeRequisition(state, amount) {
     state.coalitionEconomy = { requisition: 0 };
   }
   const available = Number.isFinite(state.coalitionEconomy.requisition) ? state.coalitionEconomy.requisition : 0;
-  const used = normalizeQty(Math.min(available, normalized));
-  state.coalitionEconomy.requisition = normalizeQty(available - used);
+  // Debt is a valid requisition balance. A shortage means no payment, not a
+  // normalization of the existing negative balance back to zero.
+  if (available <= 0) return 0;
+
+  const used = Math.min(available, normalized);
+  state.coalitionEconomy.requisition = normalizeSignedQty(available - used);
   return used;
 }
 
@@ -212,6 +223,11 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
       payer: empireId,
       beneficiary: empireId
     };
+    markDemandBacklogOrder(existing, {
+      type: 'improvement_sustainment',
+      id: empireId,
+      category: 'needs'
+    });
     return;
   }
 
@@ -234,6 +250,11 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
     beneficiary: empireId,
     purpose: IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE
   };
+  markDemandBacklogOrder(buyOrder, {
+    type: 'improvement_sustainment',
+    id: empireId,
+    category: 'needs'
+  });
   state.marketOrders.buyOrders.push(buyOrder);
 }
 

@@ -4,7 +4,8 @@ import {
   UNITY_CONSTANTS,
   IMPROVEMENTS_CONSTANTS,
   SCOURGE_PREDICTION_CONSTANTS,
-  ARMY_EXPERIENCE_CONSTANTS
+  ARMY_EXPERIENCE_CONSTANTS,
+  GAME_INIT_CONSTANTS
 } from './constants.js';
 import { createArmyBattlePrep, ensureArmyBattlePrep, addArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
@@ -46,7 +47,9 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
       supply_efficiency: modifiers.supply_efficiency || 0
     },
     // Economy fields
-    budget_credits: stats.budget_credits || 10000,
+    budget_credits: Number.isFinite(Number(stats.budget_credits))
+      ? Math.max(0, Number(stats.budget_credits))
+      : 10000,
     production: {
       outputs_per_tick: stats.production?.outputs_per_tick || {}
     },
@@ -90,7 +93,6 @@ export function createArmy(id, empireId, name, initialFervor = 50, initialOrg = 
     name,
     fervor: initialFervor,
     battlePrep: createArmyBattlePrep(),
-    killRateBonus: 0,
     organization: initialOrg,
     supplyNeed: 0,
     aggravation: initialAggravation,
@@ -398,14 +400,18 @@ export function createPowerSystemPolicy(id, name, type = 'equal_council', config
   };
 }
 
-export function createEvent(id, title, text, choices = [], variables = null) {
-  return {
+export function createEvent(id, title, text, choices = [], variables = null, options = {}) {
+  const event = {
     id,
     title,
     text,
     choices,
     variables  // Selector definitions for dynamic targeting
   };
+  Object.entries(options || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) event[key] = value;
+  });
+  return event;
 }
 
 export function createInsurrection(id, armies = [], strength = 0, options = {}) {
@@ -455,6 +461,7 @@ export function createBattleFront(id, leftArmyId, rightArmyId, battlefieldSize =
 }
 
 export function createGameState(seed = 0) {
+  const gameplayEventQueue = [];
   return {
     coalitionCohesion: 75,
     coalitionThreat: 0,
@@ -503,6 +510,8 @@ export function createGameState(seed = 0) {
     battleFronts: [],
     events: [],
     activeEvent: null,
+    gameplayEventQueue,
+    eventQueue: gameplayEventQueue,
     unityPendingCelebrations: [],
     turn: 1,
     log: [],
@@ -564,22 +573,18 @@ export function createGameState(seed = 0) {
       }
     },
 
-    // Emergency laws system - timed powerful modifiers with resource costs
-    activeEmergencyLaws: [],     // Active emergency law instances
-    emergencyLawCooldowns: {},   // Map of lawId -> tick when cooldown ends
+    // Emergency powers system - Scourge intel actions
     activeEmergencyPowers: [],   // Active emergency power instances
 
     // Coalition economy system (requisition generation from empire consumption)
     coalitionEconomy: {
-      requisition: 500, // Starting requisition for purchasing improvements
-      treasury_credits: 10000, // Coalition treasury (long-term storage)
-      allowance_credits: 1000, // Coalition allowance (refilled each tick, spent on consumption conversions)
+      requisition: GAME_INIT_CONSTANTS.INITIAL_REQUISITION,
+      treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
       consumption_requisition_pool: 0, // Consumption requisition accrual pool (paid out in cadence)
       consumption_requisition_pool_turns: 0, // Turns progressed in current requisition payout cycle
       bank: 0
-      // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req)
-      // and credits from the allowance pool (up to allowance cap per tick)
-      // Modifiable by multiplicativeShare and additiveShare modifiers
+      // Coalition generates requisition from empire commodity consumption (base 10% of value at 1000 credits = 1 req).
+      // Modifiable by multiplicativeShare and additiveShare modifiers.
     },
 
     // Per-empire pooled regular consumption for commodity effect triggers.
@@ -588,6 +593,18 @@ export function createGameState(seed = 0) {
     // Market economy system (updated with floor prices)
     market: null, // Market state per commodity (initialized on first economy tick)
     marketOrders: null, // Accumulated market orders for this tick (buyOrders, sellOffers)
+    economyBacklog: [], // Demand backlog snapshots after each economy tick
+    economyPressure: {
+      by_resource: {},
+      by_type: {},
+      total: 0,
+      last_expired: [],
+      history: [],
+      escalation_by_type: {}
+    },
+    economyBacklogExpiredLastTick: [],
+    economyBacklogCancelledLastTick: [],
+    economyBudgetBlockedLastTick: [],
     
     // Improvements system
     coalitionConstruction: IMPROVEMENTS_CONSTANTS.COALITION_CONSTRUCTION, // Build progress added to ALL building improvements per tick
@@ -761,6 +778,9 @@ export function migrateGameState(state) {
       if (Number.isFinite(Number(army.resolveBonus)) && Number(army.resolveBonus) !== 0) {
         addArmyBattlePrep(army, 'resolve', Number(army.resolveBonus));
       }
+      if (Number.isFinite(Number(army.killRateBonus)) && Number(army.killRateBonus) !== 0) {
+        addArmyBattlePrep(army, 'killRateBonus', Number(army.killRateBonus));
+      }
       if (Array.isArray(army.timedFervorBonuses)) {
         army.timedFervorBonuses.forEach(entry => {
           const amount = Number(entry?.amount || entry?.value || 0);
@@ -772,6 +792,7 @@ export function migrateGameState(state) {
       delete army.fervorBonus;
       delete army.protectionBonus;
       delete army.resolveBonus;
+      delete army.killRateBonus;
       delete army.timedFervorBonuses;
 
       if (!army.supply_state || typeof army.supply_state !== 'object') {
@@ -997,7 +1018,6 @@ export function migrateGameState(state) {
     state.coalitionEconomy = {
       requisition: 0,
       treasury_credits: 0,
-      allowance_credits: 0,
       consumption_requisition_pool: 0,
       consumption_requisition_pool_turns: 0,
       bank: 0
@@ -1009,9 +1029,9 @@ export function migrateGameState(state) {
     if (!Number.isFinite(state.coalitionEconomy.treasury_credits)) {
       state.coalitionEconomy.treasury_credits = 0;
     }
-    if (!Number.isFinite(state.coalitionEconomy.allowance_credits)) {
-      state.coalitionEconomy.allowance_credits = 0;
-    }
+    // Allowance credits were removed from the active economy. Drop the field
+    // when loading older saves so it cannot reappear in serialized state.
+    delete state.coalitionEconomy.allowance_credits;
     if (!Number.isFinite(state.coalitionEconomy.consumption_requisition_pool)) {
       state.coalitionEconomy.consumption_requisition_pool = 0;
     }
@@ -1041,6 +1061,50 @@ export function migrateGameState(state) {
       });
     });
   }
+
+  if (!Array.isArray(state.economyBacklog)) {
+    state.economyBacklog = [];
+  }
+  if (!Array.isArray(state.economyBacklogExpiredLastTick)) {
+    state.economyBacklogExpiredLastTick = [];
+  }
+  if (!Array.isArray(state.economyBacklogCancelledLastTick)) {
+    state.economyBacklogCancelledLastTick = [];
+  }
+  if (!Array.isArray(state.economyBudgetBlockedLastTick)) {
+    state.economyBudgetBlockedLastTick = [];
+  }
+  if (!Array.isArray(state.gameplayEventQueue) && Array.isArray(state.eventQueue)) {
+    state.gameplayEventQueue = state.eventQueue;
+  }
+  if (!Array.isArray(state.gameplayEventQueue)) {
+    state.gameplayEventQueue = [];
+  }
+  state.eventQueue = state.gameplayEventQueue;
+  if (!state.economyPressure || typeof state.economyPressure !== 'object') {
+    state.economyPressure = {
+      by_resource: {},
+      by_type: {},
+      total: 0,
+      last_expired: [],
+      history: [],
+      escalation_by_type: {}
+    };
+  } else {
+    if (!state.economyPressure.by_resource || typeof state.economyPressure.by_resource !== 'object') {
+      state.economyPressure.by_resource = {};
+    }
+    if (!state.economyPressure.by_type || typeof state.economyPressure.by_type !== 'object') {
+      state.economyPressure.by_type = {};
+    }
+    if (!Number.isFinite(state.economyPressure.total)) state.economyPressure.total = 0;
+    if (!Array.isArray(state.economyPressure.last_expired)) state.economyPressure.last_expired = [];
+    if (!Array.isArray(state.economyPressure.history)) state.economyPressure.history = [];
+    if (!state.economyPressure.escalation_by_type || typeof state.economyPressure.escalation_by_type !== 'object') {
+      state.economyPressure.escalation_by_type = {};
+    }
+  }
+  state.pressure = state.economyPressure;
 
   if (state.market && typeof state.market === 'object') {
     if (!Array.isArray(state.market.remaining_sell_offers_post_clear)) {

@@ -14,6 +14,7 @@ import { INSURRECTION_CONSTANTS, ECONOMY_CONSTANTS } from '../src/game/constants
 import { startInsurrectionBattle, handleInsurrectionBattleEnd } from '../src/game/battles.js';
 import { triggerInsurrectionBattles } from '../src/game/turn/battlePhase.js';
 import { replenishArmyManpower } from '../src/game/turn/armyPhase.js';
+import { addArmyBattlePrep } from '../src/game/armyBattlePrep.js';
 
 
 // Helper to create a test state with two armies
@@ -239,9 +240,44 @@ function testKillRatePermanentLosses() {
 
 }
 
-// Test 5: Wounded pool mechanics (no during-battle recovery; wounded returned after battle)
+// Test 5: kill-rate battle prep increases permanent losses
+function testKillRateBattlePrepPermanentLosses() {
+  console.log('\n=== Test 5: kill-rate battle prep increases permanent losses ===');
+
+  const state = createTestState();
+  const army1 = state.armies[0];
+  const army2 = state.armies[1];
+
+  army1.fervor = 0;
+  army1.killRate = 0.1;
+  addArmyBattlePrep(army1, 'killRateBonus', 0.25);
+  army2.dmgPerUnitMP = 0;
+  army2.reinforcementRate = 0;
+
+  const front = startBattle(state, 'army1', 'army2', 1000);
+  const initialPermanentLosses = front.permanentLosses.right;
+  const initialMP = army2.mp.current;
+
+  simulateBattleTick(front, state);
+
+  const totalDamage = initialMP - army2.mp.current;
+  const permanentLosses = front.permanentLosses.right - initialPermanentLosses;
+  const ratio = permanentLosses / totalDamage;
+
+  console.log('Kill-rate prep ratio:', ratio.toFixed(2), '(expected ~0.35)');
+
+  if (ratio >= 0.34 && ratio <= 0.37) {
+    console.log('PASS kill-rate battle prep increases permanent losses');
+    return true;
+  }
+
+  console.log('FAIL kill-rate battle prep did not affect permanent loss ratio');
+  return false;
+}
+
+// Test 6: Wounded pool mechanics (no during-battle recovery; wounded returned after battle)
 function testRecoveryPool() {
-  console.log('\n=== Test 5: Wounded pool mechanics ===');
+  console.log('\n=== Test 6: Wounded pool mechanics ===');
   
   const state = createTestState();
   const army1 = state.armies[0];
@@ -978,6 +1014,7 @@ const results = {
   'Morale refills fully after battle ends': testMoraleRefillsAfterBattle(),
   'Battlefield size impacts MP damage': testBattlefieldSizeImpact(),
   'killRate creates permanent losses': testKillRatePermanentLosses(),
+  'Kill-rate battle prep increases permanent losses': testKillRateBattlePrepPermanentLosses(),
   'Recovery pool mechanics': testRecoveryPool(),
   'collectArmiesInBattle includes all participants': testCollectArmiesInBattle(),
   'isRegularArmy filters temporary armies': testIsRegularArmy(),
