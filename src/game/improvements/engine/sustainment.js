@@ -160,7 +160,7 @@ function consumeSustainmentReceipts(state, empireId, commodity, qty) {
   return used;
 }
 
-function calculateImprovementNeed(state, empire, commodity, qtyPerPopulation) {
+export function calculateImprovementNeed(state, empire, commodity, qtyPerPopulation) {
   const population = empire.stats?.population || 1;
   const baseRationing = RATIONING_CONSTANTS.BASE_RATIONING;
   const rationingAdd = state.coalitionModifiers?.rationing_add || 0;

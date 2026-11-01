@@ -106,7 +106,7 @@ Each demand backlog item records its resource, remaining quantity, age, source, 
 Pressure itself has no mechanical effects. Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
 
 ## Production and Stockpiles
-Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank and is released once the bank reaches its threshold. Before release to the market, same-empire local production can satisfy pending improvement sustainment.
+Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank. All improvement sustainment is queued first; same-empire production banks can then supply it every turn, independent of project order or the market-release threshold. Remaining output is released to the market when the bank reaches its threshold, calculated from output after the producing project's own sustainment.
 
 Direct `requisition` production from an improvement bypasses the production bank and is added to the coalition economy immediately. Other commodities are banked and released as sell offers.
 

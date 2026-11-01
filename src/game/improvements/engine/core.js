@@ -28,7 +28,7 @@ export function createImprovementRequest(id, name, description, {
   manpowerGrant = null,    // number - adds manpower to empire's army
   requiresNoArmy = false,  // If true, improvement only available to empires without an army
   requisitionUpkeep = 0,   // requisition cost per tick
-  productionBankThreshold = ECONOMY_BALANCE_CONSTANTS.IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT, // multiplier of total production output per tick
+  productionBankThreshold = ECONOMY_BALANCE_CONSTANTS.IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT, // multiplier of per-tick surplus after the project's own upkeep
 
   tier = 1,
   branch = 'general'

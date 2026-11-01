@@ -28,6 +28,8 @@ Commodity prices are seeded from each commodity's floor price when a game starts
 - Dark Matter (`dark_matter`): floor price 100.0, tags legendary/propulsion/megastructure
 - Anti-Grav Modules (`anti_grav_modules`): floor price 80.0, tags propulsion/megastructure/strategic
 
+Both T4 goods have active supply chains: the T2 Exotic Matter Lattice produces dark matter for Anti-Grav Assembly Platform and Imperial Bastion World upkeep, while the assembly platform produces anti-grav modules for Nano-Logistics Corridor and Dyson Mantle upkeep. Anti-grav consumed for an empire's improvement sustainment also contributes to that empire's construction bonus pool.
+
 ## Demand Persistence and Pressure
 
 Unfilled buy demand is retained as backlog with its resource, remaining quantity, age, source, source validity, and persistence policy. Current demand creates a new backlog item; older valid items are carried forward and compete for supply.

@@ -88,17 +88,18 @@ export function processImprovementsTick(state) {
       // Queue sustainment demand before economy clear; post-market resolution runs later in turn flow.
       const sustainmentResult = processImprovementSustainmentPreMarket(state, improvement);
       log.push(...sustainmentResult.log);
+    }
+  });
 
-      // Release accumulated production from bank after sustainment demand is queued,
-      // so same-empire output can satisfy improvement upkeep before hitting the market.
-      const releaseResult = releaseProductionFromBank(state, improvement);
-      log.push(...releaseResult.log);
-
-      // Process production (only if ACTIVE) - accumulates in productionBank
-      if (improvement.state === 'ACTIVE') {
-        const productionResult = processImprovementProduction(state, improvement);
-        log.push(...productionResult.log);
-      }
+  // Queue every project's needs first, so local production can support any
+  // project in the same empire regardless of its position in the queue.
+  improvements.queue.forEach(improvement => {
+    if (improvement.state !== 'ACTIVE' && improvement.state !== 'DEGRADED') return;
+    const releaseResult = releaseProductionFromBank(state, improvement);
+    log.push(...releaseResult.log);
+    if (improvement.state === 'ACTIVE') {
+      const productionResult = processImprovementProduction(state, improvement);
+      log.push(...productionResult.log);
     }
   });
 

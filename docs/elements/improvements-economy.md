@@ -14,6 +14,7 @@ The current economy uses fixed market prices and consumption-based requisition. 
 
 ## Suggestions and Unlocks
 - Each empire maintains up to 3 improvement suggestions.
+- A new game offers at least two distinct T1 biomass projects across the coalition, including a specialization that can start without consuming biomass. Later suggestions continue to rotate normally.
 - Accepting a suggestion starts construction and immediately opens room for another suggestion.
 - T1 improvements are available immediately.
 - T2 requires 2 completed T1 improvements for that empire.
@@ -26,7 +27,7 @@ The current economy uses fixed market prices and consumption-based requisition. 
 - Every BUILDING improvement receives the full coalition construction value each tick.
 - Base coalition construction: 4 build progress per tick.
 - Active improvements queue sustainment demand before market clearing.
-- Same-empire production can satisfy sustainment locally before released output hits the market.
+- All projects queue their sustainment before local production is allocated, so project order does not block same-empire supply. Production banks can satisfy local sustainment every turn, before releasing surplus to the market.
 - Missing sustainment degrades an improvement; degraded improvements stop producing until sustainment resumes.
 
 ## Runtime Scaling
@@ -36,14 +37,15 @@ Catalog production numbers are definition values. Runtime applies:
 - Population scaling to non-requisition commodity output.
 - Commodity-specific supply multipliers from economy balance constants.
 - Production bank thresholds before non-requisition commodities are released.
+- The release threshold is based on expected output after the producing project's own sustainment, so a small surplus is not held behind output the project consumes itself.
 
 Catalog sustainment numbers are definition values. Runtime applies rationing, supply efficiency, population, sustainment scaling, and demand balance multipliers before market orders are emitted.
 
 ## Tier Summary
 | Tier | Count | Cost Range | Avg Cost | Build Range | Avg Build | Total Capacity | Avg Upkeep |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| T1 | 22 | 110-240 | 168.6 | 120-260 | 182.7 | 41 | 2.2 |
-| T2 | 13 | 440-620 | 511.5 | 300-540 | 449.2 | 40 | 7.0 |
+| T1 | 25 | 110-240 | 166.8 | 110-260 | 177.6 | 46 | 2.2 |
+| T2 | 14 | 440-620 | 507.9 | 300-540 | 447.1 | 43 | 6.9 |
 | T3 | 9 | 900-1400 | 1192.2 | 720-1100 | 932.2 | 54 | 10.2 |
 
 ## Branch Summary
@@ -56,7 +58,20 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 | Economic | 5 | 546.0 | 15 | Trade income, market efficiency, logistics |
 | Spiritual | 4 | 470.0 | 14 | Fervor, cohesion, approval |
 | Governance | 5 | 492.0 | 18 | Law speed, queue capacity, research/economy support |
-| Resource | 8 | 400.0 | 18 | Commodity bootstrapping and rare resource supply |
+| Resource | 12 | 343.3 | 26 | Biomass specializations, commodity bootstrapping, and rare resource supply |
+
+## Biomass Development
+
+- **Hydroponic Habitats** is a low-cost food producer that uses plasma fuel and does not require biomass to start.
+- **Biofuel Refinery** produces both biomass and plasma fuel, using alloys and some biomass for upkeep. Its biomass output exceeds that input at base efficiency.
+- **Xenobotanical Labs** produces biomass and genomes while supporting research; it requires plasma fuel and rare gases.
+- **Terraforming Conservatory** is a larger T2 biomass and genomes project that supports population growth and needs fuel, gases, and genomes.
+
+The existing **Mycelial Biosphere** remains a biomass/genomes producer, while **Biosphere Arcology** also supports population and approval but consumes some of its own biomass. Actual output and sustainment depend on population, efficiency, and modifiers.
+
+## Advanced Resource Uses
+
+The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly Platform and T3 Imperial Bastion World. The assembly platform produces anti-grav modules for the T2 Nano-Logistics Corridor and T3 Dyson Mantle. Consuming anti-grav modules also feeds the owning empire's existing construction-effect pool.
 
 ## Current Catalog
 | Branch | Tier | Improvement | Cost | Build | Capacity | Upkeep | Outputs | Modifiers |
@@ -98,11 +113,15 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 | governance | T2 | Cognition Vault | 460 | 420 | 4 | 6 | sentient_cores: 0.058 | law_progress_speed: 0.18, market_efficiency: 0.06, research_speed: 0.08, trade_income: 120 |
 | governance | T3 | Omniscient Synod | 1200 | 960 | 6 | 10 | sentient_cores: 0.1, quantum_circuits: 0.04 | law_progress_speed: 0.38, tick_delay_multiplier: 0.7, cohesionModifier: 1.05, improvement_queue_capacity: 4, trade_income: 420 |
 | resource | T1 | Fuel Mantle Extractor | 110 | 120 | 1 | 2 | plasma_fuel: 0.185 | industrial_output: 0.01 |
+| resource | T1 | Hydroponic Habitats | 120 | 110 | 1 | 2 | biomass: 0.105 | population_growth: 0.02 |
+| resource | T1 | Biofuel Refinery | 165 | 150 | 2 | 3 | biomass: 0.07, plasma_fuel: 0.05 | industrial_output: 0.02 |
+| resource | T1 | Xenobotanical Labs | 175 | 160 | 2 | 3 | biomass: 0.065, genomes: 0.045 | research_speed: 0.08 |
 | resource | T1 | Alloy Spine Foundry | 180 | 150 | 2 | 2 | super_alloys: 0.064 | industrial_output: 0.01 |
 | resource | T1 | Genome Crucible | 150 | 150 | 2 | 2 | genomes: 0.021 | research_speed: 0.18 |
 | resource | T1 | Mycelial Biosphere | 130 | 130 | 1 | 2 | biomass: 0.08, genomes: 0.023 | population_growth: 0.02 |
 | resource | T1 | Nebula Harvest Lattice | 130 | 130 | 1 | 2 | rare_gases: 0.185, plasma_fuel: 0.035 | research_speed: 0.04 |
 | resource | T2 | Exotic Matter Lattice | 520 | 520 | 2 | 7 | wormhole_reactors: 0.115, dark_matter: 0.007, nano_machines: 0.07 | industrial_output: 0.05 |
+| resource | T2 | Terraforming Conservatory | 460 | 420 | 3 | 6 | biomass: 0.2, genomes: 0.05 | population_growth: 0.08 |
 | resource | T2 | Anti-Grav Assembly Platform | 580 | 540 | 3 | 8 | anti_grav_modules: 0.006, nano_machines: 0.035 | industrial_output: 0.04 |
 | resource | T3 | Singularity Harvest Well | 1400 | 1100 | 6 | 11 | dark_matter: 0.014, anti_grav_modules: 0.009, wormhole_reactors: 0.06 | industrial_output: 0.08, supply_efficiency: 0.06 |
 

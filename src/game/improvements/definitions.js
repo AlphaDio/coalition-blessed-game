@@ -188,7 +188,7 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 1350,
         build: 1000,
         capacity: 6,
-        sustainmentCost: { quantum_circuits: 10, super_alloys: 12 },
+        sustainmentCost: { quantum_circuits: 10, super_alloys: 12, anti_grav_modules: 0.25 },
         productionOutputs: { dark_matter: 0.007, quantum_circuits: 0.092 },
         modifiers: { industrial_output: 0.16, coalition_construction_mult: 0.3 },
         tags: ['mega_structure', 'industrial', 'energy', 'transcendent'],
@@ -396,7 +396,7 @@ const MILITARY_BRANCH = [
       suppliesCost: 1200,
       build: 900,
       capacity: 6,
-      sustainmentCost: { super_alloys: 10, quantum_circuits: 6 },
+      sustainmentCost: { super_alloys: 10, quantum_circuits: 6, dark_matter: 0.2 },
       productionOutputs: { super_alloys: 0.125, nano_machines: 0.092 },
       modifiers: {
         army_organization: 2.4,
@@ -589,14 +589,14 @@ const ECONOMIC_BRANCH = [
   createTieredImprovementRequest(
     'nano_logistics_hub',
     'Nano-Logistics Corridor',
-    'An automated logistics corridor using nano-machine couriers to clear supply bottlenecks and accelerate market turnover.',
+    'An automated logistics corridor using anti-grav lifts and nano-machine couriers to clear supply bottlenecks.',
     2,
     'economic',
     {
       suppliesCost: 490,
       build: 440,
       capacity: 3,
-      sustainmentCost: { nano_machines: 4, rare_gases: 3, super_alloys: 3 },
+      sustainmentCost: { nano_machines: 4, rare_gases: 3, super_alloys: 3, anti_grav_modules: 0.15 },
       productionOutputs: { nano_machines: 0.038, rare_gases: 0.032 },
       modifiers: { market_efficiency: 0.10, supply_efficiency: 0.06, trade_income: 200 },
       tags: ['mega_structure', 'economic', 'logistics', 'nano'],
@@ -825,6 +825,60 @@ const GOVERNANCE_BRANCH = [
 const RESOURCE_BRANCH = [
     // T1: Basic extractors - lower output than T2, but available immediately
    createTieredImprovementRequest(
+     'hydroponic_habitats',
+     'Hydroponic Habitats',
+     'Modular food habitats turn fuel and water into reliable biomass for growing populations.',
+     1,
+     'resource',
+     {
+       suppliesCost: 120,
+       build: 110,
+       capacity: 1,
+       sustainmentCost: { plasma_fuel: 1.5 },
+       productionOutputs: { biomass: 0.105 },
+       modifiers: { population_growth: 0.02 },
+       tags: ['resource', 'agriculture', 'biologic', 'food', 'biomass_specialization'],
+       requisitionUpkeep: 2
+     }
+   ),
+
+   createTieredImprovementRequest(
+     'biofuel_refinery',
+     'Biofuel Refinery',
+     'Industrial bioreactors expand biomass harvests while converting a share into fleet fuel.',
+     1,
+     'resource',
+     {
+       suppliesCost: 165,
+       build: 150,
+       capacity: 2,
+       sustainmentCost: { biomass: 1.5, super_alloys: 1.5 },
+       productionOutputs: { biomass: 0.07, plasma_fuel: 0.05 },
+       modifiers: { industrial_output: 0.02 },
+       tags: ['resource', 'industrial', 'biologic', 'fuel', 'biomass_specialization'],
+       requisitionUpkeep: 3
+     }
+   ),
+
+   createTieredImprovementRequest(
+     'xenobotanical_labs',
+     'Xenobotanical Labs',
+     'Research gardens cultivate biomass and engineered genomes for scientific development.',
+     1,
+     'resource',
+     {
+       suppliesCost: 175,
+       build: 160,
+       capacity: 2,
+       sustainmentCost: { plasma_fuel: 1.5, rare_gases: 1 },
+       productionOutputs: { biomass: 0.065, genomes: 0.045 },
+       modifiers: { research_speed: 0.08 },
+       tags: ['resource', 'research', 'biologic', 'agriculture', 'biomass_specialization'],
+       requisitionUpkeep: 3
+     }
+   ),
+
+   createTieredImprovementRequest(
      'fuel_extractor',
      'Fuel Mantle Extractor',
      'A deep-bore extraction mantle drawing volatile fuel streams from asteroid cores and cometary seams.',
@@ -916,6 +970,24 @@ const RESOURCE_BRANCH = [
 
    // T2: Advanced resource facilities - higher output
 
+   createTieredImprovementRequest(
+     'terraforming_conservatory',
+     'Terraforming Conservatory',
+     'A planetary-scale network of cultivated habitats expands biomass and genomic production.',
+     2,
+     'resource',
+     {
+       suppliesCost: 460,
+       build: 420,
+       capacity: 3,
+       sustainmentCost: { plasma_fuel: 4, rare_gases: 3, genomes: 2 },
+       productionOutputs: { biomass: 0.2, genomes: 0.05 },
+       modifiers: { population_growth: 0.08 },
+       tags: ['resource', 'agriculture', 'biologic', 'planetary'],
+       requisitionUpkeep: 6
+     }
+   ),
+
    // T2: Exotic matter facility - produces all three ultra-advanced commodities needed for Dark Matter Power Surge
    createTieredImprovementRequest(
      'exotic_matter_fabricator',
@@ -942,14 +1014,14 @@ const RESOURCE_BRANCH = [
    createTieredImprovementRequest(
      'anti_grav_assembly',
      'Anti-Grav Assembly Platform',
-     'A zero-point assembly platform suspending nano-machine swarms in wormhole-distorted fields to forge anti-gravitational modules.',
+     'A zero-point assembly platform uses dark matter and nano-machine swarms to forge anti-gravitational modules.',
      2,
      'resource',
      {
        suppliesCost: 580,
        build: 540,
        capacity: 3,
-       sustainmentCost: { nano_machines: 4, wormhole_reactors: 3, super_alloys: 4 },
+       sustainmentCost: { nano_machines: 4, wormhole_reactors: 3, super_alloys: 4, dark_matter: 0.1 },
        productionOutputs: { anti_grav_modules: 0.006, nano_machines: 0.035 },
        modifiers: { industrial_output: 0.04 },
        tags: ['mega_structure', 'resource', 'passive', 'exotic', 'anti_grav'],
@@ -1096,6 +1168,37 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
 
     suggestions.push(...createSuggestionBatchForEmpire(state, empire.id, slotsNeeded, rng));
   });
+
+  // Give a new coalition a real choice of early biomass development, without
+  // changing the number of requests or replacing existing suggestions later.
+  if (state.turn === 1 && state.improvements.requests.length === 0) {
+    const biomassOptions = getAllImprovementRequests().filter(request =>
+      request.tier === 1 && request.productionOutputs?.biomass > 0
+    );
+    const offered = new Set(suggestions
+      .filter(request => request.productionOutputs?.biomass > 0)
+      .map(request => request.definitionId));
+    const target = Math.min(2, biomassOptions.length, suggestions.length);
+    let hasBootstrap = suggestions.some(request =>
+      request.productionOutputs?.biomass > 0 && !(request.sustainmentCost?.biomass > 0)
+    );
+    let hasSpecialization = suggestions.some(request => request.tags?.includes('biomass_specialization'));
+    while (target > 0 && (offered.size < target || !hasBootstrap || !hasSpecialization)) {
+      const candidates = biomassOptions.filter(request => !offered.has(request.id) &&
+        (hasBootstrap || !(request.sustainmentCost?.biomass > 0)) &&
+        (hasSpecialization || request.tags?.includes('biomass_specialization')));
+      const index = suggestions.findIndex(request => !(request.productionOutputs?.biomass > 0));
+      if (index < 0 || candidates.length === 0) break;
+      const definition = candidates[Math.floor(rng() * candidates.length)] || candidates[0];
+      const oldRequest = suggestions[index];
+      suggestions[index] = createImprovementRequestInstance(
+        definition, oldRequest.empireId, state.turn, rng, MAX_SUGGESTIONS_PER_EMPIRE + index
+      );
+      offered.add(definition.id);
+      if (!(definition.sustainmentCost?.biomass > 0)) hasBootstrap = true;
+      if (definition.tags?.includes('biomass_specialization')) hasSpecialization = true;
+    }
+  }
 
   return suggestions;
 }

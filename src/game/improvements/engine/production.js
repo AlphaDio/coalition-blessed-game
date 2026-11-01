@@ -2,7 +2,7 @@ import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
 import { applySupplyCommodityMultiplier } from '../../economyBalance.js';
 import { nextOrderId } from './orderIds.js';
-import { allocateSustainmentFromLocalProduction } from './sustainment.js';
+import { allocateSustainmentFromLocalProduction, calculateImprovementNeed } from './sustainment.js';
 
 const QUANTITY_PRECISION = 1000;
 const QUANTITY_EPSILON = 1 / QUANTITY_PRECISION;
@@ -85,7 +85,7 @@ export function processImprovementProduction(state, improvement) {
 
 /**
  * Release accumulated production from improvement's bank to the market as sell offers
- * Only releases when threshold is met (based on production output per tick)
+ * Only releases when the surplus-based threshold is met.
  */
 export function releaseProductionFromBank(state, improvement) {
   const log = [];
@@ -142,7 +142,19 @@ export function releaseProductionFromBank(state, improvement) {
     return sellOffer;
   };
 
-  // Calculate threshold based on improvement's production output per tick (efficiency-adjusted)
+  // Local sustainment can draw from the bank every turn. Waiting for a market
+  // batch first can degrade a project before it can use its own production.
+  for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
+    const used = allocateSustainmentFromLocalProduction(state, empire.id, commodity, qty);
+    if (used > 0) {
+      improvement.productionBank[commodity] = normalizeQty(qty - used);
+      logger.debug(`${improvement.name}: ${used.toFixed(3)} ${commodity} reserved for local sustainment`);
+    }
+  }
+
+  // Batch the expected surplus, not output already needed to run the project.
+  // Otherwise a small valuable output can wait indefinitely behind an input
+  // that the project consumes as quickly as it produces.
   const population = empire.stats?.population || 1;
   let thresholdValue = 0;
 
@@ -159,7 +171,9 @@ export function releaseProductionFromBank(state, improvement) {
     if (commodity !== 'requisition') {
       const efficiencyAdjustedQty = qty * effectiveEfficiency;
       const baseScaledQty = efficiencyAdjustedQty * population;
-      thresholdValue += applySupplyCommodityMultiplier(commodity, baseScaledQty);
+      const output = normalizeQty(applySupplyCommodityMultiplier(commodity, baseScaledQty));
+      const ownInput = calculateImprovementNeed(state, empire, commodity, improvement.sustainmentCost?.[commodity] || 0);
+      thresholdValue += Math.max(0, output - ownInput);
     }
   }
 
@@ -168,7 +182,7 @@ export function releaseProductionFromBank(state, improvement) {
 
   // Check if total accumulated production meets threshold
   let totalAccumulated = 0;
-  for (const qty of Object.values(improvement.productionBank)) {
+  for (const qty of Object.values(improvement.productionBank || {})) {
     totalAccumulated += qty;
   }
 
@@ -184,21 +198,11 @@ export function releaseProductionFromBank(state, improvement) {
   }
 
   // Release all accumulated production from bank to market
-  for (const [commodity, qty] of Object.entries(improvement.productionBank)) {
+  for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
     if (qty <= 0) continue;
 
-    const reservedForSustainment = allocateSustainmentFromLocalProduction(state, empire.id, commodity, qty);
-    const qtyForMarket = normalizeQty(qty - reservedForSustainment);
-
-    if (reservedForSustainment > 0) {
-      log.push(`{blue-fg}Produced:{/blue-fg} ${reservedForSustainment.toFixed(3)} ${commodity} -> local sustainment`);
-      logger.info(`Improvement produced: ${improvement.name} (${empire.name}) routed ${reservedForSustainment.toFixed(3)} ${commodity} to local sustainment.`);
-    }
-
-    if (qtyForMarket <= 0) {
-      improvement.productionBank[commodity] = 0;
-      continue;
-    }
+    const qtyForMarket = normalizeQty(qty);
+    if (qtyForMarket <= 0) continue;
 
     // Get market price for this commodity
     const marketState = state.market?.[commodity];
