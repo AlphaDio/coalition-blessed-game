@@ -25,7 +25,7 @@ const QUANTITY_PRECISION = 1e6;
 
 function getOrderFee(order) {
   const fee = Number(order?.fee);
-  return Number.isFinite(fee) ? Math.max(0, fee) : 1;
+  return Number.isFinite(fee) ? Math.max(0, fee) : MARKET_CONSTANTS.ORDER_POSTING_FEE;
 }
 
 function getEmpireBudget(empire) {
@@ -98,6 +98,13 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
       }
       if (!empire.supply_state.received) empire.supply_state.received = {};
       empire.supply_state.received[trade.commodity] = (empire.supply_state.received[trade.commodity] || 0) + trade.qty;
+      if (consumptionSource === CONSUMPTION_SOURCES.EMPIRE_NEEDS) {
+        empire.supply_state.needs_received = empire.supply_state.needs_received || {};
+        empire.supply_state.needs_received[trade.commodity] = (empire.supply_state.needs_received[trade.commodity] || 0) + trade.qty;
+      } else if (consumptionSource === CONSUMPTION_SOURCES.EMPIRE_WANTS) {
+        empire.supply_state.wants_received = empire.supply_state.wants_received || {};
+        empire.supply_state.wants_received[trade.commodity] = (empire.supply_state.wants_received[trade.commodity] || 0) + trade.qty;
+      }
     }
     return;
   }

@@ -327,6 +327,7 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
 
         // Update buy's filled_qty
         buy.filled_qty = (buy.filled_qty || 0) + tradeQty;
+        sell.filled_qty = (sell.filled_qty || 0) + tradeQty;
       }
     }
 
@@ -500,17 +501,19 @@ export function computeEmpireFulfillment(empire) {
   const needsDemandMap = supplyState.needs_demand || {};
   const wantsDemandMap = supplyState.wants_demand || {};
   const receivedMap = supplyState.received || {};
+  const needsReceived = supplyState.needs_received || receivedMap;
+  const wantsReceived = supplyState.wants_received || receivedMap;
 
   const needsFulfillment = {};
   const wantsFulfillment = {};
 
   for (const [commodity, totalNeeded] of Object.entries(needsDemandMap)) {
-    const received = receivedMap[commodity] || 0;
+    const received = needsReceived[commodity] || 0;
     needsFulfillment[commodity] = totalNeeded > 0 ? Math.min(1.0, received / totalNeeded) : 1.0;
   }
 
   for (const [commodity, totalWanted] of Object.entries(wantsDemandMap)) {
-    const received = receivedMap[commodity] || 0;
+    const received = wantsReceived[commodity] || 0;
     wantsFulfillment[commodity] = totalWanted > 0 ? Math.min(1.0, received / totalWanted) : 1.0;
   }
 

@@ -1,5 +1,6 @@
 import { createBuyOrder } from '../marketEconomy.js';
 import { markDemandBacklogOrder } from './backlog.js';
+import { MARKET_CONSTANTS } from '../constants.js';
 
 const DEFAULT_BUY_ORDER_MAX_DURATION = 3;
 const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
@@ -151,7 +152,7 @@ export function createOrderAggregator(state) {
       );
       order.category = category;
       if (tags) order.tags = { ...tags };
-      order.fee = 1;
+      order.fee = MARKET_CONSTANTS.ORDER_POSTING_FEE;
       order.filled_qty = 0;
       order.turn_added_qty = newQty;
       order.turn_added_turn = state.turn;

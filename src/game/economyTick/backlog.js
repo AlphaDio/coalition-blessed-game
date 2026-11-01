@@ -142,10 +142,11 @@ function hasActiveDemand(state, order, source) {
 
   if (source.type === 'improvement_sustainment') {
     const improvements = state.improvements?.queue || [];
-    const improvement = improvements.find(candidate => candidate.id === source.id) ||
-      improvements.find(candidate => candidate.empireId === source.id);
-    return Boolean(improvement && (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') &&
-      asPositiveNumber(improvement.sustainmentCost?.[commodity]) > 0);
+    return improvements.some(improvement =>
+      (improvement.id === source.id || improvement.empireId === source.id) &&
+      (improvement.state === 'ACTIVE' || improvement.state === 'DEGRADED') &&
+      asPositiveNumber(improvement.sustainmentCost?.[commodity]) > 0
+    );
   }
 
   if (source.type === 'empire_demand') {
@@ -236,7 +237,8 @@ export function addPressure(state, commodity, quantity, source = null, metadata 
 
   const pressure = ensurePressureState(state);
   const config = getPressureConfig(commodity);
-  const amount = unresolved * config.weight;
+  // Unmet optional consumption is less urgent than essential needs and upkeep.
+  const amount = unresolved * config.weight * (source?.category === 'wants' ? 0.05 : 1);
   pressure.by_resource[commodity] = (pressure.by_resource[commodity] || 0) + amount;
   pressure.by_type[config.key] = (pressure.by_type[config.key] || 0) + amount;
   pressure.total += amount;

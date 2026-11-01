@@ -1,5 +1,7 @@
 import { isRegularArmy } from './armyUtils.js';
 
+export const SCOURGE_FIRST_ATTACK_TURN = 81;
+
 export function getBattleWinner(leftArmy, rightArmy) {
   if (!leftArmy || !rightArmy) return null;
 
@@ -30,6 +32,7 @@ export function collectRebelliousArmyIds(insurrections) {
 }
 
 export function getBattleChance(cohesionTierName, turn = 0) {
+  if (turn < SCOURGE_FIRST_ATTACK_TURN) return 0;
   if (turn >= 2000) {
     if (cohesionTierName === 'Strained') return 0.05;
     if (cohesionTierName === 'Desperate') return 0.075;

@@ -18,11 +18,12 @@ The economy does not currently use coalition procurement, commodity bank rollove
 - New games created by `GameManager` start with:
   - `requisition`: 1000
   - `treasury_credits`: 10000
+  - Each empire holds essential-only reserves equal to 80 turns of its initial demand. Market purchases fill needs first; reserves cover any remaining current need and are not replenished automatically. Production, demand, and population growth determine how long they last.
 - Market state stores `price`, `last_price`, `floor_price`, `demand_qty`, `supply_qty`, `traded_qty`, remaining orders, and backlog diagnostics.
 
 ### Currency Boundaries
 - `empire.budget_credits` is the hard, non-negative purchasing balance for an empire's market orders, including army orders owned by that empire.
-- Posting fees are reserved before trade commitments. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
+- Posting fees are reserved before trade commitments. Standard new orders cost 0.01 credits per tick. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
 - `treasury_credits` is a coalition-level reserve used by laws and event effects. It is not an automatic fallback for empire market purchases.
 - `requisition` is the coalition construction and improvement currency. It does not pay ordinary commodity buy orders.
 - Budget-blocked orders are exposed in `economyBudgetBlockedLastTick` for diagnostics and UI reporting.
@@ -102,7 +103,7 @@ Unfilled buy orders and sell offers persist as backlog/reserves. Buy-side demand
 
 Each demand backlog item records its resource, remaining quantity, age, source, policy, maximum age where relevant, and source validity. Supply is allocated before backlog age advances. When perishable or deferred demand expires, its unresolved quantity is added to `state.economyPressure.by_resource` and the configured pressure key in `state.economyPressure.by_type`; it is then removed from the backlog. Invalid conditional demand is cancelled without pressure. This keeps expected-to-be-fulfilled backlog distinct from shortages whose consequences have already been absorbed.
 
-Pressure itself has no mechanical effects. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
+Pressure itself has no mechanical effects. Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
 
 ## Production and Stockpiles
 Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank and is released once the bank reaches its threshold. Before release to the market, same-empire local production can satisfy pending improvement sustainment.
@@ -115,6 +116,7 @@ Empire and army demand is split into needs and wants.
 - Army fulfillment updates `army.supply_state` and performance.
 - Empire fulfillment updates `empire.supply_state`, approval pressure, and population growth modifiers.
 - Needs are harsher than wants.
+- Civilian demand uses the same baseline population scale as production; army population demand uses a smaller logarithmic multiplier.
 - Wants use gentler positive/negative pressure.
 - The fulfillment thresholds and caps live in `docs/input/economy_system.yaml` and `src/game/constants.js`.
 

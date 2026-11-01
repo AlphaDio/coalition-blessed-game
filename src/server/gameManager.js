@@ -6,6 +6,7 @@ import { getAllLawEvents } from '../game/lawEventTemplates.js';
 import { createPowerSystemPolicy } from '../game/types.js';
 import { initializeLogger } from '../modules/logger.js';
 import { initializeMarket, loadEconomyConfig } from '../game/marketEconomy.js';
+import { initializeStarterNeedsStockpiles } from '../game/economyTick/ordersPhase.js';
 import { DeterministicRNG } from '../modules/rng.js';
 import { initializeImprovementsState } from '../game/improvements/index.js';
 import { generateImprovementSuggestions } from '../game/improvements/definitions.js';
@@ -69,6 +70,7 @@ export class GameManager {
     this.ensureDiplomacy();
     this.ensureHeroRoster();
     this.initializeEconomyState();
+    initializeStarterNeedsStockpiles(this.state);
     this.initializeImprovementsState();
     this.applyLawSystemDefaults(true);
     this.refreshScourgePrediction();

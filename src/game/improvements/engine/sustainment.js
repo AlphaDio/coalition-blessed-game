@@ -1,5 +1,5 @@
 import { getLogger } from '../../../modules/logger.js';
-import { RATIONING_CONSTANTS, FULFILLMENT_CONSTANTS } from '../../constants.js';
+import { RATIONING_CONSTANTS, FULFILLMENT_CONSTANTS, MARKET_CONSTANTS } from '../../constants.js';
 import { applyDemandCommodityMultiplier } from '../../economyBalance.js';
 import { getSupplyEfficiencyMultiplier, getEmpireSupplyEfficiency } from '../../economyTick/ordersPhase.js';
 import { IMPROVEMENT_SUSTAINMENT_SCALE, IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
@@ -216,7 +216,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
     existing.max_duration = Number.isFinite(existing.max_duration)
       ? existing.max_duration
       : SUSTAINMENT_ORDER_MAX_DURATION;
-    existing.fee = Number.isFinite(existing.fee) ? existing.fee : 1;
+    existing.fee = Number.isFinite(existing.fee) ? existing.fee : MARKET_CONSTANTS.ORDER_POSTING_FEE;
     existing.tags = {
       ...(existing.tags || {}),
       purpose: IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE,
@@ -242,7 +242,7 @@ function upsertPooledSustainmentOrder(state, empireId, commodity, addedDemand) {
     SUSTAINMENT_ORDER_MAX_DURATION
   );
   buyOrder.category = 'needs';
-  buyOrder.fee = 1;
+  buyOrder.fee = MARKET_CONSTANTS.ORDER_POSTING_FEE;
   buyOrder.turn_added_qty = demandToAdd;
   buyOrder.turn_added_turn = state.turn;
   buyOrder.tags = {
@@ -280,7 +280,7 @@ export function finalizeImprovementSustainmentPreMarket(state) {
       order.max_duration = Number.isFinite(order.max_duration)
         ? order.max_duration
         : SUSTAINMENT_ORDER_MAX_DURATION;
-      order.fee = Number.isFinite(order.fee) ? order.fee : 1;
+      order.fee = Number.isFinite(order.fee) ? order.fee : MARKET_CONSTANTS.ORDER_POSTING_FEE;
       order.qty = normalizeQty(order.qty);
       order.filled_qty = normalizeQty(order.filled_qty || 0);
       order.tags = {

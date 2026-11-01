@@ -1,6 +1,7 @@
 // Scourge prediction system - helps players anticipate attacks and prepare
 import { BATTLE_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from './constants.js';
 import { getCohesionTier } from './cohesion.js';
+import { getBattleChance, SCOURGE_FIRST_ATTACK_TURN } from './turn/battleUtils.js';
 
 const TARGET_CLARITY_HIGH_GAP = 18;
 const TARGET_CLARITY_MEDIUM_GAP = 10;
@@ -297,7 +298,8 @@ function estimateTurnsToNextBattle(state, confidenceModifier, rng) {
 
   // Get the base battle chance for the current cohesion tier
   const tier = getCohesionTier(state.coalitionCohesion);
-  const baseBattleChance = getBattleChanceForTier(tier?.name);
+  const turnsUntilAttacks = Math.max(0, SCOURGE_FIRST_ATTACK_TURN - (state.turn || 0));
+  const baseBattleChance = getBattleChance(tier?.name, Math.max(state.turn || 0, SCOURGE_FIRST_ATTACK_TURN));
 
   if (baseBattleChance === 0) return null;
 
@@ -312,21 +314,9 @@ function estimateTurnsToNextBattle(state, confidenceModifier, rng) {
 
   // Add some randomness for non-determinism
   const noiseAmount = (rng() - 0.5) * 2 * actualVariation;
-  const estimate = Math.max(1, Math.round(expectedTurns + noiseAmount));
+  const estimate = turnsUntilAttacks + Math.max(1, Math.round(expectedTurns + noiseAmount));
 
   return estimate;
-}
-
-/**
- * Get battle chance for a given cohesion tier
- * Should match the game's actual battle chance calculation
- * @param {string} tierName - Cohesion tier name
- * @returns {number} Battle chance (0-1)
- */
-function getBattleChanceForTier(tierName) {
-  if (tierName === 'Strained') return 0.04;
-  if (tierName === 'Desperate') return 0.06;
-  return 0.02; // Stable
 }
 
 /**

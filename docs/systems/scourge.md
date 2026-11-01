@@ -1,5 +1,7 @@
 # Scourge System
 
+The Scourge cannot launch a new attack before turn 81, giving the coalition time to build its first infrastructure. Attacks can occur normally after that point, and predictions include the development window.
+
 ## Overview
 
 The Scourge system represents an external existential threat that targets empires with coordinated attacks. The Scourge has its own cohesion meter (separate from coalition cohesion) and fervor that grows over time. Players must manage relationships with empires, strengthen the coalition, and prepare defenses to counter the Scourge threat.

@@ -78,7 +78,8 @@ export const MARKET_CONSTANTS = {
   SURPLUS_KEEP_RATIO: 0.5,        // Keep at least this much when selling
   POPULATION_GROWTH_BANK_THRESHOLD: 10, // Population growth accumulates to this threshold before applying
   BULK_QTY_THRESHOLD: 20,         // Orders above this qty qualify for bulk/gross pricing
-  BULK_DISCOUNT_MAX: 0.15         // Maximum gross discount (15%) for large bulk orders
+  BULK_DISCOUNT_MAX: 0.15,        // Maximum gross discount (15%) for large bulk orders
+  ORDER_POSTING_FEE: 0.01
 };
 
 /**
@@ -195,7 +196,7 @@ export const BATTLE_CONSTANTS = {
  * @property {number} ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER - Global multiplier applied to army consumption effect thresholds at content load
  * @property {number} EMPIRE_DEMAND_POPULATION_EXPONENT - Population exponent for empire needs/wants demand
  * @property {number} EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER - Global multiplier applied to empire needs/wants demand after population scaling
- * @property {number} STARTER_NEEDS_STOCKPILE_FULFILLMENT - One-time share of first-turn essential demand supplied from starter stockpiles
+ * @property {number} STARTER_NEEDS_RESERVE_TURNS - Initial reserve in turns of essential demand
  * @property {number} ARMY_POPULATION_DEMAND_BASE - Base multiplier for army demand pressure
  * @property {number} ARMY_POPULATION_DEMAND_LOG_SCALE - Extra multiplier from log10(population) for army demand pressure
  */
@@ -221,10 +222,10 @@ export const ECONOMY_CONSTANTS = {
   ARMY_CONSUMPTION_MP_BASELINE_MULTIPLIER: 0.8,
   ARMY_CONSUMPTION_EFFECT_THRESHOLD_MULTIPLIER: 20,
   EMPIRE_DEMAND_POPULATION_EXPONENT: 1.0,
-  EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER: 10,
-  STARTER_NEEDS_STOCKPILE_FULFILLMENT: 0.75,
-  ARMY_POPULATION_DEMAND_BASE: 1.0,
-  ARMY_POPULATION_DEMAND_LOG_SCALE: 2.5
+  EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER: 1,
+  STARTER_NEEDS_RESERVE_TURNS: 80,
+  ARMY_POPULATION_DEMAND_BASE: 0.25,
+  ARMY_POPULATION_DEMAND_LOG_SCALE: 0.625
 };
 
 /**

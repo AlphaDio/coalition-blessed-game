@@ -14,7 +14,8 @@ import {
   emitArmyOrders,
   getEffectiveRationing,
   getSupplyEfficiencyMultiplier,
-  initializeStarterNeedsStockpiles
+  initializeStarterNeedsStockpiles,
+  consumeStarterNeedsStockpiles
 } from './ordersPhase.js';
 import {
   applyOrderDurations,
@@ -56,8 +57,7 @@ export function processEconomyTick(state) {
       treasury_credits: GAME_INIT_CONSTANTS.INITIAL_TREASURY_CREDITS,
       consumption_requisition_pool: 0,
       consumption_requisition_pool_turns: 0,
-      starter_stockpiles_initialized: false,
-      starter_stockpiles_turn: null
+      starter_stockpiles_initialized: false
     };
     logger.info('Coalition economy initialized');
   }
@@ -71,7 +71,7 @@ export function processEconomyTick(state) {
     aggregateSellOffer
   } = createOrderAggregator(state);
 
-  // Seed and consume a finite first-turn buffer for essential needs only.
+  // Seed finite reserves for essential needs in new games.
   initializeStarterNeedsStockpiles(state);
 
   // Step 1: Compute empire production
@@ -108,6 +108,8 @@ export function processEconomyTick(state) {
     budgetResult.validSellOffers,
     { budgetsEnforced: true }
   );
+
+  consumeStarterNeedsStockpiles(state, budgetResult.validBuyOrders);
 
   // Demand ages only after this tick's supply allocation. Expired unmet
   // quantities become pressure instead of disappearing from the economy.
