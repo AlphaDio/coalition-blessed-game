@@ -970,24 +970,6 @@ const RESOURCE_BRANCH = [
 
    // T2: Advanced resource facilities - higher output
 
-   createTieredImprovementRequest(
-     'terraforming_conservatory',
-     'Terraforming Conservatory',
-     'A planetary-scale network of cultivated habitats expands biomass and genomic production.',
-     2,
-     'resource',
-     {
-       suppliesCost: 460,
-       build: 420,
-       capacity: 3,
-       sustainmentCost: { plasma_fuel: 4, rare_gases: 3, genomes: 2 },
-       productionOutputs: { biomass: 0.2, genomes: 0.05 },
-       modifiers: { population_growth: 0.08 },
-       tags: ['resource', 'agriculture', 'biologic', 'planetary'],
-       requisitionUpkeep: 6
-     }
-   ),
-
    // T2: Exotic matter facility - produces all three ultra-advanced commodities needed for Dark Matter Power Surge
    createTieredImprovementRequest(
      'exotic_matter_fabricator',

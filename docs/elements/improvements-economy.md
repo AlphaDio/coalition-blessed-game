@@ -45,7 +45,7 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 | Tier | Count | Cost Range | Avg Cost | Build Range | Avg Build | Total Capacity | Avg Upkeep |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | T1 | 25 | 110-240 | 166.8 | 110-260 | 177.6 | 46 | 2.2 |
-| T2 | 14 | 440-620 | 507.9 | 300-540 | 447.1 | 43 | 6.9 |
+| T2 | 13 | 440-620 | 511.5 | 300-540 | 449.2 | 40 | 7.0 |
 | T3 | 9 | 900-1400 | 1192.2 | 720-1100 | 932.2 | 54 | 10.2 |
 
 ## Branch Summary
@@ -58,14 +58,13 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 | Economic | 5 | 546.0 | 15 | Trade income, market efficiency, logistics |
 | Spiritual | 4 | 470.0 | 14 | Fervor, cohesion, approval |
 | Governance | 5 | 492.0 | 18 | Law speed, queue capacity, research/economy support |
-| Resource | 12 | 343.3 | 26 | Biomass specializations, commodity bootstrapping, and rare resource supply |
+| Resource | 11 | 332.7 | 23 | Biomass specializations, commodity bootstrapping, and rare resource supply |
 
 ## Biomass Development
 
 - **Hydroponic Habitats** is a low-cost food producer that uses plasma fuel and does not require biomass to start.
 - **Biofuel Refinery** produces both biomass and plasma fuel, using alloys and some biomass for upkeep. Its biomass output exceeds that input at base efficiency.
 - **Xenobotanical Labs** produces biomass and genomes while supporting research; it requires plasma fuel and rare gases.
-- **Terraforming Conservatory** is a larger T2 biomass and genomes project that supports population growth and needs fuel, gases, and genomes.
 
 The existing **Mycelial Biosphere** remains a biomass/genomes producer, while **Biosphere Arcology** also supports population and approval but consumes some of its own biomass. Actual output and sustainment depend on population, efficiency, and modifiers.
 
@@ -121,7 +120,6 @@ The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly 
 | resource | T1 | Mycelial Biosphere | 130 | 130 | 1 | 2 | biomass: 0.08, genomes: 0.023 | population_growth: 0.02 |
 | resource | T1 | Nebula Harvest Lattice | 130 | 130 | 1 | 2 | rare_gases: 0.185, plasma_fuel: 0.035 | research_speed: 0.04 |
 | resource | T2 | Exotic Matter Lattice | 520 | 520 | 2 | 7 | wormhole_reactors: 0.115, dark_matter: 0.007, nano_machines: 0.07 | industrial_output: 0.05 |
-| resource | T2 | Terraforming Conservatory | 460 | 420 | 3 | 6 | biomass: 0.2, genomes: 0.05 | population_growth: 0.08 |
 | resource | T2 | Anti-Grav Assembly Platform | 580 | 540 | 3 | 8 | anti_grav_modules: 0.006, nano_machines: 0.035 | industrial_output: 0.04 |
 | resource | T3 | Singularity Harvest Well | 1400 | 1100 | 6 | 11 | dark_matter: 0.014, anti_grav_modules: 0.009, wormhole_reactors: 0.06 | industrial_output: 0.08, supply_efficiency: 0.06 |
 

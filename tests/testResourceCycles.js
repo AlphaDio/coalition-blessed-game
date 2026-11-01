@@ -20,6 +20,8 @@ const definitions = getAllImprovementRequests();
 const resources = loadResources().commodities;
 const resourceKeys = new Set(resources.map(resource => resource.key));
 assert.equal(new Set(definitions.map(project => project.id)).size, definitions.length, 'Project IDs are unique');
+assert.equal(definitions.filter(project => project.tags?.includes('biomass_specialization')).length, 3,
+  'The biomass expansion has three specialization paths');
 
 // Follow production from the starting empires through buildable project inputs.
 // Each unlock tier also needs enough reachable projects in the preceding tier.
@@ -134,7 +136,7 @@ function tick(state) {
   return consumption;
 }
 
-for (const id of ['hydroponic_habitats', 'biofuel_refinery', 'xenobotanical_labs', 'terraforming_conservatory']) {
+for (const id of ['hydroponic_habitats', 'biofuel_refinery', 'xenobotanical_labs']) {
   const state = economyState();
   state.empires[0].production.outputs_per_tick = { super_alloys: 1, plasma_fuel: 1, rare_gases: 1, genomes: 1 };
   state.empires[0].needs.per_pop.biomass = 0.01;
