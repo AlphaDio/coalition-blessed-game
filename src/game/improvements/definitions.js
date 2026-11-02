@@ -825,24 +825,6 @@ const GOVERNANCE_BRANCH = [
 const RESOURCE_BRANCH = [
     // T1: Basic extractors - lower output than T2, but available immediately
    createTieredImprovementRequest(
-     'hydroponic_habitats',
-     'Hydroponic Habitats',
-     'Modular food habitats turn fuel and water into reliable biomass for growing populations.',
-     1,
-     'resource',
-     {
-       suppliesCost: 120,
-       build: 110,
-       capacity: 1,
-       sustainmentCost: { plasma_fuel: 1.5 },
-       productionOutputs: { biomass: 0.105 },
-       modifiers: { population_growth: 0.02 },
-       tags: ['resource', 'agriculture', 'biologic', 'food', 'biomass_specialization'],
-       requisitionUpkeep: 2
-     }
-   ),
-
-   createTieredImprovementRequest(
      'biofuel_refinery',
      'Biofuel Refinery',
      'Industrial bioreactors expand biomass harvests while converting a share into fleet fuel.',
@@ -855,25 +837,7 @@ const RESOURCE_BRANCH = [
        sustainmentCost: { biomass: 1.5, super_alloys: 1.5 },
        productionOutputs: { biomass: 0.07, plasma_fuel: 0.05 },
        modifiers: { industrial_output: 0.02 },
-       tags: ['resource', 'industrial', 'biologic', 'fuel', 'biomass_specialization'],
-       requisitionUpkeep: 3
-     }
-   ),
-
-   createTieredImprovementRequest(
-     'xenobotanical_labs',
-     'Xenobotanical Labs',
-     'Research gardens cultivate biomass and engineered genomes for scientific development.',
-     1,
-     'resource',
-     {
-       suppliesCost: 175,
-       build: 160,
-       capacity: 2,
-       sustainmentCost: { plasma_fuel: 1.5, rare_gases: 1 },
-       productionOutputs: { biomass: 0.065, genomes: 0.045 },
-       modifiers: { research_speed: 0.08 },
-       tags: ['resource', 'research', 'biologic', 'agriculture', 'biomass_specialization'],
+       tags: ['resource', 'industrial', 'biologic', 'fuel'],
        requisitionUpkeep: 3
      }
    ),
@@ -1154,31 +1118,17 @@ export function generateImprovementSuggestions(state, rng = Math.random) {
   // Give a new coalition a real choice of early biomass development, without
   // changing the number of requests or replacing existing suggestions later.
   if (state.turn === 1 && state.improvements.requests.length === 0) {
-    const biomassOptions = getAllImprovementRequests().filter(request =>
-      request.tier === 1 && request.productionOutputs?.biomass > 0
-    );
-    const offered = new Set(suggestions
-      .filter(request => request.productionOutputs?.biomass > 0)
-      .map(request => request.definitionId));
-    const target = Math.min(2, biomassOptions.length, suggestions.length);
-    let hasBootstrap = suggestions.some(request =>
-      request.productionOutputs?.biomass > 0 && !(request.sustainmentCost?.biomass > 0)
-    );
-    let hasSpecialization = suggestions.some(request => request.tags?.includes('biomass_specialization'));
-    while (target > 0 && (offered.size < target || !hasBootstrap || !hasSpecialization)) {
-      const candidates = biomassOptions.filter(request => !offered.has(request.id) &&
-        (hasBootstrap || !(request.sustainmentCost?.biomass > 0)) &&
-        (hasSpecialization || request.tags?.includes('biomass_specialization')));
-      const index = suggestions.findIndex(request => !(request.productionOutputs?.biomass > 0));
-      if (index < 0 || candidates.length === 0) break;
-      const definition = candidates[Math.floor(rng() * candidates.length)] || candidates[0];
+    const starterIds = ['mycellium_grove', 'biofuel_refinery'];
+    for (const id of starterIds) {
+      if (suggestions.some(request => request.definitionId === id)) continue;
+      const definition = getAllImprovementRequests().find(request => request.id === id);
+      let index = suggestions.findIndex(request => !(request.productionOutputs?.biomass > 0));
+      if (index < 0) index = suggestions.findIndex(request => !starterIds.includes(request.definitionId));
+      if (!definition || index < 0) continue;
       const oldRequest = suggestions[index];
       suggestions[index] = createImprovementRequestInstance(
         definition, oldRequest.empireId, state.turn, rng, MAX_SUGGESTIONS_PER_EMPIRE + index
       );
-      offered.add(definition.id);
-      if (!(definition.sustainmentCost?.biomass > 0)) hasBootstrap = true;
-      if (definition.tags?.includes('biomass_specialization')) hasSpecialization = true;
     }
   }
 

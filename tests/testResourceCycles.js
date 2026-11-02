@@ -20,8 +20,8 @@ const definitions = getAllImprovementRequests();
 const resources = loadResources().commodities;
 const resourceKeys = new Set(resources.map(resource => resource.key));
 assert.equal(new Set(definitions.map(project => project.id)).size, definitions.length, 'Project IDs are unique');
-assert.equal(definitions.filter(project => project.tags?.includes('biomass_specialization')).length, 3,
-  'The biomass expansion has three specialization paths');
+assert.deepEqual(definitions.filter(project => project.productionOutputs?.biomass > 0).map(project => project.id).sort(),
+  ['biofuel_refinery', 'civilization_hub', 'mycellium_grove'], 'Exactly three improvements produce biomass');
 
 // Follow production from the starting empires through buildable project inputs.
 // Each unlock tier also needs enough reachable projects in the preceding tier.
@@ -99,8 +99,7 @@ for (const seed of [0, 1, 7, 42, 123, 987]) {
   assert(biomassOptions.size >= 2, `Seed ${seed} offers a choice of early biomass projects`);
   assert(requests.some(request => request.tier === 1 && request.productionOutputs?.biomass > 0 &&
     !(request.sustainmentCost?.biomass > 0)), `Seed ${seed} offers a biomass producer that does not consume biomass`);
-  assert(requests.some(request => request.tags?.includes('biomass_specialization')),
-    `Seed ${seed} offers a biomass specialization`);
+  assert(biomassOptions.has('biofuel_refinery'), `Seed ${seed} offers the industrial biomass option`);
   for (const empire of manager.state.empires) {
     assert.equal(requests.filter(request => request.empireId === empire.id).length, 3);
   }
@@ -136,27 +135,28 @@ function tick(state) {
   return consumption;
 }
 
-for (const id of ['hydroponic_habitats', 'biofuel_refinery', 'xenobotanical_labs']) {
+{
   const state = economyState();
   state.empires[0].production.outputs_per_tick = { super_alloys: 1, plasma_fuel: 1, rare_gases: 1, genomes: 1 };
   state.empires[0].needs.per_pop.biomass = 0.01;
-  state.improvements.queue = [activeProject(id)];
+  state.improvements.queue = [activeProject('biofuel_refinery')];
   let biomassTraded = 0;
   for (let i = 0; i < 60; i++) {
     tick(state);
     biomassTraded += state.market.biomass.flow_traded_qty_turn || 0;
   }
-  assert.equal(state.improvements.queue[0].state, 'ACTIVE', `${id} can be sustained`);
-  assert(biomassTraded > 0, `${id} supplies biomass to actual consumers`);
+  assert.equal(state.improvements.queue[0].state, 'ACTIVE', 'The biofuel refinery can be sustained');
+  assert(biomassTraded > 0, 'The biofuel refinery supplies biomass to actual consumers');
 }
 
-// These projects form a closed biomass/fuel loop and have no external supply.
-// Both queue orders must work, and removing the producer must cause a shortage.
+// These projects form a biomass/fuel loop without external biomass or fuel.
+// Rare gases remain available while the loop operates.
 for (const ids of [
-  ['hydroponic_habitats', 'fuel_extractor'],
-  ['fuel_extractor', 'hydroponic_habitats']
+  ['mycellium_grove', 'fuel_extractor'],
+  ['fuel_extractor', 'mycellium_grove']
 ]) {
   const state = economyState();
+  state.empires[0].production.outputs_per_tick = { rare_gases: 0.1 };
   state.improvements.queue = ids.map(id => activeProject(id));
   let biomassUsed = 0;
   let fuelUsed = 0;
@@ -171,9 +171,10 @@ for (const ids of [
   assert(biomassUsed > 30 && fuelUsed > 30, 'Both inputs are really consumed');
   assert(biomassOffered > 0, 'The loop produces biomass beyond its own upkeep');
   state.improvements.queue = state.improvements.queue.filter(project => project.definitionId !== 'fuel_extractor');
-  state.marketOrders.sellOffers = state.marketOrders.sellOffers.filter(order => order.commodity !== 'plasma_fuel');
+  state.empires[0].production.outputs_per_tick = {};
+  state.marketOrders.sellOffers = state.marketOrders.sellOffers.filter(order => !['plasma_fuel', 'rare_gases'].includes(order.commodity));
   for (let i = 0; i < 25; i++) tick(state);
-  assert.equal(state.improvements.queue[0].state, 'DEGRADED', 'Losing the fuel source still has consequences');
+  assert.equal(state.improvements.queue[0].state, 'DEGRADED', 'Losing both upkeep sources still has consequences');
 }
 
 for (const scenario of [

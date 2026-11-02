@@ -14,7 +14,7 @@ The current economy uses fixed market prices and consumption-based requisition. 
 
 ## Suggestions and Unlocks
 - Each empire maintains up to 3 improvement suggestions.
-- A new game offers at least two distinct T1 biomass projects across the coalition, including a specialization that can start without consuming biomass. Later suggestions continue to rotate normally.
+- A new game offers Mycelial Biosphere and Biofuel Refinery across the coalition, providing both a biomass producer that can start without biomass and an industrial option. Later suggestions continue to rotate normally.
 - Accepting a suggestion starts construction and immediately opens room for another suggestion.
 - T1 improvements are available immediately.
 - T2 requires 2 completed T1 improvements for that empire.
@@ -44,7 +44,7 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 ## Tier Summary
 | Tier | Count | Cost Range | Avg Cost | Build Range | Avg Build | Total Capacity | Avg Upkeep |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| T1 | 25 | 110-240 | 166.8 | 110-260 | 177.6 | 46 | 2.2 |
+| T1 | 23 | 110-240 | 168.5 | 120-260 | 181.3 | 43 | 2.2 |
 | T2 | 13 | 440-620 | 511.5 | 300-540 | 449.2 | 40 | 7.0 |
 | T3 | 9 | 900-1400 | 1192.2 | 720-1100 | 932.2 | 54 | 10.2 |
 
@@ -58,15 +58,15 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 | Economic | 5 | 546.0 | 15 | Trade income, market efficiency, logistics |
 | Spiritual | 4 | 470.0 | 14 | Fervor, cohesion, approval |
 | Governance | 5 | 492.0 | 18 | Law speed, queue capacity, research/economy support |
-| Resource | 11 | 332.7 | 23 | Biomass specializations, commodity bootstrapping, and rare resource supply |
+| Resource | 9 | 373.9 | 20 | Biomass production, commodity bootstrapping, and rare resource supply |
 
 ## Biomass Development
 
-- **Hydroponic Habitats** is a low-cost food producer that uses plasma fuel and does not require biomass to start.
+- **Mycelial Biosphere** produces biomass and genomes using plasma fuel and rare gases; it does not require biomass to start.
 - **Biofuel Refinery** produces both biomass and plasma fuel, using alloys and some biomass for upkeep. Its biomass output exceeds that input at base efficiency.
-- **Xenobotanical Labs** produces biomass and genomes while supporting research; it requires plasma fuel and rare gases.
+- **Biosphere Arcology** produces biomass while supporting population and approval, but consumes some of its own biomass for upkeep.
 
-The existing **Mycelial Biosphere** remains a biomass/genomes producer, while **Biosphere Arcology** also supports population and approval but consumes some of its own biomass. Actual output and sustainment depend on population, efficiency, and modifiers.
+Actual output and sustainment depend on population, efficiency, and modifiers.
 
 ## Advanced Resource Uses
 
@@ -112,9 +112,7 @@ The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly 
 | governance | T2 | Cognition Vault | 460 | 420 | 4 | 6 | sentient_cores: 0.058 | law_progress_speed: 0.18, market_efficiency: 0.06, research_speed: 0.08, trade_income: 120 |
 | governance | T3 | Omniscient Synod | 1200 | 960 | 6 | 10 | sentient_cores: 0.1, quantum_circuits: 0.04 | law_progress_speed: 0.38, tick_delay_multiplier: 0.7, cohesionModifier: 1.05, improvement_queue_capacity: 4, trade_income: 420 |
 | resource | T1 | Fuel Mantle Extractor | 110 | 120 | 1 | 2 | plasma_fuel: 0.185 | industrial_output: 0.01 |
-| resource | T1 | Hydroponic Habitats | 120 | 110 | 1 | 2 | biomass: 0.105 | population_growth: 0.02 |
 | resource | T1 | Biofuel Refinery | 165 | 150 | 2 | 3 | biomass: 0.07, plasma_fuel: 0.05 | industrial_output: 0.02 |
-| resource | T1 | Xenobotanical Labs | 175 | 160 | 2 | 3 | biomass: 0.065, genomes: 0.045 | research_speed: 0.08 |
 | resource | T1 | Alloy Spine Foundry | 180 | 150 | 2 | 2 | super_alloys: 0.064 | industrial_output: 0.01 |
 | resource | T1 | Genome Crucible | 150 | 150 | 2 | 2 | genomes: 0.021 | research_speed: 0.18 |
 | resource | T1 | Mycelial Biosphere | 130 | 130 | 1 | 2 | biomass: 0.08, genomes: 0.023 | population_growth: 0.02 |
