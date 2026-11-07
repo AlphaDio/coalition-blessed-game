@@ -41,3 +41,9 @@ export const HERO_ABILITIES = HERO_ABILITY_INDEX.abilities;
 export const HERO_ABILITY_MODULE_IDS = HERO_ABILITY_INDEX.moduleIds;
 export const HERO_MODULE_REGISTRY = moduleRegistry;
 export const HERO_MODULE_INTERPRETER = moduleInterpreter;
+export const HERO_CONTENT = Object.fromEntries(
+  getModulesByType(moduleRegistry, 'hero').map(entry => {
+    const data = moduleRegistry.modules[entry.id]?.declares?.hero_data;
+    return [data.id, data];
+  })
+);

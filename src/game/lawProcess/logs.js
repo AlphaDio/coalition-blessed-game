@@ -8,6 +8,7 @@ const LAW_UI_LOG_KEYWORDS = [
   'Hero pressure',
   'Hero sentiment',
   'Hero Ability',
+  'Hero charge',
   'Unrest externality',
   'ERROR'
 ];

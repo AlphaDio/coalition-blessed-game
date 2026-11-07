@@ -121,6 +121,8 @@ function startLawProcessInternal(state, lawId, influenceCost = 100, proposal = n
   state.playerInfluence -= influenceCost;
 
   const lawProcess = createLawProcess(lawId, state.turn);
+  state.heroEventSequence = (state.heroEventSequence || 0) + 1;
+  lawProcess.hero_event_id = `law:${lawId}:${state.turn}:${state.heroEventSequence}`;
   const sponsorHero = proposal?.proposerHeroId
     ? (state.heroes || []).find((hero) => hero.id === proposal.proposerHeroId) || null
     : null;
@@ -162,6 +164,7 @@ function startLawProcessInternal(state, lawId, influenceCost = 100, proposal = n
   }
   applyHeroLawPressure(state, lawProcess, lawDef, log);
   applyHeroLawTension(state, lawProcess, log);
+  triggerHeroAbilities(state, lawProcess, log);
 
   return {
     success: true,
@@ -290,7 +293,7 @@ export function resolveLawProcess(lawProcess, state, rng) {
         log.push(`  REJECT count: ${lawProcess.rejects}/4`);
 
         // Check burial
-        if (checkBurialRule(lawProcess, state)) {
+        if (checkBurialRule(lawProcess, state, log)) {
           const logger = getLogger();
           setLawProposalStatus(state, lawProcess.proposalId, LAW_PROPOSAL_STATUS.WITHDRAWN);
           logger.info(`Law BURIED: ${lawDef.name} (4 rejects)`);

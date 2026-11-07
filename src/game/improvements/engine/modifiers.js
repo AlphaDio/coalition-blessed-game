@@ -23,6 +23,8 @@ const ADDITIVE_EMPIRE_MODIFIERS = new Set([
   'supply_efficiency',
   'hero_siphon_efficiency_mult',
   'hero_siphon_efficiency_add',
+  'hero_funding_efficiency_mult',
+  'hero_funding_efficiency_add',
   'unity_gain_add',
   'unity_gain_mult',
 ]);

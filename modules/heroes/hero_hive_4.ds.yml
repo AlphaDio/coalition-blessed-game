@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: -0.85
     budget_share: 0.0009
     ability_id: "ABILITY_PUBLIC_MANDATE"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance swarm unity"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend swarm unity"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for swarm unity"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_PROPOSED"
+        amount: 40
+        description: "Own governance proposal: articulate the collective will"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "unity"]
+      - event: "BATTLE_LOST"
+        amount: 80
+        description: "Empire loses battle: turn the swarm's anger into unity"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over swarm unity"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "VOTING"
       cadence: "OnStart"

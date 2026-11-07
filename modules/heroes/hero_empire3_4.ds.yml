@@ -30,6 +30,35 @@ declares:
       essentialist_constructivist: 0.6
     budget_share: 0.0009
     ability_id: "ABILITY_WAR_CRY"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance the rule of law"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend the rule of law"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for the rule of law"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "BATTLE_WON"
+        amount: 65
+        description: "Empire wins battle: reaffirm lawful command"
+        empire_scope: "participant"
+      - event: "BATTLE_LOST"
+        amount: 85
+        description: "Empire loses battle: demand accountability and recovery"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over the rule of law"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "BATTLE"
       cadence: "OnStart"

@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: 0.7
     budget_share: 0.001
     ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance evidence-driven policy"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend evidence-driven policy"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for evidence-driven policy"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "TECH_UNLOCKED"
+        amount: 75
+        description: "Own technology unlocked: incorporate predictive evidence"
+        empire_scope: "own"
+      - event: "LAW_PROPOSED"
+        amount: 35
+        description: "Own efficiency proposal: translate analysis into policy"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "economy", "efficiency"]
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over evidence-driven policy"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "FALLOUT"
       cadence: "OnStart"

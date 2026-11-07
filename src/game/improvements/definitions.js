@@ -460,7 +460,7 @@ const CULTURAL_BRANCH = [
         sustainmentCost: { plasma_fuel: 2.5, biomass: 4 },
         productionOutputs: { biomass: 0.046 },
         unityOutput: 0.25,
-        modifiers: { population_growth: 0.06, empire_approval: 4, hero_siphon_efficiency_add: 0.01 },
+        modifiers: { population_growth: 0.06, empire_approval: 4, hero_funding_efficiency_mult: 0.05 },
         tags: ['mega_structure', 'cultural', 'agriculture', 'social', 'food', 'arcology'],
         requisitionUpkeep: 2
       }
@@ -519,7 +519,7 @@ const CULTURAL_BRANCH = [
         sustainmentCost: { genomes: 6, psycho_implants: 5, ancient_relics: 3 },
         productionOutputs: { genomes: 0.055, psycho_implants: 0.11 },
        unityOutput: 1.1,
-       modifiers: { population_growth: 0.22, empire_approval: 12, hero_siphon_efficiency_add: 0.02 },
+       modifiers: { population_growth: 0.22, empire_approval: 12, hero_funding_efficiency_mult: 0.10 },
        tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic'],
        requisitionUpkeep: 10
      }

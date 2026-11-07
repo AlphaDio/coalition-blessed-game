@@ -17,6 +17,7 @@ import { buildPreAttackMissionEvent } from '../scourgeMissions.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { clearArmyBattlePrep } from '../armyBattlePrep.js';
 import { resolveExpeditionBattles } from '../expeditions/index.js';
+import { triggerHeroEvent } from '../heroes/charge.js';
 import {
   collectRebelliousArmyIds,
   getBattleChance,
@@ -210,7 +211,7 @@ export function triggerScourgeBattle(state, rng, battleChance, activeBattles, lo
   }
 
   const battleRoll = rng();
-  if (battleRoll >= battleChance || state.armies.length === 0) {
+  if (battleRoll >= battleChance) {
     return;
   }
 
@@ -285,6 +286,13 @@ export function triggerScourgeBattle(state, rng, battleChance, activeBattles, lo
 
   log.push(`Scourge victory (no armies available)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
   logger.info(`Scourge battle: Defeat (no armies)! Coalition Cohesion ${prevCoalitionCohesion.toFixed(1)} -> ${state.coalitionCohesion.toFixed(1)} (-${appliedCohesionLoss.toFixed(2)}), All Empires Approval -${approvalLoss}`);
+  triggerHeroEvent(state, 'BATTLE_LOST', {
+    eventId: `scourge_unopposed:${state.turn}:${state.scourgeTargetEmpireId || 'coalition'}`,
+    participatingEmpireIds: state.scourgeTargetEmpireId
+      ? [state.scourgeTargetEmpireId]
+      : state.empires.map(empire => empire.id),
+    battleContext: { type: 'SCOURGE', unopposed: true }
+  }, log);
   for (const empire of state.empires) {
     empire.stats.approvalBonus = 0;
   }
@@ -354,6 +362,11 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
         `Approval -${INSURRECTION_CONSTANTS.RESOLVED_APPROVAL_SHOCK}`;
       log.push(message);
       logger.warn(message);
+      triggerHeroEvent(state, 'BATTLE_LOST', {
+        eventId: `insurrection_unopposed:${insurrection.id}`,
+        participatingEmpireIds: [targetEmpireId],
+        battleContext: { type: 'INSURRECTION', unopposed: true }
+      }, log);
       return;
     }
 

@@ -12,6 +12,7 @@
  */
 
 import { clamp, applyScaledCoalitionCohesionDelta } from './cohesion.js';
+import { triggerHeroEvent } from './heroes/charge.js';
 
 /**
  * Phase progression thresholds
@@ -421,13 +422,14 @@ export function applyUnrestExternalities(lawProcess, state) {
  * @param {Object} state - Game state
  * @returns {boolean} True if law was buried
  */
-export function checkBurialRule(lawProcess, state) {
+export function checkBurialRule(lawProcess, state, log = []) {
   if (lawProcess.rejects >= 4) {
+    if (lawProcess.phase === 'BURIED') return true;
     lawProcess.phase = 'BURIED';
     
     // Apply burial consequences
     // Supporters annoyed, opponents satisfied
-    Object.entries(lawProcess.empireStances).forEach(([empireId, stance]) => {
+    Object.entries(lawProcess.empireStances || {}).forEach(([empireId, stance]) => {
       const empire = state.empires.find(e => e.id === empireId);
       if (!empire) return;
       
@@ -440,6 +442,12 @@ export function checkBurialRule(lawProcess, state) {
       }
     });
     
+    const lawDef = (state.lawDefinitions || []).find(law => law.id === lawProcess.lawId);
+    triggerHeroEvent(state, 'LAW_REJECTED', {
+      eventId: `${lawProcess.hero_event_id || `law:${lawProcess.lawId}:${lawProcess.startTick ?? 0}`}:rejected`,
+      lawProcess,
+      lawDef
+    }, log);
     return true;
   }
   

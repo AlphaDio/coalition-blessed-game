@@ -5,7 +5,7 @@ import {
   applyScaledCoalitionCohesionDelta
 } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
-import { startBattle } from '../frontBattles.js';
+import { startBattle, emitHeroBattleOutcome } from '../frontBattles.js';
 import { calculateBattlefieldSize } from './power.js';
 import { createCombinedCoalitionArmy } from './coalition.js';
 import { awardArmyBattleExperience } from '../armyExperience.js';
@@ -47,6 +47,7 @@ function applyPermanentLossToArmy(army, originalMP, originalMaxMP, permanentLoss
  */
 export function startInsurrectionBattle(state, insurrection, opposingArmies, rng = Math.random) {
   const logger = getLogger();
+  const log = [];
   const targetEmpireId = deriveTargetEmpireId(insurrection, opposingArmies);
   const targetEmpire = state.empires.find(empire => empire.id === targetEmpireId) || null;
 
@@ -85,7 +86,16 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
   const battlefieldSize = calculateBattlefieldSize(totalForces, rng);
 
   // Start the battle front (loyal on left, rebellious on right)
-  const front = startBattle(state, loyalArmy.id, rebelliousArmy.id, battlefieldSize);
+  const front = startBattle(state, loyalArmy.id, rebelliousArmy.id, battlefieldSize, {
+    log,
+    battleType: 'INSURRECTION',
+    // Rebel armies retain their original empire IDs, but do not represent
+    // those empires' political apparatus during the rebellion.
+    participatingEmpireIdsBySide: {
+      left: [...new Set(opposingArmies.map(army => army.empireId))],
+      right: []
+    }
+  });
 
   // Mark as insurrection battle
   front.isInsurrectionBattle = true;
@@ -103,7 +113,8 @@ export function startInsurrectionBattle(state, insurrection, opposingArmies, rng
     rebelliousMP: rebelliousArmy.mp.current
   });
 
-  return { front, log: [`Insurrection battle engaged! ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies`] };
+  log.push(`Insurrection battle engaged! ${rebelliousArmies.length} rebellious vs ${opposingArmies.length} loyal armies`);
+  return { front, log };
 }
 
 /**
@@ -123,6 +134,7 @@ export function handleInsurrectionBattleEnd(state, front, winnerSide) {
     logger.error('Insurrection battle end: missing armies', { frontId: front.id });
     return { log };
   }
+  emitHeroBattleOutcome(front, state, winnerSide, log);
 
   // Calculate battle stats for summary
   const loyalDestroyed = Math.floor(front.permanentLosses?.left || 0);

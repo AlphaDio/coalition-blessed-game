@@ -30,6 +30,34 @@ declares:
       essentialist_constructivist: -0.5
     budget_share: 0.0009
     ability_id: "ABILITY_EMERGENCY_FUNDS"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance the frontier charter"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend the frontier charter"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "BATTLE_STARTED"
+        amount: 45
+        description: "Empire enters battle: organize the frontier defense"
+        empire_scope: "participant"
+      - event: "BATTLE_WON"
+        amount: 65
+        description: "Empire wins battle: affirm the colony charter"
+        empire_scope: "participant"
+      - event: "BATTLE_LOST"
+        amount: 80
+        description: "Empire loses battle: rally the threatened frontier"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over the frontier charter"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "BATTLE"
       cadence: "OnStart"

@@ -18,6 +18,7 @@ declares:
   hero_ability_data:
     id: "ABILITY_LEGISLATIVE_SURGE"
     description: "Add immediate law phase progress if a law is active."
+    requires_context: "law"
     chargeRequired: 150
     cooldown: 12
 

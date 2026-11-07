@@ -74,7 +74,7 @@ export function handleLawEventChoice(state, lawId, eventId, choiceIndex) {
     log.push(`  REJECT count: ${lawProcess.rejects}/4`);
 
     // Check burial
-    if (checkBurialRule(lawProcess, state)) {
+    if (checkBurialRule(lawProcess, state, log)) {
       const lawDef = state.lawDefinitions.find(l => l.id === lawProcess.lawId);
       const lawName = lawDef ? lawDef.name : lawProcess.lawId;
       logger.info(`Law BURIED: ${lawName} (4 rejects)`);

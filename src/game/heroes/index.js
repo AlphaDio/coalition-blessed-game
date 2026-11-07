@@ -4,7 +4,9 @@ export {
   getPopularityCap,
   getPopularityScalar
 } from './utils.js';
-export { applyHeroBudgetSiphon } from './budget.js';
+export { applyHeroFunding, applyHeroBudgetSiphon } from './budget.js';
+export { triggerHeroEvent, getActiveHeroLawProcess } from './charge.js';
+export { getFundingScalar, getAbilityScalar } from './utils.js';
 export { applyHeroLawPressure, applyHeroLawSponsorship, applyHeroLawTension } from './law.js';
 export { triggerHeroPassives, runHeroPassives, runHeroBattlePassives } from './passives.js';
 export { triggerHeroAbilities, tickHeroCooldowns } from './abilities.js';

@@ -18,6 +18,7 @@ declares:
   hero_ability_data:
     id: "ABILITY_WAR_CRY"
     description: "Rally the empire's armies with a surge of fervor and organization."
+    requires_context: "army"
     chargeRequired: 130
     cooldown: 14
 

@@ -30,6 +30,34 @@ declares:
       essentialist_constructivist: -0.9
     budget_share: 0.0012
     ability_id: "ABILITY_SCORCHED_EARTH"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance the collective vision"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend the collective vision"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "BATTLE_STARTED"
+        amount: 45
+        description: "Empire enters battle: channel the brood's resolve"
+        empire_scope: "participant"
+      - event: "BATTLE_WON"
+        amount: 65
+        description: "Empire wins battle: affirm the broodseer's vision"
+        empire_scope: "participant"
+      - event: "BATTLE_LOST"
+        amount: 80
+        description: "Empire loses battle: awaken the hive's survival instinct"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over the collective vision"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "BATTLE"
       cadence: "OnStart"

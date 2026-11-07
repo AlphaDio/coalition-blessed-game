@@ -758,6 +758,23 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Hero metadata keeps the terminal's charge thresholds and strength display
+  // aligned with content and balancing constants on the server.
+  app.get('/api/game/definitions/heroes', async (req, res) => {
+    try {
+      const { HERO_ABILITIES } = await import('../game/heroDefinitions.js');
+      const { HERO_CONSTANTS } = await import('../game/heroes/constants.js');
+      res.sendSuccess({ abilities: HERO_ABILITIES, constants: HERO_CONSTANTS });
+    } catch (error) {
+      logger.error('Failed to fetch hero definitions:', error);
+      res.sendError(
+        ErrorCodes.INTERNAL_SERVER_ERROR,
+        'Failed to fetch hero definitions',
+        { originalError: error.message }
+      );
+    }
+  });
+
   // Get law definitions
   app.get('/api/game/definitions/laws', async (req, res) => {
     try {
