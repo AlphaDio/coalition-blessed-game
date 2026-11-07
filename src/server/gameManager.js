@@ -15,10 +15,9 @@ import { assignInitialHeroes } from '../game/heroes.js';
 import { generateHeroLawProposals } from '../game/lawProposals.js';
 import { handleLawEventChoice, startLawProcess, startLawProcessFromProposal } from '../game/lawProcessManager.js';
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
-import { activateEmergencyPower } from '../game/emergencyPowers.js';
-import { calculateScourgePrediction } from '../game/scourgePrediction.js';
+import { calculateScourgePrediction, getDirectTargetIntelCost } from '../game/scourgePrediction.js';
 import { handleExpeditionAction, refreshExpeditionOptions } from '../game/expeditions/index.js';
-import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES, SCOURGE_PREDICTION_CONSTANTS } from '../game/constants.js';
+import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
@@ -199,24 +198,6 @@ export class GameManager {
     if (this.state.scourgeDirectedTargetEmpireId === undefined) {
       this.state.scourgeDirectedTargetEmpireId = null;
     }
-    if (force || !this.state.scourgePrediction) {
-      this.state.scourgePrediction = {
-        targetEmpireId: null,
-        estimatedTurnsToNextBattle: null,
-        confidenceModifier: 1.0,
-        confidenceLevel: 'low',
-        uncertaintyRange: { min: null, max: null },
-        targetingMode: 'calculated',
-        directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
-      };
-    } else {
-      if (this.state.scourgePrediction.targetingMode === undefined) {
-        this.state.scourgePrediction.targetingMode = 'calculated';
-      }
-      if (!Number.isFinite(this.state.scourgePrediction.directTargetIntelCost)) {
-        this.state.scourgePrediction.directTargetIntelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
-      }
-    }
   }
 
   /**
@@ -352,21 +333,6 @@ export class GameManager {
   }
 
   /**
-   * Activate emergency power
-   */
-  activateEmergencyPower(powerId) {
-    try {
-      const result = activateEmergencyPower(this.state, powerId);
-      if (result.success) {
-        this.notifyStateChange();
-      }
-      return result;
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
    * Set mission slider value
    */
   setMissionSlider(value) {
@@ -404,13 +370,14 @@ export class GameManager {
       return { success: false, error: `${targetEmpire.name} is already the directed target` };
     }
 
-    const intelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
+    const intelCost = getDirectTargetIntelCost(this.state);
     const availableIntel = Number(this.state.coalitionIntel || 0);
     if (availableIntel < intelCost) {
       return { success: false, error: `Need ${intelCost} intel to direct the Scourge` };
     }
 
     this.state.coalitionIntel = availableIntel - intelCost;
+    this.state.scourgeDirectiveCount = (this.state.scourgeDirectiveCount ?? 0) + 1;
     this.state.scourgeDirectedTargetEmpireId = targetEmpire.id;
     this.refreshScourgePrediction();
     this.notifyStateChange();

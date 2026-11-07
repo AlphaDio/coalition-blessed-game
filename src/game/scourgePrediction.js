@@ -7,6 +7,11 @@ const TARGET_CLARITY_HIGH_GAP = 18;
 const TARGET_CLARITY_MEDIUM_GAP = 10;
 const TARGET_CLARITY_LOW_GAP = 4;
 
+export function getDirectTargetIntelCost(state) {
+  return SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST +
+    (state.scourgeDirectiveCount ?? 0) * SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST_STEP;
+}
+
 /**
  * Calculate the predicted next Scourge battle and target
  * Uses a deterministic but uncertain estimation based on game state
@@ -16,14 +21,14 @@ const TARGET_CLARITY_LOW_GAP = 4;
  */
 export function calculateScourgePrediction(state, rng) {
   if (!state.empires || state.empires.length === 0) {
-    return createBlankPrediction();
+    return createBlankScourgePrediction(state);
   }
 
   // Predict the next target empire
   const targetSelection = selectScourgeTargetEmpire(state, rng);
   const targetEmpire = targetSelection?.empire;
   if (!targetEmpire) {
-    return createBlankPrediction();
+    return createBlankScourgePrediction(state);
   }
 
   // Calculate target confidence modifier based on current game state
@@ -56,7 +61,7 @@ export function calculateScourgePrediction(state, rng) {
     confidenceLevel,
     uncertaintyRange,
     targetingMode: targetSelection.source,
-    directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
+    directTargetIntelCost: getDirectTargetIntelCost(state)
   };
 }
 
@@ -347,9 +352,10 @@ function getUncertaintyRange(confidenceModifier) {
 
 /**
  * Create a blank prediction when unable to predict
+ * @param {Object} state - Current game state
  * @returns {Object} Blank prediction
  */
-function createBlankPrediction() {
+export function createBlankScourgePrediction(state = {}) {
   return {
     targetEmpireId: null,
     estimatedTurnsToNextBattle: null,
@@ -357,7 +363,7 @@ function createBlankPrediction() {
     confidenceLevel: 'low',
     uncertaintyRange: { min: null, max: null },
     targetingMode: 'calculated',
-    directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
+    directTargetIntelCost: getDirectTargetIntelCost(state)
   };
 }
 

@@ -568,7 +568,8 @@ export const IMPROVEMENTS_CONSTANTS = {
  * @property {number} CONFIDENCE_DRIFT_TURNS - Turns to drift back toward baseline (30)
  * @property {number} INTEL_CONFIDENCE_PER_POINT - Confidence bonus per stored intel point
  * @property {number} MAX_INTEL_CONFIDENCE_BONUS - Maximum confidence bonus from stored intel
- * @property {number} DIRECT_TARGET_INTEL_COST - Intel cost to direct the next Scourge target
+ * @property {number} DIRECT_TARGET_INTEL_COST - Base Intel cost to direct the next Scourge target
+ * @property {number} DIRECT_TARGET_INTEL_COST_STEP - Intel added per successful directive
  * @property {Object} UNCERTAINTY_RANGE_LOW - Wide prediction range at low confidence (5-20 turns)
  * @property {Object} UNCERTAINTY_RANGE_MEDIUM - Moderate range at medium confidence (2-8 turns)
  * @property {Object} UNCERTAINTY_RANGE_HIGH - Narrow range at high confidence (1-3 turns)
@@ -584,7 +585,8 @@ export const SCOURGE_PREDICTION_CONSTANTS = {
   CONFIDENCE_DRIFT_TURNS: 60,          // Turns to drift toward baseline (1.0) 30 -> 60
   INTEL_CONFIDENCE_PER_POINT: 0.05,    // Each stored intel point improves prediction confidence
   MAX_INTEL_CONFIDENCE_BONUS: 1.0,     // Cap the confidence gain from stockpiled intel
-  DIRECT_TARGET_INTEL_COST: 6,         // Spend intel to force the next target empire
+  DIRECT_TARGET_INTEL_COST: 12,
+  DIRECT_TARGET_INTEL_COST_STEP: 4,
 
   // Uncertainty ranges based on confidence
   UNCERTAINTY_RANGE_LOW: { min: 5, max: 20 },      // Wide range when confidence is low
@@ -739,14 +741,6 @@ export const MISSION_SLIDER_VALUES = [-1, 0, 1, 2, 5];
  * @property {number} THREAT_THRESHOLD_2 - Second threat tier boundary (60)
  * @property {number} THREAT_THRESHOLD_3 - Third/highest threat tier boundary (80)
  * @property {number} GLORY_BASE_PER_SCOURGE_WIN - Base glory earned for defeating Scourge (100)
- * @property {number} EP_COST_MEDIUM - Intel cost for medium emergency powers
- * @property {number} EP_COST_MEDIUM_HIGH - Intel cost for medium-high emergency powers
- * @property {number} EP_COST_HIGH - Intel cost for high-impact emergency powers
- * @property {number} EP_COST_EXTREME - Intel cost for apex emergency powers
- * @property {number} EP_BASE_DURATION - Base duration for emergency powers
- * @property {number} EP_MAX_ACTIVE - Maximum concurrent active emergency powers
- * @property {number} EP_REQUISITION_CACHE_AMOUNT - Base requisition granted by the instant requisition power
- * @property {number} EP_EMPIRE_CREDIT_GRANT - Base credits granted to each empire by the instant credit power
  * @property {number} MISSION_METER_PER_REQUISITION - Mission progress per requisition spent (0.10)
  * @property {number} MISSION_NEGATIVE_THREAT_INCREASE - Threat increase per tick while using emergency budget mode
  * @property {number} MISSION_NEGATIVE_GLORY_TAX_DURATION - Duration (ticks) of the emergency glory penalty after last use
@@ -778,14 +772,6 @@ export const SCOURGE_MISSION_CONSTANTS = {
   THREAT_THRESHOLD_2: 60,
   THREAT_THRESHOLD_3: 80,
   GLORY_BASE_PER_SCOURGE_WIN: 100,
-  EP_COST_MEDIUM: 8,
-  EP_COST_MEDIUM_HIGH: 12,
-  EP_COST_HIGH: 16,
-  EP_COST_EXTREME: 22,
-  EP_BASE_DURATION: 140,
-  EP_MAX_ACTIVE: 2,
-  EP_REQUISITION_CACHE_AMOUNT: 120,
-  EP_EMPIRE_CREDIT_GRANT: 900,
   MISSION_METER_PER_REQUISITION: 0.06,
   MISSION_NEGATIVE_THREAT_INCREASE: 0.45,
   MISSION_NEGATIVE_GLORY_TAX_DURATION: 90,

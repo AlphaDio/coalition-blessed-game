@@ -1,4 +1,4 @@
-import { ECONOMY_CONSTANTS, SCOURGE_PREDICTION_CONSTANTS } from '../constants.js';
+import { ECONOMY_CONSTANTS } from '../constants.js';
 import { clampStat } from '../cohesion.js';
 import { applyNegativeRequisitionCohesionPenalty } from '../economy.js';
 import { checkInsurrections } from '../insurrection.js';
@@ -23,8 +23,6 @@ import { applyHeroFunding, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters
 import { generateHeroLawProposals } from '../lawProposals.js';
 import { applyMissionSliderEffects, maybeSpawnDeepMission } from '../scourgeMissions.js';
 import { applyThreatClimateBonuses, resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
-import { tickEmergencyPowers } from '../emergencyPowers.js';
-import { applyEmergencyPowerDynamicModifiers } from './emergency.js';
 import { applyDynamicScourgeModifierEffects, tickScourgeRecovery, resolvePendingScourgeAttack } from './scourge.js';
 import { handleLawProcesses } from './lawPhase.js';
 import { handleEconomyTick, processEmpireStockpileConsumption } from './economyPhase.js';
@@ -67,7 +65,6 @@ export function advanceTurn(state, rng = Math.random) {
   resetDynamicCoalitionModifiers(state);
   applyThreatClimateBonuses(state);
   applyDynamicScourgeModifierEffects(state, log);
-  applyEmergencyPowerDynamicModifiers(state);
   tickScourgeRecovery(state);
   initializeTurnConsumptionTracking();
   // Tick cooldowns before producing events so every activation receives its
@@ -139,11 +136,6 @@ export function advanceTurn(state, rng = Math.random) {
       log.push(`${empire.name} suggests improvement: ${request.name}`);
       logger.debug(`${empire.name} suggested improvement: ${request.name}`);
     });
-  }
-
-  const expiredPowers = tickEmergencyPowers(state);
-  if (expiredPowers.length > 0) {
-    log.push(`Emergency powers expired: ${expiredPowers.join(', ')}`);
   }
 
   // 3.4. Process technology accrual
@@ -269,17 +261,6 @@ export function advanceTurn(state, rng = Math.random) {
   logger.debug(`Scourge fervor: ${prevFervor.toFixed(1)} -> ${state.scourgeFervor.toFixed(1)}`);
 
   // 7.5. Update Scourge prediction (next target and battle timing)
-  if (!state.scourgePrediction) {
-    state.scourgePrediction = {
-      targetEmpireId: null,
-      estimatedTurnsToNextBattle: null,
-      confidenceModifier: 1.0,
-      confidenceLevel: 'low',
-      uncertaintyRange: { min: null, max: null },
-      targetingMode: 'calculated',
-      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
-    };
-  }
   state.scourgePrediction = calculateScourgePrediction(state, rngFn);
   logger.debug(`Scourge prediction updated: target=${state.scourgePrediction.targetEmpireId}, ETA=${state.scourgePrediction.estimatedTurnsToNextBattle}, confidence=${state.scourgePrediction.confidenceLevel}`);
 

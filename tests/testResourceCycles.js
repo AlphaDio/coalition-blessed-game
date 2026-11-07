@@ -115,20 +115,36 @@ function economyState() {
   return state;
 }
 
-{
-  const nanoLattice = definitions.find(project => project.id === 'nano_lattice_plant');
-  assert.deepEqual(nanoLattice.sustainmentCost, { super_alloys: 3.5, plasma_fuel: 2.5 });
+for (const [id, commodity] of [
+  ['nano_lattice_plant', 'nano_machines'],
+  ['circuit_synthesis_lab', 'quantum_circuits'],
+  ['genomic_lab', 'genomes'],
+  ['relic_shrine', 'ancient_relics'],
+  ['intelligence_bureau', 'sentient_cores']
+]) {
+  const definition = definitions.find(project => project.id === id);
+  assert.equal(definition.tier, 1);
+  assert(definition.productionOutputs[commodity] > 0);
+  assert(Object.keys(definition.sustainmentCost).every(key => ['biomass', 'plasma_fuel', 'rare_gases', 'super_alloys'].includes(key)),
+    `${definition.name} can supply ${commodity} using only basic inputs`);
+}
 
+for (const [id, retiredUpkeep] of [
+  ['nano_lattice_plant', { nano_machines: 1 }],
+  ['nano_logistics_hub', { rare_gases: 3 }],
+  ['wealth_singularity', { quantum_circuits: 6, psycho_implants: 7 }]
+]) {
+  const definition = definitions.find(project => project.id === id);
   const state = economyState();
-  const legacyDefinition = { ...nanoLattice, sustainmentCost: { ...nanoLattice.sustainmentCost, nano_machines: 1 } };
+  const legacyDefinition = { ...definition, sustainmentCost: { ...definition.sustainmentCost, ...retiredUpkeep } };
   const request = createImprovementRequestInstance(legacyDefinition, 'test', state.turn, () => 0.5);
   const improvement = createImprovement(request.id, 'test', state.turn, request);
   state.improvements.requests.push(request);
   state.improvements.queue.push(improvement);
 
   const migrated = migrateGameState(JSON.parse(JSON.stringify(state)));
-  assert.deepEqual(migrated.improvements.requests[0].sustainmentCost, nanoLattice.sustainmentCost);
-  assert.deepEqual(migrated.improvements.queue[0].sustainmentCost, nanoLattice.sustainmentCost);
+  assert.deepEqual(migrated.improvements.requests[0].sustainmentCost, definition.sustainmentCost);
+  assert.deepEqual(migrated.improvements.queue[0].sustainmentCost, definition.sustainmentCost);
 }
 
 function activeProject(id, owner = 'test') {

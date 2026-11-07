@@ -8,7 +8,6 @@ import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { getLogger, LogLevel, LogLevelNames } from '../modules/logger.js';
 import { GameManager } from './gameManager.js';
-import { getEmergencyPowerDefinitions } from '../game/emergencyPowers.js';
 import {
   getArmyBattlePrep,
   getEffectiveArmyFervor,
@@ -514,45 +513,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
-  // Activate emergency power
-  app.post('/api/game/actions/emergency-power', (req, res) => {
-    try {
-      const powerId = req.body.powerId;
-      if (!powerId) {
-        return res.sendError(
-          ErrorCodes.MISSING_PARAMETER,
-          'Missing required parameter: powerId'
-        );
-      }
-
-      const result = gameManager.activateEmergencyPower(powerId);
-      if (!result.success) {
-        return res.sendError(
-          ErrorCodes.INVALID_ACTION,
-          result.error || 'Failed to activate emergency power'
-        );
-      }
-
-      const state = gameManager.getGameState();
-      broadcastGameState(state);
-      broadcastNotification('emergency_power_activated', { powerId, turn: state.turn });
-      res.sendSuccess(state, {
-        notification: {
-          type: 'emergency_power_activated',
-          details: { powerId, turn: state.turn }
-        }
-      });
-    } catch (error) {
-      logger.error(`Error activating emergency power: ${error.message}`);
-      logger.error(error.stack);
-      res.sendError(
-        ErrorCodes.INTERNAL_SERVER_ERROR,
-        'Failed to activate emergency power',
-        { originalError: error.message }
-      );
-    }
-  });
-
   // Set mission slider
   app.post('/api/game/actions/mission-slider', (req, res) => {
     try {
@@ -871,29 +831,6 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
       res.sendError(
         ErrorCodes.INTERNAL_SERVER_ERROR,
         'Failed to retrieve logs',
-        { originalError: error.message }
-      );
-    }
-  });
-
-  // Get emergency power definitions
-  app.get('/api/game/definitions/emergency-powers', (req, res) => {
-    try {
-      const emergencyPowers = getEmergencyPowerDefinitions().map((power) => ({
-        id: power.id,
-        name: power.name,
-        cost_intel: power.cost_intel ?? power.cost_glory ?? 0,
-        cost_glory: power.cost_glory ?? 0,
-        duration_ticks: power.duration_ticks,
-        consumes_active_slot: power.consumes_active_slot ?? (Number(power.duration_ticks) > 0),
-        effects: power.effects
-      }));
-      res.sendSuccess({ emergencyPowers });
-    } catch (error) {
-      logger.error('Failed to fetch emergency power definitions:', error);
-      res.sendError(
-        ErrorCodes.INTERNAL_SERVER_ERROR,
-        'Failed to fetch emergency power definitions',
         { originalError: error.message }
       );
     }

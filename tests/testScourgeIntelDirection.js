@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 
-import { createArmy, createEmpire, createGameState } from '../src/game/types.js';
-import {
-  activateEmergencyPower,
-  canActivateEmergencyPower,
-  getEmergencyPowerDefinitions
-} from '../src/game/emergencyPowers.js';
+import { createArmy, createEmpire, createGameState, migrateGameState } from '../src/game/types.js';
 import {
   applyMissionSliderEffects,
   buildDeepMissionEvent,
@@ -152,84 +147,40 @@ function testNegativeMissionSliderPlayableAndBalanced() {
 function testDirectTargetUsesIntel() {
   const manager = new GameManager();
   manager.state = createBasicState();
-  manager.state.coalitionIntel = 10;
+  manager.state.coalitionIntel = 11;
+  assert(!manager.directScourgeTarget('empire_2').success, 'Directing the Scourge initially requires 12 Intel');
+  assert(manager.state.coalitionIntel === 11, 'An unaffordable directive preserves Intel');
 
+  manager.state.coalitionIntel = 50;
   const result = manager.directScourgeTarget('empire_2');
   assert(result.success, 'Direct target action should succeed');
-  assert(approxEqual(manager.state.coalitionIntel, 4), `Expected 4 intel remaining, got ${manager.state.coalitionIntel}`);
+  assert(result.data.intelSpent === 12 && manager.state.coalitionIntel === 38, 'The first directive costs 12 Intel');
   assert(manager.state.scourgeDirectedTargetEmpireId === 'empire_2', 'Directed target should be stored');
   assert(manager.state.scourgePrediction.targetEmpireId === 'empire_2', 'Prediction should immediately point at directed target');
   assert(manager.state.scourgePrediction.targetingMode === 'directed', 'Prediction should mark directed targeting mode');
   assert(manager.state.scourgePrediction.confidenceLevel === 'high', 'Directed target should show high confidence');
+  assert(manager.state.scourgePrediction.directTargetIntelCost === 16, 'The next directive costs 16 Intel');
+  assert(!manager.directScourgeTarget('empire_2').success, 'Repeated requests for the same target are rejected');
+  assert(manager.state.coalitionIntel === 38, 'A rejected duplicate preserves Intel');
+
+  const saved = manager.getSaveState();
+  saved.scourgePrediction.directTargetIntelCost = 6;
+  manager.state = migrateGameState(saved);
+  assert(manager.state.scourgePrediction.directTargetIntelCost === 16, 'Loading recomputes the price from the saved count');
+  const redirected = manager.directScourgeTarget('empire_1');
+  assert(redirected.success && redirected.data.intelSpent === 16, 'Changing the queued directive uses the scaled cost');
+  assert(manager.state.coalitionIntel === 22, 'The second directive spends exactly 16 Intel');
+  assert(manager.state.scourgePrediction.directTargetIntelCost === 20, 'A second success raises the next quote to 20 Intel');
 }
 
-function testInstantEmergencyPowersGrantResources() {
-  const state = createBasicState();
-  state.coalitionIntel = 50;
-  state.empires[0].budget_credits = 1200;
-  state.empires[1].budget_credits = 800;
-
-  const requisitionDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_REQUISITION_CACHE');
-  const creditsDef = getEmergencyPowerDefinitions().find((power) => power.id === 'EP_CREDIT_LINE');
-  const requisitionBefore = state.coalitionEconomy.requisition || 0;
-  const creditBudgetsBefore = state.empires.map((empire) => empire.budget_credits || 0);
-
-  const requisitionResult = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
-  assert(requisitionResult.success, 'Instant requisition power should activate successfully');
-  assert(
-    approxEqual(
-      state.coalitionEconomy.requisition,
-      requisitionBefore + SCOURGE_MISSION_CONSTANTS.EP_REQUISITION_CACHE_AMOUNT
-    ),
-    'Instant requisition power should add coalition requisition immediately'
-  );
-  assert(
-    approxEqual(state.coalitionIntel, 50 - (requisitionDef?.cost_intel || 0)),
-    'Instant requisition power should spend intel'
-  );
-  assert(
-    (state.activeEmergencyPowers || []).length === 0,
-    'Instant requisition power should not consume an active emergency power slot'
-  );
-
-  const creditResult = activateEmergencyPower(state, 'EP_CREDIT_LINE');
-  assert(creditResult.success, 'Instant credit power should activate successfully');
-  state.empires.forEach((empire, index) => {
-    assert(
-      approxEqual(empire.budget_credits, creditBudgetsBefore[index] + SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT),
-      `Expected ${empire.name} to receive ${SCOURGE_MISSION_CONSTANTS.EP_EMPIRE_CREDIT_GRANT} credits`
-    );
-  });
-  assert(
-    approxEqual(
-      state.coalitionIntel,
-      50 - (requisitionDef?.cost_intel || 0) - (creditsDef?.cost_intel || 0)
-    ),
-    'Instant credit power should also spend intel'
-  );
-  assert(
-    (state.activeEmergencyPowers || []).length === 0,
-    'Instant credit power should not create an active timed buff'
-  );
-}
-
-function testInstantEmergencyPowersIgnoreActiveSlotCap() {
-  const state = createBasicState();
-  state.coalitionIntel = 50;
-  state.activeEmergencyPowers = [
-    { id: 'EP_MOBILIZATION', remainingDuration: 20, totalDuration: 20, effects: [] },
-    { id: 'EP_WAR_INDUSTRY', remainingDuration: 20, totalDuration: 20, effects: [] }
-  ];
-
-  const check = canActivateEmergencyPower(state, 'EP_REQUISITION_CACHE');
-  assert(check.canActivate, `Instant emergency powers should bypass active slot cap, got: ${check.reason}`);
-
-  const result = activateEmergencyPower(state, 'EP_REQUISITION_CACHE');
-  assert(result.success, 'Instant requisition power should still activate at active-slot cap');
-  assert(
-    state.activeEmergencyPowers.length === 2,
-    'Instant emergency power should leave active timed powers unchanged'
-  );
+function testLegacySaveDropsEmergencyPowers() {
+  const saved = createBasicState();
+  delete saved.scourgeDirectiveCount;
+  saved.scourgePrediction.directTargetIntelCost = 6;
+  saved.activeEmergencyPowers = [{ id: 'EP_MOBILIZATION', remainingDuration: 20 }];
+  const migrated = migrateGameState(saved);
+  assert(!Object.hasOwn(migrated, 'activeEmergencyPowers'), 'Retired powers are removed from older saves');
+  assert(migrated.scourgePrediction.directTargetIntelCost === 12, 'Old saves without a count start at the new base price');
 }
 
 function testRegularEventSyncsIntelAndConfidence() {
@@ -414,13 +365,10 @@ function run() {
   console.log('PASS -1 mission slider is now playable and uses non-stacking penalties');
 
   testDirectTargetUsesIntel();
-  console.log('PASS Direct target spends intel and updates prediction');
+  console.log('PASS Directives spend scaled Intel, update prediction and preserve the price across saves');
 
-  testInstantEmergencyPowersGrantResources();
-  console.log('PASS Instant emergency powers inject credits and requisition without occupying slots');
-
-  testInstantEmergencyPowersIgnoreActiveSlotCap();
-  console.log('PASS Instant emergency powers remain usable while timed power slots are full');
+  testLegacySaveDropsEmergencyPowers();
+  console.log('PASS Legacy saves drop retired powers and use the new base directive price');
 
   testRegularEventSyncsIntelAndConfidence();
   console.log('PASS Regular events keep intel and confidence synchronized');

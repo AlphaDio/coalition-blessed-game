@@ -79,6 +79,10 @@ terminal describes both versions as Hero funding efficiency (an old additive
 
 ## Advanced Resource Uses
 
+Tier 1 projects can supply advanced commodities from basic inputs. The Circuit Synthesis Vault supplies Quantum Circuits, the Genome Crucible supplies Genomes, the Relic Cathedral supplies Ancient Relics, and the Signal Intelligence Bureau supplies Sentient Cores. The Nano-Lattice Crucible supplies Nanomachines, and the Commodity Exchange Spire supplies Psycho-Implants.
+
+Some projects still use materials they produce. The Biofuel Refinery processes Biomass into fuel, the Nano-Logistics Corridor uses Nanomachine couriers, and the Wormhole Forge Complex uses Nanomachines in its forge. Other buildings or member empires can supply those inputs.
+
 The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly Platform and T3 Imperial Bastion World. The assembly platform produces anti-grav modules for the T2 Nano-Logistics Corridor and T3 Dyson Mantle. Consuming anti-grav modules also feeds the owning empire's existing construction-effect pool.
 
 ## Current Catalog

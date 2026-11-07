@@ -3,7 +3,6 @@ import {
   TECH_CONSTANTS,
   UNITY_CONSTANTS,
   IMPROVEMENTS_CONSTANTS,
-  SCOURGE_PREDICTION_CONSTANTS,
   ARMY_EXPERIENCE_CONSTANTS,
   GAME_INIT_CONSTANTS
 } from './constants.js';
@@ -12,6 +11,8 @@ import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 import { createExpeditionsState, ensureExpeditionsState } from './expeditions/state.js';
 import { EXPEDITION_STARTER_SUPPLIES } from './expeditions/catalog.js';
 import { copyChargeTriggers, getDefaultChargeTriggers, migrateHeroProgression } from './heroes/progression.js';
+import { getAllImprovementRequests } from './improvements/definitions.js';
+import { createBlankScourgePrediction, getDirectTargetIntelCost } from './scourgePrediction.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -499,19 +500,12 @@ export function createGameState(seed = 0) {
     diplomacy: { relations: {} },
     scourgeTargetEmpireId: null,
     scourgeDirectedTargetEmpireId: null,
+    scourgeDirectiveCount: 0,
     lastInsurrectionTurn: 0,
     insurrectionEmpireCooldowns: {},
     
     // Scourge prediction system
-    scourgePrediction: {
-      targetEmpireId: null,          // Predicted next target
-      estimatedTurnsToNextBattle: null, // Estimated turns until battle (null = very uncertain)
-      confidenceModifier: 1.0,        // 1.0 = baseline certainty, >1.0 = more certain, <1.0 = less certain
-      confidenceLevel: 'low',         // 'low' | 'medium' | 'high' based on modifier
-      uncertaintyRange: { min: null, max: null }, // Range of possible turn counts
-      targetingMode: 'calculated',
-      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
-    },
+    scourgePrediction: createBlankScourgePrediction(),
     
     laws: [],
     activeLaws: [],
@@ -581,9 +575,6 @@ export function createGameState(seed = 0) {
         requisition_gen_mult: 1.0
       }
     },
-
-    // Emergency powers system - Scourge intel actions
-    activeEmergencyPowers: [],   // Active emergency power instances
 
     // Coalition economy system (requisition generation from empire consumption)
     coalitionEconomy: {
@@ -947,6 +938,9 @@ export function migrateGameState(state) {
   if (state.scourgeDirectedTargetEmpireId === undefined) {
     state.scourgeDirectedTargetEmpireId = null;
   }
+  if (!Number.isSafeInteger(state.scourgeDirectiveCount) || state.scourgeDirectiveCount < 0) {
+    state.scourgeDirectiveCount = 0;
+  }
   if (state.missionSlider === undefined) {
     state.missionSlider = 0;
   }
@@ -977,29 +971,17 @@ export function migrateGameState(state) {
     state.pendingScourgeAttack = null;
   }
   if (!state.scourgePrediction || typeof state.scourgePrediction !== 'object') {
-    state.scourgePrediction = {
-      targetEmpireId: null,
-      estimatedTurnsToNextBattle: null,
-      confidenceModifier: 1.0,
-      confidenceLevel: 'low',
-      uncertaintyRange: { min: null, max: null },
-      targetingMode: 'calculated',
-      directTargetIntelCost: SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST
-    };
+    state.scourgePrediction = createBlankScourgePrediction(state);
   } else {
     if (state.scourgePrediction.targetingMode === undefined) {
       state.scourgePrediction.targetingMode = 'calculated';
     }
-    if (!Number.isFinite(state.scourgePrediction.directTargetIntelCost)) {
-      state.scourgePrediction.directTargetIntelCost = SCOURGE_PREDICTION_CONSTANTS.DIRECT_TARGET_INTEL_COST;
-    }
+    state.scourgePrediction.directTargetIntelCost = getDirectTargetIntelCost(state);
   }
   if (!state.threatClimate || typeof state.threatClimate !== 'object') {
     state.threatClimate = { activeSlots: 0, activeBonusList: [] };
   }
-  if (!Array.isArray(state.activeEmergencyPowers)) {
-    state.activeEmergencyPowers = [];
-  }
+  delete state.activeEmergencyPowers;
   if (!state.coalitionModifiers) {
     state.coalitionModifiers = {};
   }
@@ -1189,13 +1171,19 @@ export function migrateGameState(state) {
   }
 
   if (state.improvements && typeof state.improvements === 'object') {
+    const definitions = new Map(getAllImprovementRequests().map(definition => [definition.id, definition]));
     for (const key of ['requests', 'queue']) {
       const entries = state.improvements[key];
       if (!Array.isArray(entries)) continue;
       for (const improvement of entries) {
         const definitionId = improvement?.definitionId || improvement?.requestId || improvement?.id;
-        if (definitionId === 'nano_lattice_plant' && improvement.sustainmentCost) {
-          delete improvement.sustainmentCost.nano_machines;
+        const definition = definitions.get(definitionId);
+        if (!definition || !improvement.sustainmentCost) continue;
+        // Retire self-upkeep removed from the catalog while preserving other saved costs.
+        for (const commodity of Object.keys(improvement.sustainmentCost)) {
+          if (definition.productionOutputs[commodity] > 0 && !definition.sustainmentCost[commodity]) {
+            delete improvement.sustainmentCost[commodity];
+          }
         }
       }
     }

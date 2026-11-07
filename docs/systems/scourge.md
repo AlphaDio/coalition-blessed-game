@@ -37,7 +37,7 @@ Scourge cohesion represents the internal unity and coordination of the Scourge f
 
 ### Scourge Target Prediction
 
-The prediction system helps players anticipate attacks:
+From **Crisis → Scourge Direction**, spend **12 Intel** to choose the next target before the attack locks in. Each successful directive raises the price of the next one by **4 Intel**, including a directive that replaces an existing target. The game saves this count. Older saves start at 12 Intel.
 
 #### Target Selection Algorithm
 
