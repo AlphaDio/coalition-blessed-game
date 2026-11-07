@@ -1,7 +1,7 @@
 import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
 import { applySupplyCommodityMultiplier } from '../../economyBalance.js';
-import { nextOrderId } from './orderIds.js';
+import { addProductionSellOffer, DEFAULT_SELL_ORDER_MAX_DURATION } from '../../economyTick/orders.js';
 import { allocateSustainmentFromLocalProduction, calculateImprovementNeed } from './sustainment.js';
 
 const QUANTITY_PRECISION = 1000;
@@ -99,49 +99,6 @@ export function releaseProductionFromBank(state, improvement) {
     state.marketOrders = { buyOrders: [], sellOffers: [] };
   }
 
-  const upsertEmpireSellOrder = (empireId, commodity, qty, askPrice) => {
-    const normalizedQty = normalizeQty(qty);
-    if (normalizedQty <= 0) return null;
-    const existing = state.marketOrders.sellOffers.find(order =>
-      order.owner_type === 'empire' &&
-      order.owner_id === empireId &&
-      order.commodity === commodity &&
-      (order.filled_qty || 0) < order.qty
-    );
-
-    if (existing) {
-      existing.qty = normalizeQty(existing.qty + normalizedQty);
-      const currentTurnAdded = existing.turn_added_turn === state.turn
-        ? (existing.turn_added_qty || 0)
-        : 0;
-      existing.turn_added_qty = normalizeQty(currentTurnAdded + normalizedQty);
-      existing.turn_added_turn = state.turn;
-      existing.ask_price = askPrice;
-      existing.priority = Math.max(existing.priority || 0, 100);
-      existing.duration = 0;
-      existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
-      return existing;
-    }
-
-    const sellOffer = {
-      id: nextOrderId('prod'),
-      owner_type: 'empire',
-      owner_id: empireId,
-      commodity,
-      qty: normalizedQty,
-      ask_price: askPrice,
-      filled_qty: 0,
-      turn_added_qty: normalizedQty,
-      turn_added_turn: state.turn,
-      priority: 100,
-      fee: 0,
-      duration: 0,
-      max_duration: 6
-    };
-    state.marketOrders.sellOffers.push(sellOffer);
-    return sellOffer;
-  };
-
   // Local sustainment can draw from the bank every turn. Waiting for a market
   // batch first can degrade a project before it can use its own production.
   for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
@@ -178,7 +135,8 @@ export function releaseProductionFromBank(state, improvement) {
   }
 
   // Apply the threshold multiplier
-  const threshold = normalizeQty(thresholdValue * (improvement.productionBankThreshold || 1));
+  const bankTurns = improvement.productionBankThreshold || 1;
+  const threshold = normalizeQty(thresholdValue * bankTurns);
 
   // Check if total accumulated production meets threshold
   let totalAccumulated = 0;
@@ -198,6 +156,8 @@ export function releaseProductionFromBank(state, improvement) {
   }
 
   // Release all accumulated production from bank to market
+  // Let each batch bridge the normal bank release interval.
+  const maxDuration = Math.max(DEFAULT_SELL_ORDER_MAX_DURATION, Math.ceil(bankTurns));
   for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
     if (qty <= 0) continue;
 
@@ -207,12 +167,10 @@ export function releaseProductionFromBank(state, improvement) {
     // Get market price for this commodity
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
-    const discountedPrice = sellPrice;
-
-    const sellOrder = upsertEmpireSellOrder(empire.id, commodity, qtyForMarket, discountedPrice);
-    if (!sellOrder) continue;
+    addProductionSellOffer(state.marketOrders.sellOffers, state.turn, 'empire', empire.id,
+      commodity, qtyForMarket, sellPrice, 100, maxDuration);
     // Log "Produced" when releasing to market
-    log.push(`{blue-fg}Produced:{/blue-fg} ${qtyForMarket.toFixed(3)} ${commodity} -> market @ ${discountedPrice.toFixed(2)}`);
+    log.push(`{blue-fg}Produced:{/blue-fg} ${qtyForMarket.toFixed(3)} ${commodity} -> market @ ${sellPrice.toFixed(2)}`);
     logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qtyForMarket.toFixed(3)} ${commodity} to market.`);
 
     // Clear from bank after releasing

@@ -8,6 +8,7 @@ import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { scalePositiveApprovalGain } from '../approvalUtils.js';
 import { getLogger } from '../../modules/logger.js';
 import { addEmpireBattlePrep } from '../armyBattlePrep.js';
+import { capConsumptionIndustrialOutputBonus } from '../economyBalance.js';
 
 export function handleEconomyTick(state, log, logger) {
   try {
@@ -129,11 +130,14 @@ function applyConsumptionEffect(state, empire, rule, consumed, hits, log, logger
   }
 
   if (effect.type === 'industrial_output_bonus') {
-    state.coalitionModifiers.industrialOutputBonus = (state.coalitionModifiers.industrialOutputBonus || 0) + scaledAmount;
+    const previous = capConsumptionIndustrialOutputBonus(state.coalitionModifiers.industrialOutputBonus);
+    const next = capConsumptionIndustrialOutputBonus(previous + scaledAmount);
+    state.coalitionModifiers.industrialOutputBonus = next;
+    if (next === previous) return;
     logConsumptionEffect(
       logger,
       log,
-      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${scaledAmount.toFixed(3)} industrial output bonus (${hits} hits)`
+      `${empire.name} ${commodity}: pooled consumed ${consumed}, +${(next - previous).toFixed(3)} industrial output bonus (${hits} hits)`
     );
     return;
   }

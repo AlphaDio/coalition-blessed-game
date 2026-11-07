@@ -1,21 +1,45 @@
-import { createBuyOrder } from '../marketEconomy.js';
+import { createBuyOrder, createSellOffer } from '../marketEconomy.js';
 import { markDemandBacklogOrder } from './backlog.js';
 import { MARKET_CONSTANTS } from '../constants.js';
 
 const DEFAULT_BUY_ORDER_MAX_DURATION = 3;
-const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
+export const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
+
+function isFreshSellOffer(order, turn) {
+  return order.turn_added_turn === turn && order.duration === 0;
+}
+
+// A delivery only adds to the current batch. Earlier batches keep aging even
+// when the same producer lists more of the commodity on every turn.
+export function addProductionSellOffer(offers, turn, ownerType, ownerId, commodity, qty, price, priority, maxDuration = DEFAULT_SELL_ORDER_MAX_DURATION) {
+  let offer = offers.find(order => isFreshSellOffer(order, turn) &&
+    order.owner_type === ownerType && order.owner_id === ownerId && order.commodity === commodity);
+  if (!offer) {
+    const id = `sell_${turn}_${ownerType}_${ownerId}_${commodity}`;
+    offer = createSellOffer(id, ownerType, ownerId, commodity, 0, price, priority, maxDuration);
+    offer.turn_added_turn = turn;
+    offer.turn_added_qty = 0;
+    offers.push(offer);
+  }
+  offer.qty += qty;
+  offer.turn_added_qty = (offer.turn_added_qty || 0) + qty;
+  offer.ask_price = price;
+  offer.priority = Math.max(offer.priority || 0, priority);
+  offer.max_duration = Math.max(offer.max_duration || 0, maxDuration);
+  return offer;
+}
 
 export function createOrderAggregator(state) {
   const buyOrders = [];
-  const sellOffers = [];
   let orderIdCounter = 0;
 
   // Track which orders should persist (from aggregation with existing or new creation)
   const ordersToSave = new Set();
 
-  // Load existing orders for aggregation (but don't add them to arrays yet)
+  // Improvement production may already have listed a fresh batch this turn.
   const existingBuyOrders = state.marketOrders?.buyOrders?.filter(o => (o.filled_qty || 0) < o.qty) || [];
   const existingSellOffers = state.marketOrders?.sellOffers?.filter(o => (o.filled_qty || 0) < o.qty) || [];
+  const sellOffers = existingSellOffers.filter(order => isFreshSellOffer(order, state.turn));
 
   const existingOrderIds = new Set([
     ...existingBuyOrders.map(order => order.id),
@@ -38,9 +62,8 @@ export function createOrderAggregator(state) {
     }
   });
   existingSellOffers.forEach(order => {
-    if (order.turn_added_turn !== state.turn) {
+    if (!isFreshSellOffer(order, state.turn)) {
       order.turn_added_qty = 0;
-      order.turn_added_turn = state.turn;
     }
   });
 
@@ -62,65 +85,10 @@ export function createOrderAggregator(state) {
     ].join('|');
   }
 
-  /**
-   * Find existing sell offer for owner+commodity and aggregate qty
-   * Returns updated offer with fixed market price and reset duration
-   */
-  function aggregateSellOffer(ownerType, ownerId, commodity, newQty, newPrice, priority) {
-    // First check new orders created this tick
-    let existing = sellOffers.find(o =>
-      o.owner_type === ownerType &&
-      o.owner_id === ownerId &&
-      o.commodity === commodity &&
-      (o.filled_qty || 0) < o.qty
-    );
-
-    // Then check existing orders from previous ticks
-    if (!existing) {
-      existing = existingSellOffers.find(o =>
-        o.owner_type === ownerType &&
-        o.owner_id === ownerId &&
-        o.commodity === commodity &&
-        (o.filled_qty || 0) < o.qty
-      );
-    }
-
-    if (!existing) {
-      const offer = {
-        id: nextOrderId('sell'),
-        owner_type: ownerType,
-        owner_id: ownerId,
-        commodity,
-        qty: newQty,
-        ask_price: newPrice,
-        priority,
-        filled_qty: 0,
-        fee: 0,
-        turn_added_qty: newQty,
-        turn_added_turn: state.turn,
-        // Sell-side resource accumulation can survive short liquidity gaps.
-        max_duration: DEFAULT_SELL_ORDER_MAX_DURATION,
-        duration: 0
-      };
-      sellOffers.push(offer);
-      ordersToSave.add(offer);
-      return offer;
-    }
-
-    existing.ask_price = newPrice;
-    existing.qty = existing.qty + newQty;
-    existing.turn_added_qty = (existing.turn_added_qty || 0) + newQty;
-    existing.turn_added_turn = state.turn;
-    existing.duration = 0;
-    existing.max_duration = Number.isFinite(existing.max_duration) ? existing.max_duration : 1000000;
-
-    // If from existing orders, move to sellOffers for this tick
-    if (!sellOffers.includes(existing)) {
-      sellOffers.push(existing);
-    }
-    ordersToSave.add(existing);
-
-    return existing;
+  function aggregateSellOffer(ownerType, ownerId, commodity, qty, price, priority) {
+    const offer = addProductionSellOffer(sellOffers, state.turn, ownerType, ownerId, commodity, qty, price, priority);
+    ordersToSave.add(offer);
+    return offer;
   }
 
   /**

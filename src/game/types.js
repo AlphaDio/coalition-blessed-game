@@ -13,6 +13,7 @@ import { EXPEDITION_STARTER_SUPPLIES } from './expeditions/catalog.js';
 import { copyChargeTriggers, getDefaultChargeTriggers, migrateHeroProgression } from './heroes/progression.js';
 import { getAllImprovementRequests } from './improvements/definitions.js';
 import { createBlankScourgePrediction, getDirectTargetIntelCost } from './scourgePrediction.js';
+import { capConsumptionIndustrialOutputBonus } from './economyBalance.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -985,6 +986,7 @@ export function migrateGameState(state) {
   if (!state.coalitionModifiers) {
     state.coalitionModifiers = {};
   }
+  state.coalitionModifiers.industrialOutputBonus = capConsumptionIndustrialOutputBonus(state.coalitionModifiers.industrialOutputBonus);
   if (state.coalitionModifiers.glory_gain_multiplier === undefined) {
     state.coalitionModifiers.glory_gain_multiplier = 1.0;
   }

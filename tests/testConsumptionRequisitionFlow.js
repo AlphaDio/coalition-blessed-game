@@ -27,7 +27,7 @@ import { scalePositiveApprovalGain } from '../src/game/approvalUtils.js';
 import { getArmyPopulationDemandMultiplier } from '../src/game/consumptionScaling.js';
 import { getArmyBattlePrep } from '../src/game/armyBattlePrep.js';
 import { createSampleContent } from '../src/game/content.js';
-import { createArmy, createEmpire } from '../src/game/types.js';
+import { createArmy, createEmpire, createGameState, migrateGameState } from '../src/game/types.js';
 
 initializeLogger({
   level: LogLevel.ERROR,
@@ -377,6 +377,20 @@ console.log('=== Test 5: Large Resource Thresholds Are Preserved ===');
   assert((state.consumptionEffectPools?.empire_1?.plasma_fuel || 0) === 150, 'Large-threshold pool keeps full accumulated consumption');
 }
 console.log();
+
+{
+  initializeTurnConsumptionTracking();
+  const state = createGameState(7);
+  state.empires = [createEmpire('producer', 'Producer', 60)];
+  state.empires[0].consumptionRules = [{
+    commodity: 'plasma_fuel', threshold: 5, effect: { type: 'industrial_output_bonus', amount: 0.16 }
+  }];
+  recordConsumption('plasma_fuel', 40, 'producer', CONSUMPTION_SOURCES.EMPIRE_NEEDS);
+  processEmpireStockpileConsumption(state, []);
+  assert(state.coalitionModifiers.industrialOutputBonus === 1, 'Repeated consumption bonuses cap at +100% output');
+  state.coalitionModifiers.industrialOutputBonus = 15;
+  assert(migrateGameState(state).coalitionModifiers.industrialOutputBonus === 1, 'Older saves apply the same production cap');
+}
 
 console.log('=== Test 6: Army Consumption Rules Now Support Scaling Growth And Damage ===');
 {

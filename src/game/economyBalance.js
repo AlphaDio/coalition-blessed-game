@@ -26,3 +26,7 @@ export function applyDemandCommodityMultiplier(commodity, qty) {
 export function applySupplyCommodityMultiplier(commodity, qty) {
   return qty * getSupplyCommodityMultiplier(commodity);
 }
+
+export function capConsumptionIndustrialOutputBonus(value) {
+  return Number.isFinite(value) ? Math.min(value, ECONOMY_BALANCE_CONSTANTS.MAX_CONSUMPTION_INDUSTRIAL_OUTPUT_BONUS) : 0;
+}

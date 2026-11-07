@@ -108,6 +108,10 @@ Pressure itself has no mechanical effects. Expired optional wants contribute 5% 
 ## Production and Stockpiles
 Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank. All improvement sustainment is queued first; same-empire production banks can then supply it every turn, independent of project order or the market-release threshold. Remaining output is released to the market when the bank reaches its threshold, calculated from output after the producing project's own sustainment.
 
+Each seller's output forms a new batch per commodity per turn. Ordinary batches have six turns to sell. Improvement batches have at least six turns and can remain open for the usual bank release interval. Older batches keep their expiry when more output arrives.
+
+Industrial output bonuses earned from consumption cap at +100% of base empire production. This cap also applies when older campaigns load.
+
 Direct `requisition` production from an improvement bypasses the production bank and is added to the coalition economy immediately. Other commodities are banked and released as sell offers.
 
 ## Fulfillment Effects

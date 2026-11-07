@@ -1,5 +1,6 @@
 import { clearMarket } from '../marketEconomy.js';
 import { MARKET_CONSTANTS } from '../constants.js';
+import { DEFAULT_SELL_ORDER_MAX_DURATION } from './orders.js';
 import {
   IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE,
   creditSustainmentReceipts
@@ -164,7 +165,6 @@ function getRemainingQty(order) {
 }
 
 const DEFAULT_BUY_ORDER_MAX_DURATION = 3;
-const DEFAULT_SELL_ORDER_MAX_DURATION = 6;
 const LEGACY_PERSISTENT_ORDER_DURATION = 1000000;
 
 function resolveOrderMaxDuration(order, fallback) {
@@ -423,14 +423,6 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
     expiredSellOffers,
     cancelledBuyOrders
   };
-}
-
-export function applyExpiredSellOffers(state, expiredSellOffers) {
-  // Expired offers are simply omitted from the next saved order book. Sellers
-  // retain any production already represented by their own stock/production
-  // bank and can repost it on a later tick.
-  void state;
-  void expiredSellOffers;
 }
 
 export function applyOrderFees(state, validBuyOrders, allSellOffers) {

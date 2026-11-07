@@ -4,6 +4,7 @@ import { advanceTurn } from '../src/game/turn.js';
 import { initializeStarterNeedsStockpiles } from '../src/game/economyTick/ordersPhase.js';
 import { getAllImprovementRequests, acceptImprovementRequest } from '../src/game/improvements/index.js';
 import { clearMarket, computeEmpireFulfillment } from '../src/game/marketEconomy.js';
+import { processEconomyTick } from '../src/game/economyTick.js';
 import { addPressure } from '../src/game/economyTick/backlog.js';
 import { calculateScourgePrediction } from '../src/game/scourgePrediction.js';
 import { getBattleChance, SCOURGE_FIRST_ATTACK_TURN } from '../src/game/turn/battleUtils.js';
@@ -49,6 +50,35 @@ console.log('=== Test: Economy and Opening Pacing ===');
   assert.equal(clearMarket([buy('second')], [offer], { commodity: 'biomass' }).trades[0].qty, 1);
   assert.equal(offer.filled_qty, 5);
   assert.equal(clearMarket([buy('third')], [offer], { commodity: 'biomass' }).trades.length, 0);
+}
+
+{
+  const state = newGame(7);
+  state.turn = 150;
+  const [producer] = state.empires;
+  state.empires = [producer];
+  state.armies = [];
+  producer.production.outputs_per_tick = { biomass: 0.1 };
+  producer.needs.per_pop = {};
+  producer.wants.per_pop = {};
+  const legacy = {
+    id: 'legacy_sell', owner_type: 'empire', owner_id: producer.id, commodity: 'biomass',
+    qty: 50000, filled_qty: 20, ask_price: state.market.biomass.price, duration: 1, max_duration: 1000000
+  };
+  state.marketOrders = { buyOrders: [], sellOffers: [legacy] };
+  processEconomyTick(state);
+  assert.equal(legacy.qty, 50000, 'New production never extends a legacy sell batch');
+  assert.equal(legacy.filled_qty, 20);
+
+  for (let turn = 0; turn < 20; turn++) {
+    state.turn++;
+    processEconomyTick(state);
+  }
+  const offers = state.marketOrders.sellOffers;
+  assert.equal(offers.length, 6, 'Continuous production keeps only six turns of unsold supply');
+  assert(!offers.some(offer => offer.id === legacy.id), 'Existing oversized offers expire even as production continues');
+  assert(offers.every(offer => offer.qty > 0 && offer.qty === offers[0].qty));
+  assert.equal(state.market.biomass.flow_supply_qty_turn, offers[0].qty, 'Posted supply excludes older batches');
 }
 
 for (const seed of [7, 123, 987]) {

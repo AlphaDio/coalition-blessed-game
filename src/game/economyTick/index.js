@@ -19,7 +19,6 @@ import {
 } from './ordersPhase.js';
 import {
   applyOrderDurations,
-  applyExpiredSellOffers,
   applyOrderFees,
   enforceEmpireBudgetConstraints,
   resetEmpireSpend,
@@ -100,11 +99,9 @@ export function processEconomyTick(state) {
   // Apply empire order posting fees
   const {
     validBuyOrders,
-    validSellOffers,
-    expiredSellOffers
+    validSellOffers
   } = applyOrderDurations(state, buyOrders, sellOffers);
 
-  applyExpiredSellOffers(state, expiredSellOffers);
   const budgetResult = enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers);
   applyOrderFees(state, budgetResult.validBuyOrders, budgetResult.validSellOffers);
   resetEmpireSpend(state);
