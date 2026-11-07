@@ -1188,6 +1188,16 @@ export function migrateGameState(state) {
   }
 
   if (state.improvements && typeof state.improvements === 'object') {
+    for (const key of ['requests', 'queue']) {
+      const entries = state.improvements[key];
+      if (!Array.isArray(entries)) continue;
+      for (const improvement of entries) {
+        const definitionId = improvement?.definitionId || improvement?.requestId || improvement?.id;
+        if (definitionId === 'nano_lattice_plant' && improvement.sustainmentCost) {
+          delete improvement.sustainmentCost.nano_machines;
+        }
+      }
+    }
     if (Array.isArray(state.improvements.queue)) {
       state.improvements.queue.forEach(improvement => {
         if (!Number.isFinite(improvement?.unityOutput)) {

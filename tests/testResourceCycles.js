@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { createSampleContent } from '../src/game/content.js';
-import { createEmpire, createGameState } from '../src/game/types.js';
+import { createEmpire, createGameState, migrateGameState } from '../src/game/types.js';
 import { initializeMarket } from '../src/game/marketEconomy.js';
 import { loadResources } from '../src/game/economyTick/resources.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import {
-  getAllImprovementRequests, createImprovement, initializeImprovementsState,
+  getAllImprovementRequests, createImprovement, createImprovementRequestInstance, initializeImprovementsState,
   processImprovementsTick, processImprovementSustainmentPostMarket
 } from '../src/game/improvements/index.js';
 import { processEmpireStockpileConsumption } from '../src/game/turn/economyPhase.js';
@@ -113,6 +113,22 @@ function economyState() {
   state.market = initializeMarket(resources, () => 0.5);
   state.improvements = initializeImprovementsState();
   return state;
+}
+
+{
+  const nanoLattice = definitions.find(project => project.id === 'nano_lattice_plant');
+  assert.deepEqual(nanoLattice.sustainmentCost, { super_alloys: 3.5, plasma_fuel: 2.5 });
+
+  const state = economyState();
+  const legacyDefinition = { ...nanoLattice, sustainmentCost: { ...nanoLattice.sustainmentCost, nano_machines: 1 } };
+  const request = createImprovementRequestInstance(legacyDefinition, 'test', state.turn, () => 0.5);
+  const improvement = createImprovement(request.id, 'test', state.turn, request);
+  state.improvements.requests.push(request);
+  state.improvements.queue.push(improvement);
+
+  const migrated = migrateGameState(JSON.parse(JSON.stringify(state)));
+  assert.deepEqual(migrated.improvements.requests[0].sustainmentCost, nanoLattice.sustainmentCost);
+  assert.deepEqual(migrated.improvements.queue[0].sustainmentCost, nanoLattice.sustainmentCost);
 }
 
 function activeProject(id, owner = 'test') {

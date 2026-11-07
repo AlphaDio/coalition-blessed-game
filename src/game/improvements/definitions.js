@@ -131,7 +131,7 @@ const INDUSTRIAL_BRANCH = [
         suppliesCost: 180,
         build: 200,
         capacity: 2,
-        sustainmentCost: { super_alloys: 3.5, plasma_fuel: 2.5, nano_machines: 1 },
+        sustainmentCost: { super_alloys: 3.5, plasma_fuel: 2.5 },
         productionOutputs: { nano_machines: 0.032 },
         modifiers: { supply_efficiency: 0.03 },
         tags: ['mega_structure', 'industrial', 'production', 'nano', 'precision'],
