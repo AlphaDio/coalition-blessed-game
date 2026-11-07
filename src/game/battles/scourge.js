@@ -6,7 +6,7 @@ import {
   applyScaledScourgeCohesionDelta
 } from '../cohesion.js';
 import { getLogger } from '../../modules/logger.js';
-import { startBattle } from '../frontBattles.js';
+import { startBattle, emitHeroBattleOutcome } from '../frontBattles.js';
 import { collectScourgeModifierEffects, expireScourgeModifiersAfterAttack } from '../scourgeModifiers.js';
 import { runHeroBattlePassives } from '../heroes.js';
 import { applyPopulationDelta } from '../populationUtils.js';
@@ -285,7 +285,11 @@ export function startScourgeBattle(state, participatingArmies, rng = Math.random
   const battlefieldSize = calculateBattlefieldSize(totalForces, rng);
 
   // Start the battle front (coalition on left, Scourge on right)
-  const front = startBattle(state, coalitionArmy.id, scourgeArmy.id, battlefieldSize);
+  const front = startBattle(state, coalitionArmy.id, scourgeArmy.id, battlefieldSize, {
+    log,
+    battleType: 'SCOURGE',
+    participatingEmpireIdsBySide: { left: participatingEmpireIds, right: [] }
+  });
 
   // Mark as Scourge battle
   front.isScourgeBattle = true;
@@ -324,6 +328,7 @@ export function handleScourgeBattleEnd(state, front, winnerSide) {
     logger.error('Scourge battle end: missing armies', { frontId: front.id });
     return { log };
   }
+  emitHeroBattleOutcome(front, state, winnerSide, log);
 
   // Calculate battle stats for summary
   const coalitionDestroyed = Math.floor(front.permanentLosses?.left || 0);

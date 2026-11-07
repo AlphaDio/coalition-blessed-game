@@ -9,6 +9,7 @@ import { getLogger } from '../../modules/logger.js';
 import { HERO_STATUS } from './constants.js';
 import { formatMessage } from './helpers.js';
 import { ensureHeroMeters, getHeroEmpireId, getPopularityScalar } from './utils.js';
+import { triggerHeroEvent } from './charge.js';
 
 const LAW_PHASES = new Set(['DEBATE', 'FALLOUT', 'VOTING']);
 
@@ -79,6 +80,8 @@ export function triggerHeroPassives(state, triggerType, payload = {}, log = []) 
       });
     });
   });
+  // Reuse the existing semantic event dispatcher; passive behavior stays independent.
+  triggerHeroEvent(state, triggerType, payload, log);
 }
 
 /**

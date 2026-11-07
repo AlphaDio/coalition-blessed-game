@@ -78,7 +78,7 @@ export class GameManager {
     // Assign initial heroes to each empire
     const heroRng = new DeterministicRNG(seed);
     assignInitialHeroes(this.state, heroRng.random.bind(heroRng));
-    generateHeroLawProposals(this.state, heroRng.random.bind(heroRng));
+    generateHeroLawProposals(this.state, heroRng.random.bind(heroRng), this.state.log);
 
     logger.debug(`Game initialized with seed: ${seed}`);
   }
@@ -517,7 +517,7 @@ export class GameManager {
     const activeProposals = (this.state.proposedLaws || []).filter((proposal) => proposal.status === 'PROPOSED');
     if (activeProposals.length === 0 && Array.isArray(this.state.heroes) && this.state.heroes.length > 0) {
       const loadRng = new DeterministicRNG((this.state.rngSeed || 0) + (this.state.turn || 0));
-      generateHeroLawProposals(this.state, loadRng.random.bind(loadRng));
+      generateHeroLawProposals(this.state, loadRng.random.bind(loadRng), this.state.log);
     }
     this.refreshScourgePrediction();
     this.notifyStateChange();

@@ -68,6 +68,15 @@ Catalog sustainment numbers are definition values. Runtime applies rationing, su
 
 Actual output and sustainment depend on population, efficiency, and modifiers.
 
+Biosphere Arcology also increases Hero funding efficiency by 5%, and Harmony Halo
+by 10%. These bonuses increase the apparatus rating gained per credit of actual
+funding; they do not generate Charge. Current definitions use
+`hero_funding_efficiency_mult`. Legacy saved improvement modifiers named
+`hero_siphon_efficiency_mult` or `hero_siphon_efficiency_add` remain compatible
+funding-efficiency aliases, without renaming or converting the saved keys. The
+terminal describes both versions as Hero funding efficiency (an old additive
+`0.01` bonus is equivalent to +5% at the base funding rate).
+
 ## Advanced Resource Uses
 
 The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly Platform and T3 Imperial Bastion World. The assembly platform produces anti-grav modules for the T2 Nano-Logistics Corridor and T3 Dyson Mantle. Consuming anti-grav modules also feeds the owning empire's existing construction-effect pool.
@@ -93,10 +102,10 @@ The T2 Exotic Matter Lattice produces dark matter for the T2 Anti-Grav Assembly 
 | military | T2 | Combat Cloning Vault | 520 | 360 | 3 | 6 | genomes: 0.045, psycho_implants: 0.03 | army_replenishment_mult: 0.18, army_consumption_mp_gain_mult: 0.22, army_fervor: 1 |
 | military | T3 | Imperial Bastion World | 1200 | 900 | 6 | 10 | super_alloys: 0.125, nano_machines: 0.092 | army_organization: 2.4, army_fervor: 1.4, army_protection: 0.04, supply_efficiency: 0.12, army_damage_add: 0.16, army_damage_mult: 0.09, army_replenishment_mult: 0.18, army_consumption_mp_gain_mult: 0.22 |
 | military | T3 | Cataphract Forge Halo | 1280 | 980 | 6 | 11 | super_alloys: 0.074, nano_machines: 0.052, wormhole_reactors: 0.011 | army_organization: 2.5, army_protection: 0.03, army_damage_add: 0.22, army_damage_mult: 0.1, army_replenishment_mult: 0.24, army_consumption_mp_gain_mult: 0.3 |
-| cultural | T1 | Biosphere Arcology | 140 | 180 | 2 | 2 | biomass: 0.046 | population_growth: 0.06, empire_approval: 4, hero_siphon_efficiency_add: 0.01 |
+| cultural | T1 | Biosphere Arcology | 140 | 180 | 2 | 2 | biomass: 0.046 | population_growth: 0.06, empire_approval: 4, hero_funding_efficiency_mult: 0.05 |
 | cultural | T1 | Heritage Memory Vault | 160 | 200 | 2 | 2 | ancient_relics: 0.022, psycho_implants: 0.012 | empire_approval: 5, population_growth: 0.04 |
 | cultural | T2 | Festival Ring of Worlds | 620 | 300 | 4 | 7 | genomes: 0.072, psycho_implants: 0.018 | population_growth: 0.12, empire_approval: 7 |
-| cultural | T3 | Harmony Halo | 1050 | 720 | 6 | 10 | genomes: 0.055, psycho_implants: 0.11 | population_growth: 0.22, empire_approval: 12, hero_siphon_efficiency_add: 0.02 |
+| cultural | T3 | Harmony Halo | 1050 | 720 | 6 | 10 | genomes: 0.055, psycho_implants: 0.11 | population_growth: 0.22, empire_approval: 12, hero_funding_efficiency_mult: 0.1 |
 | economic | T1 | Trade Relay Nexus | 220 | 240 | 2 | 2 | rare_gases: 0.028 | trade_income: 140 |
 | economic | T1 | Commodity Exchange Spire | 200 | 220 | 2 | 2 | psycho_implants: 0.018, genomes: 0.015 | trade_income: 110, market_efficiency: 0.04 |
 | economic | T2 | Convergence Exchange Ring | 520 | 480 | 2 | 7 | rare_gases: 0.056, quantum_circuits: 0.019 | trade_income: 360, market_efficiency: 0.08 |

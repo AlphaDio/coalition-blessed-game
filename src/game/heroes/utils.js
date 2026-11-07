@@ -54,3 +54,16 @@ export function getPopularityScalar(hero) {
   const effectivePopularity = Math.min(hero.meters.popularity, cap);
   return clamp(0.2 + (effectivePopularity / 100) * 1.0, 0.2, 1.2);
 }
+
+export function getFundingScalar(hero) {
+  const funding = Number.isFinite(hero.funding) ? hero.funding : 0;
+  const fraction = clamp(funding, 0, HERO_CONSTANTS.FUNDING_MAX) / HERO_CONSTANTS.FUNDING_MAX;
+  return HERO_CONSTANTS.FUNDING_MIN_SCALAR + fraction *
+    (HERO_CONSTANTS.FUNDING_MAX_SCALAR - HERO_CONSTANTS.FUNDING_MIN_SCALAR);
+}
+
+export function getAbilityScalar(hero) {
+  // Popularity and support matter, but even the least popular, unfunded Hero
+  // retains a meaningful effect. Passives continue using popularity alone.
+  return Math.max(HERO_CONSTANTS.ABILITY_MIN_SCALAR, getPopularityScalar(hero) * getFundingScalar(hero));
+}

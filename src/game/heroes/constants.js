@@ -21,7 +21,16 @@ export const HERO_CONSTANTS = {
   POPULARITY_CAP_FACTOR: 0.5,
   // Popular heroes shed heat faster (bonus decay per tick, scaled by popularity/100).
   POPULARITY_HEAT_DECAY_BONUS: 0.20,
-  CHARGE_PER_CREDIT: 0.2, // 0.02 -> 0.2
+  // A typical 10,000-credit treasury supports a Hero at ~10 credits/tick:
+  // about 25 ticks builds a full apparatus; 2 credits/tick maintains it.
+  FUNDING_MAX: 100,
+  FUNDING_DECAY: 1,
+  FUNDING_PER_CREDIT: 0.5,
+  FUNDING_MAX_SPEND_PER_TICK: 10,
+  FUNDING_MAX_BUDGET_SHARE: 0.3,
+  FUNDING_MIN_SCALAR: 0.6,
+  FUNDING_MAX_SCALAR: 1.4,
+  ABILITY_MIN_SCALAR: 0.35,
   ABILITY_DEFAULT_CHARGE: 100,
   STATUS_CHARGE_MULTIPLIER: {
     ACTIVE: 1,

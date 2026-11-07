@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: -0.8
     budget_share: 0.001
     ability_id: "ABILITY_PROPAGANDA_BLITZ"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance the living swarm network"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend the living swarm network"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for the living swarm network"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "IMPROVEMENT_COMPLETED"
+        amount: 65
+        description: "Own improvement completed: grow the fungal network"
+        empire_scope: "own"
+      - event: "LAW_PROPOSED"
+        amount: 35
+        description: "Own economy proposal: give the swarm a common purpose"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["economy", "unity", "natural"]
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over the living swarm network"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "DEBATE"
       cadence: "OnTick"

@@ -5,6 +5,7 @@ import { FRONT_BATTLE_MODIFIERS } from './constants.js';
 import { syncUnitsFromArmy } from './armyComposition.js';
 import { getEmpireMilitaryModifierSet } from './empireModifiers.js';
 import { consumeArmyExperienceSurgeForRound } from './armyExperience.js';
+import { triggerHeroEvent } from './heroes/charge.js';
 import {
   getEffectiveArmyFervor,
   getEffectiveArmyKillRateBonus,
@@ -664,7 +665,49 @@ function endBattle(front, worldState, winnerSide) {
     reinforcedMP: { ...(front.reinforcedMP || { left: 0, right: 0 }) }
   });
 
+  emitHeroBattleOutcome(front, worldState, winnerSide, log);
+
   return log;
+}
+
+/** Shared by front resolution and legacy result handlers; event IDs deduplicate awards. */
+export function emitHeroBattleOutcome(front, worldState, winnerSide, log = []) {
+  if (winnerSide === 'left' || winnerSide === 'right') {
+    const sideEmpireIds = front.heroEmpireIdsBySide || {
+      left: getArmyEmpireIds(worldState, worldState.armies.find(army => army.id === front.leftArmyId)),
+      right: front.isInsurrectionBattle ? [] : getArmyEmpireIds(worldState, worldState.armies.find(army => army.id === front.rightArmyId))
+    };
+    const loserSide = winnerSide === 'left' ? 'right' : 'left';
+    const eventContext = {
+      eventId: `${front.id}:ended`,
+      front,
+      battleContext: {
+        type: front.heroBattleType || (front.isScourgeBattle ? 'SCOURGE' : front.isInsurrectionBattle ? 'INSURRECTION' : 'FRONT'),
+        frontId: front.id
+      }
+    };
+    triggerHeroEvent(worldState, 'BATTLE_WON', {
+      ...eventContext,
+      participatingEmpireIds: sideEmpireIds[winnerSide] || []
+    }, log);
+    triggerHeroEvent(worldState, 'BATTLE_LOST', {
+      ...eventContext,
+      participatingEmpireIds: sideEmpireIds[loserSide] || []
+    }, log);
+  }
+
+}
+
+// Preserve the original affiliations of composite forces: their synthetic
+// empire IDs (_coalition/_insurrection) are not Hero affiliations.
+function getArmyEmpireIds(worldState, army) {
+  if (!army || army.empireId === '_insurrection' || army.isScourge) return [];
+  const originals = army._originalArmies || [];
+  const empireIds = originals.length > 0
+    ? originals.map(original => worldState.armies.find(entry => entry.id === original.id)?.empireId)
+    : [army.empireId];
+  const validIds = new Set((worldState.empires || []).map(empire => empire.id));
+  return [...new Set(empireIds.filter(id => validIds.has(id)))];
 }
 
 /**
@@ -673,9 +716,10 @@ function endBattle(front, worldState, winnerSide) {
  * @param {string} leftArmyId - Left army ID
  * @param {string} rightArmyId - Right army ID
  * @param {number} battlefieldSize - Battle width
+ * @param {Object} options - Optional log sink, battle type, and original empire affiliations
  * @returns {Object} Created battle front
  */
-export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize = 1000) {
+export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize = 1000, options = {}) {
   const logger = getLogger();
   const leftArmy = worldState.armies.find(a => a.id === leftArmyId);
   const rightArmy = worldState.armies.find(a => a.id === rightArmyId);
@@ -704,6 +748,11 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
     battlefieldSize,
     leftArmyId,
     rightArmyId,
+    heroEmpireIdsBySide: options.participatingEmpireIdsBySide || {
+      left: getArmyEmpireIds(worldState, leftArmy),
+      right: getArmyEmpireIds(worldState, rightArmy)
+    },
+    heroBattleType: options.battleType || 'FRONT',
     roundNumber: 0,
     roundDamage: {
       left: 0,
@@ -734,6 +783,17 @@ export function startBattle(worldState, leftArmyId, rightArmyId, battlefieldSize
     leftArmyName: leftArmy.name,
     rightArmyName: rightArmy.name
   });
+
+  const heroLog = options.log || (worldState.log = worldState.log || []);
+  triggerHeroEvent(worldState, 'BATTLE_STARTED', {
+    eventId: `${front.id}:started`,
+    front,
+    participatingEmpireIds: [...new Set([
+      ...front.heroEmpireIdsBySide.left,
+      ...front.heroEmpireIdsBySide.right
+    ])],
+    battleContext: { type: front.heroBattleType, frontId: front.id }
+  }, heroLog);
   
   return front;
 }

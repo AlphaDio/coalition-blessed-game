@@ -11,6 +11,9 @@ modules/
 ├── units/         # Unit definitions
 ├── laws/          # Law/policy definitions
 ├── events/        # Event definitions
+├── heroes/        # Empire-affiliated Hero agendas and Charge triggers
+├── hero_abilities/ # Signature ability hooks, thresholds and contexts
+├── hero_passives/ # Existing passive hooks and trigger definitions
 ├── abilities/     # Ability definitions (for other modules)
 ├── ai/            # AI behavior definitions (for other modules)
 ├── creatures/     # Creature definitions (for other modules)
@@ -142,6 +145,92 @@ declares:
         effects:
           coalitionCohesion: "random"  # Use "random" for dynamic effects
 ```
+
+### Heroes
+
+Hero content defines identity, ideological values, passives, signature ability and
+six thematic Charge rules per built-in Hero. Funding is a separate apparatus rating:
+`budget_share` requests actual credits each tick and never generates Charge.
+
+```yaml
+declares:
+  hero_data:
+    id: hero_example
+    empireId: empire_1
+    name: Example Reformer
+    tags: [political, reform]
+    values:
+      authoritarian_liberal: 0.7
+    budget_share: 0.0012
+    ability_id: ABILITY_LEGISLATIVE_SURGE
+    charge_triggers:
+      - event: LAW_ENACTED
+        amount: 55
+        description: "Aligned law enacted: advance the reform agenda"
+        empire_scope: any
+        alignment: support
+      - event: LAW_ENACTED
+        amount: 60
+        description: "Opposed law enacted: mobilize reform opposition"
+        empire_scope: any
+        alignment: oppose
+      - event: LAW_REJECTED
+        amount: 75
+        description: "Aligned law rejected: rally for reform"
+        empire_scope: any
+        alignment: support
+      - event: LAW_PROPOSED
+        amount: 40
+        description: "Own governance proposal: advance the reform agenda"
+        empire_scope: own
+        proposer_only: true
+        law_tags_any: [governance]
+      - event: BATTLE_LOST
+        amount: 80
+        description: "Empire loses battle: demand reform"
+        empire_scope: participant
+      - event: LAW_PROPOSED
+        amount: 12
+        description: "Ideological law proposed: mobilize around reform"
+        empire_scope: any
+        alignment: either
+    passive:
+      phase: VOTING
+      cadence: OnStart
+      passive_id: PASSIVE_VOTING_START_WHIP
+```
+
+Supported Charge event types are `LAW_PROPOSED`, `LAW_ENACTED`, `LAW_REJECTED`,
+`BATTLE_STARTED`, `BATTLE_WON`, `BATTLE_LOST`, `TECH_UNLOCKED`,
+`IMPROVEMENT_STARTED` and `IMPROVEMENT_COMPLETED`. Optional filters are:
+
+- `empire_scope: own | participant | any`: require ownership, battle participation,
+  or allow coalition-wide events.
+- `alignment: support | oppose | either`: compare live Hero values with law
+  values (cosine alignment threshold `+0.15` or `-0.15`).
+- `law_tags_any: [tags]`: match a thematic law tag/category.
+- `proposer_only: true`: require the Hero to be the law's proposer.
+
+Only the strongest matching rule awards Charge for an event, after status scaling.
+Duplicate delivery uses a stable, namespaced event ID recorded in the Hero's
+`charge_events`; the ledger is saved and restored. Event producers must preserve
+the same ID when observing the same occurrence. Recurring law ticks are not Charge
+events. Tune rule amounts against meaningful event frequency. Current Heroes gain
+12 Charge from an ideological proposal, with personal thematic proposal rules
+awarding 35–45 instead. Enactments award 55–60, aligned rejections 75, battle starts
+45, victories 65, defeats 75–90, technology unlocks 70–85, and completed improvements
+65–75. Modest proposal awards sustain activity between rarer outcomes; stronger
+matching rules replace that award without stacking. Ability thresholds remain
+100–200 with content-defined cooldowns.
+
+Hero ability data supplies `chargeRequired`, `cooldown`, `description`, and optional
+`requires_context: law | army`. The engine requires a useful effect before spending
+Charge or starting a cooldown. Existing ability hooks may continue using
+`scope.popularity_scalar`, which now carries the combined Funding/Popularity ability
+multiplier. New hooks can use the explicit `scope.ability_scalar`,
+`scope.funding_scalar`, and `scope.popularity_only_scalar` values. Passive hook
+Popularity remains unchanged. See [Heroes System](../docs/systems/heroes_system_v0_3.md)
+for funding rates and save compatibility.
 
 ## Adding New Content
 

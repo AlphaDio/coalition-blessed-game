@@ -5,6 +5,7 @@ import {
   finalizeImprovementSustainmentPreMarket
 } from './sustainment.js';
 import { grantImprovementUnits } from './modifiers.js';
+import { triggerHeroPassives } from '../../heroes.js';
 
 /**
  * Process improvements each tick
@@ -60,6 +61,10 @@ export function processImprovementsTick(state) {
         log.push(`{green-fg}Completed:{/green-fg} ${improvement.name} (${empireName}) is now ACTIVE`);
         const grantLog = grantImprovementUnits(state, improvement);
         log.push(...grantLog);
+        triggerHeroPassives(state, 'IMPROVEMENT_COMPLETED', {
+          empireId: improvement.empireId,
+          improvement
+        }, log);
       }
     }
 

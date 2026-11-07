@@ -18,6 +18,7 @@ declares:
   hero_ability_data:
     id: "ABILITY_PUBLIC_MANDATE"
     description: "Convert popularity into law momentum/legitimacy while increasing hero heat."
+    requires_context: "law"
     chargeRequired: 100
     cooldown: 10
 

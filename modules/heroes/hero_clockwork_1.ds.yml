@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: 0.8
     budget_share: 0.0012
     ability_id: "ABILITY_IRON_DECREE"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance deterministic governance"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend deterministic governance"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for deterministic governance"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_PROPOSED"
+        amount: 45
+        description: "Own governance proposal: encode a more reliable protocol"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "mechanical", "efficiency"]
+      - event: "TECH_UNLOCKED"
+        amount: 70
+        description: "Own technology unlocked: refine the decision architecture"
+        empire_scope: "own"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over deterministic governance"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "VOTING"
       cadence: "OnStart"

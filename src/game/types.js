@@ -9,6 +9,7 @@ import {
 } from './constants.js';
 import { createArmyBattlePrep, ensureArmyBattlePrep, addArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
+import { copyChargeTriggers, getDefaultChargeTriggers, migrateHeroProgression } from './heroes/progression.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -180,7 +181,11 @@ export function createHero(id, empireId, name, options = {}) {
     status: options.status || 'ACTIVE',
     budget_share: options.budget_share ?? 0.1,
     charge: options.charge ?? 0,
-    siphon_bank: options.siphon_bank ?? 0,
+    charge_triggers: copyChargeTriggers(options.charge_triggers || getDefaultChargeTriggers(id)),
+    charge_events: [...(options.charge_events || [])],
+    funding: Math.max(0, Math.min(100, Number.isFinite(options.funding) ? options.funding : 0)),
+    funding_total: Math.max(0, Number.isFinite(options.funding_total) ? options.funding_total : 0),
+    funding_last_paid: options.funding_last_paid ?? 0,
     ability_id: options.ability_id || null,
     passive: options.passive || {
       phase: 'DEBATE',
@@ -327,6 +332,7 @@ export function createLawDefinition(id, name, axis_vector = {}, law_tags = [], s
 export function createLawProcess(lawId, startTick = 0) {
   return {
     lawId,
+    hero_event_id: `law:${lawId}:${startTick}`,
     proposalId: null,
     sponsorHeroId: null,
     phase: 'DEBATE', // DEBATE | FALLOUT | VOTING | ENACTED | BURIED
@@ -554,8 +560,8 @@ export function createGameState(seed = 0) {
       requisition_uptick: 0,
       requisition_gain_multiplier: 1.0,
       consumptionSourceMultipliers: {},
-      hero_siphon_efficiency_mult: 0,
-      hero_siphon_efficiency_add: 0,
+      hero_funding_efficiency_mult: 0,
+      hero_funding_efficiency_add: 0,
       lawProgressBonus: 0,
       industrialOutputBonus: 0,
       law_progress_speed: 0,
@@ -873,6 +879,7 @@ export function migrateGameState(state) {
   }
   if (state.lawProcesses && Array.isArray(state.lawProcesses)) {
     state.lawProcesses.forEach((lawProcess) => {
+      lawProcess.hero_event_id ||= `law:${lawProcess.lawId}:${lawProcess.startTick ?? 0}`;
       if (lawProcess.proposalId === undefined) {
         lawProcess.proposalId = null;
       }
@@ -883,6 +890,7 @@ export function migrateGameState(state) {
   }
   if (state.heroes && Array.isArray(state.heroes)) {
     state.heroes.forEach((hero) => {
+      migrateHeroProgression(hero);
       hero.cooldowns = hero.cooldowns || {};
       if (!Number.isFinite(hero.cooldowns.ability)) {
         hero.cooldowns.ability = 0;
@@ -891,6 +899,17 @@ export function migrateGameState(state) {
         hero.cooldowns.law_proposal = 0;
       }
     });
+  }
+  // Saved rosters and already-present recruitment choices can predate Charge triggers.
+  const migrateCandidate = candidate => {
+    if (candidate && !Array.isArray(candidate.charge_triggers)) {
+      candidate.charge_triggers = getDefaultChargeTriggers(candidate.id);
+    }
+    if (candidate) delete candidate.siphon_bank;
+  };
+  if (Array.isArray(state.heroRoster)) state.heroRoster.forEach(migrateCandidate);
+  if (Array.isArray(state.activeEvent?.choices)) {
+    state.activeEvent.choices.forEach(choice => migrateCandidate(choice?.hero_candidate));
   }
   if (!Array.isArray(state.enactedLawsHistory)) {
     state.enactedLawsHistory = [...state.enactedLaws];

@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: -0.6
     budget_share: 0.001
     ability_id: "ABILITY_PROPAGANDA_BLITZ"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance ecological stewardship"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend ecological stewardship"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for ecological stewardship"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "IMPROVEMENT_COMPLETED"
+        amount: 70
+        description: "Own improvement completed: demonstrate careful stewardship"
+        empire_scope: "own"
+      - event: "LAW_PROPOSED"
+        amount: 35
+        description: "Own governance proposal: negotiate protection for living worlds"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "unity", "natural", "biologic"]
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over ecological stewardship"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "VOTING"
       cadence: "OnStart"

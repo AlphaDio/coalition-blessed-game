@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: 0.85
     budget_share: 0.0009
     ability_id: "ABILITY_PROPAGANDA_BLITZ"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance protocol compliance"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend protocol compliance"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for protocol compliance"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_PROPOSED"
+        amount: 35
+        description: "Own governance proposal: standardize the coalition protocol"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "mechanical", "efficiency"]
+      - event: "BATTLE_LOST"
+        amount: 80
+        description: "Empire loses battle: correct failed tactical protocols"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over protocol compliance"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "BATTLE"
       cadence: "OnStart"

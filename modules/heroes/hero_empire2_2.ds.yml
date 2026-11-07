@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: -0.4
     budget_share: 0.0011
     ability_id: "ABILITY_LEGISLATIVE_SURGE"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance biological progress"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend biological progress"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for biological progress"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "TECH_UNLOCKED"
+        amount: 85
+        description: "Own technology unlocked: champion a new discovery"
+        empire_scope: "own"
+      - event: "LAW_PROPOSED"
+        amount: 35
+        description: "Own growth or rights proposal: rally the research constituency"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["economy", "rights", "natural", "biologic"]
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over biological progress"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "DEBATE"
       cadence: "OnStart"

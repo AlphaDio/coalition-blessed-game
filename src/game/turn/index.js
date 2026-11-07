@@ -19,7 +19,7 @@ import { processTechAccrual, createTechEvent } from '../technology.js';
 import { processUnityAccrual, popNextUnityCelebrationEvent } from '../unity.js';
 import { calculateScourgePrediction } from '../scourgePrediction.js';
 import { initializeTurnConsumptionTracking, processConsumptionToRequisition } from '../consumptionToRequisition.js';
-import { applyHeroBudgetSiphon, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters } from '../heroes.js';
+import { applyHeroFunding, applyHeroSpillover, tickHeroCooldowns, tickHeroMeters, triggerHeroAbilities, getActiveHeroLawProcess } from '../heroes.js';
 import { generateHeroLawProposals } from '../lawProposals.js';
 import { applyMissionSliderEffects, maybeSpawnDeepMission } from '../scourgeMissions.js';
 import { applyThreatClimateBonuses, resetDynamicCoalitionModifiers } from '../scourgeThreat.js';
@@ -69,6 +69,9 @@ export function advanceTurn(state, rng = Math.random) {
   applyEmergencyPowerDynamicModifiers(state);
   tickScourgeRecovery(state);
   initializeTurnConsumptionTracking();
+  // Tick cooldowns before producing events so every activation receives its
+  // full cooldown, regardless of which part of this turn caused it.
+  tickHeroCooldowns(state);
 
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);
@@ -99,10 +102,10 @@ export function advanceTurn(state, rng = Math.random) {
   refreshArmyAggregates(state);
   applyArmyPassiveStatModifiers(state);
 
-  // 4. Hero budget siphon, cooldowns, and meter drift
-  applyHeroBudgetSiphon(state, log);
-  tickHeroCooldowns(state);
+  // 4. Fund Heroes from the treasury remaining after the market and other expenses.
+  applyHeroFunding(state, log);
   tickHeroMeters(state, log);
+  triggerHeroAbilities(state, getActiveHeroLawProcess(state), log);
   generateHeroLawProposals(state, rngFn, log);
 
   // 4.5. Apply cohesion penalty for negative requisition

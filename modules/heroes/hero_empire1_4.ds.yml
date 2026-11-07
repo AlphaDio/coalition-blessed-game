@@ -30,6 +30,37 @@ declares:
       essentialist_constructivist: 0.35
     budget_share: 0.0009
     ability_id: "ABILITY_WAR_CRY"
+    charge_triggers:
+      - event: "LAW_ENACTED"
+        amount: 55
+        description: "Aligned law enacted: advance diplomatic consensus"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_ENACTED"
+        amount: 60
+        description: "Opposed law enacted: defend diplomatic consensus"
+        empire_scope: "any"
+        alignment: "oppose"
+      - event: "LAW_REJECTED"
+        amount: 75
+        description: "Aligned law rejected: rally for diplomatic consensus"
+        empire_scope: "any"
+        alignment: "support"
+      - event: "LAW_PROPOSED"
+        amount: 40
+        description: "Own governance proposal: broker a new consensus"
+        empire_scope: "own"
+        proposer_only: true
+        law_tags_any: ["governance", "unity", "rights"]
+      - event: "BATTLE_LOST"
+        amount: 75
+        description: "Empire loses battle: renew diplomatic solidarity"
+        empire_scope: "participant"
+      - event: "LAW_PROPOSED"
+        amount: 12
+        description: "Law proposed: mobilize for debate over diplomatic consensus"
+        empire_scope: "any"
+        alignment: "either"
     passive:
       phase: "BATTLE"
       cadence: "OnStart"

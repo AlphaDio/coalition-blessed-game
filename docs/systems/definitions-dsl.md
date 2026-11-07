@@ -62,8 +62,17 @@ When a hero passive fires, the engine provides:
 When a hero ability triggers, the engine provides:
 - `scope.hero`, `scope.empire`, `scope.state`
 - `scope.law_process`
-- `scope.popularity_scalar`
+- `scope.ability_scalar`: combined Funding and Popularity multiplier, minimum `0.35`
+- `scope.funding_scalar`: Funding multiplier, `0.6..1.4`
+- `scope.popularity_only_scalar`: original cap-aware Popularity multiplier
+- `scope.popularity_scalar`: compatibility alias for `scope.ability_scalar` in ability hooks
 - `scope.hero_tags`, `scope.empire_tags`
+
+Passive hooks retain their original Popularity scaling. Signature ability content
+may declare `requires_context: law | army` in `hero_ability_data`. An ability only
+spends Charge and starts its cooldown when it can produce a meaningful effect in
+the current context. Funding is paid incrementally each tick, with no activation
+bill. Hero event Charge rules are documented in [Content Modules](../../modules/README.md#heroes).
 
 **Example: Hero Passive Hook**
 ```yaml

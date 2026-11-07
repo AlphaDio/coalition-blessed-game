@@ -18,6 +18,7 @@ declares:
   hero_ability_data:
     id: "ABILITY_IRON_DECREE"
     description: "Slash reject pressure and unrest on a law, but increase polarization and hero heat."
+    requires_context: "law"
     chargeRequired: 120
     cooldown: 12
 

@@ -39,7 +39,7 @@ hooks:
                   log_message: "'Hero Ability: {hero} launched a propaganda blitz (+{amount} popularity).'"
       - set_variable:
           varName: "heat_reduction"
-          value: "-8"
+          value: "-8 * scope.popularity_scalar"
       - if:
           condition: "vars.heat_reduction < 0"
           then:

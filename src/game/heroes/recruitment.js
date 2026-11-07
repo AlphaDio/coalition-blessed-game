@@ -56,6 +56,7 @@ export function createHeroFromCandidate(state, empire, candidate, rng = Math.ran
       status: HERO_STATUS.ACTIVE,
       budget_share: candidate.budget_share ?? 0.1,
       charge: 0,
+      charge_triggers: candidate.charge_triggers,
       ability_id: candidate.ability_id || null,
       passive: {
         phase: candidate.passive?.phase || candidate.passive_phase || 'DEBATE',
@@ -67,8 +68,8 @@ export function createHeroFromCandidate(state, empire, candidate, rng = Math.ran
         grievance: 0,
         popularity: 50
       },
-      siphon_bank: 0,
-      last_trigger_turn: state.turn ?? -1,
+      funding: 0,
+      last_trigger_turn: -1,
       cooldowns: { ability: 0 },
       modifiers: {}
     }

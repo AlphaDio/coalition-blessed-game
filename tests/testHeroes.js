@@ -2,7 +2,7 @@
 
 /**
  * Test suite for hero system v0.3
- * Validates creation, siphon/charge mechanics, meters, passives, abilities,
+ * Validates creation, funding, meters, passives, abilities,
  * law integration hooks, and recruitment events.
  */
 
@@ -17,7 +17,7 @@ import { DeterministicRNG } from '../src/modules/rng.js';
 import { getSampleLawDefinitions } from '../src/game/lawDefinitions.js';
 import { resolveAllLawProcesses } from '../src/game/lawProcessManager.js';
 import {
-  applyHeroBudgetSiphon,
+  applyHeroFunding,
   applyHeroLawPressure,
   applyHeroLawTension,
   runHeroPassives,
@@ -98,29 +98,30 @@ console.log('=== Test 1: Hero Creation ===');
   assert(hero.tagline === 'A steady hand in chaos.', 'Hero tagline set');
   assert(hero.budget_share === 0.002, 'Hero budget_share set');
   assert(hero.charge === 0, 'Hero charge defaulted to 0');
-  assert(hero.siphon_bank === 0, 'Hero siphon_bank defaulted to 0');
+  assert(hero.funding === 0, 'Hero starts without funded apparatus');
+  assert(!('siphon_bank' in hero), 'New Heroes have no virtual siphon bank');
   assert(hero.ability_id === 'ABILITY_PUBLIC_MANDATE', 'Hero ability_id set');
 }
 console.log();
 
-console.log('=== Test 2: Budget Siphon Mechanics ===');
+console.log('=== Test 2: Actual Incremental Funding ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
   empire.budget_credits = 1000;
-  const hero = createHero('HERO_1', empire.id, 'Siphon Hero', {
-    budget_share: 0.002,
+  const hero = createHero('HERO_1', empire.id, 'Funded Hero', {
+    budget_share: 0.01,
     ability_id: 'ABILITY_PUBLIC_MANDATE'
   });
   state.heroes = [hero];
 
   const log = [];
-  applyHeroBudgetSiphon(state, log);
+  applyHeroFunding(state, log);
 
-  assert(empire.budget_credits === 1000, 'Empire budget not deducted by virtual siphon');
-  assert(approxEqual(hero.siphon_bank, 2), 'Hero siphon_bank accumulates virtual credits');
-  // charge = siphon_bank * CHARGE_PER_CREDIT (0.2) = 2 * 0.2 = 0.4
-  assert(approxEqual(hero.charge, 0.4), 'Hero charge increases by virtual siphon');
+  assert(empire.budget_credits < 1000, 'Funding draws actual empire credits');
+  assert(hero.funding > 0, 'Paid support builds funding rating');
+  assert(hero.charge === 0, 'Funding never creates Charge');
+  assert(!('siphon_bank' in hero), 'Funding has no deferred bank or debt');
 }
 console.log();
 
@@ -210,29 +211,35 @@ console.log('=== Test 6: Passive Trigger ===');
 }
 console.log();
 
-console.log('=== Test 7: Ability Trigger + Siphon Bank Spend ===');
+console.log('=== Test 7: Ability Trigger with Context and No Activation Debit ===');
 {
   const state = createTestState();
   const empire = state.empires[0];
-  empire.budget_credits = 500;
+  empire.budget_credits = 0;
   const hero = createHero('HERO_1', empire.id, 'Ability Hero', {
     ability_id: 'ABILITY_PUBLIC_MANDATE',
     charge: 100,
-    siphon_bank: 300,
+    funding: 0,
     meters: { heat: 20, grievance: 10, popularity: 50 }
   });
   state.heroes = [hero];
 
   const log = [];
   triggerHeroAbilities(state, null, log);
+  assert(hero.charge === 100, 'Law-dependent ability retains Charge without law context');
+  assert(!hero.cooldowns.ability, 'Unresolvable ability does not start cooldown');
+  assert(hero.meters.heat === 20, 'Unresolvable ability applies no backlash');
 
-  assert(hero.charge === 0, 'Ability consumes charge');
-  assert(hero.cooldowns.ability > 0, 'Ability cooldown applied');
-  assert(empire.budget_credits === 200, 'Siphon bank deducted from budget on ability');
-  assert(hero.siphon_bank === 0, 'Siphon bank reset after ability');
-  assert(hero.meters.heat > 20, 'Ability increases heat as political backlash tradeoff');
-  assert(approxEqual(hero.meters.grievance, 10), 'Ability no longer auto-cleanses grievance');
-  assert(hero.meters.popularity > 50, 'Ability increases popularity');
+  const lawProcess = createLawProcess('LAW_TEST', state.turn);
+  triggerHeroAbilities(state, lawProcess, log);
+
+  assert(hero.charge === 0, 'Resolved ability consumes Charge');
+  assert(hero.cooldowns.ability > 0, 'Resolved ability starts cooldown');
+  assert(empire.budget_credits === 0, 'An underfunded empire can activate without debit');
+  assert(hero.funding === 0, 'Activation does not consume funding rating');
+  assert(hero.meters.heat > 20, 'Resolved mandate generates political backlash');
+  assert(approxEqual(hero.meters.grievance, 10), 'Mandate preserves grievance');
+  assert(hero.meters.popularity > 50, 'Resolved mandate increases popularity');
 }
 console.log();
 
