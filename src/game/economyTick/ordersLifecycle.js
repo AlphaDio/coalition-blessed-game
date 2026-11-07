@@ -6,6 +6,11 @@ import {
 } from '../improvements/engine/sustainment.js';
 import { CONSUMPTION_SOURCES, recordConsumption } from '../consumptionToRequisition.js';
 import {
+  enforceMinorBudgetConstraints,
+  applyMinorBuyTrade,
+  applyMinorSellTrade
+} from '../expeditions/economy.js';
+import {
   addPressure,
   finalizeBacklogOrders,
   getPressureConfig,
@@ -64,6 +69,10 @@ function getConsumptionSourceFromBuyOrder(buyOrder) {
 }
 
 function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
+  if (buyOrder.owner_type === 'minor') {
+    applyMinorBuyTrade(state, trade, buyOrder);
+    return;
+  }
   if (buyOrder.owner_type === 'empire') {
     const empire = empiresById.get(buyOrder.owner_id);
     if (!empire) return;
@@ -126,7 +135,11 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
   }
 }
 
-function applySellTrade(trade, sellOffer, empiresById) {
+function applySellTrade(state, trade, sellOffer, empiresById) {
+  if (sellOffer.owner_type === 'minor') {
+    applyMinorSellTrade(state, trade, sellOffer);
+    return;
+  }
   if (sellOffer.owner_type !== 'empire') return;
   const empire = empiresById.get(sellOffer.owner_id);
   if (!empire) return;
@@ -203,10 +216,13 @@ function getOrderEmpireId(order, armiesById) {
  * budget.
  */
 export function enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers) {
+  const minorBudgetResult = enforceMinorBudgetConstraints(state, validBuyOrders, validSellOffers);
+  validBuyOrders = minorBudgetResult.validBuyOrders;
+  validSellOffers = minorBudgetResult.validSellOffers;
   const empiresById = new Map((state.empires || []).map(empire => [empire.id, empire]));
   const armiesById = new Map((state.armies || []).map(army => [army.id, army]));
   const budgetRemaining = new Map();
-  const blocked = [];
+  const blocked = [...minorBudgetResult.blocked];
 
   empiresById.forEach((empire, empireId) => {
     const normalizedBudget = getEmpireBudget(empire);
@@ -498,7 +514,7 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
 
       applyRelationAdjustedTradePrice(state, trade, buyOrder, sellOffer, armiesById);
       applyBuyTrade(state, trade, buyOrder, empiresById, armiesById);
-      applySellTrade(trade, sellOffer, empiresById);
+      applySellTrade(state, trade, sellOffer, empiresById);
       allTrades.push(trade);
     });
 

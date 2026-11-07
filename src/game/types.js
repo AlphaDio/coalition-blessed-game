@@ -9,6 +9,8 @@ import {
 } from './constants.js';
 import { createArmyBattlePrep, ensureArmyBattlePrep, addArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
+import { createExpeditionsState, ensureExpeditionsState } from './expeditions/state.js';
+import { EXPEDITION_STARTER_SUPPLIES } from './expeditions/catalog.js';
 
 function parseConsumptionRules(consumption) {
   if (!consumption) return [];
@@ -463,6 +465,7 @@ export function createBattleFront(id, leftArmyId, rightArmyId, battlefieldSize =
 export function createGameState(seed = 0) {
   const gameplayEventQueue = [];
   return {
+    expeditions: createExpeditionsState(),
     coalitionCohesion: 75,
     coalitionThreat: 0,
     coalitionGlory: 0,
@@ -480,8 +483,7 @@ export function createGameState(seed = 0) {
     scourgeNextAttackManpowerDamagePct: 0,
     pendingScourgeAttack: null,
     threatClimate: { activeSlots: 0, activeBonusList: [] },
-    stockpiles: {
-    },
+    stockpiles: { ...EXPEDITION_STARTER_SUPPLIES },
       empires: [],
       armies: [],
       heroes: [],
@@ -670,6 +672,7 @@ export function cleanupAllExpiredBonuses(state) {
  */
 export function migrateGameState(state) {
   if (!state) return state;
+  ensureExpeditionsState(state);
 
   if (state.empires && Array.isArray(state.empires)) {
     state.empires.forEach((empire) => {

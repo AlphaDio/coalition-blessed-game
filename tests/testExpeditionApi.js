@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import WebSocket from 'ws';
+import { createApiServer } from '../src/server/api.js';
+import { getLogger } from '../src/modules/logger.js';
+
+// Exercise the real REST/WebSocket boundary with unmodified opening resources.
+const logger = getLogger();
+logger.enableConsole = false;
+logger.enableFile = false;
+const { httpServer, gameManager } = await createApiServer(0, 'http://localhost', 42);
+const base = `http://127.0.0.1:${httpServer.address().port}`;
+const socket = new WebSocket(base.replace('http', 'ws'));
+const messages = [];
+socket.on('message', data => messages.push(JSON.parse(data.toString())));
+const post = async payload => {
+  const response = await fetch(`${base}/api/game/actions/expedition`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  });
+  return { status: response.status, body: await response.json() };
+};
+
+try {
+  await once(socket, 'open');
+  const opening = gameManager.getGameState();
+  assert(opening.expeditions.options.filter(option => option.targetType === 'plan').every(option => !option.disabled),
+    'Both expedition plans must be affordable in an actual new game');
+  const supplies = structuredClone(opening.stockpiles);
+  const malformed = await post({});
+  assert.equal(malformed.status, 400);
+  const unknown = await post({ action: 'launch', planId: 'invalid' });
+  assert.equal(unknown.status, 400);
+  assert.deepEqual(opening.stockpiles, supplies);
+
+  const launched = await post({ action: 'launch', planId: 'contact' });
+  assert.equal(launched.status, 200);
+  assert.equal(launched.body.data.expeditions.active.length, 1);
+  assert.equal(launched.body.data.stockpiles.biomass, supplies.biomass - 20);
+  assert.equal((await post({ action: 'launch', planId: 'contact' })).status, 400);
+  for (let turn = 0; turn < 6; turn++) {
+    assert.equal(gameManager.advanceTurnManually().success, true);
+  }
+  const contact = gameManager.getGameState().expeditions.empires[0];
+  assert(contact, 'The ordinary turn pipeline returns the expedition');
+  assert.equal(contact.interestRevealed, false);
+  const envoy = await post({ action: 'envoy', targetId: contact.id });
+  assert.equal(envoy.status, 200);
+  assert.equal(envoy.body.data.expeditions.empires[0].interestRevealed, true);
+  assert(envoy.body.data.expeditions.options.some(option => option.action === 'aid' && !option.disabled));
+
+  const saved = gameManager.getSaveState();
+  const beforeLoad = structuredClone(saved.stockpiles);
+  gameManager.loadSaveState(saved);
+  assert.deepEqual(gameManager.getGameState().stockpiles, beforeLoad, 'Loading cannot refill charter supplies');
+  const oldSave = gameManager.getSaveState();
+  delete oldSave.expeditions;
+  oldSave.stockpiles = {};
+  gameManager.loadSaveState(oldSave);
+  assert.deepEqual(gameManager.getGameState().stockpiles, supplies, 'Older campaigns gain the finite opening charter');
+  const migrated = gameManager.getSaveState();
+  gameManager.loadSaveState(migrated);
+  assert.deepEqual(gameManager.getGameState().stockpiles, supplies, 'Migration supplies are granted once');
+
+  for (let attempt = 0; attempt < 100 && !messages.some(message =>
+    message.type === 'state_update' && message.payload.expeditions?.empires?.some(minor => minor.interestRevealed)); attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert(messages.some(message => message.type === 'state_update' && message.payload.expeditions?.empires?.some(minor => minor.interestRevealed)),
+    'Clients receive contact and diplomacy updates over the actual WebSocket');
+  assert.equal((await post({ action: 'develop', targetId: contact.id, projectId: 'invalid' })).status, 400);
+  gameManager.state.gameOver = true;
+  assert.equal((await post({ action: 'launch', planId: 'survey' })).status, 400);
+  console.log('Expedition API and opening-game integration tests passed.');
+} finally {
+  gameManager.stopGameLoop();
+  socket.terminate();
+  httpServer.closeAllConnections();
+  await new Promise(resolve => httpServer.close(resolve));
+}

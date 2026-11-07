@@ -17,6 +17,7 @@ import { handleLawEventChoice, startLawProcess, startLawProcessFromProposal } fr
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { activateEmergencyPower } from '../game/emergencyPowers.js';
 import { calculateScourgePrediction } from '../game/scourgePrediction.js';
+import { handleExpeditionAction, refreshExpeditionOptions } from '../game/expeditions/index.js';
 import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES, SCOURGE_PREDICTION_CONSTANTS } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -79,6 +80,7 @@ export class GameManager {
     const heroRng = new DeterministicRNG(seed);
     assignInitialHeroes(this.state, heroRng.random.bind(heroRng));
     generateHeroLawProposals(this.state, heroRng.random.bind(heroRng));
+    refreshExpeditionOptions(this.state);
 
     logger.debug(`Game initialized with seed: ${seed}`);
   }
@@ -241,7 +243,18 @@ export class GameManager {
    * Get current game state
    */
   getGameState() {
+    if (this.state) refreshExpeditionOptions(this.state);
     return this.state;
+  }
+
+  handleExpeditionAction(payload) {
+    const result = handleExpeditionAction(this.state, payload);
+    if (result.success) {
+      this.state.log.push(...(result.log || []));
+      this.state.log = this.state.log.slice(-100);
+      this.notifyStateChange();
+    }
+    return result;
   }
 
   /**
@@ -536,6 +549,7 @@ export class GameManager {
    * Notify all listeners of state change
    */
   notifyStateChange() {
+    if (this.state) refreshExpeditionOptions(this.state);
     this.stateChangeCallbacks.forEach(callback => {
       try {
         callback(this.state);

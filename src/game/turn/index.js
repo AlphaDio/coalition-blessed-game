@@ -33,6 +33,7 @@ import { applyArmyPassiveStatModifiers, recoverArmyOrganization, replenishArmyMa
 import { applyBasePopulationGrowth } from './population.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { popNextGameplayEvent } from '../pressureEvents.js';
+import { processExpeditionsTick } from '../expeditions/index.js';
 
 export { collectArmiesInBattle, isRegularArmy };
 
@@ -69,6 +70,9 @@ export function advanceTurn(state, rng = Math.random) {
   applyEmergencyPowerDynamicModifiers(state);
   tickScourgeRecovery(state);
   initializeTurnConsumptionTracking();
+
+  // Frontier timers, investments and discoveries share the simulation clock.
+  log.push(...processExpeditionsTick(state).log);
 
   // 1. Resolve law processes (if any)
   handleLawProcesses(state, deterministicRng, log, logger);

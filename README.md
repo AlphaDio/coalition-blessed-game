@@ -72,6 +72,7 @@ You manage a coalition of empires fighting the Scourge in real time. The game ad
 - **Laws**: Enact policies that affect approval, armies, economy pacing, and resource generation.
 - **Events**: Resolve random events with choices that affect coalition state.
 - **Battles**: Fight external battles against the Scourge and internal battles against insurrections.
+- **Expeditions**: Discover independent empires or research sites, learn diplomatic priorities, invest early materials, form partnerships, or fight costly frontier wars. In the terminal client, press `X` for missions and interactions. See [Expeditions](docs/systems/expeditions.md) for rules and balance.
 
 ## Economy and Requisition
 

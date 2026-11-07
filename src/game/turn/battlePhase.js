@@ -16,6 +16,7 @@ import {
 import { buildPreAttackMissionEvent } from '../scourgeMissions.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { clearArmyBattlePrep } from '../armyBattlePrep.js';
+import { resolveExpeditionBattles } from '../expeditions/index.js';
 import {
   collectRebelliousArmyIds,
   getBattleChance,
@@ -53,9 +54,10 @@ export function buildScourgeDefensePlan(state, targetEmpireId) {
   }
 
   const rebelliousArmyIds = collectRebelliousArmyIds(state.insurrections);
+  const occupiedArmyIds = collectArmiesInBattle(getActiveBattles(state));
   const participantPlans = [];
   const addPlan = (army, commitRatio, isSupport, supportRelation = null) => {
-    if (!army?.id || rebelliousArmyIds.has(army.id) || !isRegularArmy(army)) {
+    if (!army?.id || rebelliousArmyIds.has(army.id) || occupiedArmyIds.has(army.id) || !isRegularArmy(army)) {
       return;
     }
     if ((army.mp?.current || 0) <= 0) {
@@ -112,10 +114,11 @@ export function buildScourgeDefensePlan(state, targetEmpireId) {
 }
 
 export function resolveScourgeParticipantPlans(state, participantPlans = []) {
+  const occupiedArmyIds = collectArmiesInBattle(getActiveBattles(state));
   return participantPlans
     .map(plan => {
       const army = state.armies.find(candidate => candidate.id === plan.armyId);
-      if (!army || !isRegularArmy(army) || (army.mp?.current || 0) <= 0) {
+      if (!army || !isRegularArmy(army) || occupiedArmyIds.has(army.id) || (army.mp?.current || 0) <= 0) {
         return null;
       }
 
@@ -187,8 +190,11 @@ export function handleBattlePhase(state, rng, log, logger) {
     }
   });
 
-  triggerScourgeBattle(state, rng, battleChance, activeBattles, log, logger);
-  triggerInsurrectionBattles(state, rng, activeBattles, log, logger);
+  // Distribute frontier casualties before any new front can claim these armies.
+  resolveExpeditionBattles(state, log);
+  const remainingBattles = getActiveBattles(state);
+  triggerScourgeBattle(state, rng, battleChance, remainingBattles, log, logger);
+  triggerInsurrectionBattles(state, rng, getActiveBattles(state), log, logger);
 
   return activeBattles;
 }
@@ -304,10 +310,13 @@ export function triggerInsurrectionBattles(state, rng, activeBattles, log, logge
     }
 
     const rebelliousArmyIds = new Set(insurrection.armies || []);
-    const rebelliousArmies = state.armies.filter(army => rebelliousArmyIds.has(army.id));
+    const occupiedArmyIds = collectArmiesInBattle(getActiveBattles(state));
+    const rebelliousArmies = state.armies.filter(army => rebelliousArmyIds.has(army.id) && !occupiedArmyIds.has(army.id));
+    if ((insurrection.armies || []).some(id => occupiedArmyIds.has(id))) return;
     const targetEmpireId = selectInsurrectionTargetEmpire(state, insurrection, rng);
     const opposingArmies = state.armies.filter(army =>
       !rebelliousArmyIds.has(army.id) &&
+      !occupiedArmyIds.has(army.id) &&
       army.empireId === targetEmpireId &&
       army.organization > 30 &&
       isRegularArmy(army)

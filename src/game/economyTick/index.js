@@ -29,6 +29,11 @@ import {
 } from './ordersLifecycle.js';
 import { applyPostMarketUpdates } from './postTick.js';
 import { triggerPressureGameplayEvents } from '../pressureEvents.js';
+import {
+  prepareMinorEconomy,
+  emitMinorEconomyOrders,
+  applyMinorEconomyPostMarket
+} from '../expeditions/economy.js';
 
 /**
  * Economy tick processor - runs the market economy pipeline each turn
@@ -62,6 +67,8 @@ export function processEconomyTick(state) {
     logger.info('Coalition economy initialized');
   }
 
+  prepareMinorEconomy(state);
+
   // Reset order books - start empty for new orders
   const {
     buyOrders,
@@ -70,6 +77,8 @@ export function processEconomyTick(state) {
     aggregateBuyOrder,
     aggregateSellOffer
   } = createOrderAggregator(state);
+
+  emitMinorEconomyOrders(state, { buyOrders, sellOffers, ordersToSave, aggregateSellOffer });
 
   // Seed finite reserves for essential needs in new games.
   initializeStarterNeedsStockpiles(state);
@@ -131,6 +140,7 @@ export function processEconomyTick(state) {
 
   // Step 7-8: Apply post-market updates
   applyPostMarketUpdates(state, config);
+  applyMinorEconomyPostMarket(state);
 
   logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
 

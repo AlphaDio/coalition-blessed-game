@@ -499,6 +499,21 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  // Launch expeditions, negotiate with contacts, and develop frontier sites.
+  app.post('/api/game/actions/expedition', (req, res) => {
+    try {
+      if (!req.body || typeof req.body.action !== 'string') {
+        return res.sendError(ErrorCodes.MISSING_PARAMETER, 'Missing required parameter: action');
+      }
+      const result = gameManager.handleExpeditionAction(req.body);
+      if (!result.success) return res.sendError(ErrorCodes.INVALID_ACTION, result.error);
+      res.sendSuccess(gameManager.getGameState());
+    } catch (error) {
+      logger.error(`Error handling expedition action: ${error.message}`);
+      res.sendError(ErrorCodes.INTERNAL_SERVER_ERROR, 'Failed to process expedition action');
+    }
+  });
+
   // Activate emergency power
   app.post('/api/game/actions/emergency-power', (req, res) => {
     try {

@@ -2,6 +2,7 @@ function isTemporaryArmy(army) {
   return (
     army.id.startsWith('_scourge') ||
     army.id.startsWith('_coalition_combined') ||
+    army.id.startsWith('_expedition_') ||
     army.id.startsWith('_insurrection')
   );
 }
