@@ -2,14 +2,11 @@
 // have one output, one need and no council votes, population or law processes.
 export const EXPEDITION_STARTER_SUPPLIES = { super_alloys: 240, biomass: 220, plasma_fuel: 160 };
 
-export const EXPEDITION_PLANS = [
-  { id: 'contact', name: 'Seek new empires', kind: 'empire', duration: 6,
-    description: 'Follow inhabited-system signals to an independent empire. One new contact, guaranteed.',
-    cost: { requisition: 40, materials: { biomass: 20, plasma_fuel: 15 } } },
-  { id: 'survey', name: 'Survey the unknown', kind: 'discovery', duration: 5,
-    description: 'Survey uncharted systems for a discovery that can be studied for lasting benefits.',
-    cost: { requisition: 30, materials: { super_alloys: 20, plasma_fuel: 15 } } }
-];
+export const EXPEDITION_PLAN = {
+  id: 'frontier', name: 'Frontier expedition', duration: 6,
+  description: 'Explore uncharted systems and return with one new independent empire or discovery.',
+  cost: { materials: { super_alloys: 100, biomass: 100, plasma_fuel: 75 } }
+};
 
 export const DEVELOPMENT_PROJECTS = [
   { id: 'industry', name: 'Expand local industry', duration: 6, maxLevel: 3,

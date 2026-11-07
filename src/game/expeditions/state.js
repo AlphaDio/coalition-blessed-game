@@ -1,10 +1,10 @@
-import { EXPEDITION_PLANS, DEVELOPMENT_PROJECTS, EXPEDITION_STARTER_SUPPLIES } from './catalog.js';
+import { EXPEDITION_PLAN, DEVELOPMENT_PROJECTS, EXPEDITION_STARTER_SUPPLIES } from './catalog.js';
 
 export function createExpeditionsState() {
   return {
     version: 1, sequence: 0, active: [], empires: [], discoveries: [], history: [],
     lastProcessedTurn: null,
-    catalog: { plans: structuredClone(EXPEDITION_PLANS), projects: structuredClone(DEVELOPMENT_PROJECTS) },
+    catalog: { plans: [structuredClone(EXPEDITION_PLAN)], projects: structuredClone(DEVELOPMENT_PROJECTS) },
     options: [], materialReserves: {}
   };
 }
@@ -24,6 +24,6 @@ export function ensureExpeditionsState(state) {
     if (!Array.isArray(expeditions[key])) expeditions[key] = [];
   }
   if (!Number.isFinite(expeditions.sequence)) expeditions.sequence = 0;
-  expeditions.catalog = { plans: structuredClone(EXPEDITION_PLANS), projects: structuredClone(DEVELOPMENT_PROJECTS) };
+  expeditions.catalog = { plans: [structuredClone(EXPEDITION_PLAN)], projects: structuredClone(DEVELOPMENT_PROJECTS) };
   return expeditions;
 }

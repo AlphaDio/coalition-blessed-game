@@ -4,13 +4,13 @@ Expeditions introduce a frontier of independent empires and non-empire discoveri
 
 ## Player flow and controls
 
-In the terminal client, press **X** or choose **Expeditions** in Actions. Choose a mission, inspect a returned contact, then select an interaction. Up/Down and Enter navigate; Esc goes back; K/J or Page Up/Down scroll details. An invasion opens a confirmation screen with cancellation selected by default. Both the action menu and contact details show costs, timers and reasons for unavailable actions. Disabled actions spend nothing. Requests in flight cannot be submitted twice.
+In the terminal client, press **X** or choose **Expeditions** in Actions. Launch a frontier expedition, then inspect the empire or discovery it finds. Up/Down and Enter navigate; Esc goes back; K/J or Page Up/Down scroll details. An invasion opens a confirmation screen with cancellation selected by default. Both the action menu and contact details show costs, timers and reasons for unavailable actions. Disabled actions spend nothing. Requests in flight cannot be submitted twice.
 
 The overview explains the first steps, available materials, active journeys, contacts, discoveries and recent reports. Contact details show approval, priorities, production, sustain fulfillment, defenses, investments, raid warnings, partnership returns and occupation expenses. Discovery details show the benefit before study begins.
 
 ## Exploration and material access
 
-There is one expedition slot. **Seek new empires** costs 40 requisition, 20 Biomass and 15 Plasma Fuel, returning a unique empire after six turns. **Survey the unknown** costs 30 requisition, 20 Super Alloys and 15 Plasma Fuel, returning a unique discovery after five turns. Each pool contains six authored destinations; exhausted pools cannot be farmed. Journeys have guaranteed results so an early investment does not disappear to a random failure.
+There is one expedition slot. **Launch frontier expedition** costs 100 Super Alloys, 100 Biomass and 75 Plasma Fuel, with no requisition fee. After six turns it reveals one new destination from a shared pool of six independent empires and six discoveries. Once every destination is found, no further expedition can launch.
 
 New and migrated campaigns receive a finite frontier charter of **240 Super Alloys, 220 Biomass and 160 Plasma Fuel** in Coalition stockpiles. The ordinary opening economy has no spare market materials, so this charter makes the first journeys and investments accessible. It never refills on save/load. Further supplies come from discovery salvage and market surplus created by production improvements and contacts.
 
@@ -75,6 +75,6 @@ Study costs and timers are authored in `src/game/expeditions/catalog.js`. Dynami
 
 ## Integration and validation
 
-`POST /api/game/actions/expedition` accepts `launch`, `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
+`POST /api/game/actions/expedition` accepts `launch` with `planId: 'frontier'`, along with `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
 
 `npm run test:expeditions` covers travel, deterministic destinations, atomic payments and seller credit, diplomacy, delayed/capped development, unique discovery rewards, migration, save/load, raids, occupation, budget-limited trading, casualty persistence, concurrent army exclusion, and the live REST/WebSocket opening flow. The terminal client's `npm test` covers real Blessed navigation, scrolling, hidden interests, disabled actions, costs, invasion confirmation/cancellation and API dispatch.

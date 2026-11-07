@@ -3,7 +3,7 @@ import { getLogger } from '../../modules/logger.js';
 import { applyScaledCoalitionCohesionDelta, clampApproval, scaleCohesionDelta } from '../cohesion.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import {
-  EXPEDITION_PLANS, DEVELOPMENT_PROJECTS, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
+  EXPEDITION_PLAN, DEVELOPMENT_PROJECTS, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
 } from './catalog.js';
 import { ensureExpeditionsState } from './state.js';
 import { getExpeditionMaterialReserve, quoteExpeditionCost, spendExpeditionCost } from './costs.js';
@@ -27,10 +27,13 @@ function projectCost(minor, definition) {
   };
 }
 
-function candidates(state, kind) {
-  const templates = kind === 'empire' ? EMPIRE_TEMPLATES : DISCOVERY_TEMPLATES;
-  const found = kind === 'empire' ? state.expeditions.empires : state.expeditions.discoveries;
-  return templates.filter(template => !found.some(entry => entry.id === template.id));
+function getUnexploredDestinations(system) {
+  return [
+    ...EMPIRE_TEMPLATES.filter(template => !system.empires.some(empire => empire.id === template.id))
+      .map(({ id }) => ({ id, kind: 'empire' })),
+    ...DISCOVERY_TEMPLATES.filter(template => !system.discoveries.some(discovery => discovery.id === template.id))
+      .map(({ id }) => ({ id, kind: 'discovery' }))
+  ];
 }
 
 function addOption(state, options, option, reason = null) {
@@ -52,14 +55,13 @@ export function refreshExpeditionOptions(state) {
   const system = ensureExpeditionsState(state);
   system.materialReserves = Object.fromEntries(['super_alloys', 'biomass', 'plasma_fuel'].map(key => [key, getExpeditionMaterialReserve(state, key)]));
   const options = [];
-  for (const plan of EXPEDITION_PLANS) {
-    addOption(state, options, {
-      id: `launch_${plan.id}`, label: plan.name, description: plan.description, action: 'launch',
-      payload: { action: 'launch', planId: plan.id }, targetType: 'plan', targetId: plan.id,
-      duration: plan.duration, cost: plan.cost
-    }, system.active.length >= EXPEDITION_RULES.slots ? 'An expedition is already underway' :
-      candidates(state, plan.kind).length === 0 ? 'All known signals of this kind have been explored' : null);
-  }
+  const plan = EXPEDITION_PLAN;
+  addOption(state, options, {
+    id: `launch_${plan.id}`, label: 'Launch frontier expedition', description: plan.description, action: 'launch',
+    payload: { action: 'launch', planId: plan.id }, targetType: 'plan', targetId: plan.id,
+    duration: plan.duration, cost: plan.cost
+  }, system.active.length >= EXPEDITION_RULES.slots ? 'An expedition is already underway' :
+    getUnexploredDestinations(system).length === 0 ? 'All known signals have been explored' : null);
 
   for (const minor of system.empires) {
     const common = { targetType: 'empire', targetId: minor.id };
@@ -141,14 +143,13 @@ export function handleExpeditionAction(state, payload = {}) {
 
   switch (payload.action) {
     case 'launch': {
-      const plan = EXPEDITION_PLANS.find(entry => entry.id === payload.planId);
+      const plan = EXPEDITION_PLAN;
       // A dedicated seeded stream selects and saves the destination at launch.
       // Loading a save or other game RNG calls cannot reroll the expedition.
       const rng = new DeterministicRNG((state.rngSeed || 0) + 73129 + system.sequence * 7919);
-      const available = candidates(state, plan.kind);
-      const destination = available[Math.floor(rng.random() * available.length)];
+      const destination = rng.choice(getUnexploredDestinations(system));
       system.active.push({ id: `expedition_${++system.sequence}`, planId: plan.id, name: plan.name,
-        kind: plan.kind, destinationId: destination.id, duration: plan.duration, remainingTurns: plan.duration, startedTurn: state.turn });
+        kind: destination.kind, destinationId: destination.id, duration: plan.duration, remainingTurns: plan.duration, startedTurn: state.turn });
       remember(state, `${plan.name} launched; returns in ${plan.duration} turns.`, log);
       break;
     }

@@ -12,6 +12,7 @@ const { httpServer, gameManager } = await createApiServer(0, 'http://localhost',
 const base = `http://127.0.0.1:${httpServer.address().port}`;
 const socket = new WebSocket(base.replace('http', 'ws'));
 const messages = [];
+const launch = { action: 'launch', planId: 'frontier' };
 socket.on('message', data => messages.push(JSON.parse(data.toString())));
 const post = async payload => {
   const response = await fetch(`${base}/api/game/actions/expedition`, {
@@ -23,20 +24,23 @@ const post = async payload => {
 try {
   await once(socket, 'open');
   const opening = gameManager.getGameState();
-  assert(opening.expeditions.options.filter(option => option.targetType === 'plan').every(option => !option.disabled),
-    'Both expedition plans must be affordable in an actual new game');
+  const plans = opening.expeditions.options.filter(option => option.targetType === 'plan');
+  assert.equal(plans.length, 1);
+  assert.equal(plans[0].disabled, false, 'The frontier expedition must be affordable in an actual new game');
   const supplies = structuredClone(opening.stockpiles);
+  const requisition = opening.coalitionEconomy.requisition;
   const malformed = await post({});
   assert.equal(malformed.status, 400);
   const unknown = await post({ action: 'launch', planId: 'invalid' });
   assert.equal(unknown.status, 400);
   assert.deepEqual(opening.stockpiles, supplies);
 
-  const launched = await post({ action: 'launch', planId: 'contact' });
+  const launched = await post(launch);
   assert.equal(launched.status, 200);
   assert.equal(launched.body.data.expeditions.active.length, 1);
-  assert.equal(launched.body.data.stockpiles.biomass, supplies.biomass - 20);
-  assert.equal((await post({ action: 'launch', planId: 'contact' })).status, 400);
+  assert.equal(launched.body.data.stockpiles.biomass, supplies.biomass - 100);
+  assert.equal(launched.body.data.coalitionEconomy.requisition, requisition);
+  assert.equal((await post(launch)).status, 400);
   for (let turn = 0; turn < 6; turn++) {
     assert.equal(gameManager.advanceTurnManually().success, true);
   }
@@ -69,7 +73,7 @@ try {
     'Clients receive contact and diplomacy updates over the actual WebSocket');
   assert.equal((await post({ action: 'develop', targetId: contact.id, projectId: 'invalid' })).status, 400);
   gameManager.state.gameOver = true;
-  assert.equal((await post({ action: 'launch', planId: 'survey' })).status, 400);
+  assert.equal((await post(launch)).status, 400);
   console.log('Expedition API and opening-game integration tests passed.');
 } finally {
   gameManager.stopGameLoop();
