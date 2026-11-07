@@ -10,13 +10,17 @@ The overview explains the first steps, available materials, active journeys, con
 
 ## Exploration and material access
 
-There is one expedition slot. **Launch frontier expedition** costs 100 Super Alloys, 100 Biomass and 75 Plasma Fuel, with no requisition fee. After six turns it reveals one new destination from a shared pool of six independent empires and six discoveries. Once every destination is found, no further expedition can launch.
+There is one expedition slot. **Launch frontier expedition** reveals one new destination from a shared pool of six independent empires and six discoveries. The launch menu shows the destination category, the current cost and the travel-time range. Once every destination is found, no further expedition can launch.
 
-New and migrated campaigns receive a finite frontier charter of **240 Super Alloys, 220 Biomass and 160 Plasma Fuel** in Coalition stockpiles. The ordinary opening economy has no spare market materials, so this charter makes the first journeys and investments accessible. It never refills on save/load. Further supplies come from discovery salvage and market surplus created by production improvements and contacts.
+The base cost is **150 Biomass and 100 Plasma Fuel** for an empire contact or **150 Super Alloys and 100 Plasma Fuel** for a discovery. Each previous launch adds 25% of the applicable base cost to the next one, rounded up per material. The second launch therefore costs 188 of the destination's primary material and 125 Plasma Fuel. Launching requires zero requisition.
+
+New and migrated campaigns receive a finite frontier charter of **240 Super Alloys, 220 Biomass and 160 Plasma Fuel** in Coalition stockpiles. The charter covers the opening launch and helps fund early investments. It never refills on save/load. Further supplies come from discovery salvage and market surplus created by production improvements and contacts.
 
 Costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the run's fixed commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
 
-The destination is chosen using a separate seeded stream at launch and saved with the mission. Simulation turns advance travel and construction. Pause, save/load and unrelated random rolls cannot reroll a destination or repeat a reward.
+Base travel time varies from **10 to 16 turns**. The destination and travel roll use a dedicated stream seeded by the campaign seed and expedition count. Both are saved at launch, so pausing or reloading preserves the trip.
+
+Hyperdrive Technology in any Coalition empire grants **+20% expedition speed**. Studying the Transit Lattice adds **+30%**. The game divides the base roll by one plus the combined speed bonus and rounds up, for a **7–11 turn** range with both bonuses. Bonuses apply when an expedition launches.
 
 ## Independent empires
 
@@ -69,7 +73,7 @@ Discovery sites have no population, approval, sustainment or army. Their study c
 | Precursor Foundry | +10% improvement construction speed |
 | Living Nebula | +0.05 approval per member empire per turn |
 | Silent Archive | +0.5 research points per member empire per turn |
-| Transit Lattice | +5% consumption requisition generation |
+| Transit Lattice | +5% consumption requisition generation and +30% expedition speed |
 
 Study costs and timers are authored in `src/game/expeditions/catalog.js`. Dynamic benefits are reapplied after the turn's modifier reset, avoiding permanent stacking. The expedition tick is idempotent within a turn, and completed fronts resolve once.
 

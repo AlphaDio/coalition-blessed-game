@@ -2,6 +2,7 @@ import { DeterministicRNG } from '../../modules/rng.js';
 import { getLogger } from '../../modules/logger.js';
 import { applyScaledCoalitionCohesionDelta, clampApproval, scaleCohesionDelta } from '../cohesion.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
+import { TECH_BY_ID } from '../technologyDefinitions.js';
 import {
   EXPEDITION_PLAN, DEVELOPMENT_PROJECTS, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
 } from './catalog.js';
@@ -27,13 +28,39 @@ function projectCost(minor, definition) {
   };
 }
 
-function getUnexploredDestinations(system) {
-  return [
-    ...EMPIRE_TEMPLATES.filter(template => !system.empires.some(empire => empire.id === template.id))
+function rollExpedition(state) {
+  const { empires, discoveries, active, sequence } = state.expeditions;
+  const charted = new Set([...empires, ...discoveries].map(entry => entry.id));
+  for (const mission of active) charted.add(mission.destinationId);
+  const destinations = [
+    ...EMPIRE_TEMPLATES.filter(template => !charted.has(template.id))
       .map(({ id }) => ({ id, kind: 'empire' })),
-    ...DISCOVERY_TEMPLATES.filter(template => !system.discoveries.some(discovery => discovery.id === template.id))
+    ...DISCOVERY_TEMPLATES.filter(template => !charted.has(template.id))
       .map(({ id }) => ({ id, kind: 'discovery' }))
   ];
+  if (!destinations.length) return null;
+
+  // Previewing the route uses the same independent RNG stream as launching it.
+  const rng = new DeterministicRNG((state.rngSeed || 0) + 73129 + sequence * 7919);
+  const destination = rng.choice(destinations);
+  const { min, max } = EXPEDITION_PLAN.durationRange;
+  return { ...destination, baseDuration: rng.randomInt(min, max + 1) };
+}
+
+function getExpeditionSpeedBonus(state) {
+  // Use unlocked technology IDs so technologies researched in older saves count.
+  const techBonus = Math.max(0, ...(state.empires || []).flatMap(empire =>
+    (empire.technologies || []).map(id => TECH_BY_ID[id]?.modifiers?.expedition_speed ?? 0)));
+  const discoveryBonus = state.expeditions.discoveries.reduce((bonus, discovery) => {
+    if (discovery.status !== 'STUDIED') return bonus;
+    const definition = DISCOVERY_TEMPLATES.find(entry => entry.id === discovery.id);
+    return bonus + (definition?.expeditionSpeedBonus ?? 0);
+  }, 0);
+  return techBonus + discoveryBonus;
+}
+
+function travelTurns(baseTurns, speedBonus) {
+  return Math.ceil(baseTurns / (1 + speedBonus));
 }
 
 function addOption(state, options, option, reason = null) {
@@ -56,12 +83,23 @@ export function refreshExpeditionOptions(state) {
   system.materialReserves = Object.fromEntries(['super_alloys', 'biomass', 'plasma_fuel'].map(key => [key, getExpeditionMaterialReserve(state, key)]));
   const options = [];
   const plan = EXPEDITION_PLAN;
+  const destination = rollExpedition(state);
+  const speedBonus = getExpeditionSpeedBonus(state);
+  const costMultiplier = 1 + system.sequence * plan.costGrowthPerLaunch;
+  const baseMaterials = plan.materialsByDestination[destination?.kind] ?? {};
+  const materials = Object.fromEntries(Object.entries(baseMaterials)
+    .map(([commodity, amount]) => [commodity, Math.ceil(amount * costMultiplier)]));
+  const durationRange = destination ? {
+    min: travelTurns(plan.durationRange.min, speedBonus),
+    max: travelTurns(plan.durationRange.max, speedBonus)
+  } : null;
   addOption(state, options, {
     id: `launch_${plan.id}`, label: 'Launch frontier expedition', description: plan.description, action: 'launch',
     payload: { action: 'launch', planId: plan.id }, targetType: 'plan', targetId: plan.id,
-    duration: plan.duration, cost: plan.cost
+    destinationKind: destination?.kind, durationRange,
+    speedBonus, cost: { materials }
   }, system.active.length >= EXPEDITION_RULES.slots ? 'An expedition is already underway' :
-    getUnexploredDestinations(system).length === 0 ? 'All known signals have been explored' : null);
+    !destination ? 'All known signals have been explored' : null);
 
   for (const minor of system.empires) {
     const common = { targetType: 'empire', targetId: minor.id };
@@ -111,6 +149,7 @@ export function refreshExpeditionOptions(state) {
   for (const discovery of system.discoveries) {
     const definition = DISCOVERY_TEMPLATES.find(entry => entry.id === discovery.id);
     if (!definition) continue;
+    discovery.benefitDescription = definition.benefitDescription;
     addOption(state, options, { id: `study_${discovery.id}`, label: `Study ${discovery.name}`,
       description: discovery.benefitDescription, action: 'study', payload: { action: 'study', targetId: discovery.id },
       targetType: 'discovery', targetId: discovery.id, duration: definition.duration, cost: definition.cost
@@ -144,13 +183,11 @@ export function handleExpeditionAction(state, payload = {}) {
   switch (payload.action) {
     case 'launch': {
       const plan = EXPEDITION_PLAN;
-      // A dedicated seeded stream selects and saves the destination at launch.
-      // Loading a save or other game RNG calls cannot reroll the expedition.
-      const rng = new DeterministicRNG((state.rngSeed || 0) + 73129 + system.sequence * 7919);
-      const destination = rng.choice(getUnexploredDestinations(system));
+      const destination = rollExpedition(state);
+      const duration = travelTurns(destination.baseDuration, option.speedBonus);
       system.active.push({ id: `expedition_${++system.sequence}`, planId: plan.id, name: plan.name,
-        kind: destination.kind, destinationId: destination.id, duration: plan.duration, remainingTurns: plan.duration, startedTurn: state.turn });
-      remember(state, `${plan.name} launched; returns in ${plan.duration} turns.`, log);
+        kind: destination.kind, destinationId: destination.id, duration, remainingTurns: duration, startedTurn: state.turn });
+      remember(state, `${plan.name} launched; returns in ${duration} turns.`, log);
       break;
     }
     case 'envoy':

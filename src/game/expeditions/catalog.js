@@ -3,9 +3,13 @@
 export const EXPEDITION_STARTER_SUPPLIES = { super_alloys: 240, biomass: 220, plasma_fuel: 160 };
 
 export const EXPEDITION_PLAN = {
-  id: 'frontier', name: 'Frontier expedition', duration: 6,
+  id: 'frontier', name: 'Frontier expedition', durationRange: { min: 10, max: 16 },
   description: 'Explore uncharted systems and return with one new independent empire or discovery.',
-  cost: { materials: { super_alloys: 100, biomass: 100, plasma_fuel: 75 } }
+  materialsByDestination: {
+    empire: { biomass: 150, plasma_fuel: 100 },
+    discovery: { super_alloys: 150, plasma_fuel: 100 }
+  },
+  costGrowthPerLaunch: 0.25
 };
 
 export const DEVELOPMENT_PROJECTS = [
@@ -57,7 +61,8 @@ export const DISCOVERY_TEMPLATES = [
     benefitDescription: '+0.5 research points per turn to every Coalition empire after study.',
     duration: 6, cost: { requisition: 40, materials: { super_alloys: 70, biomass: 30 } }, reward: { type: 'research', amount: 0.5 } },
   { id: 'transit_lattice', name: 'Transit Lattice', description: 'An ancient route network that shortens Coalition supply lines.',
-    benefitDescription: '+5% consumption requisition generation after study.',
+    benefitDescription: '+5% consumption requisition generation and +30% expedition speed after study.',
+    expeditionSpeedBonus: 0.3,
     duration: 6, cost: { requisition: 40, materials: { super_alloys: 80, plasma_fuel: 40 } }, reward: { type: 'requisition', amount: 0.05 } }
 ];
 

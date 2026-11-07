@@ -65,11 +65,11 @@ export const GENERAL_TECHS = [
     2,
     'hyperdrive',
     'Hyperdrive Technology',
-    'Faster-than-light logistics stabilize coalition supply lines.',
+    'Faster-than-light logistics stabilize coalition supply lines and speed up expeditions by 20%.',
     'general',
     {},
     { cohesion: 2 },
-    { supply_efficiency: 0.08, market_efficiency: 0.06, trade_income: 30 }
+    { supply_efficiency: 0.08, market_efficiency: 0.06, trade_income: 30, expedition_speed: 0.2 }
   ),
 
   createTieredTechnology(

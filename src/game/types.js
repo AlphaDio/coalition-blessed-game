@@ -267,7 +267,8 @@ export function createTechnology(
       population_growth: modifiers.population_growth || 0,
       empire_approval: modifiers.empire_approval || 0,
       energy_production: modifiers.energy_production || 0,
-      law_progress_speed: modifiers.law_progress_speed || 0
+      law_progress_speed: modifiers.law_progress_speed || 0,
+      expedition_speed: modifiers.expedition_speed || 0
     }
   };
 }

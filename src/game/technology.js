@@ -329,7 +329,7 @@ function formatModifier(key, value) {
     'market_efficiency', 'population_growth', 'energy_production',
     'army_damage_mult', 'army_replenishment_mult', 'army_consumption_mp_gain_mult',
     'army_protection',
-    'law_progress_speed',
+    'law_progress_speed', 'expedition_speed',
     'consumptionShareBonus'
   ];
   

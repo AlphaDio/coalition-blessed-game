@@ -27,6 +27,8 @@ try {
   const plans = opening.expeditions.options.filter(option => option.targetType === 'plan');
   assert.equal(plans.length, 1);
   assert.equal(plans[0].disabled, false, 'The frontier expedition must be affordable in an actual new game');
+  assert.deepEqual(plans[0].durationRange, { min: 10, max: 16 });
+  assert.equal(plans[0].destinationKind, 'empire');
   const supplies = structuredClone(opening.stockpiles);
   const requisition = opening.coalitionEconomy.requisition;
   const malformed = await post({});
@@ -38,10 +40,12 @@ try {
   const launched = await post(launch);
   assert.equal(launched.status, 200);
   assert.equal(launched.body.data.expeditions.active.length, 1);
-  assert.equal(launched.body.data.stockpiles.biomass, supplies.biomass - 100);
+  assert.equal(launched.body.data.stockpiles.biomass, supplies.biomass - 150);
   assert.equal(launched.body.data.coalitionEconomy.requisition, requisition);
   assert.equal((await post(launch)).status, 400);
-  for (let turn = 0; turn < 6; turn++) {
+  const { duration } = launched.body.data.expeditions.active[0];
+  assert(duration >= plans[0].durationRange.min && duration <= plans[0].durationRange.max);
+  for (let turn = 0; turn < duration; turn++) {
     assert.equal(gameManager.advanceTurnManually().success, true);
   }
   const contact = gameManager.getGameState().expeditions.empires[0];

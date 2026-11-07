@@ -48,8 +48,10 @@ function tick(state, count = 1) {
 
 function completeMission(state) {
   action(state, launch);
+  const { duration } = state.expeditions.active[0];
   for (let i = 0; state.expeditions.active.length && i < 100; i++) tick(state);
   assert.equal(state.expeditions.active.length, 0, 'mission finishes in bounded time');
+  return duration;
 }
 
 function contactFixture(seed) {
@@ -83,25 +85,29 @@ test('one frontier mission can find a contact or discovery and spends only mater
   const plans = refreshExpeditionOptions(state).filter(option => option.action === 'launch');
   assert.equal(plans.length, 1);
   assert.deepEqual(plans[0].payload, launch);
-  assert.equal(plans[0].duration, 6);
+  assert.deepEqual(plans[0].durationRange, { min: 10, max: 16 });
+  assert.equal(plans[0].destinationKind, 'empire');
+  assert.deepEqual(plans[0].cost.materials, { biomass: 150, plasma_fuel: 100 });
   assert.equal(plans[0].disabled, false, 'no requisition is needed to launch');
   state.coalitionEconomy.requisition = -5;
   const before = structuredClone(state.stockpiles);
   action(state, launch);
   assert.equal(state.expeditions.active.length, 1);
+  const mission = state.expeditions.active[0];
+  assert.equal(mission.kind, plans[0].destinationKind);
   assert.equal(state.expeditions.empires.length, 0, 'launch does not reveal a contact immediately');
   assert.equal(state.expeditions.discoveries.length, 0);
   assert.equal(state.coalitionEconomy.requisition, -5, 'launch works during requisition debt and preserves the balance');
   assert.deepEqual(state.stockpiles, {
-    ...before, super_alloys: before.super_alloys - 100, biomass: before.biomass - 100, plasma_fuel: before.plasma_fuel - 75
+    ...before, biomass: before.biomass - 150, plasma_fuel: before.plasma_fuel - 100
   });
 
   const committed = economicSnapshot(state);
   assert.equal(handleExpeditionAction(state, launch).success, false);
   assert.deepEqual(economicSnapshot(state), committed, 'a rejected second launch cannot retarget or double-charge the mission');
+  tick(state, mission.duration - 1);
+  assert.equal(state.expeditions.empires.length, 0, 'travel takes the full rolled duration');
   tick(state);
-  assert.equal(state.expeditions.empires.length, 0, 'travel requires multiple turns');
-  for (let i = 0; state.expeditions.active.length && i < 100; i++) tick(state);
   assert.equal(state.expeditions.empires.length, 1);
   assert.equal(state.expeditions.discoveries.length, 0);
   const minor = state.expeditions.empires[0];
@@ -110,7 +116,14 @@ test('one frontier mission can find a contact or discovery and spends only mater
   assert.ok(minor.approval >= 0 && minor.approval <= 100);
   assert.ok(!state.empires.some(empire => empire.id === minor.id), 'contacts do not become voting Coalition empires');
 
+  const next = state.expeditions.options.find(option => option.action === 'launch');
+  assert.equal(next.destinationKind, 'discovery');
+  assert.deepEqual(next.cost.materials, { super_alloys: 188, plasma_fuel: 125 });
+  const beforeSecond = structuredClone(state.stockpiles);
   completeMission(state);
+  assert.deepEqual(state.stockpiles, {
+    ...beforeSecond, super_alloys: beforeSecond.super_alloys - 188, plasma_fuel: beforeSecond.plasma_fuel - 125
+  });
   assert.equal(state.expeditions.empires.length, 1);
   assert.equal(state.expeditions.discoveries.length, 1);
   const counts = [state.expeditions.empires.length, state.expeditions.discoveries.length];
@@ -118,11 +131,12 @@ test('one frontier mission can find a contact or discovery and spends only mater
   assert.deepEqual([state.expeditions.empires.length, state.expeditions.discoveries.length], counts, 'completed missions cannot pay out again');
 });
 
-test('a seed and the same expedition decisions reproduce contacts, discoveries, and material costs', () => {
+test('a seed and the same decisions reproduce varied travel times, destinations, and material costs', () => {
   function run(seed) {
     const state = fixture(seed);
-    for (let i = 0; i < 5; i++) completeMission(state);
+    const durations = Array.from({ length: 5 }, () => completeMission(state));
     return {
+      durations,
       contacts: state.expeditions.empires.map(minor => ({ id: minor.id, production: minor.production, sustain: minor.sustain })),
       discoveries: state.expeditions.discoveries.map(discovery => discovery.id),
       stockpiles: state.stockpiles,
@@ -131,18 +145,43 @@ test('a seed and the same expedition decisions reproduce contacts, discoveries, 
   }
   const first = run(7714);
   assert.deepEqual(run(7714), first);
+  assert(first.durations.every(duration => duration >= 10 && duration <= 16));
+  assert(new Set(first.durations).size > 1, 'mission durations vary within a campaign');
   assert.equal(new Set(first.contacts.map(minor => minor.id)).size, first.contacts.length, 'contact rewards are unique');
   assert.equal(new Set(first.discoveries).size, first.discoveries.length, 'discovery rewards are unique');
 });
 
+test('Hyperdrive and completed Transit Lattice studies shorten later expeditions', () => {
+  const baseline = fixture();
+  action(baseline, launch);
+  const baseDuration = baseline.expeditions.active[0].duration;
+
+  const state = fixture();
+  state.empires[0].technologies.push('hyperdrive');
+  const launchOption = () => refreshExpeditionOptions(state).find(option => option.action === 'launch');
+  assert.deepEqual(launchOption().durationRange, { min: 9, max: 14 });
+
+  const lattice = { id: 'transit_lattice', name: 'Transit Lattice', status: 'UNSTUDIED' };
+  state.expeditions.discoveries.push(lattice);
+  action(state, { action: 'study', targetId: lattice.id });
+  assert.equal(launchOption().speedBonus, 0.2, 'studies grant bonuses upon completion');
+  tick(state, lattice.project.duration);
+  assert.equal(lattice.status, 'STUDIED');
+  assert.match(lattice.benefitDescription, /\+30% expedition speed/);
+  assert.equal(launchOption().speedBonus, 0.5);
+  assert.deepEqual(launchOption().durationRange, { min: 7, max: 11 });
+  action(state, launch);
+  assert.equal(state.expeditions.active[0].duration, Math.ceil(baseDuration / 1.5));
+});
+
 test('missing resources and malformed actions reject atomically', () => {
   const state = fixture();
-  state.stockpiles.plasma_fuel = 74;
+  state.stockpiles.plasma_fuel = 99;
   const shortfall = economicSnapshot(state);
   assert.equal(handleExpeditionAction(state, launch).success, false, 'one missing material blocks launch');
   assert.deepEqual(economicSnapshot(state), shortfall);
 
-  state.stockpiles.plasma_fuel = 75;
+  state.stockpiles.plasma_fuel = 100;
   for (const payload of [
     { action: 'launch', planId: 'invented_route' },
     { action: 'launch', planId: 'contact' },
@@ -161,7 +200,7 @@ test('missing resources and malformed actions reject atomically', () => {
 test('material procurement retires only unfilled reserves and pays the producing empire', () => {
   const state = fixture();
   state.stockpiles = {};
-  const [plan] = state.expeditions.catalog.plans;
+  const plan = refreshExpeditionOptions(state).find(option => option.action === 'launch');
   const materials = Object.entries(plan.cost.materials);
   assert.ok(materials.length > 0);
   state.empires[0].budget_credits = 0;
