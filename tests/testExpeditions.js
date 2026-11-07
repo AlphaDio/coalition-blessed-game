@@ -84,12 +84,14 @@ test('one frontier mission can find a contact or discovery and spends only mater
   assert.equal(plans.length, 1);
   assert.deepEqual(plans[0].payload, launch);
   assert.equal(plans[0].duration, 6);
+  assert.equal(plans[0].disabled, false, 'no requisition is needed to launch');
+  state.coalitionEconomy.requisition = -5;
   const before = structuredClone(state.stockpiles);
   action(state, launch);
   assert.equal(state.expeditions.active.length, 1);
   assert.equal(state.expeditions.empires.length, 0, 'launch does not reveal a contact immediately');
   assert.equal(state.expeditions.discoveries.length, 0);
-  assert.equal(state.coalitionEconomy.requisition, 0, 'launch neither requires nor spends requisition');
+  assert.equal(state.coalitionEconomy.requisition, -5, 'launch works during requisition debt and preserves the balance');
   assert.deepEqual(state.stockpiles, {
     ...before, super_alloys: before.super_alloys - 100, biomass: before.biomass - 100, plasma_fuel: before.plasma_fuel - 75
   });

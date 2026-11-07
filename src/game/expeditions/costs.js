@@ -21,7 +21,8 @@ export function getExpeditionMaterialReserve(state, commodity) {
 export function quoteExpeditionCost(state, cost = {}) {
   let credits = 0;
   let reason = null;
-  if ((state.coalitionEconomy?.requisition || 0) < (cost.requisition || 0)) reason = 'Insufficient requisition';
+  const requisition = cost.requisition || 0;
+  if (requisition > 0 && (state.coalitionEconomy?.requisition || 0) < requisition) reason = 'Insufficient requisition';
   for (const [commodity, amount] of Object.entries(cost.materials || {})) {
     if (getExpeditionMaterialReserve(state, commodity) + 1e-9 < amount) {
       reason ||= `Need ${amount} ${commodity.replaceAll('_', ' ')} in Coalition stockpiles or market reserves`;
