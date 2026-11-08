@@ -12,7 +12,7 @@ export const EXPEDITION_PLAN = {
   costGrowthPerLaunch: 0.25
 };
 
-export const DEVELOPMENT_COST = { requisition: 35, materials: { super_alloys: 65 } };
+export const DEVELOPMENT_COST = { baseAlloys: 65, growthPerLevel: 0.5 };
 
 const interest = (id, name, description, commodity) => ({ id, name, description, commodity });
 export const EMPIRE_TEMPLATES = [

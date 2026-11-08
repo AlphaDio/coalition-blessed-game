@@ -57,11 +57,16 @@ try {
   assert(envoy.body.data.expeditions.options.some(option => option.action === 'aid' && !option.disabled));
   const develop = { action: 'develop', targetId: contact.id };
   assert.equal((await post({ ...develop, projectId: 'industry' })).status, 400, 'a stale project choice must be refreshed');
-  const developed = await post(develop);
+  const firstUpgrade = envoy.body.data.expeditions.options.find(option => option.action === 'develop');
+  const developed = await post(firstUpgrade.payload);
   assert.equal(developed.status, 200);
   assert.equal(developed.body.data.expeditions.empires[0].developmentLevel, 1);
   assert.equal(developed.body.data.expeditions.empires[0].project, null);
-  assert.equal((await post(develop)).status, 400);
+  assert.equal((await post(firstUpgrade.payload)).status, 400);
+  const developedAgain = await post(develop);
+  assert.equal(developedAgain.status, 200);
+  assert.equal(developedAgain.body.data.expeditions.empires[0].developmentLevel, 2);
+  assert.equal(developedAgain.body.data.coalitionEconomy.requisition, envoy.body.data.coalitionEconomy.requisition);
 
   const saved = gameManager.getSaveState();
   const beforeLoad = structuredClone(saved.stockpiles);

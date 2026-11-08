@@ -95,10 +95,11 @@ export function refreshExpeditionOptions(state) {
 
   for (const minor of system.empires) {
     const common = { targetType: 'empire', targetId: minor.id };
-    const option = (action, label, description, cost, reason) => addOption(state, options, {
-      ...common, id: `${action}_${minor.id}`, label, description, action, payload: { action, targetId: minor.id }, cost
+    const option = (action, label, description, cost, reason, details = {}) => addOption(state, options, {
+      ...common, id: `${action}_${minor.id}`, label, description, action, payload: { action, targetId: minor.id, ...details }, cost
     }, reason);
     const unavailable = minor.war ? 'A battle is underway' : null;
+    const developmentLevel = minor.developmentLevel || 0;
     if (!minor.interestRevealed) option('envoy', 'Send an envoy', 'Learn what this empire cares about; +3 approval.',
       { requisition: 15 }, unavailable || (minor.status === 'CONQUERED' ? 'Occupied empires cannot receive envoys' : null));
     if (minor.status === 'HOSTILE') {
@@ -112,24 +113,28 @@ export function refreshExpeditionOptions(state) {
         (!minor.interestRevealed ? 'Send an envoy to learn their priorities first' : cooldown > 0 ? `Aid available in ${cooldown} turns` :
           minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' : null));
       if (minor.status !== 'ALLIED') option('pact', 'Sign a partnership pact',
-        `At 65 approval: +25% exports and ${2 + (minor.developmentLevel || 0)} requisition per fully supplied turn. Pact ends below 40 approval.`,
+        `At 65 approval: +25% exports and ${2 + developmentLevel} requisition per fully supplied turn. Pact ends below 40 approval.`,
         { requisition: 60, materials: { biomass: 40, plasma_fuel: 20 } }, unavailable ||
           (!minor.interestRevealed ? 'Send an envoy first' : minor.approval < EXPEDITION_RULES.pactApproval ? 'Requires 65 approval' :
             !peaceful(minor) ? 'Negotiate a ceasefire first' : null));
     }
-    option('develop', 'Develop this empire',
-      'One-time investment. Immediately raises production by 50% and approval by 6, and lowers sustainment by 20%.', DEVELOPMENT_COST,
+    const targetLevel = developmentLevel + 1;
+    const alloyCost = Math.ceil(DEVELOPMENT_COST.baseAlloys * (1 + developmentLevel * DEVELOPMENT_COST.growthPerLevel));
+    const upkeepIncrease = minor.status === 'CONQUERED' ? ' Occupation upkeep rises by 0.5 requisition and 1 Plasma Fuel per turn.' : '';
+    option('develop', `Develop to level ${targetLevel}`,
+      `Immediately adds 50% of base production and 6 approval, and lowers current sustainment needs by 20%.${upkeepIncrease}`,
+      { materials: { super_alloys: alloyCost } },
       unavailable || (minor.project ? 'A development is already underway' :
-        minor.developmentLevel > 0 ? 'Already developed' :
-          minor.occupationTurns > 0 ? 'Wait for occupation to stabilize' :
-            minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' :
-              minor.approval < 40 ? 'Requires 40 approval' : null));
+        minor.occupationTurns > 0 ? 'Wait for occupation to stabilize' :
+          minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' :
+            minor.approval < 40 ? 'Requires 40 approval' : null),
+      { targetLevel });
     if (minor.status === 'CONQUERED') {
       option('liberate', 'Restore independence', 'End occupation upkeep. Restore 55 approval and +5 approval with other free contacts.', {}, unavailable);
     } else {
       const availableArmy = getAvailableExpeditionArmies(state)[0];
       option('invade', 'Launch an invasion',
-        `Commit ${availableArmy ? `${availableArmy.name} (${Math.floor(availableArmy.mp.current)} MP)` : 'one ready army'} against ${minor.defense} defenders. Costs ${Math.abs(scaleCohesionDelta(-3))} Coalition Cohesion, 3 approval in each member empire and 12–20 approval with other contacts. Victory brings 15 paid turns of occupation, 35% exports, then 70%, and permanent upkeep of ${getOccupationCost(minor).requisition} requisition + ${getOccupationCost(minor).materials.plasma_fuel} fuel per turn. Once stabilized, tribute pays ${3 + (minor.developmentLevel || 0)} requisition per fully supplied turn. Secession takes ${EXPEDITION_RULES.occupationUnrestLimit} consecutive missed payments.`,
+        `Commit ${availableArmy ? `${availableArmy.name} (${Math.floor(availableArmy.mp.current)} MP)` : 'one ready army'} against ${minor.defense} defenders. Costs ${Math.abs(scaleCohesionDelta(-3))} Coalition Cohesion, 3 approval in each member empire and 12–20 approval with other contacts. Victory brings 15 paid turns of occupation, 35% exports, then 70%, and permanent upkeep of ${getOccupationCost(minor).requisition} requisition + ${getOccupationCost(minor).materials.plasma_fuel} fuel per turn. Once stabilized, tribute pays ${3 + developmentLevel} requisition per fully supplied turn. Secession takes ${EXPEDITION_RULES.occupationUnrestLimit} consecutive missed payments.`,
         EXPEDITION_RULES.conquestCost, unavailable ||
           (getAvailableExpeditionArmies(state).length === 0 ? 'No ready army is available (35 organization required)' : null));
     }
@@ -151,13 +156,16 @@ export function handleExpeditionAction(state, payload = {}) {
   if (!state || state.gameOver) return { success: false, error: state ? 'Game is over' : 'Game is not initialized' };
   if (!payload || typeof payload !== 'object') return { success: false, error: 'Invalid expedition action' };
   if (payload.action === 'develop' && payload.projectId !== undefined) {
-    return { success: false, error: 'Development is now a single investment. Refresh expedition options.' };
+    return { success: false, error: 'Development now uses levels. Refresh expedition options.' };
   }
   const system = ensureExpeditionsState(state);
   const options = refreshExpeditionOptions(state);
   const option = options.find(entry => entry.action === payload.action &&
     (payload.action === 'launch' ? entry.payload.planId === payload.planId : entry.targetId === payload.targetId));
   if (!option) return { success: false, error: 'Unknown expedition action or target' };
+  if (payload.action === 'develop' && payload.targetLevel !== undefined && payload.targetLevel !== option.payload.targetLevel) {
+    return { success: false, error: 'Development level changed. Refresh expedition options.' };
+  }
   if (option.disabled) return { success: false, error: option.reason };
   const minor = system.empires.find(entry => entry.id === payload.targetId);
   const log = [];
@@ -204,12 +212,14 @@ export function handleExpeditionAction(state, payload = {}) {
       remember(state, `Partnership signed with ${minor.name}; supplied trade now generates requisition.`, log);
       break;
     case 'develop': {
-      minor.developmentLevel = 1;
-      minor.production.amount *= 1.5;
+      const template = EMPIRE_TEMPLATES.find(entry => entry.id === minor.id);
+      minor.baseProduction ??= template?.production.amount ?? minor.production.amount;
+      minor.developmentLevel = option.payload.targetLevel;
+      minor.production.amount += minor.baseProduction * 0.5;
       minor.sustain.amount *= 0.8;
       minor.approval = clampApproval(minor.approval + 6);
       if (minor.status === 'CONQUERED') minor.upkeep = getOccupationCost(minor);
-      remember(state, `${minor.name} developed. Production rises by 50% and sustainment falls by 20%.`, log);
+      remember(state, `${minor.name} reaches development level ${minor.developmentLevel}.`, log);
       break;
     }
     case 'invade':

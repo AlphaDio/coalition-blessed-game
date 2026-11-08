@@ -270,9 +270,10 @@ test('trade pacts need approval and reward a sustained peaceful relationship', (
   assert.equal(handleExpeditionAction(state, { action: 'pact', targetId: minor.id }).success, false, 'an existing pact cannot be purchased repeatedly');
 });
 
-test('development is one immediate upgrade with a fixed cost', () => {
+test('development upgrades are immediate, scale in cost, and can be bought in requisition debt', () => {
   const { state, minor } = contactFixture();
   const develop = { action: 'develop', targetId: minor.id };
+  state.coalitionEconomy.requisition = -5;
   minor.approval = 39;
   const beforeApproval = economicSnapshot(state);
   assert.equal(handleExpeditionAction(state, develop).success, false);
@@ -281,18 +282,18 @@ test('development is one immediate upgrade with a fixed cost', () => {
   const options = refreshExpeditionOptions(state).filter(option => option.action === 'develop');
   assert.equal(options.length, 1);
   const [option] = options;
-  assert.deepEqual(option.payload, develop);
+  assert.deepEqual(option.payload, { ...develop, targetLevel: 1 });
   assert.equal(option.duration, undefined);
-  assert.equal(option.cost.requisition, 35);
+  assert.equal(option.cost.requisition, undefined);
   assert.deepEqual(option.cost.materials, { super_alloys: 65 });
 
   const outputBefore = minor.production.amount;
   const sustainBefore = minor.sustain.amount;
   const materialsBefore = { ...state.stockpiles };
   const requisitionBefore = state.coalitionEconomy.requisition;
-  action(state, develop);
+  action(state, option.payload);
   assert.deepEqual(state.stockpiles, { ...materialsBefore, super_alloys: materialsBefore.super_alloys - 65 });
-  assert.equal(state.coalitionEconomy.requisition, requisitionBefore - 35);
+  assert.equal(state.coalitionEconomy.requisition, requisitionBefore);
   assert.equal(minor.production.amount, outputBefore * 1.5);
   assert.equal(minor.sustain.amount, sustainBefore * 0.8);
   assert.equal(minor.approval, 46);
@@ -300,10 +301,28 @@ test('development is one immediate upgrade with a fixed cost', () => {
   assert.equal(minor.project, null);
 
   const committed = economicSnapshot(state);
-  assert.equal(handleExpeditionAction(state, develop).success, false);
-  assert.deepEqual(economicSnapshot(state), committed, 'a contact can only be developed once');
+  assert.match(handleExpeditionAction(state, option.payload).error, /level changed/);
+  assert.deepEqual(economicSnapshot(state), committed, 'retrying a quote cannot purchase the next level');
+  const nextOption = refreshExpeditionOptions(state).find(option => option.action === 'develop');
+  assert.deepEqual(nextOption.payload, { ...develop, targetLevel: 2 });
+  assert.deepEqual(nextOption.cost.materials, { super_alloys: 98 });
+  state.stockpiles.super_alloys = 97;
+  const shortfall = economicSnapshot(state);
+  assert.equal(handleExpeditionAction(state, nextOption.payload).success, false);
+  assert.deepEqual(economicSnapshot(state), shortfall, 'insufficient Alloys leave the upgrade and resources intact');
+
+  delete minor.baseProduction; // Saves from the one-time upgrade did not store base production.
   const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
-  assert.equal(handleExpeditionAction(restored, develop).success, false, 'save/load preserves the completed upgrade');
+  restored.stockpiles.super_alloys = 98;
+  action(restored, nextOption.payload);
+  const restoredMinor = restored.expeditions.empires[0];
+  assert.equal(restoredMinor.developmentLevel, 2);
+  assert.equal(restoredMinor.production.amount, outputBefore * 2);
+  approx(restoredMinor.sustain.amount, sustainBefore * 0.64, 'each upgrade lowers the remaining sustainment');
+  assert.equal(restoredMinor.approval, 52);
+  assert.equal(restored.stockpiles.super_alloys, 0);
+  assert.equal(restored.coalitionEconomy.requisition, requisitionBefore);
+  assert.deepEqual(refreshExpeditionOptions(restored).find(option => option.action === 'develop').cost.materials, { super_alloys: 130 });
 });
 
 test('older saves retain completed development and finish paid projects on schedule', () => {
@@ -328,8 +347,11 @@ test('older saves retain completed development and finish paid projects on sched
   assert.equal(restoredMinor.production.amount, baseProduction * 2);
   assert.equal(restoredMinor.sustain.amount, baseSustain * 0.8);
   assert.equal(restoredMinor.developmentLevel, 3);
-  assert.equal(handleExpeditionAction(restored, develop).success, false);
   assert.deepEqual(restored.stockpiles, state.stockpiles, 'legacy projects need no further payment');
+  action(restored, develop);
+  assert.equal(restoredMinor.developmentLevel, 4);
+  assert.equal(restoredMinor.production.amount, baseProduction * 2.5);
+  approx(restoredMinor.sustain.amount, baseSustain * 0.64, 'new upgrades stack with old project benefits');
 });
 
 test('a discovery must be studied and cannot repeat its reward', () => {

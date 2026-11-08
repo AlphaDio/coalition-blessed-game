@@ -39,13 +39,13 @@ An envoy costs 15 requisition, reveals priorities and adds 3 approval. Tailored 
 
 Knowledge-minded contacts gain 5 approval when a discovery study completes. Sovereignty-minded contacts give extra approval for pacts and strongly oppose conquest.
 
-At **65 approval**, an envoy-informed contact can sign a partnership for 60 requisition, 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 requisition per turn**, or **3 after development**, scaled by previous sustain fulfillment. Approval below 40 suspends the pact.
+At **65 approval**, an envoy-informed contact can sign a partnership for 60 requisition, 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 requisition plus 1 per development level each turn**, scaled by previous sustain fulfillment. Approval below 40 suspends the pact.
 
 ## Development
 
-**Develop this empire** is a one-time investment of **35 requisition and 65 Super Alloys**. It immediately increases production by **50%**, lowers sustainment by **20%**, and grants **6 approval**. Contacts need **40 approval** and must be at peace. Conquered contacts also need to finish the initial occupation period.
+**Develop** upgrades a contact immediately and can be repeated. The first level costs **65 Super Alloys** and each existing level adds 50% of the base price, rounded up. The first three upgrades cost **65, 98 and 130 Super Alloys**. Development uses zero requisition. Each level adds **50% of base production**, lowers the current sustainment requirement by **20%**, and grants **6 approval**. Contacts need **40 approval** and must be at peace. Conquered contacts also need to finish the initial occupation period.
 
-Completed projects in older campaigns count as development and keep their existing economic benefits. Projects already paid for keep their saved timers and rewards.
+Older campaigns keep their development levels and economic benefits. New upgrades stack on top of those benefits. Projects already paid for keep their saved timers and rewards.
 
 ## Raids, invasion and occupation
 
@@ -53,7 +53,7 @@ At **20 approval or less**, an independent contact becomes hostile and closes it
 
 An invasion costs **125 requisition, 100 Alloys and 60 Fuel**, plus **1.5 Coalition Cohesion at current pacing**, 3 approval from every Coalition member and 12 approval from other independent contacts (20 for sovereignty-minded contacts). One ready army is selected by default, with at least 35 organization. Its identity and strength, enemy defenders and economic consequences appear before confirmation. The army cannot serve on simultaneous Scourge or rebellion fronts. Combat applies real permanent capacity losses, wounds, organization changes and experience. It does not alter Scourge Cohesion or grant Scourge victory rewards.
 
-Victory starts an occupation at 20 approval. Exports run at 35% for the first **15 paid turns** and 70% afterward. Each turn costs **1.5 requisition and 2 Plasma Fuel**, or **2 requisition and 3 Plasma Fuel** after development. A stabilized occupation pays up to **3 requisition** in tribute on each paid turn, or **4 after development**, scaled by previous sustain fulfillment.
+Victory starts an occupation at 20 approval. Exports run at 35% for the first **15 paid turns** and 70% afterward. The base upkeep is **1.5 requisition and 2 Plasma Fuel** each turn. Each development level adds **0.5 requisition and 1 Plasma Fuel** to that upkeep. A stabilized occupation pays **3 requisition plus 1 per development level** in tribute on each paid turn, scaled by previous sustain fulfillment.
 
 Unpaid upkeep pauses new exports and tribute. The empire breaks free after **20 consecutive missed payments**. Paying upkeep resets the countdown. Expedition reports warn on the first missed payment and again with five turns left. Contact details show the shortfall and remaining turns. Existing occupations start a fresh countdown on migration.
 
@@ -76,6 +76,6 @@ Study costs and timers are authored in `src/game/expeditions/catalog.js`. Dynami
 
 ## Integration and validation
 
-`POST /api/game/actions/expedition` accepts `launch` with `planId: 'frontier'`, along with `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. Development takes the contact's `targetId`. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
+`POST /api/game/actions/expedition` accepts `launch` with `planId: 'frontier'`, along with `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. Development takes the contact's `targetId`. Include the option's `targetLevel` to tie the purchase to the level quoted by the server. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
 
-`npm run test:expeditions` covers travel, deterministic destinations, atomic payments and seller credit, diplomacy, one-time development, unique discovery rewards, migration, save/load, raids, occupation, budget-limited trading, casualty persistence, concurrent army exclusion, and the live REST/WebSocket opening flow. The terminal client's `npm test` covers real Blessed navigation, scrolling, hidden interests, disabled actions, costs, invasion confirmation/cancellation and API dispatch.
+`npm run test:expeditions` covers travel, deterministic destinations, atomic payments and seller credit, diplomacy, repeatable development, unique discovery rewards, migration, save/load, raids, occupation, budget-limited trading, casualty persistence, concurrent army exclusion, and the live REST/WebSocket opening flow. The terminal client's `npm test` covers real Blessed navigation, scrolling, hidden interests, disabled actions, costs, invasion confirmation/cancellation and API dispatch.
