@@ -1,7 +1,7 @@
 # Economy System
 
 ## Overview
-The current economy is a fixed-price order market. Commodity prices are seeded at game start and then remain stable for the run. This is intentional for now: prices act as valuation anchors for order limits, trade valuation, and consumption-to-requisition conversion, while scarcity is expressed through unfilled orders, stockpiles, fulfillment, and budgets.
+Commodity prices are seeded at game start. Projects can raise market prices through Credit issuance. The seeded prices remain the reference for consumption-to-requisition conversion. Scarcity also shows up through unfilled orders, fulfillment, and budgets.
 
 The economy does not currently use coalition procurement, commodity bank rollover, or emergency laws. Requisition comes from starting resources, direct improvement outputs, consumption conversion, normal law modifiers, and mission/effect hooks.
 
@@ -37,7 +37,7 @@ Prices are initialized once in `src/game/marketEconomy.js`:
 4. Pick the initial price between 50% and 150% of that adjusted floor.
 5. Store the value in both `price` and `last_price`.
 
-After initialization, prices do not move. Demand and supply quantities are still tracked each tick, but they are diagnostics and clearing inputs, not price-update inputs.
+The seeded prices apply until a Project order issues Credits. The Project price adjustment is applied after market clearing, so updated prices apply to new orders on the following turn. [Project rules](#projects-and-credit-issuance) describe how the index is calculated.
 
 Inactive for now:
 - Demand/supply target price updates.
@@ -45,6 +45,17 @@ Inactive for now:
 - Shortage panic caps.
 - Tier elasticity.
 - Dynamic volatility.
+
+## Projects and Credit Issuance
+
+Each commodity has two possible Projects. A campaign uses its seed to select one variant per commodity. The selected variants, levels and pending orders persist in the save.
+
+- **Expansion** adds 5% of base Coalition production of the commodity per level.
+- **Conservation** divides the Coalition's demand for the commodity by `1 + 0.05 × level`.
+
+Each level consumes a fixed quantity of its commodity. The quantity is 5 for tier 1, 1 for tier 2, 0.5 for tier 3 and 0.25 for tier 4. Authorizing a Project places an order for the next market clearing, above civilian orders and below higher-priority military orders. A full fill raises the level and issues the actual purchase price directly to the sellers. If the full quantity cannot clear within the price limit, the order expires. Projects draw their inputs from the market and settle through new Credits.
+
+The price index starts at 100. After issuance, it responds to estimated Project Credits still circulating, recent supply of Super Alloys, Biomass and Plasma Fuel, and the share of that supply purchased. Net drains retire an estimated proportion of Project Credits. The index moves one fifth of the distance toward its target each turn. The target ranges from 100 to 200 and rises faster when there is less real supply to absorb additional spending.
 
 ## Turn Flow
 The relevant economy sequence inside a turn is:
@@ -151,7 +162,7 @@ Consumption is the main passive requisition path. The system records commodity c
 - Army wants.
 - Improvement sustainment.
 
-At the end of the turn, recorded consumption is valued at the current static market price.
+At the end of the turn, recorded consumption is valued at the seeded reference price.
 
 ```text
 raw_value = consumed_qty * static_market_price

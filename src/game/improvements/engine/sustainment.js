@@ -178,7 +178,7 @@ export function calculateImprovementNeed(state, empire, commodity, qtyPerPopulat
     * IMPROVEMENT_SUSTAINMENT_SCALE
     * supplyEfficiencyMultiplier
     * empireMult;
-  const balancedNeed = applyDemandCommodityMultiplier(commodity, rawNeed);
+  const balancedNeed = applyDemandCommodityMultiplier(commodity, rawNeed, state);
   return normalizeQty(balancedNeed);
 }
 

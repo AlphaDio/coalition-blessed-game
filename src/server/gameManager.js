@@ -17,6 +17,7 @@ import { handleLawEventChoice, startLawProcess, startLawProcessFromProposal } fr
 import { acceptImprovementRequest, cancelImprovement } from '../game/improvements/index.js';
 import { calculateScourgePrediction, getDirectTargetIntelCost } from '../game/scourgePrediction.js';
 import { handleExpeditionAction, refreshExpeditionOptions } from '../game/expeditions/index.js';
+import { fundProject, refreshProjects } from '../game/projects.js';
 import { GAME_INIT_CONSTANTS, REALTIME_CONSTANTS, MISSION_SLIDER_VALUES } from '../game/constants.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -80,6 +81,7 @@ export class GameManager {
     assignInitialHeroes(this.state, heroRng.random.bind(heroRng));
     generateHeroLawProposals(this.state, heroRng.random.bind(heroRng), this.state.log);
     refreshExpeditionOptions(this.state);
+    refreshProjects(this.state);
 
     logger.debug(`Game initialized with seed: ${seed}`);
   }
@@ -224,7 +226,10 @@ export class GameManager {
    * Get current game state
    */
   getGameState() {
-    if (this.state) refreshExpeditionOptions(this.state);
+    if (this.state) {
+      refreshExpeditionOptions(this.state);
+      refreshProjects(this.state);
+    }
     return this.state;
   }
 
@@ -232,6 +237,16 @@ export class GameManager {
     const result = handleExpeditionAction(this.state, payload);
     if (result.success) {
       this.state.log.push(...(result.log || []));
+      this.state.log = this.state.log.slice(-100);
+      this.notifyStateChange();
+    }
+    return result;
+  }
+
+  handleProjectAction(payload) {
+    const result = fundProject(this.state, payload);
+    if (result.log) {
+      this.state.log.push(result.log);
       this.state.log = this.state.log.slice(-100);
       this.notifyStateChange();
     }
@@ -528,10 +543,10 @@ export class GameManager {
    * Notify all listeners of state change
    */
   notifyStateChange() {
-    if (this.state) refreshExpeditionOptions(this.state);
+    const state = this.getGameState();
     this.stateChangeCallbacks.forEach(callback => {
       try {
-        callback(this.state);
+        callback(state);
       } catch (error) {
         logger.error(`Error in state change callback: ${error.message}`);
       }

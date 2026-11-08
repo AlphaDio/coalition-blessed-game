@@ -97,6 +97,7 @@ function ensureEmpireConsumptionLedger(empireId) {
 function getCommodityPrice(market, commodityId) {
   const commodityMarket = market?.[commodityId];
   if (!commodityMarket) return 1.0;
+  if (Number.isFinite(commodityMarket.reference_price)) return commodityMarket.reference_price;
   if (Number.isFinite(commodityMarket.price)) return commodityMarket.price;
   if (Number.isFinite(commodityMarket.last_price)) return commodityMarket.last_price;
   return 1.0;

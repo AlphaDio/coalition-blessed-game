@@ -90,6 +90,15 @@ try {
   }
   assert(messages.some(message => message.type === 'state_update' && message.payload.expeditions?.empires?.some(minor => minor.interestRevealed)),
     'Clients receive contact and diplomacy updates over the actual WebSocket');
+  const project = gameManager.getGameState().projects.options.find(entry => entry.commodity === 'biomass');
+  const ordered = await fetch(`${base}/api/game/actions/project`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ commodity: project.commodity, targetLevel: 1, maxCredits: project.credits })
+  });
+  assert.equal(ordered.status, 200);
+  assert((await ordered.json()).data.projects.pending.biomass);
+  assert(gameManager.advanceTurnManually().success);
+  assert.equal(gameManager.getGameState().projects.levels.biomass, 1);
   gameManager.state.gameOver = true;
   assert.equal((await post(launch)).status, 400);
   console.log('Expedition API and opening-game integration tests passed.');

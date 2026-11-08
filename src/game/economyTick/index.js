@@ -28,6 +28,7 @@ import {
 } from './ordersLifecycle.js';
 import { applyPostMarketUpdates } from './postTick.js';
 import { triggerPressureGameplayEvents } from '../pressureEvents.js';
+import { createProjectOrders, settleProjectOrders, updateProjectPrices } from '../projects.js';
 import {
   prepareMinorEconomy,
   emitMinorEconomyOrders,
@@ -107,13 +108,15 @@ export function processEconomyTick(state) {
   resetEmpireSpend(state);
 
   // Step 6: Market clearing
+  const projectOrders = createProjectOrders(state);
   const allTrades = clearMarkets(
     state,
     commodities,
-    budgetResult.validBuyOrders,
+    [...budgetResult.validBuyOrders, ...projectOrders],
     budgetResult.validSellOffers,
     { budgetsEnforced: true }
   );
+  log.push(...settleProjectOrders(state, projectOrders, allTrades));
 
   consumeStarterNeedsStockpiles(state, budgetResult.validBuyOrders);
 
@@ -138,6 +141,7 @@ export function processEconomyTick(state) {
   // Step 7-8: Apply post-market updates
   applyPostMarketUpdates(state, config);
   applyMinorEconomyPostMarket(state);
+  updateProjectPrices(state);
 
   logger.debug(`Economy tick: ${allTrades.length} trades, ${buyOrders.length} buy orders, ${sellOffers.length} sell offers`);
 

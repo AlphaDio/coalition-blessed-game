@@ -16,7 +16,7 @@ The base cost is **150 Biomass and 100 Plasma Fuel** for an empire contact or **
 
 New and migrated campaigns receive a finite frontier charter of **240 Super Alloys, 220 Biomass and 160 Plasma Fuel** in Coalition stockpiles. The charter covers the opening launch and helps fund early investments. It never refills on save/load. Further supplies come from discovery salvage and market surplus created by production improvements and contacts.
 
-Costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the run's fixed commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
+Costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the current commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
 
 Base travel time varies from **10 to 16 turns**. The destination and travel roll use a dedicated stream seeded by the campaign seed and expedition count. Both are saved at launch, so pausing or reloading preserves the trip.
 

@@ -513,6 +513,17 @@ export function createApiServer(port = 3001, corsOrigin = 'http://localhost:3000
     }
   });
 
+  app.post('/api/game/actions/project', (req, res) => {
+    try {
+      const result = gameManager.handleProjectAction(req.body);
+      if (result.error) return res.sendError(ErrorCodes.INVALID_ACTION, result.error);
+      res.sendSuccess(gameManager.getGameState());
+    } catch (error) {
+      logger.error(`Error funding Project: ${error.message}`);
+      res.sendError(ErrorCodes.INTERNAL_SERVER_ERROR, 'Failed to fund Project');
+    }
+  });
+
   // Set mission slider
   app.post('/api/game/actions/mission-slider', (req, res) => {
     try {

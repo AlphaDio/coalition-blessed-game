@@ -23,7 +23,7 @@ export function emitEmpireProduction(state, aggregateSellOffer) {
       if (qty > 0) {
         const rawQty = qty * population * productionMultiplier * effectiveEfficiency *
           (1 + (state.coalitionModifiers.industrial_output || 0) + (state.coalitionModifiers.industrialOutputBonus || 0));
-        const modifiedQty = applySupplyCommodityMultiplier(commodity, rawQty);
+        const modifiedQty = applySupplyCommodityMultiplier(commodity, rawQty, state);
         const reservedForSustainment = allocateSustainmentFromLocalProduction(state, empire.id, commodity, modifiedQty);
         const qtyForMarket = Math.max(0, modifiedQty - reservedForSustainment);
         if (qtyForMarket <= 0) {
