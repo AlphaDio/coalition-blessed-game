@@ -49,8 +49,8 @@ function tick(state, count = 1) {
 function completeMission(state) {
   action(state, launch);
   const { duration } = state.expeditions.active[0];
-  for (let i = 0; state.expeditions.active.length && i < 100; i++) tick(state);
-  assert.equal(state.expeditions.active.length, 0, 'mission finishes in bounded time');
+  tick(state, duration);
+  assert.equal(state.expeditions.active.length, 0, 'mission finishes at the rolled duration');
   return duration;
 }
 
@@ -85,7 +85,7 @@ test('one frontier mission can find a contact or discovery and spends only mater
   const plans = refreshExpeditionOptions(state).filter(option => option.action === 'launch');
   assert.equal(plans.length, 1);
   assert.deepEqual(plans[0].payload, launch);
-  assert.deepEqual(plans[0].durationRange, { min: 10, max: 16 });
+  assert.deepEqual(plans[0].durationRange, { min: 25, max: 40 });
   assert.equal(plans[0].destinationKind, 'empire');
   assert.deepEqual(plans[0].cost.materials, { biomass: 150, plasma_fuel: 100 });
   assert.equal(plans[0].disabled, false, 'no requisition is needed to launch');
@@ -118,6 +118,7 @@ test('one frontier mission can find a contact or discovery and spends only mater
 
   const next = state.expeditions.options.find(option => option.action === 'launch');
   assert.equal(next.destinationKind, 'discovery');
+  assert.deepEqual(next.durationRange, { min: 37, max: 52 });
   assert.deepEqual(next.cost.materials, { super_alloys: 188, plasma_fuel: 125 });
   const beforeSecond = structuredClone(state.stockpiles);
   completeMission(state);
@@ -145,7 +146,7 @@ test('a seed and the same decisions reproduce varied travel times, destinations,
   }
   const first = run(7714);
   assert.deepEqual(run(7714), first);
-  assert(first.durations.every(duration => duration >= 10 && duration <= 16));
+  assert(first.durations.every((duration, index) => duration >= 25 + 12 * index && duration <= 40 + 12 * index));
   assert(new Set(first.durations).size > 1, 'mission durations vary within a campaign');
   assert.equal(new Set(first.contacts.map(minor => minor.id)).size, first.contacts.length, 'contact rewards are unique');
   assert.equal(new Set(first.discoveries).size, first.discoveries.length, 'discovery rewards are unique');
@@ -159,17 +160,18 @@ test('Hyperdrive and completed Transit Lattice studies shorten later expeditions
   const state = fixture();
   state.empires[0].technologies.push('hyperdrive');
   const launchOption = () => refreshExpeditionOptions(state).find(option => option.action === 'launch');
-  assert.deepEqual(launchOption().durationRange, { min: 9, max: 14 });
+  assert.deepEqual(launchOption().durationRange, { min: 21, max: 34 });
 
   const lattice = { id: 'transit_lattice', name: 'Transit Lattice', status: 'UNSTUDIED' };
   state.expeditions.discoveries.push(lattice);
   action(state, { action: 'study', targetId: lattice.id });
+  assert.equal(lattice.project.duration, 24);
   assert.equal(launchOption().speedBonus, 0.2, 'studies grant bonuses upon completion');
   tick(state, lattice.project.duration);
   assert.equal(lattice.status, 'STUDIED');
   assert.match(lattice.benefitDescription, /\+30% expedition speed/);
   assert.equal(launchOption().speedBonus, 0.5);
-  assert.deepEqual(launchOption().durationRange, { min: 7, max: 11 });
+  assert.deepEqual(launchOption().durationRange, { min: 17, max: 27 });
   action(state, launch);
   assert.equal(state.expeditions.active[0].duration, Math.ceil(baseDuration / 1.5));
 });

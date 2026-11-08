@@ -69,19 +69,15 @@ Every actual payment also adds its credit amount to `funding_total`. This runnin
 
 A Hero automatically attempts their signature ability when sufficiently charged and off cooldown. Attempts occur on relevant events and during turn processing, including when there is no law in progress. Law-dependent abilities wait for a live law; army-dependent abilities wait for an applicable army effect. A hook that produces no meaningful effect does not spend Charge or start a cooldown.
 
-A successful ability spends its Charge and starts its content-defined cooldown. Cooldowns tick at the start of the turn, before events are produced, so activations receive the full cooldown regardless of which event fires them. Its effects and total strength multiplier are logged. Funding and Popularity combine as follows:
+A successful ability spends its Charge and starts its content-defined cooldown. Cooldowns tick at the start of the turn, before events are produced, so activations receive the full cooldown regardless of which event fires them. Funding sets signature ability strength directly.
 
 ```text
-popularity_cap = clamp(100 - grievance * 0.5, 10, 100)
-effective_popularity = min(popularity, popularity_cap)
-popularity_scalar = clamp(0.2 + effective_popularity / 100, 0.2, 1.2)
-funding_scalar = 0.6 + (funding / 100) * 0.8
-ability_scalar = max(0.35, popularity_scalar * funding_scalar)
+ability_scalar = 0.6 + (funding / 100) * 0.8
 ```
 
-An unfunded Hero still acts at a useful minimum. Fully funded, popular Heroes have stronger effects. Existing passives continue to use Popularity alone.
+An unfunded Hero acts at ×0.6 strength. Fully funded Heroes act at ×1.4 strength. Popularity governs political support and passive effects.
 
-Ability DSL hooks receive `scope.ability_scalar`, `scope.funding_scalar`, and `scope.popularity_only_scalar`. For existing ability content, `scope.popularity_scalar` supplies the combined ability scalar. Passive hooks keep the original Popularity meaning.
+Ability DSL hooks receive `scope.ability_scalar`, `scope.funding_scalar`, and `scope.popularity_only_scalar`. For existing ability content, `scope.popularity_scalar` supplies the ability strength. Passive hooks use Popularity.
 
 ## Existing political systems
 
@@ -91,7 +87,7 @@ Hero definitions remain unique empire-affiliated characters. Each empire has fiv
 
 ## Presentation
 
-The terminal's **Heroes** view (`H`) shows accumulated Funding in credits beside each Hero's name. Details show thematic triggers, status-adjusted Charge gains, current Charge and actual threshold, Funding level and multiplier, latest payment and budget share, combined ability strength, cooldown/readiness and last activation. It preserves passives and political meters. The existing game/event log records Charge gains, material funding changes, and fired abilities with their concrete effects.
+The terminal's **Heroes** view (`H`) shows each Hero's empire, status, signature ability, Charge, cooldown, Funding, and Popularity. It groups Charge sources into laws, battles, research, and construction. The log records individual Charge gains, funding changes, and ability activations.
 
 ## Save compatibility
 

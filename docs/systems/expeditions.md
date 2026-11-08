@@ -18,9 +18,9 @@ New and migrated campaigns receive a finite frontier charter of **240 Super Allo
 
 Expedition actions use zero requisition. Material costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the current commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
 
-Base travel time varies from **10 to 16 turns**. The destination and travel roll use a dedicated stream seeded by the campaign seed and expedition count. Both are saved at launch, so pausing or reloading preserves the trip.
+The first expedition takes **25–40 turns** before speed bonuses. Each prior launch adds **12 turns** to both ends of the range as expeditions reach farther from the Coalition. With immediate relaunches and no speed bonuses, charting all twelve destinations takes **1,092–1,272 travel turns**. The destination and travel roll use a dedicated stream seeded by the campaign seed and expedition count. Both are saved at launch.
 
-Hyperdrive Technology in any Coalition empire grants **+20% expedition speed**. Studying the Transit Lattice adds **+30%**. The game divides the base roll by one plus the combined speed bonus and rounds up, for a **7–11 turn** range with both bonuses. Bonuses apply when an expedition launches.
+Hyperdrive Technology in any Coalition empire grants **+20% expedition speed**. Studying the Transit Lattice adds **+30%**. The game divides the base roll by one plus the combined speed bonus and rounds up. The starting range would be **17–27 turns** with both bonuses. Bonuses apply when an expedition launches.
 
 ## Independent empires
 
@@ -72,7 +72,7 @@ Liberation immediately ends occupation, restores 55 approval and gives other fre
 
 ## Discoveries
 
-Discovery sites have no population, approval, sustainment or army. Their study cost, duration and benefit are visible before investing. Studies can run alongside a journey, complete once, and persist in saves.
+Discovery sites have no population, approval, sustainment or army. Studies take **8–24 turns** and can run alongside a journey. The cost, duration and benefit are visible before investing. Studies complete once and persist in saves.
 
 | Discovery | Study reward |
 | --- | --- |

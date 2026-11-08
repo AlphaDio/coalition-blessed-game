@@ -4,6 +4,7 @@ import { initializeMarket } from '../src/game/marketEconomy.js';
 import { loadResources } from '../src/game/economyTick/resources.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { clearMarkets } from '../src/game/economyTick/ordersLifecycle.js';
+import { fundProject } from '../src/game/projects.js';
 import {
   prepareMinorEconomy,
   emitMinorEconomyOrders,
@@ -55,12 +56,46 @@ function tick(state) {
   const minor = state.expeditions.empires[0];
   assert.equal(minor.budget_credits, 0, 'Minor purchases stop at its own budget');
   assert.equal(state.empires[0].budget_credits, 4.75, 'Supplier receives payment less the 5% tax at 50 Approval');
-  assert.equal(state.marketTaxLastTick, 0.25, 'Market tax is tracked as retired Credits');
+  assert.equal(state.marketTaxLastTick, 0.25);
   assert.equal(minor.supplyState.received, 5, 'Only affordable sustainment is received');
   assert.equal(minor.supplyState.fulfillment, 0.5);
   assert.equal(minor.approval, 49.625, 'Shortages affect the minor approval');
-  assert.equal(state.coalitionEconomy.treasury_credits, treasury, 'Minor spending cannot draw on Coalition treasury');
+  assert.equal(state.coalitionEconomy.treasury_credits, treasury + 0.25, 'Minor spending only affects the Treasury through tax receipts');
   assert.deepEqual(getEmpireTurnConsumptionByCommodity(minor.id), {}, 'Minor trade does not create Coalition consumption requisition');
+}
+
+{
+  const state = makeState({ status: 'HOSTILE' });
+  state.coalitionEconomy.treasury_credits = 0;
+  state.empires[0].budget_credits = 0.5;
+  state.marketOrders.sellOffers.push({ ...sellOffer('biomass', 2), fee: 0.25 });
+  state.projects.variants.biomass = 'production';
+  assert(fundProject(state, { commodity: 'biomass', targetLevel: 1, maxCredits: 5 }).log);
+  tick(state);
+
+  assert.equal(state.market.biomass.flow_demand_qty_turn, 5, 'Project orders count in buy volume');
+  assert.deepEqual(state.projects.marketLastTick.biomass, { requested: 5, filled: 2 });
+  assert.equal(state.marketFeesLastTick, 0.25);
+  assert.equal(state.marketTaxLastTick, 0.1);
+  assert.equal(state.projects.creditsSpentLastTick, 2, 'The Treasury pays only for goods delivered');
+  assert.equal(state.projects.creditsIssuedLastTick, 1.75, 'Posting fees fund part of the purchase before issuance');
+  assert.equal(state.projects.creditsIssued, 1.75);
+  assert.equal(state.coalitionEconomy.treasury_credits, 0.1, 'The tax on the purchase returns to the Treasury');
+  assert.equal(state.empires[0].budget_credits, 2.15, 'Seller pays the posting fee and tax exactly once');
+  assert.deepEqual(getEmpireTurnConsumptionByCommodity('seller'), {}, 'Projects do not create consumption requisition');
+
+  tick(state);
+  assert.deepEqual(state.projects.marketLastTick.biomass, { requested: 5, filled: 0 });
+  assert.equal(state.projects.creditsSpentLastTick, 0);
+  assert.equal(state.projects.creditsIssuedLastTick, 0);
+  assert.equal(state.projects.creditsIssued, 1.75, 'Unfilled orders create demand without creating Credits');
+  assert.equal(state.coalitionEconomy.treasury_credits, 0.1);
+
+  state.coalitionEconomy.treasury_credits = -2;
+  state.marketOrders.sellOffers.push({ ...sellOffer('biomass', 2), fee: 0.25 });
+  tick(state);
+  assert.equal(state.projects.creditsIssuedLastTick, 2, 'Project issuance covers the purchase while the Treasury is in deficit');
+  assert.equal(state.coalitionEconomy.treasury_credits, -1.65, 'Market receipts reduce the existing deficit');
 }
 
 for (const approval of [0, 50, 100]) {

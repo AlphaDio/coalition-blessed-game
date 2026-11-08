@@ -72,7 +72,7 @@ export function applyHeroFunding(state, log = []) {
     // Log support starting/stopping and meaningful rating bands, avoiding a
     // per-turn funding line that hides battles and political developments.
     if ((before.paid > 0) !== (paid > 0) || Math.floor(before.funding / 20) !== Math.floor(hero.funding / 20)) {
-      const message = `Hero funding: ${hero.name} received ${paid.toFixed(1)} credits (${hero.funding_total.toFixed(1)} accumulated); apparatus ${hero.funding.toFixed(1)}/${HERO_CONSTANTS.FUNDING_MAX} (x${getFundingScalar(hero).toFixed(2)} funding strength).`;
+      const message = `Hero funding: ${hero.name} at x${getFundingScalar(hero).toFixed(2)} ability strength (${paid.toFixed(1)} credits this turn).`;
       log.push(message);
       logger.info(message);
     }

@@ -104,7 +104,8 @@ export function processEconomyTick(state) {
   } = applyOrderDurations(state, buyOrders, sellOffers);
 
   const budgetResult = enforceEmpireBudgetConstraints(state, validBuyOrders, validSellOffers);
-  applyOrderFees(state, budgetResult.validBuyOrders, budgetResult.validSellOffers);
+  state.marketFeesLastTick = applyOrderFees(state, budgetResult.validBuyOrders, budgetResult.validSellOffers);
+  state.coalitionEconomy.treasury_credits += state.marketFeesLastTick;
   resetEmpireSpend(state);
 
   // Step 6: Market clearing
@@ -117,6 +118,8 @@ export function processEconomyTick(state) {
     { budgetsEnforced: true }
   );
   log.push(...settleProjectOrders(state, projectOrders, allTrades));
+  // Settle purchases gross before depositing the tax on those sales.
+  state.coalitionEconomy.treasury_credits += state.marketTaxLastTick;
 
   consumeStarterNeedsStockpiles(state, budgetResult.validBuyOrders);
 
@@ -132,7 +135,7 @@ export function processEconomyTick(state) {
     log.push(`Shortage pressure reaches Tier ${tier} for ${name}.`);
   }
   const shortageLoss = applyCriticalShortageLoss(state);
-  if (shortageLoss > 0) log.push(`Critical shortages cost ${shortageLoss.toFixed(1)} Coalition Cohesion.`);
+  if (shortageLoss > 0) log.push(`Critical shortages cost ${shortageLoss.toFixed(2)} Coalition Cohesion.`);
 
   // Step 6b: Save remaining valid orders to state.marketOrders
   saveMarketOrders(

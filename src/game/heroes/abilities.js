@@ -8,7 +8,7 @@ import {
 import { getLogger } from '../../modules/logger.js';
 import { HERO_CONSTANTS, HERO_STATUS } from './constants.js';
 import { formatMessage } from './helpers.js';
-import { ensureHeroMeters, getHeroEmpireId, getPopularityScalar, getFundingScalar, getAbilityScalar } from './utils.js';
+import { ensureHeroMeters, getHeroEmpireId, getPopularityScalar, getFundingScalar } from './utils.js';
 import { calculateArmyPower } from '../battles/power.js';
 import { getEffectiveArmyFervor } from '../armyBattlePrep.js';
 
@@ -31,7 +31,7 @@ export function triggerHeroAbilities(state, lawProcess = null, log = []) {
     const empire = state.empires.find(e => e.id === getHeroEmpireId(hero));
     if (!empire) return;
 
-    const abilityScalar = getAbilityScalar(hero);
+    const abilityScalar = getFundingScalar(hero);
     const resolved = runHeroAbilityHook(abilityDef, hero, empire, state, activeLaw, abilityScalar, log, logger);
     // Legacy JS callbacks must explicitly report a successful resolution.
     const fired = resolved === null && typeof abilityDef.trigger === 'function'
@@ -74,12 +74,11 @@ function runHeroAbilityHook(abilityDef, hero, empire, state, lawProcess, ability
     empire,
     state,
     law_process: lawProcess,
-    // Existing content formulas get the combined modifier without rewriting
-    // passives, which continue to receive popularity alone.
+    // Ability content still uses this legacy field for its strength multiplier.
     popularity_scalar: abilityScalar,
     ability_scalar: abilityScalar,
     popularity_only_scalar: getPopularityScalar(hero),
-    funding_scalar: getFundingScalar(hero),
+    funding_scalar: abilityScalar,
     hero_tags: hero.tags || [],
     empire_tags: empire.tags || []
   };

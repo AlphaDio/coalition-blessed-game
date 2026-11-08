@@ -54,19 +54,23 @@ assert.equal(biomass().progress, 1);
 assert(game.advanceTurnManually().success);
 assert.equal(biomass().pending, false);
 assert.equal(biomass().level, 1);
-const firstLevelCredits = game.state.projects.creditsIssued;
-assert(firstLevelCredits > 0);
+assert(game.state.projects.creditsSpentLastTick > 0);
+assert.equal(game.state.projects.creditsIssued, 0, 'Existing Treasury Credits fund the purchase first');
+const treasuryBeforeUpkeep = game.state.coalitionEconomy.treasury_credits;
 assert(game.advanceTurnManually().success);
-assert(game.state.projects.creditsIssued > firstLevelCredits, 'completed projects buy upkeep each turn');
+const { creditsSpentLastTick } = game.state.projects;
+assert(creditsSpentLastTick > 0, 'completed projects buy upkeep each turn');
+assert.equal(game.state.coalitionEconomy.treasury_credits,
+  treasuryBeforeUpkeep + game.state.marketFeesLastTick - creditsSpentLastTick + game.state.marketTaxLastTick);
 assert.equal(biomass().level, 1);
 assert(getProjectBonus(game.state, 'population') > 0, 'both Biomass Projects boost population growth');
 assert(game.handleProjectAction({ commodity: 'biomass', action: 'pause' }).log);
-const pausedCredits = game.state.projects.creditsIssued;
 assert(game.advanceTurnManually().success);
-assert.equal(game.state.projects.creditsIssued, pausedCredits);
+assert.equal(game.state.projects.creditsSpentLastTick, 0);
+assert.equal(game.state.projects.creditsIssuedLastTick, 0);
+assert.deepEqual(game.state.projects.marketLastTick, {});
 assert.equal(getProjectBonus(game.state, 'population'), 0);
 assert.deepEqual(game.state.stockpiles, stockpiles);
-assert.equal(game.state.coalitionEconomy.treasury_credits, finances.treasury_credits);
 assert.deepEqual(game.state.projects.variants, createGameState(42).projects.variants);
 
 {

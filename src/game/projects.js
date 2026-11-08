@@ -135,17 +135,28 @@ export function createProjectOrders(state) {
 export function settleProjectOrders(state, orders, trades) {
   const projects = state.projects;
   projects.supply = {};
+  projects.marketLastTick = {};
+  projects.creditsSpentLastTick = 0;
+  projects.creditsIssuedLastTick = 0;
   if (!orders.length) return [];
-  const issuedByOrder = new Map(orders.map(order => [order.id, 0]));
+
+  const projectOrderIds = new Set(orders.map(order => order.id));
+  let spend = 0;
   for (const trade of trades) {
-    if (!issuedByOrder.has(trade.buy_order_id)) continue;
-    issuedByOrder.set(trade.buy_order_id, issuedByOrder.get(trade.buy_order_id) + trade.qty * trade.price);
+    if (projectOrderIds.has(trade.buy_order_id)) spend += trade.qty * trade.price;
   }
+  const treasury = state.coalitionEconomy;
+  // New issuance is spent immediately and leaves any existing Treasury deficit intact.
+  const treasuryPayment = Math.min(spend, Math.max(0, treasury.treasury_credits));
+  treasury.treasury_credits -= treasuryPayment;
+  projects.creditsSpentLastTick = spend;
+  projects.creditsIssuedLastTick = spend - treasuryPayment;
+  projects.creditsIssued += projects.creditsIssuedLastTick;
+
   const log = [];
   for (const order of orders) {
-    // Market settlement already credits the sellers. A Project order has no buyer account to debit.
-    projects.creditsIssued += issuedByOrder.get(order.id);
-    const { commodity, baseAmount, filled_qty: filled, targetLevel } = order;
+    const { commodity, baseAmount, qty: requested, filled_qty: filled, targetLevel } = order;
+    projects.marketLastTick[commodity] = { requested, filled };
     let level = projects.levels[commodity] || 0;
     const pending = projects.pending[commodity];
     if (pending) {

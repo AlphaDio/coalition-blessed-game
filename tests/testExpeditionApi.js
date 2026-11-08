@@ -27,7 +27,7 @@ try {
   const plans = opening.expeditions.options.filter(option => option.targetType === 'plan');
   assert.equal(plans.length, 1);
   assert.equal(plans[0].disabled, false, 'The frontier expedition must be affordable in an actual new game');
-  assert.deepEqual(plans[0].durationRange, { min: 10, max: 16 });
+  assert.deepEqual(plans[0].durationRange, { min: 25, max: 40 });
   assert.equal(plans[0].destinationKind, 'empire');
   const supplies = structuredClone(opening.stockpiles);
   const requisition = opening.coalitionEconomy.requisition;

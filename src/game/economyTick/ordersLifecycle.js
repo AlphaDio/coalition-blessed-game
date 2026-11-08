@@ -426,24 +426,18 @@ export function applyOrderDurations(state, buyOrders, sellOffers) {
 
 export function applyOrderFees(state, validBuyOrders, allSellOffers) {
   const empiresById = new Map((state.empires || []).map(empire => [empire.id, empire]));
-
-  validBuyOrders.forEach(order => {
-    if (order.owner_type !== 'empire') return;
+  let receipts = 0;
+  for (const order of [...validBuyOrders, ...allSellOffers]) {
+    if (order.owner_type !== 'empire') continue;
     const empire = empiresById.get(order.owner_id);
-    if (!empire) return;
-    const fee = getOrderFee(order);
-    empire.budget_credits = Math.max(0, getEmpireBudget(empire) - fee);
+    if (!empire) continue;
+    const budget = getEmpireBudget(empire);
+    const fee = Math.min(budget, getOrderFee(order));
+    empire.budget_credits = budget - fee;
     ensureEmpireSpend(empire).order_fees += fee;
-  });
-
-  allSellOffers.forEach(order => {
-    if (order.owner_type !== 'empire') return;
-    const empire = empiresById.get(order.owner_id);
-    if (!empire) return;
-    const fee = getOrderFee(order);
-    empire.budget_credits = Math.max(0, getEmpireBudget(empire) - fee);
-    ensureEmpireSpend(empire).order_fees += fee;
-  });
+    receipts += fee;
+  }
+  return receipts;
 }
 
 export function resetEmpireSpend(state) {

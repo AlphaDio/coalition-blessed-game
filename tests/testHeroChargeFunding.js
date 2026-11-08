@@ -244,13 +244,14 @@ test('Sustained support builds a bounded rating; dry funding gradually erodes it
   assert.equal(subject.funding_total, accumulated, 'Rating decay does not erase paid funding');
 });
 
-test('Popularity and funding both strengthen abilities while retaining a useful minimum', () => {
+test('Funding sets ability strength independently of popularity', () => {
   const poor = hero('poor', { funding: 0, meters: { heat: 0, grievance: 100, popularity: 0 } });
   const rich = hero('rich', { funding: 100, meters: { heat: 0, grievance: 0, popularity: 100 } });
   assert(getFundingScalar(poor) < getFundingScalar(rich));
-  assert(getAbilityScalar(poor) >= 0.35);
-  assert(getAbilityScalar(rich) > getAbilityScalar(poor));
+  assert.equal(getAbilityScalar(poor), 0.6);
+  assert.equal(getAbilityScalar(rich), 1.4);
   const middle = hero('middle', { funding: 0, meters: { heat: 0, grievance: 0, popularity: 60 } });
+  assert.equal(getAbilityScalar(middle), getAbilityScalar(poor));
   const funded = hero('funded', { funding: 100, meters: { heat: 0, grievance: 0, popularity: 60 } });
   const poorState = stateWith(middle);
   const richState = stateWith(funded);

@@ -23,8 +23,8 @@ The economy does not currently use coalition procurement, commodity bank rollove
 
 ### Currency Boundaries
 - `empire.budget_credits` is the hard, non-negative purchasing balance for an empire's market orders, including army orders owned by that empire.
-- Posting fees are reserved before trade commitments. Standard new orders cost 0.01 credits per tick. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
-- Settled market trades retire a share of the seller's proceeds based on their Approval. The rate ranges from 0% at 0 Approval to 10% at 100 Approval. Buyers pay the settled price and the Market panel reports Credits retired last turn.
+- Posting fees are reserved before trade commitments and paid into the Coalition Treasury. Standard new orders cost 0.01 credits per tick. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
+- Settled market trades pay a share of the seller's proceeds into the Treasury based on their Approval. The rate ranges from 0% at 0 Approval to 10% at 100 Approval. Buyers pay the full settled price. The Market panel reports both sources of revenue from the last turn.
 - `treasury_credits` is a coalition-level reserve used by laws and event effects. It is not an automatic fallback for empire market purchases.
 - `requisition` is the coalition construction and improvement currency. It does not pay ordinary commodity buy orders.
 - Budget-blocked orders are exposed in `economyBudgetBlockedLastTick` for diagnostics and UI reporting.
@@ -53,11 +53,11 @@ Each commodity has two possible Projects. A campaign uses its seed to select one
 
 Projects grant Coalition-wide bonuses such as population growth, construction speed, research speed, or army organization recovery. Both Biomass variants increase base population growth in all member empires. Bonuses grow faster at higher levels and scale with upkeep fulfillment.
 
-An active Project bids for its upkeep every turn at the current market price, above civilian orders and below higher-priority military orders. Upkeep scales with level. The base quantities per level are 5 for tier 1, 1 for tier 2, 0.5 for tier 3 and 0.25 for tier 4, with some variants using less. Each fill issues the settled Credits and consumes the goods immediately.
+An active Project bids for its upkeep every turn at the current market price, above civilian orders and below higher-priority military orders. Upkeep scales with level. The base quantities per level are 5 for tier 1, 1 for tier 2, 0.5 for tier 3 and 0.25 for tier 4, with some variants using less. The Treasury pays for filled orders from its available Credits and issues enough to cover any shortfall. Goods are consumed immediately. Posting fees arrive before purchases and sales tax arrives after settlement. Receipts also pay down any existing Treasury deficit. The commodity detail shows how much of its Project order filled that turn.
 
 An upgrade orders the next level's larger amount. Goods beyond current upkeep advance the upgrade, with up to one unit of progress per turn. Level 1 needs two fully supplied turns and level 10 needs twenty. Level 10 is the cap. Pausing a Project stops its orders and effects while preserving its level and upgrade progress.
 
-The price index starts at 100. After issuance, it responds to estimated Project Credits still circulating, recent supply of Super Alloys, Biomass and Plasma Fuel, and the share of that supply purchased. Net drains retire an estimated proportion of Project Credits. The index moves one fifth of the distance toward its target each turn. The target ranges from 100 to 200 and rises faster when there is less real supply to absorb additional spending.
+The price index starts at 100. After issuance, it responds to how much newly issued money is estimated to remain in empire budgets, the recent supply of Super Alloys, Biomass and Plasma Fuel, and the share of that supply purchased. Net drains from those budgets reduce the estimate, including Credits collected into the Treasury. The index moves one fifth of the distance toward its target each turn. The target ranges from 100 to 200 and rises faster when there is less real supply to absorb additional spending.
 
 ## Turn Flow
 The relevant economy sequence inside a turn is:
@@ -116,7 +116,7 @@ Unfilled buy orders and sell offers persist as backlog/reserves. Buy-side demand
 
 Each demand backlog item records its resource, remaining quantity, age, source, policy, maximum age where relevant, and source validity. Supply is allocated before backlog age advances. When perishable or deferred demand expires, its unresolved quantity is added to `state.economyPressure.by_resource` and the configured pressure key in `state.economyPressure.by_type`; it is then removed from the backlog. Invalid conditional demand is cancelled without pressure. This keeps expected-to-be-fulfilled backlog distinct from shortages whose consequences have already been absorbed.
 
-Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. At Tier 3 or higher, fresh essential expirations cost 1 Coalition Cohesion per turn across all shortages. Resolving the essential shortfalls stops the drain. The Market panel shows current tiers, pressure gained this turn and progress to the next threshold.
+Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. At Tier 3 or higher, fresh essential expirations cost 0.25 Coalition Cohesion per turn across all shortages. Resolving the essential shortfalls stops the drain. The Market panel shows current tiers, pressure gained this turn and progress to the next threshold.
 
 ## Production and Stockpiles
 Empire and improvement production supply local upkeep first. Improvements list their remaining output on the same turn, using the production bank to route goods to upkeep before market clearing. Older saves retain any goods already in the bank.

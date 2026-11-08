@@ -157,16 +157,17 @@ console.log('Pressure Gameplay Event Tests');
   addPressure(state, 'biomass', 150, needs);
   addPressure(state, 'plasma_fuel', 250, needs);
   triggerPressureGameplayEvents(state);
-  assert.equal(applyCriticalShortageLoss(state), 1, 'Critical shortages cost one Cohesion even across multiple resources');
+  assert.equal(applyCriticalShortageLoss(state), 0.25, 'Critical shortages share a single per-turn Cohesion penalty');
+  assert.equal(state.economyPressure.cohesion_loss_per_turn, 0.25);
   state.turn++;
   addPressure(state, 'biomass', 10, { ...needs, category: 'wants' });
   addPressure(state, 'biomass', 1e-9, needs);
   assert.equal(applyCriticalShortageLoss(state), 0, 'Historical shortages, optional wants and rounding dust cannot drain Cohesion');
   assert.equal(state.economyPressure.cohesion_loss_last_turn, 0);
   state.turn++;
-  state.coalitionCohesion = 0.5;
+  state.coalitionCohesion = 0.125;
   addPressure(state, 'biomass', 1, needs);
-  assert.equal(applyCriticalShortageLoss(state), 0.5, 'A continuing critical shortage can exhaust the remaining Cohesion');
+  assert.equal(applyCriticalShortageLoss(state), 0.125, 'A continuing critical shortage can exhaust the remaining Cohesion');
   assert.equal(state.coalitionCohesion, 0);
 }
 

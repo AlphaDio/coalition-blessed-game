@@ -38,7 +38,9 @@ function rollExpedition(state) {
   const rng = new DeterministicRNG((state.rngSeed || 0) + 73129 + sequence * 7919);
   const destination = rng.choice(destinations);
   const { min, max } = EXPEDITION_PLAN.durationRange;
-  return { ...destination, baseDuration: rng.randomInt(min, max + 1) };
+  const extraTurns = sequence * EXPEDITION_PLAN.durationGrowthPerLaunch;
+  return { ...destination, minDuration: min + extraTurns, maxDuration: max + extraTurns,
+    baseDuration: rng.randomInt(min + extraTurns, max + extraTurns + 1) };
 }
 
 function getExpeditionSpeedBonus(state) {
@@ -83,8 +85,8 @@ export function refreshExpeditionOptions(state) {
   const materials = Object.fromEntries(Object.entries(baseMaterials)
     .map(([commodity, amount]) => [commodity, Math.ceil(amount * costMultiplier)]));
   const durationRange = destination ? {
-    min: travelTurns(plan.durationRange.min, speedBonus),
-    max: travelTurns(plan.durationRange.max, speedBonus)
+    min: travelTurns(destination.minDuration, speedBonus),
+    max: travelTurns(destination.maxDuration, speedBonus)
   } : null;
   addOption(state, options, {
     id: `launch_${plan.id}`, label: 'Launch frontier expedition', description: plan.description, action: 'launch',

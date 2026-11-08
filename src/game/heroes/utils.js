@@ -62,8 +62,4 @@ export function getFundingScalar(hero) {
     (HERO_CONSTANTS.FUNDING_MAX_SCALAR - HERO_CONSTANTS.FUNDING_MIN_SCALAR);
 }
 
-export function getAbilityScalar(hero) {
-  // Popularity and support matter, but even the least popular, unfunded Hero
-  // retains a meaningful effect. Passives continue using popularity alone.
-  return Math.max(HERO_CONSTANTS.ABILITY_MIN_SCALAR, getPopularityScalar(hero) * getFundingScalar(hero));
-}
+export { getFundingScalar as getAbilityScalar };
