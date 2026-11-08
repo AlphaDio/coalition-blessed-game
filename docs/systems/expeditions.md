@@ -37,20 +37,15 @@ Each contact produces one fixed commodity and requires one sustain commodity per
 
 An envoy costs 15 requisition, reveals priorities and adds 3 approval. Tailored aid then costs 20 requisition and 50 of the preferred material, giving 14 approval or 20 for welfare-minded contacts. Aid has a six-turn cooldown that persists through saves.
 
-Priorities also respond to decisions: industry values industrial projects, welfare values civilian infrastructure, knowledge gains 5 approval when a discovery study completes, and sovereignty values pacts while strongly opposing conquest.
+Knowledge-minded contacts gain 5 approval when a discovery study completes. Sovereignty-minded contacts give extra approval for pacts and strongly oppose conquest.
 
-At **65 approval**, an envoy-informed contact can sign a partnership for 60 requisition, 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 + development level requisition per turn**, multiplied by previous sustain fulfillment. Approval below 40 suspends the pact. These benefits favor sustained diplomacy and investment.
+At **65 approval**, an envoy-informed contact can sign a partnership for 60 requisition, 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 requisition per turn**, or **3 after development**, scaled by previous sustain fulfillment. Approval below 40 suspends the pact.
 
 ## Development
 
-Contacts require **40 approval** to accept development. Only one project per contact can build at once. Materials and requisition are committed up front; output changes arrive on completion. War, hostility and unstable occupation pause projects.
+**Develop this empire** is a one-time investment of **35 requisition and 65 Super Alloys**. It immediately increases production by **50%**, lowers sustainment by **20%**, and grants **6 approval**. Contacts need **40 approval** and must be at peace. Conquered contacts also need to finish the initial occupation period.
 
-| Project | Base cost | Base duration | Benefit | Cap |
-| --- | --- | --- | --- | --- |
-| Local industry | 35 req, 90 Alloys, 35 Biomass, 20 Fuel | 6 turns | +50% original output per level | 3 |
-| Civilian infrastructure | 25 req, 65 Alloys, 60 Biomass, 25 Fuel | 5 turns | −20% original sustain per level | 2 |
-
-Each existing development adds 50% to the next project's base costs and one turn to its duration. Completion adds 6 approval, or 12 when matching the empire's industry/welfare priority. Development also increases partnership and tribute income. Occupied empires start at low approval, so developing them takes longer than developing a willing partner.
+Completed projects in older campaigns count as development and keep their existing economic benefits. Projects already paid for keep their saved timers and rewards.
 
 ## Raids, invasion and occupation
 
@@ -58,13 +53,15 @@ At **20 approval or less**, an independent contact becomes hostile and closes it
 
 An invasion costs **125 requisition, 100 Alloys and 60 Fuel**, plus **1.5 Coalition Cohesion at current pacing**, 3 approval from every Coalition member and 12 approval from other independent contacts (20 for sovereignty-minded contacts). One ready army is selected by default, with at least 35 organization. Its identity and strength, enemy defenders and economic consequences appear before confirmation. The army cannot serve on simultaneous Scourge or rebellion fronts. Combat applies real permanent capacity losses, wounds, organization changes and experience. It does not alter Scourge Cohesion or grant Scourge victory rewards.
 
-Victory creates a **15-turn occupation**, starting at 20 approval, with 35% exports during occupation and 70% afterward. Permanent upkeep is **1.5 + 0.5 × development level requisition** and **2 + development level Fuel** each turn. Paid, stabilized occupations earn **3 + development level requisition tribute**, multiplied by prior sustain fulfillment. This gives conquest a return, while diplomatic fallout, troop losses, delayed income and fuel/admin costs keep it from being the default best choice. Developed, willing partnerships offer stronger net returns and exports.
+Victory starts an occupation at 20 approval. Exports run at 35% for the first **15 paid turns** and 70% afterward. Each turn costs **1.5 requisition and 2 Plasma Fuel**, or **2 requisition and 3 Plasma Fuel** after development. A stabilized occupation pays up to **3 requisition** in tribute on each paid turn, or **4 after development**, scaled by previous sustain fulfillment.
 
-Unpaid upkeep stops exports and adds unrest. Eight unpaid turns cause secession into hostility; paid upkeep reduces unrest. Liberation immediately ends occupation, restores 55 approval and gives other free contacts 5 approval. It grants no repeatable loot. Defeat loses the invasion investment and leaves surviving armies with their casualties.
+Unpaid upkeep pauses new exports and tribute. The empire breaks free after **20 consecutive missed payments**. Paying upkeep resets the countdown. Expedition reports warn on the first missed payment and again with five turns left. Contact details show the shortfall and remaining turns. Existing occupations start a fresh countdown on migration.
+
+Liberation immediately ends occupation, restores 55 approval and gives other free contacts 5 approval. Defeat loses the invasion investment and leaves surviving armies with their casualties.
 
 ## Discoveries
 
-Discovery sites have no population, approval, sustainment or army. Their study cost, duration and benefit are visible before investing. Studies can run alongside a journey or contact developments, complete once, and persist in saves.
+Discovery sites have no population, approval, sustainment or army. Their study cost, duration and benefit are visible before investing. Studies can run alongside a journey, complete once, and persist in saves.
 
 | Discovery | Study reward |
 | --- | --- |
@@ -79,6 +76,6 @@ Study costs and timers are authored in `src/game/expeditions/catalog.js`. Dynami
 
 ## Integration and validation
 
-`POST /api/game/actions/expedition` accepts `launch` with `planId: 'frontier'`, along with `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
+`POST /api/game/actions/expedition` accepts `launch` with `planId: 'frontier'`, along with `envoy`, `aid`, `pact`, `develop`, `appease`, `invade`, `liberate` and `study`. Development takes the contact's `targetId`. All actions resolve against server-produced options, including current affordability and prerequisites. REST returns and WebSocket broadcasts include `state.expeditions`, its action options, charter/market reserves, contact state and reports. Invalid requests and actions after game over are rejected.
 
-`npm run test:expeditions` covers travel, deterministic destinations, atomic payments and seller credit, diplomacy, delayed/capped development, unique discovery rewards, migration, save/load, raids, occupation, budget-limited trading, casualty persistence, concurrent army exclusion, and the live REST/WebSocket opening flow. The terminal client's `npm test` covers real Blessed navigation, scrolling, hidden interests, disabled actions, costs, invasion confirmation/cancellation and API dispatch.
+`npm run test:expeditions` covers travel, deterministic destinations, atomic payments and seller credit, diplomacy, one-time development, unique discovery rewards, migration, save/load, raids, occupation, budget-limited trading, casualty persistence, concurrent army exclusion, and the live REST/WebSocket opening flow. The terminal client's `npm test` covers real Blessed navigation, scrolling, hidden interests, disabled actions, costs, invasion confirmation/cancellation and API dispatch.

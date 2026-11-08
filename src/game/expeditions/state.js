@@ -1,10 +1,11 @@
-import { EXPEDITION_PLAN, DEVELOPMENT_PROJECTS, EXPEDITION_STARTER_SUPPLIES } from './catalog.js';
+import { EMPIRE_TEMPLATES, EXPEDITION_PLAN, EXPEDITION_RULES, EXPEDITION_STARTER_SUPPLIES } from './catalog.js';
 
 export function createExpeditionsState() {
   return {
-    version: 1, sequence: 0, active: [], empires: [], discoveries: [], history: [],
+    version: 2, sequence: 0, active: [], empires: [], discoveries: [], history: [],
     lastProcessedTurn: null,
-    catalog: { plans: [structuredClone(EXPEDITION_PLAN)], projects: structuredClone(DEVELOPMENT_PROJECTS) },
+    catalog: { plans: [structuredClone(EXPEDITION_PLAN)] },
+    occupationUnrestLimit: EXPEDITION_RULES.occupationUnrestLimit,
     options: [], materialReserves: {}
   };
 }
@@ -24,6 +25,16 @@ export function ensureExpeditionsState(state) {
     if (!Array.isArray(expeditions[key])) expeditions[key] = [];
   }
   if (!Number.isFinite(expeditions.sequence)) expeditions.sequence = 0;
-  expeditions.catalog = { plans: [structuredClone(EXPEDITION_PLAN)], projects: structuredClone(DEVELOPMENT_PROJECTS) };
+  if (!(expeditions.version >= 2)) {
+    for (const minor of expeditions.empires) {
+      // The old unrest value accumulated across paid turns and isn't a missed-payment streak.
+      minor.occupationUnrest = 0;
+      const template = EMPIRE_TEMPLATES.find(entry => entry.id === minor.id);
+      if (minor.interest && template) minor.interest.description = template.interest.description;
+    }
+    expeditions.version = 2;
+  }
+  expeditions.catalog = { plans: [structuredClone(EXPEDITION_PLAN)] };
+  expeditions.occupationUnrestLimit = EXPEDITION_RULES.occupationUnrestLimit;
   return expeditions;
 }

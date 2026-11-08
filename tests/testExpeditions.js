@@ -186,7 +186,7 @@ test('missing resources and malformed actions reject atomically', () => {
     { action: 'launch', planId: 'invented_route' },
     { action: 'launch', planId: 'contact' },
     { action: 'launch', planId: 'survey' },
-    { action: 'develop', targetId: 'missing', projectId: 'industry' },
+    { action: 'develop', targetId: 'missing' },
     { action: 'aid', targetId: 'missing' },
     { action: 'invented_action' },
     {}
@@ -270,39 +270,66 @@ test('trade pacts need approval and reward a sustained peaceful relationship', (
   assert.equal(handleExpeditionAction(state, { action: 'pact', targetId: minor.id }).success, false, 'an existing pact cannot be purchased repeatedly');
 });
 
-test('industry and infrastructure consume materials now and provide capped, delayed improvements', () => {
+test('development is one immediate upgrade with a fixed cost', () => {
   const { state, minor } = contactFixture();
-  minor.approval = 90;
-  minor.status = 'INDEPENDENT';
+  const develop = { action: 'develop', targetId: minor.id };
+  minor.approval = 39;
+  const beforeApproval = economicSnapshot(state);
+  assert.equal(handleExpeditionAction(state, develop).success, false);
+  assert.deepEqual(economicSnapshot(state), beforeApproval);
+  minor.approval = 40;
+  const options = refreshExpeditionOptions(state).filter(option => option.action === 'develop');
+  assert.equal(options.length, 1);
+  const [option] = options;
+  assert.deepEqual(option.payload, develop);
+  assert.equal(option.duration, undefined);
+  assert.equal(option.cost.requisition, 35);
+  assert.deepEqual(option.cost.materials, { super_alloys: 65 });
+
   const outputBefore = minor.production.amount;
   const sustainBefore = minor.sustain.amount;
-  const materialBefore = state.stockpiles.super_alloys;
-  action(state, { action: 'develop', targetId: minor.id, projectId: 'industry' });
-  assert.equal(minor.production.amount, outputBefore, 'investment is not instant output');
-  assert.ok(state.stockpiles.super_alloys < materialBefore);
-  const committed = economicSnapshot(state);
-  assert.equal(handleExpeditionAction(state, { action: 'develop', targetId: minor.id, projectId: 'infrastructure' }).success, false);
-  assert.deepEqual(economicSnapshot(state), committed, 'projects cannot overlap in one contact');
-  for (let i = 0; minor.project && i < 100; i++) tick(state);
-  assert.equal(minor.project, null);
-  assert.ok(minor.production.amount > outputBefore);
+  const materialsBefore = { ...state.stockpiles };
+  const requisitionBefore = state.coalitionEconomy.requisition;
+  action(state, develop);
+  assert.deepEqual(state.stockpiles, { ...materialsBefore, super_alloys: materialsBefore.super_alloys - 65 });
+  assert.equal(state.coalitionEconomy.requisition, requisitionBefore - 35);
+  assert.equal(minor.production.amount, outputBefore * 1.5);
+  assert.equal(minor.sustain.amount, sustainBefore * 0.8);
+  assert.equal(minor.approval, 46);
   assert.equal(minor.developmentLevel, 1);
-  action(state, { action: 'develop', targetId: minor.id, projectId: 'infrastructure' });
-  assert.equal(minor.sustain.amount, sustainBefore);
-  for (let i = 0; minor.project && i < 100; i++) tick(state);
-  assert.ok(minor.sustain.amount < sustainBefore, 'infrastructure reduces the single sustain requirement');
-  assert.equal(minor.developmentLevel, 2);
+  assert.equal(minor.project, null);
 
-  for (const projectId of ['industry', 'industry', 'infrastructure']) {
-    minor.approval = 90;
-    action(state, { action: 'develop', targetId: minor.id, projectId });
-    for (let i = 0; minor.project && i < 100; i++) tick(state);
-  }
-  for (const projectId of ['industry', 'infrastructure']) {
-    const before = economicSnapshot(state);
-    assert.equal(handleExpeditionAction(state, { action: 'develop', targetId: minor.id, projectId }).success, false, `${projectId} is capped`);
-    assert.deepEqual(economicSnapshot(state), before);
-  }
+  const committed = economicSnapshot(state);
+  assert.equal(handleExpeditionAction(state, develop).success, false);
+  assert.deepEqual(economicSnapshot(state), committed, 'a contact can only be developed once');
+  const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
+  assert.equal(handleExpeditionAction(restored, develop).success, false, 'save/load preserves the completed upgrade');
+});
+
+test('older saves retain completed development and finish paid projects on schedule', () => {
+  const { state, minor } = contactFixture();
+  state.expeditions.version = 1;
+  const baseProduction = minor.production.amount;
+  const baseSustain = minor.sustain.amount;
+  minor.production.amount = baseProduction * 2;
+  Object.assign(minor, { approval: 80, baseProduction, baseSustain, developmentLevel: 2,
+    developments: { industry: 2, infrastructure: 0 },
+    project: { id: 'infrastructure', name: 'Build civilian infrastructure', duration: 7, remainingTurns: 2 } });
+  const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
+  const restoredMinor = restored.expeditions.empires[0];
+  const develop = { action: 'develop', targetId: minor.id };
+  assert.equal(handleExpeditionAction(restored, develop).success, false);
+  tick(restored);
+  assert.equal(restoredMinor.project.remainingTurns, 1);
+  assert.equal(restoredMinor.production.amount, baseProduction * 2);
+  assert.equal(restoredMinor.sustain.amount, baseSustain);
+  tick(restored);
+  assert.equal(restoredMinor.project, null);
+  assert.equal(restoredMinor.production.amount, baseProduction * 2);
+  assert.equal(restoredMinor.sustain.amount, baseSustain * 0.8);
+  assert.equal(restoredMinor.developmentLevel, 3);
+  assert.equal(handleExpeditionAction(restored, develop).success, false);
+  assert.deepEqual(restored.stockpiles, state.stockpiles, 'legacy projects need no further payment');
 });
 
 test('a discovery must be studied and cannot repeat its reward', () => {
@@ -470,7 +497,7 @@ test('invasion costs reputation and conquest requires upkeep with reduced export
   assert.equal(minor.exportMultiplier, 1);
 });
 
-test('an unfunded occupation stops exporting and eventually breaks free', () => {
+test('only consecutive upkeep misses end Coalition control', () => {
   const { state, minor } = contactFixture();
   action(state, { action: 'invade', targetId: minor.id });
   const front = state.battleFronts.find(entry => entry.id === minor.war.frontId);
@@ -483,10 +510,49 @@ test('an unfunded occupation stops exporting and eventually breaks free', () => 
   tick(state);
   assert.equal(minor.upkeepPaid, false);
   assert.equal(minor.exportMultiplier, 0);
+  assert.match(minor.upkeepFailure, /plasma fuel/);
+  assert.match(state.expeditions.history.at(-1).message, /19 more missed payments in a row/);
   assert.equal(state.coalitionEconomy.requisition, requisition, 'unpayable upkeep does not make a partial deduction');
-  tick(state, 7);
-  assert.equal(minor.status, 'HOSTILE', 'eight unfunded turns end Coalition control');
-  assert.equal(minor.occupationTurns, 0);
+  const limit = state.expeditions.occupationUnrestLimit;
+  assert.equal(limit, 20);
+  tick(state, limit - 2);
+  assert.equal(minor.status, 'CONQUERED');
+  assert.equal(minor.occupationUnrest, limit - 1);
+  assert(state.expeditions.history.some(entry => /5 more missed payments in a row/.test(entry.message)));
+
+  state.stockpiles.plasma_fuel = getOccupationCost(minor).materials.plasma_fuel;
+  tick(state);
+  assert.equal(minor.upkeepPaid, true);
+  assert.equal(minor.upkeepFailure, null);
+  assert.equal(minor.occupationUnrest, 0);
+  assert.equal(minor.exportMultiplier, 0.35);
+  tick(state);
+  assert.equal(minor.occupationUnrest, 1);
+  assert.equal(minor.status, 'CONQUERED', 'a single miss after recovery cannot end the occupation');
+
+  const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
+  const restoredMinor = restored.expeditions.empires[0];
+  tick(restored, limit - 2);
+  assert.equal(restoredMinor.status, 'CONQUERED');
+  assert.equal(restoredMinor.occupationUnrest, limit - 1, 'the current streak survives save/load');
+  tick(restored);
+  assert.equal(restoredMinor.status, 'HOSTILE');
+  assert.equal(restoredMinor.occupationTurns, 0);
+  assert(restored.expeditions.history.some(entry => /20 consecutive missed upkeep payments/.test(entry.message)));
+});
+
+test('older accumulated unrest starts a fresh countdown on load', () => {
+  const { state, minor } = contactFixture();
+  state.expeditions.version = 1;
+  state.stockpiles.plasma_fuel = 0;
+  Object.assign(minor, { status: 'CONQUERED', occupationTurns: 9, occupationUnrest: 7 });
+  const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
+  const restoredMinor = restored.expeditions.empires[0];
+  assert.equal(restoredMinor.occupationUnrest, 0);
+  assert.equal(restoredMinor.occupationTurns, 9);
+  tick(restored);
+  assert.equal(restoredMinor.status, 'CONQUERED');
+  assert.equal(restoredMinor.occupationUnrest, 1);
 });
 
 let failed = 0;

@@ -91,10 +91,8 @@ function coreFixture() {
   Object.assign(minor, {
     production: { commodity: 'super_alloys', amount: 24 },
     sustain: { commodity: 'biomass', amount: 8 },
-    baseProduction: 24, baseSustain: 8,
     interest: { id: 'industry', name: 'Industry', commodity: 'super_alloys', description: 'Values local development.' },
     interestRevealed: true, developmentLevel: 0,
-    developments: { industry: 0, infrastructure: 0 }, project: null,
     occupationTurns: 0, occupationUnrest: 0, war: null,
     supplyState: { fulfillment: 1 }, nextRaidTurn: 0, raidWarningTurns: null
   });
@@ -139,11 +137,11 @@ function coreFixture() {
     'stable conquests pay garrison upkeep and earn supplied tribute');
   assert(minor.tributeIncome > minor.upkeep.requisition, 'a supplied stable conquest offers a limited positive return');
   state.stockpiles.plasma_fuel = 0;
-  for (let turns = 0; turns < 8; turns++) {
+  for (let turns = 0; turns < state.expeditions.occupationUnrestLimit; turns++) {
     state.turn++;
     processExpeditionsTick(state);
   }
-  assert.equal(minor.status, 'HOSTILE', 'eight unpaid garrison turns cause independence');
+  assert.equal(minor.status, 'HOSTILE', 'a sustained lapse in garrison upkeep leads to secession');
   assert.equal(minor.exportMultiplier, 0);
 }
 

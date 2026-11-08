@@ -55,6 +55,13 @@ try {
   assert.equal(envoy.status, 200);
   assert.equal(envoy.body.data.expeditions.empires[0].interestRevealed, true);
   assert(envoy.body.data.expeditions.options.some(option => option.action === 'aid' && !option.disabled));
+  const develop = { action: 'develop', targetId: contact.id };
+  assert.equal((await post({ ...develop, projectId: 'industry' })).status, 400, 'a stale project choice must be refreshed');
+  const developed = await post(develop);
+  assert.equal(developed.status, 200);
+  assert.equal(developed.body.data.expeditions.empires[0].developmentLevel, 1);
+  assert.equal(developed.body.data.expeditions.empires[0].project, null);
+  assert.equal((await post(develop)).status, 400);
 
   const saved = gameManager.getSaveState();
   const beforeLoad = structuredClone(saved.stockpiles);
@@ -75,7 +82,6 @@ try {
   }
   assert(messages.some(message => message.type === 'state_update' && message.payload.expeditions?.empires?.some(minor => minor.interestRevealed)),
     'Clients receive contact and diplomacy updates over the actual WebSocket');
-  assert.equal((await post({ action: 'develop', targetId: contact.id, projectId: 'invalid' })).status, 400);
   gameManager.state.gameOver = true;
   assert.equal((await post(launch)).status, 400);
   console.log('Expedition API and opening-game integration tests passed.');

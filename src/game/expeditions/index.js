@@ -4,7 +4,7 @@ import { applyScaledCoalitionCohesionDelta, clampApproval, scaleCohesionDelta } 
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { TECH_BY_ID } from '../technologyDefinitions.js';
 import {
-  EXPEDITION_PLAN, DEVELOPMENT_PROJECTS, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
+  EXPEDITION_PLAN, DEVELOPMENT_COST, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
 } from './catalog.js';
 import { ensureExpeditionsState } from './state.js';
 import { getExpeditionMaterialReserve, quoteExpeditionCost, spendExpeditionCost } from './costs.js';
@@ -18,14 +18,6 @@ function remember(state, message, log = []) {
   state.expeditions.history = state.expeditions.history.slice(-40);
   getLogger().info(message);
   log.push(message);
-}
-
-function projectCost(minor, definition) {
-  const multiplier = 1 + (minor.developmentLevel || 0) * 0.5;
-  return {
-    requisition: Math.ceil(definition.cost.requisition * multiplier),
-    materials: Object.fromEntries(Object.entries(definition.cost.materials).map(([key, qty]) => [key, Math.ceil(qty * multiplier)]))
-  };
 }
 
 function rollExpedition(state) {
@@ -103,10 +95,8 @@ export function refreshExpeditionOptions(state) {
 
   for (const minor of system.empires) {
     const common = { targetType: 'empire', targetId: minor.id };
-    const option = (action, label, description, cost, reason, extra = {}) => addOption(state, options, {
-      ...common, id: `${action}_${minor.id}${extra.projectId ? `_${extra.projectId}` : ''}`,
-      label, description, action, payload: { action, targetId: minor.id, ...(extra.projectId ? { projectId: extra.projectId } : {}) },
-      cost, ...extra
+    const option = (action, label, description, cost, reason) => addOption(state, options, {
+      ...common, id: `${action}_${minor.id}`, label, description, action, payload: { action, targetId: minor.id }, cost
     }, reason);
     const unavailable = minor.war ? 'A battle is underway' : null;
     if (!minor.interestRevealed) option('envoy', 'Send an envoy', 'Learn what this empire cares about; +3 approval.',
@@ -122,26 +112,24 @@ export function refreshExpeditionOptions(state) {
         (!minor.interestRevealed ? 'Send an envoy to learn their priorities first' : cooldown > 0 ? `Aid available in ${cooldown} turns` :
           minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' : null));
       if (minor.status !== 'ALLIED') option('pact', 'Sign a partnership pact',
-        'At 65 approval: +25% exports and 2 + development level requisition per supplied turn. Pact ends below 40 approval.',
+        `At 65 approval: +25% exports and ${2 + (minor.developmentLevel || 0)} requisition per fully supplied turn. Pact ends below 40 approval.`,
         { requisition: 60, materials: { biomass: 40, plasma_fuel: 20 } }, unavailable ||
           (!minor.interestRevealed ? 'Send an envoy first' : minor.approval < EXPEDITION_RULES.pactApproval ? 'Requires 65 approval' :
             !peaceful(minor) ? 'Negotiate a ceasefire first' : null));
     }
-    for (const definition of DEVELOPMENT_PROJECTS) {
-      option('develop', definition.name, definition.description, projectCost(minor, definition),
-        unavailable || (minor.project ? 'A development is already underway' :
+    option('develop', 'Develop this empire',
+      'One-time investment. Immediately raises production by 50% and approval by 6, and lowers sustainment by 20%.', DEVELOPMENT_COST,
+      unavailable || (minor.project ? 'A development is already underway' :
+        minor.developmentLevel > 0 ? 'Already developed' :
           minor.occupationTurns > 0 ? 'Wait for occupation to stabilize' :
             minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' :
-              minor.approval < 40 ? 'Requires 40 approval' :
-                (minor.developments?.[definition.id] || 0) >= definition.maxLevel ? 'Maximum level reached' : null),
-        { projectId: definition.id, duration: definition.duration + (minor.developmentLevel || 0) });
-    }
+              minor.approval < 40 ? 'Requires 40 approval' : null));
     if (minor.status === 'CONQUERED') {
       option('liberate', 'Restore independence', 'End occupation upkeep. Restore 55 approval and +5 approval with other free contacts.', {}, unavailable);
     } else {
       const availableArmy = getAvailableExpeditionArmies(state)[0];
       option('invade', 'Launch an invasion',
-        `Commit ${availableArmy ? `${availableArmy.name} (${Math.floor(availableArmy.mp.current)} MP)` : 'one ready army'} against ${minor.defense} defenders. Costs ${Math.abs(scaleCohesionDelta(-3))} Coalition Cohesion, 3 approval in each member empire and 12–20 approval with other contacts. Victory brings 15 turns of occupation, 35% exports, then 70%, and permanent upkeep of ${getOccupationCost(minor).requisition} requisition + ${getOccupationCost(minor).materials.plasma_fuel} fuel per turn. Once stabilized, tribute pays 3 + development level requisition per supplied turn.`,
+        `Commit ${availableArmy ? `${availableArmy.name} (${Math.floor(availableArmy.mp.current)} MP)` : 'one ready army'} against ${minor.defense} defenders. Costs ${Math.abs(scaleCohesionDelta(-3))} Coalition Cohesion, 3 approval in each member empire and 12–20 approval with other contacts. Victory brings 15 paid turns of occupation, 35% exports, then 70%, and permanent upkeep of ${getOccupationCost(minor).requisition} requisition + ${getOccupationCost(minor).materials.plasma_fuel} fuel per turn. Once stabilized, tribute pays ${3 + (minor.developmentLevel || 0)} requisition per fully supplied turn. Secession takes ${EXPEDITION_RULES.occupationUnrestLimit} consecutive missed payments.`,
         EXPEDITION_RULES.conquestCost, unavailable ||
           (getAvailableExpeditionArmies(state).length === 0 ? 'No ready army is available (35 organization required)' : null));
     }
@@ -162,11 +150,13 @@ export function refreshExpeditionOptions(state) {
 export function handleExpeditionAction(state, payload = {}) {
   if (!state || state.gameOver) return { success: false, error: state ? 'Game is over' : 'Game is not initialized' };
   if (!payload || typeof payload !== 'object') return { success: false, error: 'Invalid expedition action' };
+  if (payload.action === 'develop' && payload.projectId !== undefined) {
+    return { success: false, error: 'Development is now a single investment. Refresh expedition options.' };
+  }
   const system = ensureExpeditionsState(state);
   const options = refreshExpeditionOptions(state);
   const option = options.find(entry => entry.action === payload.action &&
-    (payload.action === 'launch' ? entry.payload.planId === payload.planId : entry.targetId === payload.targetId) &&
-    (payload.action !== 'develop' || entry.payload.projectId === payload.projectId));
+    (payload.action === 'launch' ? entry.payload.planId === payload.planId : entry.targetId === payload.targetId));
   if (!option) return { success: false, error: 'Unknown expedition action or target' };
   if (option.disabled) return { success: false, error: option.reason };
   const minor = system.empires.find(entry => entry.id === payload.targetId);
@@ -214,9 +204,12 @@ export function handleExpeditionAction(state, payload = {}) {
       remember(state, `Partnership signed with ${minor.name}; supplied trade now generates requisition.`, log);
       break;
     case 'develop': {
-      const definition = DEVELOPMENT_PROJECTS.find(entry => entry.id === payload.projectId);
-      minor.project = { id: definition.id, name: definition.name, duration: option.duration, remainingTurns: option.duration };
-      remember(state, `${definition.name} started in ${minor.name} (${option.duration} turns).`, log);
+      minor.developmentLevel = 1;
+      minor.production.amount *= 1.5;
+      minor.sustain.amount *= 0.8;
+      minor.approval = clampApproval(minor.approval + 6);
+      if (minor.status === 'CONQUERED') minor.upkeep = getOccupationCost(minor);
+      remember(state, `${minor.name} developed. Production rises by 50% and sustainment falls by 20%.`, log);
       break;
     }
     case 'invade':
@@ -239,6 +232,8 @@ export function handleExpeditionAction(state, payload = {}) {
       minor.approval = 55;
       minor.occupationTurns = 0;
       minor.occupationUnrest = 0;
+      minor.upkeepPaid = null;
+      minor.upkeepFailure = null;
       minor.exportMultiplier = 1;
       minor.raidWarningTurns = null;
       minor.nextRaidTurn = state.turn + EXPEDITION_RULES.raidCooldown;
@@ -264,8 +259,7 @@ function discover(state, mission, log) {
     const definition = EMPIRE_TEMPLATES.find(entry => entry.id === mission.destinationId);
     if (!definition || state.expeditions.empires.some(entry => entry.id === definition.id)) return;
     state.expeditions.empires.push({ ...structuredClone(definition), budget_credits: 1000,
-      baseProduction: definition.production.amount, baseSustain: definition.sustain.amount,
-      interestRevealed: false, developmentLevel: 0, developments: { industry: 0, infrastructure: 0 },
+      interestRevealed: false, developmentLevel: 0,
       project: null, status: 'INDEPENDENT', war: null, supplyState: { fulfillment: 1 }, exportMultiplier: 1,
       occupationTurns: 0, occupationUnrest: 0, raidWarningTurns: null, nextRaidTurn: state.turn + 8,
       discoveredTurn: state.turn });
@@ -308,6 +302,7 @@ export function resolveExpeditionBattles(state, log = []) {
         minor.exportMultiplier = 0.35;
         minor.upkeep = getOccupationCost(minor);
         minor.upkeepPaid = null;
+        minor.upkeepFailure = null;
         minor.partnershipIncome = 0;
         minor.tributeIncome = 0;
         remember(state, `${minor.name} conquered: 15 turns of occupation and permanent requisition/fuel upkeep begin.`, log);
@@ -352,22 +347,27 @@ function tickMinor(state, minor, log) {
   }
   if (minor.status === 'CONQUERED') {
     minor.upkeep = getOccupationCost(minor);
-    const paid = spendExpeditionCost(state, minor.upkeep).success;
+    const { success: paid, error } = spendExpeditionCost(state, minor.upkeep);
     minor.upkeepPaid = paid;
+    minor.upkeepFailure = error ?? null;
     minor.exportMultiplier = paid ? (minor.occupationTurns > 0 ? 0.35 : 0.7) : 0;
     if (paid && minor.occupationTurns <= 0) {
       minor.tributeIncome = (3 + minor.developmentLevel) * Math.max(0, Math.min(1, minor.supplyState?.fulfillment ?? 1));
       state.coalitionEconomy.requisition += minor.tributeIncome;
     }
     minor.approval = clampApproval(minor.approval + (paid ? 0.3 : -2));
-    minor.occupationUnrest = paid ? Math.max(0, (minor.occupationUnrest || 0) - 1) : (minor.occupationUnrest || 0) + 1;
+    minor.occupationUnrest = paid ? 0 : (minor.occupationUnrest || 0) + 1;
     if (minor.occupationTurns > 0 && paid) minor.occupationTurns--;
-    if (minor.occupationUnrest >= 8) {
+    const turnsBeforeSecession = EXPEDITION_RULES.occupationUnrestLimit - minor.occupationUnrest;
+    if (turnsBeforeSecession <= 0) {
       minor.status = 'HOSTILE';
       minor.approval = 10;
       minor.occupationTurns = 0;
       minor.exportMultiplier = 0;
-      remember(state, `${minor.name} breaks free after eight unpaid occupation turns.`, log);
+      cancelMinorOrders(state, minor.id);
+      remember(state, `${minor.name} breaks free after ${EXPEDITION_RULES.occupationUnrestLimit} consecutive missed upkeep payments.`, log);
+    } else if (minor.occupationUnrest === 1 || turnsBeforeSecession === 5) {
+      remember(state, `${minor.name} missed occupation upkeep. ${error}. It will break free after ${turnsBeforeSecession} more missed payments in a row.`, log);
     }
   } else {
     if (minor.approval <= 20 && minor.status !== 'HOSTILE') {
@@ -380,6 +380,7 @@ function tickMinor(state, minor, log) {
     minor.exportMultiplier = minor.status === 'HOSTILE' ? 0 : minor.status === 'ALLIED' ? 1.25 : 1;
     if (minor.status === 'HOSTILE') cancelMinorOrders(state, minor.id);
   }
+  // Finish projects already paid for in older saves under their original rules.
   if (minor.project && minor.status !== 'HOSTILE' && !(minor.occupationTurns > 0)) {
     minor.project.remainingTurns--;
     if (minor.project.remainingTurns <= 0) {
