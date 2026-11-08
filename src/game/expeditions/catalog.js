@@ -12,7 +12,28 @@ export const EXPEDITION_PLAN = {
   costGrowthPerLaunch: 0.25
 };
 
-export const DEVELOPMENT_COST = { baseAlloys: 65, growthPerLevel: 0.5 };
+export const DEFAULT_DEVELOPMENT_PROGRAM = { name: 'Develop', description: '', materials: { super_alloys: 65 } };
+
+export const DEVELOPMENT_PROGRAMS = [
+  { empireId: 'cinder_compact', name: 'Rebuild furnace lines',
+    description: 'Replate the guild furnaces and improve their cooling loops.',
+    materials: { super_alloys: 45, plasma_fuel: 20 } },
+  { empireId: 'verdant_enclaves', name: 'Restore garden canopies',
+    description: 'Replant food terraces and power their climate controls.',
+    materials: { biomass: 55, plasma_fuel: 15 } },
+  { empireId: 'glass_observatory', name: 'Upgrade spectral arrays',
+    description: 'Reinforce the observatories and provision their remote survey crews.',
+    materials: { super_alloys: 45, biomass: 25 } },
+  { empireId: 'free_harbors', name: 'Expand fuel depots',
+    description: 'Build pressure tanks and prime the orbital refueling lines.',
+    materials: { plasma_fuel: 50, super_alloys: 25 } },
+  { empireId: 'gene_cantons', name: 'Expand seed vaults',
+    description: 'Culture seed strains and grow feedstock for the Canton vaults.',
+    materials: { biomass: 40, genomes: 3 } },
+  { empireId: 'relic_wardens', name: 'Restore ruin archives',
+    description: 'Brace the ruins and catalog artifacts to restore their archives.',
+    materials: { super_alloys: 25, ancient_relics: 2 } }
+];
 
 const interest = (id, name, description, commodity) => ({ id, name, description, commodity });
 export const EMPIRE_TEMPLATES = [
@@ -62,5 +83,6 @@ export const DISCOVERY_TEMPLATES = [
 export const EXPEDITION_RULES = {
   slots: 1, aidCooldown: 6, raidWarning: 4, raidCooldown: 20,
   occupationDuration: 15, occupationUnrestLimit: 20, pactApproval: 65, pactBreakApproval: 40,
+  developmentCostGrowthPerLevel: 0.5,
   conquestCost: { requisition: 125, materials: { super_alloys: 100, plasma_fuel: 60 } }
 };

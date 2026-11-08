@@ -43,7 +43,18 @@ At **65 approval**, an envoy-informed contact can sign a partnership for 60 requ
 
 ## Development
 
-**Develop** upgrades a contact immediately and can be repeated. The first level costs **65 Super Alloys** and each existing level adds 50% of the base price, rounded up. The first three upgrades cost **65, 98 and 130 Super Alloys**. Development uses zero requisition. Each level adds **50% of base production**, lowers the current sustainment requirement by **20%**, and grants **6 approval**. Contacts need **40 approval** and must be at peace. Conquered contacts also need to finish the initial occupation period.
+Each contact offers a repeatable development program with its own materials. Each existing level adds 50% of the base cost to the next upgrade, rounded up for each material. The Expeditions overview shows reserves for the materials required by discovered contacts.
+
+| Empire | Development program | Level 1 cost |
+| --- | --- | --- |
+| Cinder Compact | Rebuild furnace lines | 45 Super Alloys, 20 Plasma Fuel |
+| Verdant Enclaves | Restore garden canopies | 55 Biomass, 15 Plasma Fuel |
+| Glass Observatory | Upgrade spectral arrays | 45 Super Alloys, 25 Biomass |
+| Free Harbors | Expand fuel depots | 50 Plasma Fuel, 25 Super Alloys |
+| Gene Cantons | Expand seed vaults | 40 Biomass, 3 Genomes |
+| Relic Wardens | Restore ruin archives | 25 Super Alloys, 2 Ancient Relics |
+
+Development is immediate and uses zero requisition. Each level adds **50% of base production**, lowers the current sustainment requirement by **20%**, and grants **6 approval**. Contacts need **40 approval** and must be at peace. Conquered contacts also need to finish the initial occupation period.
 
 Older campaigns keep their development levels and economic benefits. New upgrades stack on top of those benefits. Projects already paid for keep their saved timers and rewards.
 

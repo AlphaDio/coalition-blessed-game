@@ -285,14 +285,17 @@ test('development upgrades are immediate, scale in cost, and can be bought in re
   assert.deepEqual(option.payload, { ...develop, targetLevel: 1 });
   assert.equal(option.duration, undefined);
   assert.equal(option.cost.requisition, undefined);
-  assert.deepEqual(option.cost.materials, { super_alloys: 65 });
+  assert.match(option.label, /Upgrade spectral arrays \(Lv 1\)/);
+  assert.deepEqual(option.cost.materials, { super_alloys: 45, biomass: 25 });
 
   const outputBefore = minor.production.amount;
   const sustainBefore = minor.sustain.amount;
   const materialsBefore = { ...state.stockpiles };
   const requisitionBefore = state.coalitionEconomy.requisition;
   action(state, option.payload);
-  assert.deepEqual(state.stockpiles, { ...materialsBefore, super_alloys: materialsBefore.super_alloys - 65 });
+  assert.deepEqual(state.stockpiles, {
+    ...materialsBefore, super_alloys: materialsBefore.super_alloys - 45, biomass: materialsBefore.biomass - 25
+  });
   assert.equal(state.coalitionEconomy.requisition, requisitionBefore);
   assert.equal(minor.production.amount, outputBefore * 1.5);
   assert.equal(minor.sustain.amount, sustainBefore * 0.8);
@@ -305,15 +308,16 @@ test('development upgrades are immediate, scale in cost, and can be bought in re
   assert.deepEqual(economicSnapshot(state), committed, 'retrying a quote cannot purchase the next level');
   const nextOption = refreshExpeditionOptions(state).find(option => option.action === 'develop');
   assert.deepEqual(nextOption.payload, { ...develop, targetLevel: 2 });
-  assert.deepEqual(nextOption.cost.materials, { super_alloys: 98 });
-  state.stockpiles.super_alloys = 97;
+  assert.deepEqual(nextOption.cost.materials, { super_alloys: 68, biomass: 38 });
+  state.stockpiles.super_alloys = 68;
+  state.stockpiles.biomass = 37;
   const shortfall = economicSnapshot(state);
-  assert.equal(handleExpeditionAction(state, nextOption.payload).success, false);
-  assert.deepEqual(economicSnapshot(state), shortfall, 'insufficient Alloys leave the upgrade and resources intact');
+  assert.match(handleExpeditionAction(state, nextOption.payload).error, /Need 38 biomass/);
+  assert.deepEqual(economicSnapshot(state), shortfall, 'a secondary material shortfall leaves all resources intact');
 
   delete minor.baseProduction; // Saves from the one-time upgrade did not store base production.
   const restored = migrateGameState(JSON.parse(JSON.stringify(state)));
-  restored.stockpiles.super_alloys = 98;
+  restored.stockpiles.biomass = 38;
   action(restored, nextOption.payload);
   const restoredMinor = restored.expeditions.empires[0];
   assert.equal(restoredMinor.developmentLevel, 2);
@@ -321,8 +325,28 @@ test('development upgrades are immediate, scale in cost, and can be bought in re
   approx(restoredMinor.sustain.amount, sustainBefore * 0.64, 'each upgrade lowers the remaining sustainment');
   assert.equal(restoredMinor.approval, 52);
   assert.equal(restored.stockpiles.super_alloys, 0);
+  assert.equal(restored.stockpiles.biomass, 0);
   assert.equal(restored.coalitionEconomy.requisition, requisitionBefore);
-  assert.deepEqual(refreshExpeditionOptions(restored).find(option => option.action === 'develop').cost.materials, { super_alloys: 130 });
+  assert.deepEqual(refreshExpeditionOptions(restored).find(option => option.action === 'develop').cost.materials,
+    { super_alloys: 90, biomass: 50 });
+});
+
+test('each empire quotes its own named development program and reveals the relevant material reserves', () => {
+  const state = fixture();
+  for (let i = 0; i < 12; i++) completeMission(state);
+  const programs = Object.fromEntries(refreshExpeditionOptions(state).filter(option => option.action === 'develop')
+    .map(({ targetId, label, cost }) => [targetId, [label, cost.materials]]));
+  assert.deepEqual(programs, {
+    cinder_compact: ['Rebuild furnace lines (Lv 1)', { super_alloys: 45, plasma_fuel: 20 }],
+    verdant_enclaves: ['Restore garden canopies (Lv 1)', { biomass: 55, plasma_fuel: 15 }],
+    glass_observatory: ['Upgrade spectral arrays (Lv 1)', { super_alloys: 45, biomass: 25 }],
+    free_harbors: ['Expand fuel depots (Lv 1)', { plasma_fuel: 50, super_alloys: 25 }],
+    gene_cantons: ['Expand seed vaults (Lv 1)', { biomass: 40, genomes: 3 }],
+    relic_wardens: ['Restore ruin archives (Lv 1)', { super_alloys: 25, ancient_relics: 2 }]
+  });
+  for (const commodity of ['genomes', 'ancient_relics']) {
+    assert.equal(state.expeditions.materialReserves[commodity], state.stockpiles[commodity]);
+  }
 });
 
 test('older saves retain completed development and finish paid projects on schedule', () => {

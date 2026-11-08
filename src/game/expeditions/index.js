@@ -4,7 +4,8 @@ import { applyScaledCoalitionCohesionDelta, clampApproval, scaleCohesionDelta } 
 import { applyCoalitionIntel } from '../scourgePrediction.js';
 import { TECH_BY_ID } from '../technologyDefinitions.js';
 import {
-  EXPEDITION_PLAN, DEVELOPMENT_COST, EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
+  EXPEDITION_PLAN, DEVELOPMENT_PROGRAMS, DEFAULT_DEVELOPMENT_PROGRAM,
+  EMPIRE_TEMPLATES, DISCOVERY_TEMPLATES, EXPEDITION_RULES
 } from './catalog.js';
 import { ensureExpeditionsState } from './state.js';
 import { getExpeditionMaterialReserve, quoteExpeditionCost, spendExpeditionCost } from './costs.js';
@@ -72,7 +73,6 @@ export function getOccupationCost(minor) {
 
 export function refreshExpeditionOptions(state) {
   const system = ensureExpeditionsState(state);
-  system.materialReserves = Object.fromEntries(['super_alloys', 'biomass', 'plasma_fuel'].map(key => [key, getExpeditionMaterialReserve(state, key)]));
   const options = [];
   const plan = EXPEDITION_PLAN;
   const destination = rollExpedition(state);
@@ -119,11 +119,15 @@ export function refreshExpeditionOptions(state) {
             !peaceful(minor) ? 'Negotiate a ceasefire first' : null));
     }
     const targetLevel = developmentLevel + 1;
-    const alloyCost = Math.ceil(DEVELOPMENT_COST.baseAlloys * (1 + developmentLevel * DEVELOPMENT_COST.growthPerLevel));
-    const upkeepIncrease = minor.status === 'CONQUERED' ? ' Occupation upkeep rises by 0.5 requisition and 1 Plasma Fuel per turn.' : '';
-    option('develop', `Develop to level ${targetLevel}`,
-      `Immediately adds 50% of base production and 6 approval, and lowers current sustainment needs by 20%.${upkeepIncrease}`,
-      { materials: { super_alloys: alloyCost } },
+    const program = DEVELOPMENT_PROGRAMS.find(entry => entry.empireId === minor.id) ?? DEFAULT_DEVELOPMENT_PROGRAM;
+    const developmentMultiplier = 1 + developmentLevel * EXPEDITION_RULES.developmentCostGrowthPerLevel;
+    const developmentMaterials = Object.fromEntries(Object.entries(program.materials)
+      .map(([commodity, amount]) => [commodity, Math.ceil(amount * developmentMultiplier)]));
+    const upkeepIncrease = minor.status === 'CONQUERED' ? 'Occupation upkeep rises by 0.5 requisition and 1 Plasma Fuel per turn.' : '';
+    const benefit = 'Immediately adds 50% of base production and 6 approval, and lowers current sustainment needs by 20%.';
+    option('develop', `${program.name} (Lv ${targetLevel})`,
+      [program.description, benefit, upkeepIncrease].filter(Boolean).join(' '),
+      { materials: developmentMaterials },
       unavailable || (minor.project ? 'A development is already underway' :
         minor.occupationTurns > 0 ? 'Wait for occupation to stabilize' :
           minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' :
@@ -149,6 +153,10 @@ export function refreshExpeditionOptions(state) {
     }, discovery.status === 'STUDIED' ? 'Already studied' : discovery.project ? 'Study is underway' : null);
   }
   system.options = options;
+  const reserveCommodities = new Set(['super_alloys', 'biomass', 'plasma_fuel',
+    ...options.flatMap(option => Object.keys(option.cost.materials ?? {}))]);
+  system.materialReserves = Object.fromEntries([...reserveCommodities]
+    .map(commodity => [commodity, getExpeditionMaterialReserve(state, commodity)]));
   return options;
 }
 

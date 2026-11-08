@@ -58,10 +58,13 @@ try {
   const develop = { action: 'develop', targetId: contact.id };
   assert.equal((await post({ ...develop, projectId: 'industry' })).status, 400, 'a stale project choice must be refreshed');
   const firstUpgrade = envoy.body.data.expeditions.options.find(option => option.action === 'develop');
+  assert.deepEqual(firstUpgrade.cost.materials, { super_alloys: 45, plasma_fuel: 20 });
   const developed = await post(firstUpgrade.payload);
   assert.equal(developed.status, 200);
   assert.equal(developed.body.data.expeditions.empires[0].developmentLevel, 1);
   assert.equal(developed.body.data.expeditions.empires[0].project, null);
+  assert.deepEqual(developed.body.data.expeditions.options.find(option => option.action === 'develop').cost.materials,
+    { super_alloys: 68, plasma_fuel: 30 });
   assert.equal((await post(firstUpgrade.payload)).status, 400);
   const developedAgain = await post(develop);
   assert.equal(developedAgain.status, 200);
