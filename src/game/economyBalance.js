@@ -1,5 +1,4 @@
 import { ECONOMY_BALANCE_CONSTANTS } from './constants.js';
-import { getProjectDemandMultiplier, getProjectOutputMultiplier } from './projects.js';
 
 function normalizeMultiplier(value) {
   if (!Number.isFinite(value) || value < 0) {
@@ -20,12 +19,12 @@ export function getSupplyCommodityMultiplier(commodity) {
   return getCommodityMultiplier(ECONOMY_BALANCE_CONSTANTS.SUPPLY_MULTIPLIERS_BY_COMMODITY, commodity);
 }
 
-export function applyDemandCommodityMultiplier(commodity, qty, state) {
-  return qty * getDemandCommodityMultiplier(commodity) * getProjectDemandMultiplier(state, commodity);
+export function applyDemandCommodityMultiplier(commodity, qty) {
+  return qty * getDemandCommodityMultiplier(commodity);
 }
 
-export function applySupplyCommodityMultiplier(commodity, qty, state) {
-  return qty * getSupplyCommodityMultiplier(commodity) * getProjectOutputMultiplier(state, commodity);
+export function applySupplyCommodityMultiplier(commodity, qty) {
+  return qty * getSupplyCommodityMultiplier(commodity);
 }
 
 export function capConsumptionIndustrialOutputBonus(value) {

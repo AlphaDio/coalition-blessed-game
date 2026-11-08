@@ -38,7 +38,7 @@ Prices are initialized once in `src/game/marketEconomy.js`:
 4. Pick the initial price between 50% and 150% of that adjusted floor.
 5. Store the value in both `price` and `last_price`.
 
-The seeded prices apply until a Project order issues Credits. The Project price adjustment is applied after market clearing, so updated prices apply to new orders on the following turn. [Project rules](#projects-and-credit-issuance) describe how the index is calculated.
+The seeded prices apply until a Project order issues Credits. The Project price adjustment is applied after market clearing. Automatic buy orders, including their backlog, track the new market price on the following turn. Posted sell batches retain their original asks until filled or expired. [Project rules](#projects-and-credit-issuance) describe how the index is calculated.
 
 Inactive for now:
 - Demand/supply target price updates.
@@ -51,10 +51,11 @@ Inactive for now:
 
 Each commodity has two possible Projects. A campaign uses its seed to select one variant per commodity. The selected variants, levels and pending orders persist in the save.
 
-- **Expansion** adds 5% of base Coalition production of the commodity per level.
-- **Conservation** divides the Coalition's demand for the commodity by `1 + 0.05 × level`.
+Projects grant Coalition-wide bonuses such as population growth, construction speed, research speed, or army organization recovery. Both Biomass variants increase base population growth in all member empires. Bonuses grow faster at higher levels and scale with upkeep fulfillment.
 
-Each level consumes a fixed quantity of its commodity. The quantity is 5 for tier 1, 1 for tier 2, 0.5 for tier 3 and 0.25 for tier 4. Authorizing a Project places an order for the next market clearing, above civilian orders and below higher-priority military orders. A full fill raises the level and issues the actual purchase price directly to the sellers. If the full quantity cannot clear within the price limit, the order expires. Projects draw their inputs from the market and settle through new Credits.
+An active Project bids for its upkeep every turn at the current market price, above civilian orders and below higher-priority military orders. Upkeep scales with level. The base quantities per level are 5 for tier 1, 1 for tier 2, 0.5 for tier 3 and 0.25 for tier 4, with some variants using less. Each fill issues the settled Credits and consumes the goods immediately.
+
+An upgrade orders the next level's larger amount. Goods beyond current upkeep advance the upgrade, with up to one unit of progress per turn. Level 1 needs two fully supplied turns and level 10 needs twenty. Level 10 is the cap. Pausing a Project stops its orders and effects while preserving its level and upgrade progress.
 
 The price index starts at 100. After issuance, it responds to estimated Project Credits still circulating, recent supply of Super Alloys, Biomass and Plasma Fuel, and the share of that supply purchased. Net drains retire an estimated proportion of Project Credits. The index moves one fifth of the distance toward its target each turn. The target ranges from 100 to 200 and rises faster when there is less real supply to absorb additional spending.
 

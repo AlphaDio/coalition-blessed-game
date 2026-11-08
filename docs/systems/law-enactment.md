@@ -7,7 +7,7 @@ The law system uses a multi-phase process (DEBATE, FALLOUT, VOTING) to adopt pow
 1. Category slots: one active law per category (replacement on enactment).
 2. Tiered progression: T1 always available, T2 unlocks after any T1 enacted, T3 unlocks after any T2 enacted (global history).
 3. Ideological alignment: laws use axis vectors to drive stances and reactions.
-4. Favorable immediate adoption effects pay five times their authored values, subject to normal pacing and caps.
+4. Laws pay their authored immediate adoption effects, subject to normal pacing and caps.
 5. Ongoing modifiers: while active, laws apply coalition modifiers (trade income, supply efficiency, industrial output, etc.).
 
 ## Data Model

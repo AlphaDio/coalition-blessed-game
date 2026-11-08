@@ -6,6 +6,7 @@ import {
 } from './sustainment.js';
 import { grantImprovementUnits } from './modifiers.js';
 import { triggerHeroPassives } from '../../heroes.js';
+import { getProjectBonus } from '../../projects.js';
 
 /**
  * Process improvements each tick
@@ -43,7 +44,7 @@ export function processImprovementsTick(state) {
 
   effectiveConstruction = (effectiveConstruction + addModifier) * multModifier;
   const dynamicBuildMult = state.coalitionModifiers?.dynamic?.improvement_build_speed_mult || 1.0;
-  effectiveConstruction *= dynamicBuildMult;
+  effectiveConstruction *= dynamicBuildMult * (1 + getProjectBonus(state, 'construction'));
   const constructionValue = Math.max(0, effectiveConstruction);
 
   improvements.queue.forEach(improvement => {

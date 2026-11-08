@@ -9,7 +9,7 @@ import {
 import { createArmyBattlePrep, ensureArmyBattlePrep, addArmyBattlePrep } from './armyBattlePrep.js';
 import { clampPopulation, ensurePopulationStats } from './populationUtils.js';
 import { createExpeditionsState, ensureExpeditionsState } from './expeditions/state.js';
-import { createProjectsState } from './projects.js';
+import { createProjectsState, ensureProjectsState } from './projects.js';
 import { EXPEDITION_STARTER_SUPPLIES } from './expeditions/catalog.js';
 import { copyChargeTriggers, getDefaultChargeTriggers, migrateHeroProgression } from './heroes/progression.js';
 import { getAllImprovementRequests } from './improvements/definitions.js';
@@ -675,7 +675,7 @@ export function cleanupAllExpiredBonuses(state) {
 export function migrateGameState(state) {
   if (!state) return state;
   ensureExpeditionsState(state);
-  state.projects ??= createProjectsState(state.rngSeed);
+  ensureProjectsState(state);
 
   if (state.empires && Array.isArray(state.empires)) {
     state.empires.forEach((empire) => {

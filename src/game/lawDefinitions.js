@@ -9,14 +9,8 @@ export const TIER_REQUIREMENTS = {
   4: 3  // Need at least 3 T3 laws enacted (ever)
 };
 
-const ENACTMENT_BONUS_MULTIPLIER = 5;
-
 function normalizeLawDefinition(moduleDoc, data) {
   const lawTags = data.law_tags ?? data.tags ?? [];
-  const immediateEffects = Object.fromEntries(Object.entries(data.immediate_effects ?? {}).map(([key, amount]) => {
-    const beneficial = key === 'hero_heat' || key === 'hero_grievance' ? amount < 0 : amount > 0;
-    return [key, Number.isFinite(amount) && beneficial ? amount * ENACTMENT_BONUS_MULTIPLIER : amount];
-  }));
   return {
     ...data,
     description: data.description ?? moduleDoc?.module?.description ?? '',
@@ -29,7 +23,7 @@ function normalizeLawDefinition(moduleDoc, data) {
     support_weights: data.support_weights ?? {},
     phase_tags: data.phase_tags ?? {},
     modifiers: data.modifiers ?? {},
-    immediate_effects: immediateEffects
+    immediate_effects: data.immediate_effects ?? {}
   };
 }
 

@@ -92,8 +92,8 @@ function enactLaw(state, lawId, proposal = null) {
   const law = state.lawDefinitions.find(entry => entry.id === 'law_fiscal_stimulus_1');
   const { requisition, treasury_credits } = state.coalitionEconomy;
   applyLawImmediateEffects(law, state, []);
-  assert(state.coalitionEconomy.treasury_credits === treasury_credits + 7000, 'Enactment pays five times the catalog Credits');
-  assert(state.coalitionEconomy.requisition === requisition + 600, 'Enactment pays five times the catalog requisition');
+  assert(state.coalitionEconomy.treasury_credits === treasury_credits + 1400, 'Enactment pays the authored Credits');
+  assert(state.coalitionEconomy.requisition === requisition + 120, 'Enactment pays the authored requisition');
   assert(law.modifiers.empire_approval === 0.4, 'Ongoing law modifiers retain their authored amounts');
 }
 

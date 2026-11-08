@@ -1,4 +1,5 @@
 import { DeterministicRNG } from '../../modules/rng.js';
+import { getProjectBonus } from '../projects.js';
 import { getLogger } from '../../modules/logger.js';
 import { applyScaledCoalitionCohesionDelta, clampApproval, scaleCohesionDelta } from '../cohesion.js';
 import { applyCoalitionIntel } from '../scourgePrediction.js';
@@ -49,7 +50,7 @@ function getExpeditionSpeedBonus(state) {
     const definition = DISCOVERY_TEMPLATES.find(entry => entry.id === discovery.id);
     return bonus + (definition?.expeditionSpeedBonus ?? 0);
   }, 0);
-  return techBonus + discoveryBonus;
+  return techBonus + discoveryBonus + getProjectBonus(state, 'expedition');
 }
 
 function travelTurns(baseTurns, speedBonus) {

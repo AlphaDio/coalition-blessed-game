@@ -291,14 +291,6 @@ export function clearMarket(buyOrders, sellOffers, marketState) {
   for (const buy of relevantBuys) {
     let buyRemaining = buy.qty - (buy.filled_qty || 0);
     if (buyRemaining <= 0) continue;
-    if (buy.all_or_nothing) {
-      const affordableSupply = relevantSells.reduce((sum, sell) => sum +
-        (buy.max_price >= sell.ask_price ? (sellRemaining.get(sell.id) || 0) : 0), 0);
-      if (affordableSupply + 1e-9 < buyRemaining) {
-        unfilledBuys.push({ ...buy, remaining: buyRemaining });
-        continue;
-      }
-    }
 
     // Compute bulk discount once per buy order based on its total committed qty.
     // This mirrors wholesale contracts where the rate is locked at order placement.

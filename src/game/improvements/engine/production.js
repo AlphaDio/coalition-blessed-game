@@ -56,7 +56,7 @@ export function processImprovementProduction(state, improvement) {
     );
     const scaledQty = commodity === 'requisition'
       ? baseScaledQty
-      : normalizeQty(applySupplyCommodityMultiplier(commodity, baseScaledQty, state));
+      : normalizeQty(applySupplyCommodityMultiplier(commodity, baseScaledQty));
     if (scaledQty <= 0) continue;
 
     // Special handling for requisition - add directly to coalition economy (bypass bank)

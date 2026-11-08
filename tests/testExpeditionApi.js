@@ -98,6 +98,7 @@ try {
   assert.equal(ordered.status, 200);
   assert((await ordered.json()).data.projects.pending.biomass);
   assert(gameManager.advanceTurnManually().success);
+  assert(gameManager.advanceTurnManually().success);
   assert.equal(gameManager.getGameState().projects.levels.biomass, 1);
   gameManager.state.gameOver = true;
   assert.equal((await post(launch)).status, 400);

@@ -1,6 +1,7 @@
 import { POPULATION_CONSTANTS } from '../constants.js';
 import { getEmpireImprovementModifier, getEmpireTechModifier } from '../empireModifiers.js';
 import { applyPopulationGrowthRateToEmpire, ensurePopulationStats } from '../populationUtils.js';
+import { getProjectBonus } from '../projects.js';
 
 function toFiniteNumber(value, fallback = 0) {
   const numeric = Number(value);
@@ -9,7 +10,7 @@ function toFiniteNumber(value, fallback = 0) {
 
 function getEmpirePopulationGrowthRate(state, empire) {
   return (
-    POPULATION_CONSTANTS.BASE_GROWTH_RATE +
+    POPULATION_CONSTANTS.BASE_GROWTH_RATE * (1 + getProjectBonus(state, 'population')) +
     toFiniteNumber(state?.coalitionModifiers?.population_growth, 0) +
     getEmpireTechModifier(empire, 'population_growth') +
     getEmpireImprovementModifier(state, empire.id, 'population_growth') +

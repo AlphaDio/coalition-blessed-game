@@ -1,3 +1,5 @@
+import { getProjectBonus } from '../projects.js';
+
 /**
  * Get the law progress speed multiplier from coalition modifiers
  * @param {Object} state - Game state
@@ -8,5 +10,5 @@ export function getLawProgressSpeedMultiplier(state) {
   const modifierBonus = state.coalitionModifiers?.law_progress_speed || 0;
   const tempBonus = state.coalitionModifiers?.lawProgressBonus || 0;
   const dynamicBonus = state.coalitionModifiers?.dynamic?.law_progress_speed_bonus || 0;
-  return baseSpeed + modifierBonus + tempBonus + dynamicBonus;
+  return baseSpeed + modifierBonus + tempBonus + dynamicBonus + getProjectBonus(state, 'law');
 }

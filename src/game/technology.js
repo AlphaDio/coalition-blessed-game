@@ -4,6 +4,7 @@ import { applyScaledCoalitionCohesionDelta } from './cohesion.js';
 import { ALL_TECHNOLOGIES, TECH_BY_ID } from './technologyDefinitions.js';
 import { getLogger } from '../modules/logger.js';
 import { triggerHeroPassives } from './heroes.js';
+import { getProjectBonus } from './projects.js';
 
 function getUnlockedTechCount(empire) {
   if (!Array.isArray(empire?.technologies)) {
@@ -39,7 +40,7 @@ function isTechTierUnlocked(tech, empire) {
  * @returns {number} Effective research speed multiplier
  */
 export function getResearchSpeed(empire, state) {
-  let speed = TECH_CONSTANTS.BASE_RESEARCH_SPEED;
+  let speed = TECH_CONSTANTS.BASE_RESEARCH_SPEED * (1 + getProjectBonus(state, 'research'));
   
   // Add improvement modifiers (research_speed from active improvements)
   if (state.improvements?.empireModifiers?.[empire.id]?.research_speed) {

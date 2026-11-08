@@ -8,6 +8,7 @@ import { MODIFIER_ARMY_ORG_SCALE } from '../improvements/types.js';
 import { collectArmiesInBattle, isRegularArmy } from './armyUtils.js';
 import { getArmyPopulationDemandMultiplier } from '../consumptionScaling.js';
 import { addArmyBattlePrep } from '../armyBattlePrep.js';
+import { getProjectBonus } from '../projects.js';
 
 const DEFAULT_ARMY_PROTECTION = 0.2;
 
@@ -266,6 +267,7 @@ export function applyArmyPassiveStatModifiers(state) {
  */
 export function recoverArmyOrganization(state, activeBattles) {
   const logger = getLogger();
+  const projectMultiplier = 1 + getProjectBonus(state, 'organization');
 
   const armiesInBattle = collectArmiesInBattle(activeBattles);
 
@@ -278,7 +280,7 @@ export function recoverArmyOrganization(state, activeBattles) {
     const baseRecoveryRate = 0.1 + ((army.command || 50) / 100) * 0.9;
     const effectiveRate = inBattle ? baseRecoveryRate * 0.5 : baseRecoveryRate;
     const spaceAvailable = 100 - army.organization;
-    const recovered = Math.min(effectiveRate, spaceAvailable);
+    const recovered = Math.min(effectiveRate * projectMultiplier, spaceAvailable);
     army.organization = clampStat(army.organization + recovered, 0, 100);
 
     if (recovered > 0.5) {
