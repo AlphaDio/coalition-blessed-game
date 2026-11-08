@@ -479,11 +479,23 @@ export class GameManager {
   loadSaveState(saveData) {
     // Migrate save data to current schema to handle missing fields
     this.state = migrateGameState(saveData);
-    // Older saves may contain the event catalog from before pressure events
-    // existed. Restore only the shared pressure definitions without replacing
-    // any content already stored in the save.
-    const pressureEvents = createSampleContent(this.state.rngSeed ?? 0).events
-      .filter(event => event.scope === 'PRESSURE');
+    const content = createSampleContent(this.state.rngSeed ?? 0);
+    const empireDefinitions = new Map(content.empires.map(empire => [empire.id, empire]));
+    for (const empire of this.state.empires || []) {
+      const definition = empireDefinitions.get(empire.id);
+      if (!definition) continue;
+      // These are catalog rates. Campaign-specific effects live in modifiers.
+      empire.production ??= {};
+      empire.wants ??= {};
+      empire.modifiers ??= {};
+      empire.production.outputs_per_tick = {
+        ...empire.production.outputs_per_tick, ...definition.production.outputs_per_tick
+      };
+      empire.wants.per_pop = { ...empire.wants.per_pop, ...definition.wants.per_pop };
+      empire.modifiers.multiplication ??= definition.modifiers.multiplication;
+    }
+
+    const pressureEvents = content.events.filter(event => event.scope === 'PRESSURE');
     const existingEventIds = new Set((this.state.events || []).map(event => event.id));
     this.state.events = [
       ...(this.state.events || []),

@@ -11,12 +11,12 @@ function isFreshSellOffer(order, turn) {
 
 // A delivery only adds to the current batch. Earlier batches keep aging even
 // when the same producer lists more of the commodity on every turn.
-export function addProductionSellOffer(offers, turn, ownerType, ownerId, commodity, qty, price, priority, maxDuration = DEFAULT_SELL_ORDER_MAX_DURATION) {
+export function addProductionSellOffer(offers, turn, ownerType, ownerId, commodity, qty, price, priority) {
   let offer = offers.find(order => isFreshSellOffer(order, turn) &&
     order.owner_type === ownerType && order.owner_id === ownerId && order.commodity === commodity);
   if (!offer) {
     const id = `sell_${turn}_${ownerType}_${ownerId}_${commodity}`;
-    offer = createSellOffer(id, ownerType, ownerId, commodity, 0, price, priority, maxDuration);
+    offer = createSellOffer(id, ownerType, ownerId, commodity, 0, price, priority, DEFAULT_SELL_ORDER_MAX_DURATION);
     offer.turn_added_turn = turn;
     offer.turn_added_qty = 0;
     offers.push(offer);
@@ -25,7 +25,6 @@ export function addProductionSellOffer(offers, turn, ownerType, ownerId, commodi
   offer.turn_added_qty = (offer.turn_added_qty || 0) + qty;
   offer.ask_price = price;
   offer.priority = Math.max(offer.priority || 0, priority);
-  offer.max_duration = Math.max(offer.max_duration || 0, maxDuration);
   return offer;
 }
 

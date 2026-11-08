@@ -48,6 +48,7 @@ export function createEmpire(id, name, initialApproval = 50, traits = {}, values
     tags: tags,
     modifiers: {
       intensity: modifiers.intensity || 1.0,
+      multiplication: modifiers.multiplication ?? 1.0,
       axis_gates: modifiers.axis_gates || {},
       supply_efficiency: modifiers.supply_efficiency || 0
     },
@@ -1180,7 +1181,10 @@ export function migrateGameState(state) {
       for (const improvement of entries) {
         const definitionId = improvement?.definitionId || improvement?.requestId || improvement?.id;
         const definition = definitions.get(definitionId);
-        if (!definition || !improvement.sustainmentCost) continue;
+        if (!definition) continue;
+        improvement.productionOutputs = { ...improvement.productionOutputs, ...definition.productionOutputs };
+        delete improvement.productionBankThreshold;
+        if (!improvement.sustainmentCost) continue;
         // Retire self-upkeep removed from the catalog while preserving other saved costs.
         for (const commodity of Object.keys(improvement.sustainmentCost)) {
           if (definition.productionOutputs[commodity] > 0 && !definition.sustainmentCost[commodity]) {

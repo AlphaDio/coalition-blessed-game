@@ -53,8 +53,8 @@ The relevant turn order is:
    - Complete finished construction.
    - Charge active requisition upkeep.
    - Queue sustainment demand.
-   - Release eligible production-bank output.
-   - Add direct requisition production.
+   - Produce goods and add direct requisition output.
+   - Route goods to local upkeep and list surplus on the market.
 3. Run the economy tick:
    - Clear sustainment and production orders alongside empire and army orders.
    - Update army and empire fulfillment.
@@ -97,10 +97,9 @@ For each active improvement:
 2. Scale non-requisition commodity output by empire population.
 3. Apply commodity-specific economy balance multipliers.
 4. Add commodity output to the improvement production bank.
-5. Release banked output once the threshold is met.
-6. Route any needed local output into sustainment before market release.
-7. Emit market sell offers for remaining released output.
-8. Add direct `requisition` output immediately to the coalition economy.
+5. Route goods from the bank into same-empire sustainment.
+6. List remaining goods for sale that turn.
+7. Add direct `requisition` output immediately to the coalition economy.
 
 Production sell offers use priority 100 and `fee: 0` in the order definition.
 

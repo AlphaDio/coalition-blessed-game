@@ -189,7 +189,7 @@ const INDUSTRIAL_BRANCH = [
         build: 1000,
         capacity: 6,
         sustainmentCost: { super_alloys: 12, anti_grav_modules: 0.25 },
-        productionOutputs: { dark_matter: 0.007, quantum_circuits: 0.092 },
+        productionOutputs: { dark_matter: 0.007, quantum_circuits: 0.04 },
         modifiers: { industrial_output: 0.16, coalition_construction_mult: 0.3 },
         tags: ['mega_structure', 'industrial', 'energy', 'transcendent'],
         requisitionUpkeep: 10
@@ -271,7 +271,7 @@ const RESEARCH_BRANCH = [
        build: 900,
        capacity: 6,
         sustainmentCost: { genomes: 5 },
-        productionOutputs: { rare_gases: 0.12, quantum_circuits: 0.055, sentient_cores: 0.02 },
+        productionOutputs: { rare_gases: 0.075, quantum_circuits: 0.055, sentient_cores: 0.02 },
        modifiers: { research_speed: 0.7 },
         tags: ['mega_structure', 'research', 'knowledge', 'transcendent'],
         requisitionUpkeep: 10
@@ -397,7 +397,7 @@ const MILITARY_BRANCH = [
       build: 900,
       capacity: 6,
       sustainmentCost: { super_alloys: 10, quantum_circuits: 6, dark_matter: 0.2 },
-      productionOutputs: { super_alloys: 0.125, nano_machines: 0.092 },
+      productionOutputs: { super_alloys: 0.125, nano_machines: 0.04 },
       modifiers: {
         army_organization: 2.4,
         army_fervor: 1.4,
@@ -424,7 +424,7 @@ const MILITARY_BRANCH = [
       build: 980,
       capacity: 6,
       sustainmentCost: { super_alloys: 8, plasma_fuel: 5, quantum_circuits: 4 },
-      productionOutputs: { super_alloys: 0.074, nano_machines: 0.052, wormhole_reactors: 0.011 },
+      productionOutputs: { super_alloys: 0.074, nano_machines: 0.03, wormhole_reactors: 0.011 },
       modifiers: {
         army_organization: 2.5,
         army_protection: 0.03,
@@ -497,7 +497,7 @@ const CULTURAL_BRANCH = [
        build: 300,
        capacity: 4,
         sustainmentCost: { biomass: 3 },
-        productionOutputs: { genomes: 0.072, psycho_implants: 0.018 },
+        productionOutputs: { genomes: 0.036, psycho_implants: 0.018 },
        unityOutput: 0.55,
        modifiers: { population_growth: 0.12, empire_approval: 7 },
        tags: ['mega_structure', 'cultural', 'celebration', 'biologic'],
@@ -517,7 +517,7 @@ const CULTURAL_BRANCH = [
        build: 720,
        capacity: 6,
         sustainmentCost: { ancient_relics: 3 },
-        productionOutputs: { genomes: 0.055, psycho_implants: 0.11 },
+        productionOutputs: { genomes: 0.035, psycho_implants: 0.045 },
        unityOutput: 1.1,
        modifiers: { population_growth: 0.22, empire_approval: 12, hero_funding_efficiency_mult: 0.10 },
        tags: ['mega_structure', 'cultural', 'unity', 'transcendent', 'biologic'],
@@ -701,7 +701,7 @@ const SPIRITUAL_BRANCH = [
        build: 850,
        capacity: 6,
         sustainmentCost: { ancient_relics: 6 },
-        productionOutputs: { ancient_relics: 0.19, psycho_implants: 0.05, sentient_cores: 0.03 },
+        productionOutputs: { ancient_relics: 0.095, psycho_implants: 0.022, sentient_cores: 0.03 },
        unityOutput: 3.4,
        modifiers: { army_fervor: 15, cohesionModifier: 1.06, empire_approval: 3 },
        tags: ['mega_structure', 'spiritual', 'transcendent', 'relics'],
@@ -925,7 +925,7 @@ const RESOURCE_BRANCH = [
        build: 130,
        capacity: 1,
        sustainmentCost: { plasma_fuel: 2, super_alloys: 1 },
-       productionOutputs: { rare_gases: 0.185, plasma_fuel: 0.035 },
+       productionOutputs: { rare_gases: 0.125, plasma_fuel: 0.035 },
        modifiers: { research_speed: 0.04 },
        tags: ['mega_structure', 'resource', 'passive', 'mining'],
        requisitionUpkeep: 2
@@ -947,9 +947,9 @@ const RESOURCE_BRANCH = [
        capacity: 2,
        sustainmentCost: { quantum_circuits: 4, genomes: 4, plasma_fuel: 5 },
        productionOutputs: {
-         wormhole_reactors: 0.115,
+         wormhole_reactors: 0.03,
          dark_matter: 0.007,
-         nano_machines: 0.07
+         nano_machines: 0.022
        },
        modifiers: { industrial_output: 0.05 },
        tags: ['mega_structure', 'resource', 'passive', 'exotic', 'advanced_commodity'],

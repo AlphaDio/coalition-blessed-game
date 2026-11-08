@@ -1,4 +1,4 @@
-import { ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
+import { ECONOMY_BALANCE_CONSTANTS, ECONOMY_CONSTANTS, MARKET_CONSTANTS, RATIONING_CONSTANTS } from '../constants.js';
 import { applyDemandCommodityMultiplier } from '../economyBalance.js';
 import { getEmpireTechModifier } from '../empireModifiers.js';
 import { getArmyPopulationDemandMultiplier, getEmpireEffectiveDemandPopulation } from '../consumptionScaling.js';
@@ -145,10 +145,20 @@ export function emitEmpireNeedsOrders(state, aggregateBuyOrder, effectiveRationi
 }
 
 export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationing, supplyEfficiencyMultiplier = 1) {
+  const activeByEmpire = new Map();
+  for (const improvement of state.improvements?.queue || []) {
+    if (improvement.state === 'ACTIVE') {
+      activeByEmpire.set(improvement.empireId, (activeByEmpire.get(improvement.empireId) || 0) + 1);
+    }
+  }
   state.empires.forEach(empire => {
     if (!empire.wants || !empire.wants.per_pop) return;
     const population = getEmpireEffectiveDemandPopulation(empire.stats?.population || 0);
     const demandMultiplier = Math.max(0, ECONOMY_CONSTANTS.EMPIRE_NEEDS_WANTS_DEMAND_MULTIPLIER || 1);
+    const developmentBonus = Math.min(
+      ECONOMY_BALANCE_CONSTANTS.MAX_DEVELOPMENT_WANTS_BONUS,
+      (activeByEmpire.get(empire.id) || 0) * ECONOMY_BALANCE_CONSTANTS.WANTS_BONUS_PER_ACTIVE_IMPROVEMENT
+    );
     const empireEff = getEmpireSupplyEfficiency(empire, state);
     const empireMult = Math.max(0, 1 - empireEff);
 
@@ -159,7 +169,8 @@ export function emitEmpireWantsOrders(state, aggregateBuyOrder, effectiveRationi
     empire.supply_state.wants_demand = {};
 
     Object.entries(empire.wants.per_pop).forEach(([commodity, qtyPerPop]) => {
-      const rawWanted = qtyPerPop * population * demandMultiplier * effectiveRationing * supplyEfficiencyMultiplier * empireMult;
+      const rawWanted = qtyPerPop * population * demandMultiplier * (1 + developmentBonus) *
+        effectiveRationing * supplyEfficiencyMultiplier * empireMult;
       const totalWanted = applyDemandCommodityMultiplier(commodity, rawWanted);
       if (totalWanted > 0) {
         empire.supply_state.wants_demand[commodity] = totalWanted;

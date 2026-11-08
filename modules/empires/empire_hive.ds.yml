@@ -36,16 +36,16 @@ declares:
       tech_rate_bonus: 0.05
       production:
         outputs_per_tick:
-          genomes: 0.0025
-          ancient_relics: 0.0005
+          genomes: 0.006
+          ancient_relics: 0.004
       needs:
         per_pop:
           biomass: 0.025
           plasma_fuel: 0.02
       wants:
         per_pop:
-          psycho_implants: 0.001
-          nano_machines: 0.0005
+          psycho_implants: 0.004
+          nano_machines: 0.003
       consumption:
         # Synaptic Swarm has a strong bonus to biomass consumption
         biomass:

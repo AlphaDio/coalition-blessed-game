@@ -42,16 +42,17 @@ declares:
       tech_rate_bonus: 0.40
       production:
         outputs_per_tick:
-          quantum_circuits: 0.000025
-          nano_machines: 0.00005
+          quantum_circuits: 0.010
+          nano_machines: 0.012
       needs:
         per_pop:
           rare_gases: 0.075
           super_alloys: 0.08
       wants:
         per_pop:
-          sentient_cores: 0.002
-          wormhole_reactors: 0.001
+          sentient_cores: 0.008
+          wormhole_reactors: 0.006
+          quantum_circuits: 0.004
       consumption:
         sentient_cores:
           threshold: 24

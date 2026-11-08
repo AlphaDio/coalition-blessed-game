@@ -36,16 +36,16 @@ declares:
       production:
         outputs_per_tick:
           super_alloys: 0.05
-          rare_gases: 0.01
+          rare_gases: 0.014
       needs:
         per_pop:
           biomass: 0.05
           plasma_fuel: 0.03
       wants:
         per_pop:
-          nano_machines: 0.0005
-          quantum_circuits: 0.0003
-          genomes: 0.001
+          nano_machines: 0.004
+          quantum_circuits: 0.003
+          genomes: 0.003
       consumption:
         biomass:
           threshold: 1200

@@ -1,8 +1,8 @@
 import { getLogger } from '../../../modules/logger.js';
 import { PRODUCTION_EFFICIENCY_CONSTANTS } from '../../constants.js';
 import { applySupplyCommodityMultiplier } from '../../economyBalance.js';
-import { addProductionSellOffer, DEFAULT_SELL_ORDER_MAX_DURATION } from '../../economyTick/orders.js';
-import { allocateSustainmentFromLocalProduction, calculateImprovementNeed } from './sustainment.js';
+import { addProductionSellOffer } from '../../economyTick/orders.js';
+import { allocateSustainmentFromLocalProduction } from './sustainment.js';
 
 const QUANTITY_PRECISION = 1000;
 const QUANTITY_EPSILON = 1 / QUANTITY_PRECISION;
@@ -21,7 +21,7 @@ function normalizeSignedQty(value) {
 
 /**
  * Process production outputs for an improvement
- * Accumulates in production bank, held until threshold is met
+ * Credits goods to the bank so local upkeep can use them before sale.
  */
 export function processImprovementProduction(state, improvement) {
   const log = [];
@@ -84,8 +84,7 @@ export function processImprovementProduction(state, improvement) {
 }
 
 /**
- * Release accumulated production from improvement's bank to the market as sell offers
- * Only releases when the surplus-based threshold is met.
+ * Supply local upkeep from the bank and list the surplus for sale.
  */
 export function releaseProductionFromBank(state, improvement) {
   const log = [];
@@ -99,8 +98,7 @@ export function releaseProductionFromBank(state, improvement) {
     state.marketOrders = { buyOrders: [], sellOffers: [] };
   }
 
-  // Local sustainment can draw from the bank every turn. Waiting for a market
-  // batch first can degrade a project before it can use its own production.
+  // Prioritize local upkeep before listing any surplus on the market.
   for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
     const used = allocateSustainmentFromLocalProduction(state, empire.id, commodity, qty);
     if (used > 0) {
@@ -109,55 +107,6 @@ export function releaseProductionFromBank(state, improvement) {
     }
   }
 
-  // Batch the expected surplus, not output already needed to run the project.
-  // Otherwise a small valuable output can wait indefinitely behind an input
-  // that the project consumes as quickly as it produces.
-  const population = empire.stats?.population || 1;
-  let thresholdValue = 0;
-
-  const baseEfficiency = PRODUCTION_EFFICIENCY_CONSTANTS.BASE_EFFICIENCY;
-  const efficiencyAdd = state.coalitionModifiers?.production_efficiency_add || 0;
-  const efficiencyMult = state.coalitionModifiers?.production_efficiency_mult || 1.0;
-  const effectiveEfficiency = Math.max(
-    PRODUCTION_EFFICIENCY_CONSTANTS.MIN_EFFICIENCY,
-    Math.min(PRODUCTION_EFFICIENCY_CONSTANTS.MAX_EFFICIENCY, (baseEfficiency + efficiencyAdd) * efficiencyMult)
-  );
-
-  // Calculate what would be produced this tick (for threshold)
-  for (const [commodity, qty] of Object.entries(improvement.productionOutputs || {})) {
-    if (commodity !== 'requisition') {
-      const efficiencyAdjustedQty = qty * effectiveEfficiency;
-      const baseScaledQty = efficiencyAdjustedQty * population;
-      const output = normalizeQty(applySupplyCommodityMultiplier(commodity, baseScaledQty));
-      const ownInput = calculateImprovementNeed(state, empire, commodity, improvement.sustainmentCost?.[commodity] || 0);
-      thresholdValue += Math.max(0, output - ownInput);
-    }
-  }
-
-  // Apply the threshold multiplier
-  const bankTurns = improvement.productionBankThreshold || 1;
-  const threshold = normalizeQty(thresholdValue * bankTurns);
-
-  // Check if total accumulated production meets threshold
-  let totalAccumulated = 0;
-  for (const qty of Object.values(improvement.productionBank || {})) {
-    totalAccumulated += qty;
-  }
-
-  // Only release if threshold is met
-  if (totalAccumulated < threshold) {
-    // Threshold not met, don't release
-    // Log to file/Logs view only (not in-game log) to reduce noise
-    const holdMessage = threshold > 0 ? `(${totalAccumulated}/${Math.ceil(threshold)} to release)` : '';
-    if (totalAccumulated > 0) {
-      logger.debug(`Holding: ${improvement.name} production bank accumulating ${holdMessage}`);
-    }
-    return { log };
-  }
-
-  // Release all accumulated production from bank to market
-  // Let each batch bridge the normal bank release interval.
-  const maxDuration = Math.max(DEFAULT_SELL_ORDER_MAX_DURATION, Math.ceil(bankTurns));
   for (const [commodity, qty] of Object.entries(improvement.productionBank || {})) {
     if (qty <= 0) continue;
 
@@ -168,10 +117,8 @@ export function releaseProductionFromBank(state, improvement) {
     const marketState = state.market?.[commodity];
     const sellPrice = marketState?.price || marketState?.floor_price || 1.0;
     addProductionSellOffer(state.marketOrders.sellOffers, state.turn, 'empire', empire.id,
-      commodity, qtyForMarket, sellPrice, 100, maxDuration);
-    // Log "Produced" when releasing to market
-    log.push(`{blue-fg}Produced:{/blue-fg} ${qtyForMarket.toFixed(3)} ${commodity} -> market @ ${sellPrice.toFixed(2)}`);
-    logger.info(`Improvement produced: ${improvement.name} (${empire.name}) released ${qtyForMarket.toFixed(3)} ${commodity} to market.`);
+      commodity, qtyForMarket, sellPrice, 100);
+    logger.debug(`Improvement produced: ${improvement.name} (${empire.name}) released ${qtyForMarket.toFixed(3)} ${commodity} to market.`);
 
     // Clear from bank after releasing
     improvement.productionBank[commodity] = 0;

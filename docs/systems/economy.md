@@ -55,7 +55,7 @@ The relevant economy sequence inside a turn is:
    - Advance construction.
    - Charge active requisition upkeep.
    - Queue sustainment demand.
-   - Release eligible production-bank output.
+   - Route improvement production to local upkeep and list the surplus.
    - Add direct requisition production immediately.
 4. Run the economy tick:
    - Emit empire production sell offers.
@@ -106,9 +106,9 @@ Each demand backlog item records its resource, remaining quantity, age, source, 
 Pressure itself has no mechanical effects. Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
 
 ## Production and Stockpiles
-Empire production emits sell offers into the market. Improvement commodity production accumulates in a per-improvement production bank. All improvement sustainment is queued first; same-empire production banks can then supply it every turn, independent of project order or the market-release threshold. Remaining output is released to the market when the bank reaches its threshold, calculated from output after the producing project's own sustainment.
+Empire and improvement production supply local upkeep first. Improvements list their remaining output on the same turn, using the production bank to route goods to upkeep before market clearing. Older saves retain any goods already in the bank.
 
-Each seller's output forms a new batch per commodity per turn. Ordinary batches have six turns to sell. Improvement batches have at least six turns and can remain open for the usual bank release interval. Older batches keep their expiry when more output arrives.
+Each seller's output forms a new batch per commodity per turn. New batches have six turns to sell. Older batches keep their expiry when more output arrives.
 
 Industrial output bonuses earned from consumption cap at +100% of base empire production. This cap also applies when older campaigns load.
 
@@ -121,6 +121,7 @@ Empire and army demand is split into needs and wants.
 - Empire fulfillment updates `empire.supply_state`, approval pressure, and population growth modifiers.
 - Needs are harsher than wants.
 - Civilian demand uses the same baseline population scale as production; army population demand uses a smaller logarithmic multiplier.
+- Each active improvement adds 25% of its empire's base optional wants, up to a 200% bonus. Essential needs follow their existing population and efficiency scaling.
 - Wants use gentler positive/negative pressure.
 - The fulfillment thresholds and caps live in `docs/input/economy_system.yaml` and `src/game/constants.js`.
 

@@ -1,13 +1,4 @@
 import { IMPROVEMENT_SUSTAINMENT_TICKS } from '../types.js';
-import { ECONOMY_BALANCE_CONSTANTS } from '../../constants.js';
-
-function resolveProductionBankThreshold(value) {
-  const parsed = Number(value);
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return parsed;
-  }
-  return ECONOMY_BALANCE_CONSTANTS.IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT;
-}
 
 /**
  * Create an improvement request (available to accept)
@@ -28,7 +19,6 @@ export function createImprovementRequest(id, name, description, {
   manpowerGrant = null,    // number - adds manpower to empire's army
   requiresNoArmy = false,  // If true, improvement only available to empires without an army
   requisitionUpkeep = 0,   // requisition cost per tick
-  productionBankThreshold = ECONOMY_BALANCE_CONSTANTS.IMPROVEMENT_PRODUCTION_BANK_THRESHOLD_DEFAULT, // multiplier of per-tick surplus after the project's own upkeep
 
   tier = 1,
   branch = 'general'
@@ -52,7 +42,6 @@ export function createImprovementRequest(id, name, description, {
     manpowerGrant,
     requiresNoArmy,
     requisitionUpkeep,
-    productionBankThreshold: resolveProductionBankThreshold(productionBankThreshold),
     tier,
     branch,
     requestedAt: null
@@ -106,9 +95,8 @@ export function createImprovement(requestId, empireId, startedAtTick, request) {
     sustainmentBuffer: {},
     maxStockpile: populationMultiplier > 0 ? populationMultiplier * IMPROVEMENT_SUSTAINMENT_TICKS : 0,
 
-    // Production bank (accumulates before releasing to market)
+    // Goods available for local sustainment before the surplus is listed.
     productionBank: {},
-    productionBankThreshold: resolveProductionBankThreshold(request.productionBankThreshold), // multiplier for release threshold
 
     // Degradation tracking
     degradedSince: null,

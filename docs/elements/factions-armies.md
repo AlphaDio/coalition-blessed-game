@@ -13,16 +13,16 @@ Industrial powerhouse spanning multiple star systems with advanced manufacturing
 - **Traits**: industrial
 - **Tags**: Industrial, Federation
 - **Tech Rate Bonus**: 20%
-- **Production per tick**:
+- **Base production per population per turn**:
   - super_alloys: 0.05 units
-  - rare_gases: 0.005 units
+  - rare_gases: 0.014 units
 - **Needs per population**:
   - biomass: 0.05
   - plasma_fuel: 0.03
 - **Wants per population**:
-  - nano_machines: 0.0005
-  - quantum_circuits: 0.0003
-  - genomes: 0.001
+  - nano_machines: 0.004
+  - quantum_circuits: 0.003
+  - genomes: 0.003
 - **Value Alignment**:
   - authoritarian_liberal: 0.3
   - spiritual_materialistic: 0.7
@@ -49,15 +49,16 @@ Biosphere engineers and agricultural supply hub focused on organic development.
 - **Population**: 900, **Influence**: 55
 - **Traits**: agricultural
 - **Tags**: Agricultural, Alliance, Biologic
-- **Production per tick**:
-  - biomass: 0.015 units
-  - genomes: 0.015 units
+- **Base production per population per turn**:
+  - biomass: 0.05 units
+  - genomes: 0.004 units
 - **Needs per population**:
-  - super_alloys: 0.05
-  - plasma_fuel: 0.08
+  - super_alloys: 0.005
+  - plasma_fuel: 0.008
 - **Wants per population**:
-  - psycho_implants: 0.0008
-  - ancient_relics: 0.0002
+  - psycho_implants: 0.004
+  - ancient_relics: 0.004
+  - genomes: 0.003
 - **Value Alignment**:
   - authoritarian_liberal: -0.1
   - spiritual_materialistic: -0.4
@@ -73,15 +74,17 @@ Hyperspace crossroads with strategic military reach and advanced technology.
 - **Population**: 800, **Influence**: 70
 - **Traits**: maritime
 - **Tags**: Maritime, Republic, Militaristic
-- **Production per tick**:
-  - plasma_fuel: 0.012 units
-  - psycho_implants: 0.016 units
+- **Base production per population per turn**:
+  - plasma_fuel: 0.0625 units
+  - psycho_implants: 0.008 units
 - **Needs per population**:
-  - biomass: 0.12
+  - biomass: 0.012
   - super_alloys: 0.03
 - **Wants per population**:
-  - rare_gases: 0.0001
-  - sentient_cores: 0.00003
+  - rare_gases: 0.004
+  - sentient_cores: 0.003
+  - ancient_relics: 0.002
+  - wormhole_reactors: 0.003
 - **Value Alignment**:
   - authoritarian_liberal: 0.6
   - spiritual_materialistic: 0.2
@@ -97,15 +100,16 @@ Synthetic collective optimized for high-tech output, prediction, and lethal auto
 - **Population**: 300, **Influence**: 80
 - **Traits**: mechanical, synthetic
 - **Tags**: Mechanical, Warped
-- **Production per tick**:
-  - quantum_circuits: 0.000025 units
-  - nano_machines: 0.00005 units
+- **Base production per population per turn** (1.5× faction multiplier):
+  - quantum_circuits: 0.010 units
+  - nano_machines: 0.012 units
 - **Needs per population**:
   - rare_gases: 0.075
   - super_alloys: 0.08
 - **Wants per population**:
-  - sentient_cores: 0.002
-  - wormhole_reactors: 0.001
+  - sentient_cores: 0.008
+  - wormhole_reactors: 0.006
+  - quantum_circuits: 0.004
 - **Consumption Effects** (empire-level thresholds):
   - sentient_cores (24): +4 coalition intel
   - wormhole_reactors (8): +0.06 next-battle kill rate to Quantum armies
@@ -129,15 +133,15 @@ Hive-mind collective with massive biological throughput and unified consciousnes
 - **Population**: 900, **Influence**: 55
 - **Traits**: hive_mind, biologic
 - **Tags**: Hive-Mind, Biologic
-- **Production per tick**:
-  - genomes: 0.02 units
-  - ancient_relics: 0.002 units
+- **Base production per population per turn** (1.2× faction multiplier):
+  - genomes: 0.006 units
+  - ancient_relics: 0.004 units
 - **Needs per population**:
   - biomass: 0.025
-  - plasma_fuel: 0.002
+  - plasma_fuel: 0.02
 - **Wants per population**:
-  - psycho_implants: 0.0001
-  - nano_machines: 0.0005
+  - psycho_implants: 0.004
+  - nano_machines: 0.003
 - **Value Alignment**:
   - authoritarian_liberal: -0.9
   - spiritual_materialistic: 0.2

@@ -132,7 +132,7 @@ console.log('=== Test 3: Improvement and Empire Production Share a Same-Turn Sel
     filled_qty: 0,
     ask_price: 2.0,
     duration: 0,
-    max_duration: 10,
+    max_duration: 6,
     turn_added_turn: 5,
     turn_added_qty: 30
   };
@@ -147,7 +147,7 @@ console.log('=== Test 3: Improvement and Empire Production Share a Same-Turn Sel
   assert(genericSell.id === 'prod_sell_1', 'Improvement and generic production share one sell order');
   assert(improvementSell.qty === 37, 'Sell accumulation quantity is increased on the existing order');
   assert(improvementSell.turn_added_qty === 37, 'Both contributions count as new supply this turn');
-  assert(improvementSell.max_duration === 10, 'The batch preserves the improvement release interval');
+  assert(improvementSell.max_duration === 6, 'The merged batch retains its six-turn lifetime');
   assert(sellOffers.length === 1, 'No duplicate sell order created for same empire+commodity');
 }
 console.log();

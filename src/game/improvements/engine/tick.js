@@ -100,12 +100,12 @@ export function processImprovementsTick(state) {
   // project in the same empire regardless of its position in the queue.
   improvements.queue.forEach(improvement => {
     if (improvement.state !== 'ACTIVE' && improvement.state !== 'DEGRADED') return;
-    const releaseResult = releaseProductionFromBank(state, improvement);
-    log.push(...releaseResult.log);
     if (improvement.state === 'ACTIVE') {
       const productionResult = processImprovementProduction(state, improvement);
       log.push(...productionResult.log);
     }
+    const releaseResult = releaseProductionFromBank(state, improvement);
+    log.push(...releaseResult.log);
   });
 
   finalizeImprovementSustainmentPreMarket(state);

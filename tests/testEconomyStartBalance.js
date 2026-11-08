@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { GameManager } from '../src/server/gameManager.js';
 import { advanceTurn } from '../src/game/turn.js';
 import { initializeStarterNeedsStockpiles } from '../src/game/economyTick/ordersPhase.js';
-import { getAllImprovementRequests, acceptImprovementRequest } from '../src/game/improvements/index.js';
+import { getAllImprovementRequests, acceptImprovementRequest, createImprovement, processImprovementsTick } from '../src/game/improvements/index.js';
 import { clearMarket, computeEmpireFulfillment } from '../src/game/marketEconomy.js';
 import { processEconomyTick } from '../src/game/economyTick.js';
 import { addPressure } from '../src/game/economyTick/backlog.js';
@@ -79,6 +79,58 @@ console.log('=== Test: Economy and Opening Pacing ===');
   assert(!offers.some(offer => offer.id === legacy.id), 'Existing oversized offers expire even as production continues');
   assert(offers.every(offer => offer.qty > 0 && offer.qty === offers[0].qty));
   assert.equal(state.market.biomass.flow_supply_qty_turn, offers[0].qty, 'Posted supply excludes older batches');
+}
+
+{
+  const state = newGame(807985);
+  processEconomyTick(state);
+  const quantum = state.empires.find(empire => empire.id === 'empire_clockwork');
+  const stellar = state.empires.find(empire => empire.id === 'empire_1');
+  assert.equal(quantum.modifiers.multiplication, 1.5);
+  assert.equal(state.market.nano_machines.flow_supply_qty_turn, 0.54);
+  assert.equal(state.market.quantum_circuits.flow_supply_qty_turn, 0.45);
+  for (const commodity of ['rare_gases', 'genomes', 'ancient_relics', 'psycho_implants']) {
+    assert(state.market[commodity].flow_supply_qty_turn >= 0.5, `Opening ${commodity} production is marketable`);
+  }
+  const openingWants = stellar.supply_state.wants_demand.nano_machines;
+
+  const definition = getAllImprovementRequests().find(entry => entry.id === 'nano_lattice_plant');
+  state.improvements.queue = ['first', 'second'].map(id => ({
+    ...createImprovement(id, stellar.id, state.turn, { ...definition, id }), state: 'ACTIVE'
+  }));
+  state.turn++;
+  for (let tick = 0; tick < 2; tick++) {
+    processImprovementsTick(state);
+    processEconomyTick(state);
+    assert(Math.abs(state.market.nano_machines.flow_supply_qty_turn - 6.3) < 1e-8,
+      'Two Crucibles list their surplus every turn alongside the faction supply');
+    assert(Math.abs(stellar.supply_state.wants_demand.nano_machines / openingWants - 1.5) < 1e-8,
+      'Active development grows wants independently of population');
+    state.turn++;
+  }
+}
+
+{
+  const manager = new GameManager();
+  manager.state = newGame(807985);
+  const oldSave = manager.getSaveState();
+  const quantum = oldSave.empires.find(empire => empire.id === 'empire_clockwork');
+  quantum.production.outputs_per_tick.nano_machines = 0.00005;
+  quantum.wants.per_pop.sentient_cores = 0.002;
+  delete quantum.modifiers.multiplication;
+  const definition = getAllImprovementRequests().find(entry => entry.id === 'exotic_matter_fabricator');
+  oldSave.improvements.queue.push({
+    ...createImprovement(definition.id, quantum.id, 1, definition),
+    productionOutputs: { ...definition.productionOutputs, wormhole_reactors: 0.115 },
+    productionBank: { wormhole_reactors: 5 },
+    productionBankThreshold: 10
+  });
+  const loaded = manager.loadSaveState(oldSave);
+  assert.equal(quantum.production.outputs_per_tick.nano_machines, 0.012);
+  assert.equal(quantum.wants.per_pop.sentient_cores, 0.008);
+  assert.equal(quantum.modifiers.multiplication, 1.5);
+  assert.equal(loaded.improvements.queue[0].productionOutputs.wormhole_reactors, 0.03);
+  assert.equal(loaded.improvements.queue[0].productionBank.wormhole_reactors, 5, 'Stored goods survive the recipe update');
 }
 
 for (const seed of [7, 123, 987]) {
