@@ -79,7 +79,8 @@ export const MARKET_CONSTANTS = {
   POPULATION_GROWTH_BANK_THRESHOLD: 10, // Population growth accumulates to this threshold before applying
   BULK_QTY_THRESHOLD: 20,         // Orders above this qty qualify for bulk/gross pricing
   BULK_DISCOUNT_MAX: 0.15,        // Maximum gross discount (15%) for large bulk orders
-  ORDER_POSTING_FEE: 0.01
+  ORDER_POSTING_FEE: 0.01,
+  MAX_SALES_TAX_RATE: 0.10
 };
 
 /**

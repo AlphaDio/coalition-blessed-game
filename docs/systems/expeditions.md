@@ -16,7 +16,7 @@ The base cost is **150 Biomass and 100 Plasma Fuel** for an empire contact or **
 
 New and migrated campaigns receive a finite frontier charter of **240 Super Alloys, 220 Biomass and 160 Plasma Fuel** in Coalition stockpiles. The charter covers the opening launch and helps fund early investments. It never refills on save/load. Further supplies come from discovery salvage and market surplus created by production improvements and contacts.
 
-Costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the current commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
+Expedition actions use zero requisition. Material costs use Coalition stockpiles first. Remaining materials are bought from actual unfilled empire or minor-empire sell offers at the current commodity price. Treasury credits pay the seller and only the purchased quantity is retired. Costs show those credit requirements; validating all resources precedes any deduction. Essential reserves held inside member empires are not requisitioned.
 
 Base travel time varies from **10 to 16 turns**. The destination and travel roll use a dedicated stream seeded by the campaign seed and expedition count. Both are saved at launch, so pausing or reloading preserves the trip.
 
@@ -35,11 +35,11 @@ Each contact produces one fixed commodity and requires one sustain commodity per
 | Gene Cantons | 3 Genomes | 10 Biomass | Civilian welfare | 5,500 MP |
 | Relic Wardens | 2 Ancient Relics | 9 Plasma Fuel | Sovereignty | 9,000 MP |
 
-An envoy costs 15 requisition, reveals priorities and adds 3 approval. Tailored aid then costs 20 requisition and 50 of the preferred material, giving 14 approval or 20 for welfare-minded contacts. Aid has a six-turn cooldown that persists through saves.
+An envoy is free, reveals priorities and adds 3 approval. Tailored aid then costs 50 of the preferred material, giving 14 approval or 20 for welfare-minded contacts. Aid has a six-turn cooldown that persists through saves.
 
 Knowledge-minded contacts gain 5 approval when a discovery study completes. Sovereignty-minded contacts give extra approval for pacts and strongly oppose conquest.
 
-At **65 approval**, an envoy-informed contact can sign a partnership for 60 requisition, 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 requisition plus 1 per development level each turn**, scaled by previous sustain fulfillment. Approval below 40 suspends the pact.
+At **65 approval**, an envoy-informed contact can sign a partnership for 40 Biomass and 20 Plasma Fuel. This raises exports to 125% and grants **2 requisition plus 1 per development level each turn**, scaled by previous sustain fulfillment. Approval below 40 suspends the pact.
 
 ## Development
 
@@ -60,9 +60,9 @@ Older campaigns keep their development levels and economic benefits. New upgrade
 
 ## Raids, invasion and occupation
 
-At **20 approval or less**, an independent contact becomes hostile and closes its market. After its initial grace period and any truce, a visible **four-turn warning** precedes a raid. A ceasefire costs 35 requisition and 60 of its sustain commodity; it restores at least 35 approval and prevents raids for 20 turns. A defended raid uses real front battles and lasting army losses. If no army is ready, the raid takes up to 80 requisition and 0.5 Coalition Cohesion at current cohesion pacing. Successful defense restores independence, at least 30 approval and a 20-turn truce.
+At **20 approval or less**, an independent contact becomes hostile and closes its market. After its initial grace period and any truce, a visible **four-turn warning** precedes a raid. A ceasefire costs 60 of its sustain commodity, restores at least 35 approval and prevents raids for 20 turns. A defended raid uses real front battles and lasting army losses. If no army is ready, the raid takes up to 80 requisition and 0.5 Coalition Cohesion at current cohesion pacing. Successful defense restores independence, at least 30 approval and a 20-turn truce.
 
-An invasion costs **125 requisition, 100 Alloys and 60 Fuel**, plus **1.5 Coalition Cohesion at current pacing**, 3 approval from every Coalition member and 12 approval from other independent contacts (20 for sovereignty-minded contacts). One ready army is selected by default, with at least 35 organization. Its identity and strength, enemy defenders and economic consequences appear before confirmation. The army cannot serve on simultaneous Scourge or rebellion fronts. Combat applies real permanent capacity losses, wounds, organization changes and experience. It does not alter Scourge Cohesion or grant Scourge victory rewards.
+An invasion costs **100 Alloys and 60 Fuel**, plus **1.5 Coalition Cohesion at current pacing**, 3 approval from every Coalition member and 12 approval from other independent contacts (20 for sovereignty-minded contacts). One ready army is selected by default, with at least 35 organization. Its identity and strength, enemy defenders and economic consequences appear before confirmation. The army cannot serve on simultaneous Scourge or rebellion fronts. Combat applies real permanent capacity losses, wounds, organization changes and experience. It does not alter Scourge Cohesion or grant Scourge victory rewards.
 
 Victory starts an occupation at 20 approval. Exports run at 35% for the first **15 paid turns** and 70% afterward. The base upkeep is **1.5 requisition and 2 Plasma Fuel** each turn. Each development level adds **0.5 requisition and 1 Plasma Fuel** to that upkeep. A stabilized occupation pays **3 requisition plus 1 per development level** in tribute on each paid turn, scaled by previous sustain fulfillment.
 

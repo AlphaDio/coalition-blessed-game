@@ -20,7 +20,7 @@ Events are narrative choices triggered by coalition cohesion tiers or by pressur
 
 ### Pressure Gameplay Events
 
-Expired unmet demand increases `state.economyPressure`; it never applies a gameplay consequence directly. When a cumulative pressure threshold is crossed, the pressure system selects an eligible event from the shared `PRESSURE` pool and appends a materialized event to `state.gameplayEventQueue`. The turn pipeline promotes queued events into `state.activeEvent`, after which the normal choice resolver applies effects.
+Expired unmet demand increases `state.economyPressure`. When a cumulative pressure threshold is crossed, the pressure system selects an eligible event from the shared `PRESSURE` pool and appends a materialized event to `state.gameplayEventQueue`. The turn pipeline promotes queued events into `state.activeEvent`, after which the normal choice resolver applies effects. Separately, essential orders that expire at Tier 3 or higher cost 1 Coalition Cohesion per turn.
 
 Pressure escalation is tracked independently per pressure type in `state.economyPressure.escalation_by_type`. Each crossing advances `tier` and `next_threshold` without resetting accumulated pressure. Large increases can cross multiple thresholds in one tick. Pressure event definitions can declare `pressure_eligibility` for `tiers`, `persistence_policies`, `pressure_types`, `resource_types`, and `resources`, allowing future restrictions without changing the trigger algorithm.
 

@@ -60,29 +60,29 @@ export const EMPIRE_TEMPLATES = [
 export const DISCOVERY_TEMPLATES = [
   { id: 'derelict_convoy', name: 'Derelict Convoy', description: 'An abandoned relief convoy, its cargo still intact.',
     benefitDescription: 'Recover 300 Super Alloys, 180 Biomass and 120 Plasma Fuel once.',
-    duration: 2, cost: { requisition: 10, materials: { plasma_fuel: 10 } },
+    duration: 2, cost: { materials: { plasma_fuel: 10 } },
     reward: { type: 'cache', materials: { super_alloys: 300, biomass: 180, plasma_fuel: 120 } } },
   { id: 'ancient_relay', name: 'Ancient Relay', description: 'A quiet listening station beyond Coalition charts.',
     benefitDescription: '+0.5 Coalition Intel each turn after study.',
-    duration: 5, cost: { requisition: 35, materials: { super_alloys: 60, plasma_fuel: 25 } }, reward: { type: 'intel', amount: 0.5 } },
+    duration: 5, cost: { materials: { super_alloys: 60, plasma_fuel: 25 } }, reward: { type: 'intel', amount: 0.5 } },
   { id: 'precursor_foundry', name: 'Precursor Foundry', description: 'A lost fabrication complex with recoverable construction plans.',
     benefitDescription: '+10% improvement construction speed after study.',
-    duration: 6, cost: { requisition: 40, materials: { super_alloys: 90, plasma_fuel: 25 } }, reward: { type: 'construction', amount: 0.1 } },
+    duration: 6, cost: { materials: { super_alloys: 90, plasma_fuel: 25 } }, reward: { type: 'construction', amount: 0.1 } },
   { id: 'living_nebula', name: 'Living Nebula', description: 'A self-sustaining ecosystem whose medicines can be shared.',
     benefitDescription: '+0.05 approval per turn to every Coalition empire after study.',
-    duration: 5, cost: { requisition: 30, materials: { biomass: 80, plasma_fuel: 20 } }, reward: { type: 'approval', amount: 0.05 } },
+    duration: 5, cost: { materials: { biomass: 80, plasma_fuel: 20 } }, reward: { type: 'approval', amount: 0.05 } },
   { id: 'silent_archive', name: 'Silent Archive', description: 'A library of engineering records written before the Scourge.',
     benefitDescription: '+0.5 research points per turn to every Coalition empire after study.',
-    duration: 6, cost: { requisition: 40, materials: { super_alloys: 70, biomass: 30 } }, reward: { type: 'research', amount: 0.5 } },
+    duration: 6, cost: { materials: { super_alloys: 70, biomass: 30 } }, reward: { type: 'research', amount: 0.5 } },
   { id: 'transit_lattice', name: 'Transit Lattice', description: 'An ancient route network that shortens Coalition supply lines.',
     benefitDescription: '+5% consumption requisition generation and +30% expedition speed after study.',
     expeditionSpeedBonus: 0.3,
-    duration: 6, cost: { requisition: 40, materials: { super_alloys: 80, plasma_fuel: 40 } }, reward: { type: 'requisition', amount: 0.05 } }
+    duration: 6, cost: { materials: { super_alloys: 80, plasma_fuel: 40 } }, reward: { type: 'requisition', amount: 0.05 } }
 ];
 
 export const EXPEDITION_RULES = {
   slots: 1, aidCooldown: 6, raidWarning: 4, raidCooldown: 20,
   occupationDuration: 15, occupationUnrestLimit: 20, pactApproval: 65, pactBreakApproval: 40,
   developmentCostGrowthPerLevel: 0.5,
-  conquestCost: { requisition: 125, materials: { super_alloys: 100, plasma_fuel: 60 } }
+  conquestCost: { materials: { super_alloys: 100, plasma_fuel: 60 } }
 };

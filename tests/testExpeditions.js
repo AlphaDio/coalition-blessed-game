@@ -334,7 +334,9 @@ test('development upgrades are immediate, scale in cost, and can be bought in re
 test('each empire quotes its own named development program and reveals the relevant material reserves', () => {
   const state = fixture();
   for (let i = 0; i < 12; i++) completeMission(state);
-  const programs = Object.fromEntries(refreshExpeditionOptions(state).filter(option => option.action === 'develop')
+  const options = refreshExpeditionOptions(state);
+  assert(options.every(option => !option.cost.requisition), 'Expedition options never charge requisition');
+  const programs = Object.fromEntries(options.filter(option => option.action === 'develop')
     .map(({ targetId, label, cost }) => [targetId, [label, cost.materials]]));
   assert.deepEqual(programs, {
     cinder_compact: ['Rebuild furnace lines (Lv 1)', { super_alloys: 45, plasma_fuel: 20 }],
@@ -505,9 +507,11 @@ test('invasion costs reputation and conquest requires upkeep with reduced export
   const memberApproval = state.empires[0].approval;
   const cohesion = state.coalitionCohesion;
   const reqBeforeInvasion = state.coalitionEconomy.requisition;
+  state.coalitionEconomy.requisition = -5;
   action(state, { action: 'invade', targetId: minor.id });
   assert.ok(minor.war?.frontId, 'the expedition starts a real battle front');
-  assert.ok(state.coalitionEconomy.requisition < reqBeforeInvasion);
+  assert.equal(state.coalitionEconomy.requisition, -5, 'Invasion uses materials even during requisition debt');
+  state.coalitionEconomy.requisition = reqBeforeInvasion;
   assert.ok(state.coalitionCohesion < cohesion, 'aggression has a Coalition political cost');
   assert.ok(state.empires[0].approval < memberApproval);
   assert.ok(observer.approval < observerApproval, 'other discovered empires react to conquest');

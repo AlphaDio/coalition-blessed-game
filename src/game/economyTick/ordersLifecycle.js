@@ -1,5 +1,6 @@
 import { clearMarket } from '../marketEconomy.js';
 import { MARKET_CONSTANTS } from '../constants.js';
+import { clampApproval } from '../cohesion.js';
 import { DEFAULT_SELL_ORDER_MAX_DURATION } from './orders.js';
 import {
   IMPROVEMENT_SUSTAINMENT_POOL_PURPOSE,
@@ -8,8 +9,7 @@ import {
 import { CONSUMPTION_SOURCES, recordConsumption } from '../consumptionToRequisition.js';
 import {
   enforceMinorBudgetConstraints,
-  applyMinorBuyTrade,
-  applyMinorSellTrade
+  applyMinorBuyTrade
 } from '../expeditions/economy.js';
 import {
   addPressure,
@@ -136,15 +136,14 @@ function applyBuyTrade(state, trade, buyOrder, empiresById, armiesById) {
   }
 }
 
-function applySellTrade(state, trade, sellOffer, empiresById) {
-  if (sellOffer.owner_type === 'minor') {
-    applyMinorSellTrade(state, trade, sellOffer);
-    return;
-  }
-  if (sellOffer.owner_type !== 'empire') return;
-  const empire = empiresById.get(sellOffer.owner_id);
-  if (!empire) return;
-  empire.budget_credits = (empire.budget_credits || 0) + (trade.qty * trade.price);
+function applySellTrade(trade, sellOffer, empiresById, minorsById) {
+  const seller = sellOffer.owner_type === 'empire' ? empiresById.get(sellOffer.owner_id) :
+    sellOffer.owner_type === 'minor' ? minorsById.get(sellOffer.owner_id) : null;
+  if (!seller) return 0;
+  const proceeds = trade.qty * trade.price;
+  const tax = proceeds * MARKET_CONSTANTS.MAX_SALES_TAX_RATE * clampApproval(seller.approval || 0) / 100;
+  seller.budget_credits = getEmpireBudget(seller) + proceeds - tax;
+  return tax;
 }
 
 function mergeOrdersById(baseOrders, overridingOrders) {
@@ -471,7 +470,9 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
   const buyOrdersById = new Map(validBuyOrders.map(order => [order.id, order]));
   const sellOffersById = new Map(validSellOffers.map(order => [order.id, order]));
   const empiresById = new Map((state.empires || []).map(empire => [empire.id, empire]));
+  const minorsById = new Map((state.expeditions?.empires || []).map(empire => [empire.id, empire]));
   const armiesById = new Map((state.armies || []).map(army => [army.id, army]));
+  let marketTax = 0;
 
   commodities.forEach(commodity => {
     const marketState = state.market[commodity.key];
@@ -506,7 +507,7 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
 
       applyRelationAdjustedTradePrice(state, trade, buyOrder, sellOffer, armiesById);
       applyBuyTrade(state, trade, buyOrder, empiresById, armiesById);
-      applySellTrade(state, trade, sellOffer, empiresById);
+      marketTax += applySellTrade(trade, sellOffer, empiresById, minorsById);
       allTrades.push(trade);
     });
 
@@ -519,6 +520,7 @@ export function clearMarkets(state, commodities, validBuyOrders, validSellOffers
     state.market.buy_backlog_by_commodity_and_owner = buyBacklogByCommodityAndOwner;
   }
 
+  state.marketTaxLastTick = marketTax;
   return allTrades;
 }
 

@@ -4,7 +4,9 @@ import assertModule from 'node:assert/strict';
 import { createSampleContent } from '../src/game/content.js';
 import { createGameState } from '../src/game/types.js';
 import { handleEventChoice } from '../src/game/events.js';
+import { addPressure } from '../src/game/economyTick/backlog.js';
 import {
+  applyCriticalShortageLoss,
   DEFAULT_PRESSURE_EVENT_THRESHOLDS,
   popNextGameplayEvent,
   triggerPressureGameplayEvents
@@ -143,6 +145,29 @@ console.log('Pressure Gameplay Event Tests');
       state.empires.some((empire, index) => empire.approval !== before.approval[index]),
     'Mechanical consequences occur during event resolution, not pressure accumulation'
   );
+}
+
+{
+  const state = makeState();
+  const needs = { type: 'empire_demand', id: state.empires[0].id, category: 'needs' };
+  addPressure(state, 'biomass', 100, needs);
+  triggerPressureGameplayEvents(state);
+  assert.equal(applyCriticalShortageLoss(state), 0, 'Tier 2 gives time to respond');
+  state.turn++;
+  addPressure(state, 'biomass', 150, needs);
+  addPressure(state, 'plasma_fuel', 250, needs);
+  triggerPressureGameplayEvents(state);
+  assert.equal(applyCriticalShortageLoss(state), 1, 'Critical shortages cost one Cohesion even across multiple resources');
+  state.turn++;
+  addPressure(state, 'biomass', 10, { ...needs, category: 'wants' });
+  addPressure(state, 'biomass', 1e-9, needs);
+  assert.equal(applyCriticalShortageLoss(state), 0, 'Historical shortages, optional wants and rounding dust cannot drain Cohesion');
+  assert.equal(state.economyPressure.cohesion_loss_last_turn, 0);
+  state.turn++;
+  state.coalitionCohesion = 0.5;
+  addPressure(state, 'biomass', 1, needs);
+  assert.equal(applyCriticalShortageLoss(state), 0.5, 'A continuing critical shortage can exhaust the remaining Cohesion');
+  assert.equal(state.coalitionCohesion, 0);
 }
 
 console.log('Passed: pressure gameplay events');

@@ -27,7 +27,7 @@ import {
   finalizeDemandBacklog
 } from './ordersLifecycle.js';
 import { applyPostMarketUpdates } from './postTick.js';
-import { triggerPressureGameplayEvents } from '../pressureEvents.js';
+import { applyCriticalShortageLoss, triggerPressureGameplayEvents } from '../pressureEvents.js';
 import { createProjectOrders, settleProjectOrders, updateProjectPrices } from '../projects.js';
 import {
   prepareMinorEconomy,
@@ -127,6 +127,12 @@ export function processEconomyTick(state) {
     state,
     state.economyPressure?.last_expired || []
   );
+  for (const { pressure_type, tier } of pressureEventResult.thresholdsCrossed) {
+    const name = pressure_type.replace(/_pressure$/, '').replaceAll('_', ' ');
+    log.push(`Shortage pressure reaches Tier ${tier} for ${name}.`);
+  }
+  const shortageLoss = applyCriticalShortageLoss(state);
+  if (shortageLoss > 0) log.push(`Critical shortages cost ${shortageLoss.toFixed(1)} Coalition Cohesion.`);
 
   // Step 6b: Save remaining valid orders to state.marketOrders
   saveMarketOrders(

@@ -14,6 +14,7 @@ import { assignInitialHeroes } from '../src/game/heroes.js';
 import { TRADE_INCOME_EFFECT_DIVISOR } from '../src/game/constants.js';
 import { applyPostMarketUpdates } from '../src/game/economyTick/postTick.js';
 import { applyImprovementModifiers } from '../src/game/improvements/engine/modifiers.js';
+import { applyLawImmediateEffects } from '../src/game/lawProcess/modifiers.js';
 import { initializeLogger, LogLevel } from '../src/modules/logger.js';
 
 initializeLogger({
@@ -84,6 +85,16 @@ function enactLaw(state, lawId, proposal = null) {
   const rng = new DeterministicRNG(123);
   resolveLawProcess(lawProcess, state, rng);
   return lawProcess;
+}
+
+{
+  const state = createTestState();
+  const law = state.lawDefinitions.find(entry => entry.id === 'law_fiscal_stimulus_1');
+  const { requisition, treasury_credits } = state.coalitionEconomy;
+  applyLawImmediateEffects(law, state, []);
+  assert(state.coalitionEconomy.treasury_credits === treasury_credits + 7000, 'Enactment pays five times the catalog Credits');
+  assert(state.coalitionEconomy.requisition === requisition + 600, 'Enactment pays five times the catalog requisition');
+  assert(law.modifiers.empire_approval === 0.4, 'Ongoing law modifiers retain their authored amounts');
 }
 
 console.log('=== Test 1: Tier Unlocks Still Work ===');

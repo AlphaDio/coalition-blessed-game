@@ -145,11 +145,6 @@ export function applyMinorBuyTrade(state, trade, order) {
   minor.supplyState.received = nonNegative(minor.supplyState.received) + trade.qty;
 }
 
-export function applyMinorSellTrade(state, trade, order) {
-  const minor = (state.expeditions?.empires || []).find(entry => entry.id === order.owner_id);
-  if (minor) minor.budget_credits = nonNegative(minor.budget_credits) + trade.qty * trade.price;
-}
-
 export function applyMinorEconomyPostMarket(state) {
   for (const minor of state.expeditions?.empires || []) {
     const demand = nonNegative(minor.sustain?.amount);

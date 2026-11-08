@@ -1,6 +1,7 @@
 import { loadResources } from './economyTick/resources.js';
 import { getPressureConfig } from './economyTick/backlog.js';
 import { resolveEventVariables, interpolateText } from './selectors.js';
+import { applyScaledCoalitionCohesionDelta } from './cohesion.js';
 
 export const PRESSURE_EVENT_IDS = Object.freeze([
   'pressure_rationing',
@@ -273,4 +274,15 @@ export function triggerPressureGameplayEvents(state, expiredPressureEvents = nul
   }
 
   return { createdEvents, thresholdsCrossed };
+}
+
+export function applyCriticalShortageLoss(state) {
+  const pressure = state.economyPressure;
+  if (!pressure) return 0;
+  const critical = pressure.last_expired?.some(record => record.turn === state.turn && record.quantity > 1e-6 &&
+    record.source?.category === 'needs' && pressure.escalation_by_type?.[record.pressure]?.tier >= 3);
+  const before = state.coalitionCohesion;
+  if (critical) applyScaledCoalitionCohesionDelta(state, -2);
+  pressure.cohesion_loss_last_turn = critical ? before - state.coalitionCohesion : 0;
+  return pressure.cohesion_loss_last_turn;
 }

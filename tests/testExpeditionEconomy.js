@@ -54,7 +54,8 @@ function tick(state) {
   tick(state);
   const minor = state.expeditions.empires[0];
   assert.equal(minor.budget_credits, 0, 'Minor purchases stop at its own budget');
-  assert.equal(state.empires[0].budget_credits, 5, 'Supplier receives the actual minor payment');
+  assert.equal(state.empires[0].budget_credits, 4.75, 'Supplier receives payment less the 5% tax at 50 Approval');
+  assert.equal(state.marketTaxLastTick, 0.25, 'Market tax is tracked as retired Credits');
   assert.equal(minor.supplyState.received, 5, 'Only affordable sustainment is received');
   assert.equal(minor.supplyState.fulfillment, 0.5);
   assert.equal(minor.approval, 49.625, 'Shortages affect the minor approval');
@@ -62,8 +63,8 @@ function tick(state) {
   assert.deepEqual(getEmpireTurnConsumptionByCommodity(minor.id), {}, 'Minor trade does not create Coalition consumption requisition');
 }
 
-{
-  const state = makeState({ exportMultiplier: 1.5, supplyState: { fulfillment: 0.5 } });
+for (const approval of [0, 50, 100]) {
+  const state = makeState({ approval, exportMultiplier: 1.5, supplyState: { fulfillment: 0.5 } });
   prepareMinorEconomy(state);
   const aggregator = createOrderAggregator(state);
   emitMinorEconomyOrders(state, aggregator);
@@ -77,7 +78,9 @@ function tick(state) {
   const trades = clearMarkets(state, resources, buys, aggregator.sellOffers);
   assert.equal(trades.reduce((sum, trade) => sum + trade.qty, 0), 7.5);
   assert.equal(buyer.budget_credits, 92.5, 'Coalition buyer pays for minor exports');
-  assert.equal(state.expeditions.empires[0].budget_credits, 107.5, 'Export proceeds accrue to the minor');
+  const expectedTax = 7.5 * approval / 1000;
+  assert.equal(state.marketTaxLastTick, expectedTax);
+  assert.equal(state.expeditions.empires[0].budget_credits, 107.5 - expectedTax, 'Minor exports pay tax based on seller Approval');
 }
 
 {

@@ -101,20 +101,20 @@ export function refreshExpeditionOptions(state) {
     const unavailable = minor.war ? 'A battle is underway' : null;
     const developmentLevel = minor.developmentLevel || 0;
     if (!minor.interestRevealed) option('envoy', 'Send an envoy', 'Learn what this empire cares about; +3 approval.',
-      { requisition: 15 }, unavailable || (minor.status === 'CONQUERED' ? 'Occupied empires cannot receive envoys' : null));
+      {}, unavailable || (minor.status === 'CONQUERED' ? 'Occupied empires cannot receive envoys' : null));
     if (minor.status === 'HOSTILE') {
       option('appease', 'Negotiate a ceasefire', 'Restore independence, stop a raid warning, and raise approval to at least 35. 20-turn truce.',
-        { requisition: 35, materials: { [minor.sustain.commodity]: 60 } }, unavailable);
+        { materials: { [minor.sustain.commodity]: 60 } }, unavailable);
     }
     if (minor.status !== 'CONQUERED') {
       const cooldown = Math.max(0, (minor.nextAidTurn || 0) - state.turn);
       option('aid', 'Offer tailored aid', 'Deliver 50 of their preferred material. +14 approval; welfare-minded contacts gain +20. Six-turn cooldown.',
-        { requisition: 20, materials: { [minor.interest.commodity]: 50 } }, unavailable ||
+        { materials: { [minor.interest.commodity]: 50 } }, unavailable ||
         (!minor.interestRevealed ? 'Send an envoy to learn their priorities first' : cooldown > 0 ? `Aid available in ${cooldown} turns` :
           minor.status === 'HOSTILE' ? 'Negotiate a ceasefire first' : null));
       if (minor.status !== 'ALLIED') option('pact', 'Sign a partnership pact',
         `At 65 approval: +25% exports and ${2 + developmentLevel} requisition per fully supplied turn. Pact ends below 40 approval.`,
-        { requisition: 60, materials: { biomass: 40, plasma_fuel: 20 } }, unavailable ||
+        { materials: { biomass: 40, plasma_fuel: 20 } }, unavailable ||
           (!minor.interestRevealed ? 'Send an envoy first' : minor.approval < EXPEDITION_RULES.pactApproval ? 'Requires 65 approval' :
             !peaceful(minor) ? 'Negotiate a ceasefire first' : null));
     }

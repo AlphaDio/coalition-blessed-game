@@ -24,6 +24,7 @@ The economy does not currently use coalition procurement, commodity bank rollove
 ### Currency Boundaries
 - `empire.budget_credits` is the hard, non-negative purchasing balance for an empire's market orders, including army orders owned by that empire.
 - Posting fees are reserved before trade commitments. Standard new orders cost 0.01 credits per tick. Active buy orders, including persistent backlog orders, are capped by the owner's remaining budget at their maximum order price. Needs are prioritized ahead of wants within the same priority tier.
+- Settled market trades retire a share of the seller's proceeds based on their Approval. The rate ranges from 0% at 0 Approval to 10% at 100 Approval. Buyers pay the settled price and the Market panel reports Credits retired last turn.
 - `treasury_credits` is a coalition-level reserve used by laws and event effects. It is not an automatic fallback for empire market purchases.
 - `requisition` is the coalition construction and improvement currency. It does not pay ordinary commodity buy orders.
 - Budget-blocked orders are exposed in `economyBudgetBlockedLastTick` for diagnostics and UI reporting.
@@ -114,7 +115,7 @@ Unfilled buy orders and sell offers persist as backlog/reserves. Buy-side demand
 
 Each demand backlog item records its resource, remaining quantity, age, source, policy, maximum age where relevant, and source validity. Supply is allocated before backlog age advances. When perishable or deferred demand expires, its unresolved quantity is added to `state.economyPressure.by_resource` and the configured pressure key in `state.economyPressure.by_type`; it is then removed from the backlog. Invalid conditional demand is cancelled without pressure. This keeps expected-to-be-fulfilled backlog distinct from shortages whose consequences have already been absorbed.
 
-Pressure itself has no mechanical effects. Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. The pressure value is not reset. The queued event carries the resource, pressure type, accumulated pressure, expired quantity, source, persistence policy, resource type, and tier into the normal event resolver.
+Expired optional wants contribute 5% of the pressure of equivalent unmet needs or upkeep. Cumulative thresholds (25, 100, 250, 500, and 1000 by default, then doubling) advance a per-pressure-type escalation tier and enqueue a shared pressure event. At Tier 3 or higher, fresh essential expirations cost 1 Coalition Cohesion per turn across all shortages. Resolving the essential shortfalls stops the drain. The Market panel shows current tiers, pressure gained this turn and progress to the next threshold.
 
 ## Production and Stockpiles
 Empire and improvement production supply local upkeep first. Improvements list their remaining output on the same turn, using the production bank to route goods to upkeep before market clearing. Older saves retain any goods already in the bank.

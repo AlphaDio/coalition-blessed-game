@@ -134,8 +134,13 @@ export class GameManager {
    * Apply law system defaults
    */
   applyLawSystemDefaults(force = false) {
+    const currentLaws = getSampleLawDefinitions();
     if (force || !this.state.lawDefinitions || this.state.lawDefinitions.length === 0) {
-      this.state.lawDefinitions = getSampleLawDefinitions();
+      this.state.lawDefinitions = currentLaws;
+    } else {
+      const effectsById = new Map(currentLaws.map(law => [law.id, law.immediate_effects]));
+      this.state.lawDefinitions = this.state.lawDefinitions.map(law => effectsById.has(law.id)
+        ? { ...law, immediate_effects: effectsById.get(law.id) } : law);
     }
 
     if (!this.state.events) {
